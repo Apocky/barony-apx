@@ -16,6 +16,9 @@
 #include <stdio.h>
 #ifdef USE_FMOD
 #include <fmod.hpp>
+#ifndef F_CALLBACK
+#define F_CALLBACK F_CALL // apx: FMOD 2.03 removed F_CALLBACK; FMOD 2.02 defined it as F_CALL
+#endif
 #endif
 #ifdef USE_OPENAL
 #ifdef APPLE

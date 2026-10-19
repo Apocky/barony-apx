@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5) # apx: CMake 4 refuses policy versions below 3.5
 project(barony)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -318,6 +318,10 @@ else( NOT WIN32 )
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MP")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MP ")
 	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+	# apx: the code needs C++17 (std::variant, std::clamp); the GCC/Clang branches pass -std=c++17 and
+	# VS.2015/Barony.vcxproj sets LanguageStandard stdcpp17, but MSVC defaults to C++14 under CMake.
+	set (CMAKE_CXX_STANDARD 17)
+	set (CMAKE_CXX_STANDARD_REQUIRED ON)
   set (Windows 1)
 endif( NOT WIN32 )
 
@@ -354,6 +358,9 @@ ELSE (APPLE)
 	ELSE(NOT WIN32)
 		find_package(SDL2 REQUIRED)
 		find_package(SDL2_image REQUIRED)
+		# apx: main.hpp includes GL/glew.h and init.cpp calls glewInit() on Windows
+		find_package(GLEW REQUIRED)
+		INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIR})
 	ENDIF(NOT WIN32)
 	find_package(SDL2_net REQUIRED) # ...why the duplication?
 	find_package(SDL2_ttf REQUIRED)
@@ -556,6 +563,7 @@ if (GAME_ENABLED)
 		set_target_properties(barony PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "\$(BARONY_DATADIR)/")
 	endif()
 	target_link_libraries(barony ${SDL2_LIBRARIES} ${SDL2_LIBRARY} ${SDL2IMAGE_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_TTF_LIBRARIES} ${SDL2TTF_LIBRARY})
+	target_link_libraries(barony ${GLEW_LIBRARIES}) # apx: see find_package(GLEW) above
 	if (STEAMWORKS_ENABLED)
 		target_link_libraries(barony ${STEAMWORKS_LIBRARY})
 		target_link_libraries(barony ${NFD_LIBRARY})
@@ -624,9 +632,11 @@ if (GAME_ENABLED)
   endif()
   target_link_libraries(barony ${OPENGL_LIBRARIES})
   target_link_libraries(barony ${THREADS_LIBRARIES}) # TODO: Not sure what this is doing, since it doesn't appear to be working in Linux!
-  target_link_libraries(barony -lm) # TODO: In Visual Studio, I bet this is something else, right?
-  if (NOT CMAKE_SYSTEM_NAME MATCHES "Haiku")
-	  target_link_libraries(barony -lc)
+  if (NOT MSVC) # apx: the MSVC CRT has no separate libm/libc; link.exe warns LNK4044 on -lm/-lc
+	target_link_libraries(barony -lm) # TODO: In Visual Studio, I bet this is something else, right?
+	if (NOT CMAKE_SYSTEM_NAME MATCHES "Haiku")
+		target_link_libraries(barony -lc)
+	endif()
   endif()
   if (FMOD_FOUND)
     target_link_libraries(barony ${FMOD_LIBRARY})
@@ -721,6 +731,7 @@ if (EDITOR_ENABLED)
     target_link_libraries(${EDITOR_EXE_NAME} ${NFD_LIBRARY})
   endif()
   if(WIN32)
+	target_link_libraries(${EDITOR_EXE_NAME} ${GLEW_LIBRARIES}) # apx: see find_package(GLEW) above
 	if (EOS_ENABLED)
 	  target_link_libraries(${EDITOR_EXE_NAME} ${EOS_LIBRARY}) #TODO: Fix for Windows.
 	endif()
@@ -735,9 +746,11 @@ if (EDITOR_ENABLED)
   endif()
   target_link_libraries(${EDITOR_EXE_NAME} ${OPENGL_LIBRARIES})
   target_link_libraries(${EDITOR_EXE_NAME} ${THREADS_LIBRARIES})
-  target_link_libraries(${EDITOR_EXE_NAME} -lm) # TODO: Only for Mingw?
-  if (NOT CMAKE_SYSTEM_NAME MATCHES "Haiku")
-	  target_link_libraries(${EDITOR_EXE_NAME} -lc)
+  if (NOT MSVC) # apx: see the barony target
+	target_link_libraries(${EDITOR_EXE_NAME} -lm) # TODO: Only for Mingw?
+	if (NOT CMAKE_SYSTEM_NAME MATCHES "Haiku")
+		target_link_libraries(${EDITOR_EXE_NAME} -lc)
+	endif()
   endif()
   # We need to link to Winsock if we're on Windows
   if (FMOD_FOUND)

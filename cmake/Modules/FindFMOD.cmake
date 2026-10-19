@@ -33,6 +33,9 @@ FIND_LIBRARY(FMOD_LIBRARY
   ELSE (APPLE)
     $ENV{FMOD_DIR}/api/core/lib/x86_64/
   ENDIF (APPLE)
+  # apx: the Windows FMOD API keeps fmod_vc.lib in lib/x64 (the IF/ELSE words above are plain path
+  # arguments, not a conditional, so every listed folder is searched on every platform)
+  $ENV{FMOD_DIR}/api/core/lib/x64/
   /usr/local/lib64
   /usr/local/lib
   /usr/lib64

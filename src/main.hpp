@@ -127,6 +127,7 @@ extern bool autoLimbReload;
 #pragma warning( pop )
 #undef min
 #undef max
+#undef GetObject // apx: wingdi.h maps GetObject to GetObjectA; current RapidJSON restores that macro after its header, which renames our rapidjson Value::GetObject() calls
 #endif
 
 #ifdef APPLE
