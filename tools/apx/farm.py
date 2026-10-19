@@ -43,6 +43,10 @@ import apx_locks  # noqa: E402  (D70 lock folders, Barony process list, Apocky-p
 FARM = Path(os.environ.get("APX_FARM_DIR", r"C:\Apocrypha\barony-jobs"))
 DIRS = {k: FARM / k for k in ("queue", "running", "done", "logs", "runs")}
 CAPS = {"headless": 6, "windowed": 3, "exclusive": 1}
+# peak private bytes (commit charge) of one game, GB. MEASURED 2026-10-19 on the headless gate (12 headless,
+# 10 windowed floor-1 runs): headless median 2.20 / max 2.23, windowed median 3.12 / max 3.13. Exclusive jobs
+# may be the Steam exe: budgeted like windowed.
+MEM_GB = {"headless": 2.3, "windowed": 3.2, "exclusive": 3.2}
 MODES = tuple(CAPS)
 STEAM_DIR = apx_locks.STEAM_DIR
 RUNNER_PID = FARM / "runner.pid"
@@ -71,13 +75,14 @@ def validate(job):
     return bad
 
 
-def schedule(pending, running, cond, caps=CAPS):
+def schedule(pending, running, cond, caps=CAPS, mem_gb=MEM_GB):
     """Decide which queued jobs start now. Pure: no files, no clock.
 
     pending: queued jobs, oldest first (dicts with "id" and "mode").
     running: jobs of ours that run now (dicts with "mode").
     cond: dict with apocky_playing, low_memory (bool), foreign_wants, foreign_excl, foreign_slots (int),
-          foreign_barony (int: Barony processes that are not ours).
+          foreign_barony (int: Barony processes that are not ours), mem_budget_gb (commit memory that new
+          launches may use this pass; None = unlimited).
     Returns (start, want): start = jobs to launch now, in order; want = id of an exclusive job that is first
     in line and needs its .WANT file (or None).
     Rules: per-mode first in, first out; capacity per mode; windowed jobs also need a free D70 slot;
@@ -87,7 +92,7 @@ def schedule(pending, running, cond, caps=CAPS):
     """
     if cond.get("apocky_playing") or cond.get("low_memory"):
         return [], None
-    budget = cond.get("start_budget")                    # how many launches memory allows this pass
+    budget = cond.get("mem_budget_gb")                   # commit memory new launches may take this pass
     counts = {m: 0 for m in caps}
     for r in running:
         counts[r["mode"]] = counts.get(r["mode"], 0) + 1
@@ -112,8 +117,11 @@ def schedule(pending, running, cond, caps=CAPS):
         if not free:
             blocked_modes.add(mode)
             continue
-        if budget is not None and len(start) >= budget:
-            break
+        if budget is not None and mem_gb.get(mode, 0) > budget:
+            blocked_modes.add(mode)                      # not enough memory for this kind of game now
+            continue
+        if budget is not None:
+            budget -= mem_gb.get(mode, 0)
         counts[mode] += 1
         start.append(job)
     return start, None
@@ -174,6 +182,24 @@ def free_commit_gb():
     m.dwLength = ctypes.sizeof(m)
     kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
     return m.ullAvailPageFile / 1e9                    # commit still available, bytes -> GB
+
+
+class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
+    _fields_ = [("cb", wt.DWORD), ("PageFaultCount", wt.DWORD), ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t), ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t), ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t), ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t), ("PrivateUsage", ctypes.c_size_t)]
+
+
+def private_gb(handle):
+    """Commit charge (private bytes) of a process, GB; None when it cannot be read."""
+    c = PROCESS_MEMORY_COUNTERS_EX()
+    c.cb = ctypes.sizeof(c)
+    psapi = ctypes.WinDLL("psapi")
+    if psapi.GetProcessMemoryInfo(wt.HANDLE(int(handle)), ctypes.byref(c), c.cb):
+        return c.PrivateUsage / 1e9
+    return None
 
 
 def pid_alive(pid):
@@ -248,6 +274,7 @@ class Job:
         self.until_hit = None       # time the until regex matched
         self.until_line = None
         self.closing = None         # (reason, time WM_CLOSE was posted, kill deadline)
+        self.peak_gb = None         # highest private bytes seen (commit charge), GB
 
 
 class Runner:
@@ -265,9 +292,9 @@ class Runner:
         slots = [n for n in apx_locks._names(apx_locks.SLOTS, "*.LOCK") if n not in our_locks]
         barony = [pid for pid, _ in apx_locks.barony_processes() if pid not in ours]
         free = free_commit_gb()
-        budget = max(0, int((free - self.args.min_free_gb) // self.args.job_gb))
-        return {"apocky_playing": bool(apx_locks.apocky_playing()), "low_memory": budget == 0,
-                "start_budget": budget, "foreign_wants": len(wants), "foreign_excl": len(excl),
+        budget = max(0.0, free - self.args.min_free_gb)
+        return {"apocky_playing": bool(apx_locks.apocky_playing()), "low_memory": budget < min(MEM_GB.values()),
+                "mem_budget_gb": budget, "foreign_wants": len(wants), "foreign_excl": len(excl),
                 "foreign_slots": len(slots), "foreign_barony": len(barony), "free_commit_gb": round(free, 1)}
 
     def take_slot_file(self):
@@ -330,10 +357,12 @@ class Runner:
                 user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)
             j.closing = (reason, now(), now() + grace)
 
-    def finish(self, job, code, started, cwd, out_path, how, until_line=None, note=None):
+    def finish(self, job, code, started, cwd, out_path, how, until_line=None, note=None, peak_gb=None):
         rec = done_record(job, code, started, now(), how, cwd, out_path, until_line)
         if note:
             rec["note"] = note
+        if peak_gb is not None:
+            rec["peak_private_gb"] = round(peak_gb, 3)
         write_json(DIRS["done"] / f"{job['id']}.json", rec)
         (DIRS["running"] / f"{job['id']}.json").unlink(missing_ok=True)
         log(f"done {job['id']} {how} exit {code} {rec['wall_s']} s")
@@ -343,6 +372,9 @@ class Runner:
         for jid in list(self.jobs):
             j = self.jobs[jid]
             if j.proc.poll() is None:
+                g = private_gb(j.proc._handle)
+                if g is not None and (j.peak_gb is None or g > j.peak_gb):
+                    j.peak_gb = g
                 if j.closing is None and j.job.get("until"):
                     if j.until_hit is None:
                         f = j.cwd / j.job.get("until_file", "log.txt")
@@ -369,7 +401,8 @@ class Runner:
             if j.hold:
                 Path(j.hold).unlink(missing_ok=True)
             del self.jobs[jid]
-            self.finish(j.job, j.proc.returncode, j.started, j.cwd, j.out_path, how, until_line=j.until_line)
+            self.finish(j.job, j.proc.returncode, j.started, j.cwd, j.out_path, how, until_line=j.until_line,
+                        peak_gb=j.peak_gb)
 
     def recover(self):
         """Jobs a previous runner left behind: close what still runs, record them, free their locks."""
@@ -517,7 +550,6 @@ def main():
     r.add_argument("--poll-s", type=float, default=0.5)
     r.add_argument("--idle-exit-s", type=float, default=300.0)
     r.add_argument("--min-free-gb", type=float, default=3.0, help="free commit memory to keep after launches")
-    r.add_argument("--job-gb", type=float, default=2.0, help="commit memory one game takes (ASSUMED until measured)")
     sub.add_parser("status")
     argv, game_args = sys.argv[1:], []
     if "--" in argv:                                 # everything after -- goes to the game untouched

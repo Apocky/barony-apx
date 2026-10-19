@@ -26,7 +26,7 @@ import farm  # noqa: E402
 import apx_locks  # noqa: E402
 
 PY = sys.executable
-CLEAR = {"apocky_playing": False, "low_memory": False, "start_budget": None, "foreign_wants": 0,
+CLEAR = {"apocky_playing": False, "low_memory": False, "mem_budget_gb": None, "foreign_wants": 0,
          "foreign_excl": 0, "foreign_slots": 0, "foreign_barony": 0}
 
 
@@ -91,8 +91,10 @@ class SchedulerTests(unittest.TestCase):
     def test_sched_apocky_playing_and_memory(self):
         self.assertEqual(farm.schedule(jobs("headless"), [], dict(CLEAR, apocky_playing=True))[0], [])
         self.assertEqual(farm.schedule(jobs("headless"), [], dict(CLEAR, low_memory=True))[0], [])
-        start, _ = farm.schedule(jobs(*["headless"] * 6), [], dict(CLEAR, start_budget=2))
-        self.assertEqual(len(start), 2)
+        start, _ = farm.schedule(jobs(*["headless"] * 6), [], dict(CLEAR, mem_budget_gb=5.0))
+        self.assertEqual(len(start), 2)              # 2 x 2.3 GB fit in 5 GB, a third does not
+        start, _ = farm.schedule(jobs("windowed", "headless"), [], dict(CLEAR, mem_budget_gb=3.0))
+        self.assertEqual(ids(start), ["001"])        # a windowed game (3.2 GB) does not fit; the headless one does
 
     def test_sched_validate(self):
         self.assertEqual(farm.validate({"exe": "x", "mode": "headless", "timeout_s": 5}), [])
@@ -127,7 +129,7 @@ class RunnerTests(unittest.TestCase):
         farm.FARM, farm.DIRS, farm.RUNNER_PID, farm.RUNNER_LOG = self.saved_dirs
 
     def run_runner(self, limit_s=40):
-        args = types.SimpleNamespace(poll_s=0.1, idle_exit_s=0.6, min_free_gb=0.0, job_gb=0.001)
+        args = types.SimpleNamespace(poll_s=0.1, idle_exit_s=0.6, min_free_gb=-1000.0)
         th = threading.Thread(target=farm.Runner(args).loop, daemon=True)
         th.start()
         th.join(limit_s)
