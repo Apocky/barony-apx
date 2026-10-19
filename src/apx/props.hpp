@@ -309,6 +309,11 @@ namespace props
 				if ( Entity* e = (Entity*)n->element ) if ( e->behavior == &actMonster ) e->setHP(0);
 			st->HP = std::max(1, st->MAXHP / 2);
 			P.hp0 = st->HP;
+			P.phase = 11; // the bed is used next tick: its first act call initialises it
+			return;
+		}
+		if ( P.phase == 11 )
+		{
 			use(P.bed, 0);
 			P.phase = 2;
 			return;
@@ -328,8 +333,13 @@ namespace props
 			int idx = EditorEntityData_t::getColliderIndexFromName("hanging_cage_skel");
 			for ( int i = 0; i < 200; ++i )
 			{
-				Entity* c = Entity::createBreakableCollider(idx, me->x + 64, me->y + 64, nullptr);
-				if ( !c ) continue;
+				// a free floor tile near the player (the engine refuses an occupied one)
+				Entity* c = nullptr;
+				for ( int r = 2; r <= 6 && !c; ++r )
+					for ( int dx = -r; dx <= r && !c; ++dx )
+						for ( int dy = -r; dy <= r && !c; ++dy )
+							if ( std::abs(dx) == r || std::abs(dy) == r ) c = Entity::createBreakableCollider(idx, me->x + dx * 16, me->y + dy * 16, nullptr);
+				if ( !c ) { if ( i == 0 ) printlog("[apx-props] probe: no cage could be placed (collider index %d)", idx); continue; }
 				++P.cages;
 				c->colliderOnDestroy();
 				list_RemoveNode(c->mynode);
