@@ -10572,10 +10572,11 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 		}
 
 		// check if ready to attack
-		if ( (this->monsterHitTime >= static_cast<int>(HITRATE * monsterGlobalAttackTimeMultiplier * bow) 
+		if ( ((this->monsterHitTime >= static_cast<int>(HITRATE * monsterGlobalAttackTimeMultiplier * bow) 
 				&& (myStats->type != LICH && myStats->type != LICH_ICE))
 			|| (this->monsterHitTime >= 5 && myStats->type == LICH)
-			|| (this->monsterHitTime >= HITRATE * 2 && myStats->type == LICH_ICE)
+			|| (this->monsterHitTime >= HITRATE * 2 && myStats->type == LICH_ICE))
+			&& apx::tactics::swingAllowed(this, target) // apx BF3: only a reach-slot holder strikes (true with the layer off)
 			)
 		{
 			bool shouldAttack = this->handleMonsterSpecialAttack(myStats, nullptr, dist, false);

@@ -868,6 +868,28 @@ namespace tactics
 		if ( bf3::on ) { bf3::onSwingThin(my, target); }
 	}
 
+	// Reach slots by body size, in the attack decision itself: a creature placed on this target (slot target, or on
+	// its flank route) strikes only while it holds a reach slot. One stepping out, waiting on the ring or in a queue,
+	// or walking its flank route keeps its swing ready and strikes once it has room. (s15, 150-creature arms: every
+	// extra attacker was a ring holder stepping out or a flanker on its route, passing the outer edge of reach 25 to
+	// 28 units out in the ATTACK state.) Creatures not placed here (far, unmanaged, other knobs off) swing as vanilla.
+	bool slotGateHolds(Entity* my, Entity* target)
+	{
+		if ( !active || !K.reach || multiplayer == CLIENT || !target ) { return false; }
+		TacticsState* s = find(my);
+		if ( !s ) { return false; }
+		Uint32 tu = (Uint32)target->getUID();
+		bool placedHere = s->slotTarget == tu || (s->flank == 1 && s->flankTarget == tu);
+		return placedHere && s->reachIdx < 0;
+	}
+
+	bool swingAllowed(Entity* my, Entity* target)
+	{
+		if ( !slotGateHolds(my, target) ) { return true; }
+		++C.swings_held_no_slot;
+		return false;
+	}
+
 	bool swingLineBlocked(Entity* my, Entity* target)
 	{
 		if ( !active || !K.allyavoid || multiplayer == CLIENT ) { return false; }

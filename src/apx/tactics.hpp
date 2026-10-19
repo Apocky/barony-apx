@@ -57,6 +57,8 @@ namespace tactics
 	Sint32 swingReset(Entity* my, Entity* target, double dist);   // value for monsterHitTime at the swing reset
 	void onSwingTrace(Entity* my, Entity* target, Entity* hitEntity); // after the engine's thin re-trace (counts ally blocks)
 	bool swingLineBlocked(Entity* my, Entity* target);           // ally body in the swing line (skip the swing)
+	bool swingAllowed(Entity* my, Entity* target);               // reach slots by body size: only a slot holder strikes
+	bool slotGateHolds(Entity* my, Entity* target);              // the same test, no counter (the trial's metric)
 	bool moraleBroken(Entity* my);                                // OR-ed into Entity::shouldRetreat
 	void onHPChange(Entity* e, int oldHP, int newHP);             // end of Entity::modHP
 	int pathPenalty(int x, int y);                                // extra A* cost for a tile (route A of a flank)
@@ -90,6 +92,7 @@ namespace tactics
 		long long goal_moved_out = 0;         // routeAround: a goal inside the reach zone moved out to its edge first
 		long long no_path_holds = 0;          // steered ticks waiting: no path to the goal and a wall or gate in the straight way
 		long long arrival_decides = 0;        // decides run at once for a creature newly within reach of the fight it hunts
+		long long swings_held_no_slot = 0;    // ready swings held: placed on this target without a reach slot
 		long long flank_park = 0;             // flank ticks standing "at goal" while more than HOLD_EPS + 1 from the flank point
 	};
 	extern Counters C;

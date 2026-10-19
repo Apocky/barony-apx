@@ -77,6 +77,7 @@ namespace bf3
 		long long dmg = 0, foreignDmg = 0, hits = 0, attempts = 0, thin = 0, wide = 0, playerMoved = 0, creatureDmg = 0;
 		long long dmgHits = 0, dmgOther = 0, otherEvents = 0;    // damage from swings vs damage over time (bleeding etc.)
 		int overflowLogs = 0;                                   // overflow ticks logged in this arm (first 6)
+		long long unslottedInReachSum = 0;                      // creatures in reach the slot gate holds (they cannot strike)
 		int acStart = -1, acEnd = -1, gearFixes = 0;            // the character's armour class; gear repaired at the arm's start
 		long long targetLostTicks = 0, ticks = 0, overflowTicks = 0, inReachSum = 0, attackersSum = 0, near6Sum = 0;
 		long long attackersMax = 0, inReachMax = 0, lost = 0, standoffN = 0, spreadN = 0, waitPairN = 0;
@@ -613,7 +614,12 @@ namespace bf3
 			if ( d < STRIKERANGE + tactics::bodyR(pe) )
 			{
 				++inReach;
-				if ( c->monsterState == MONSTER_STATE_ATTACK && (Uint32)c->monsterTarget == pe->getUID() ) { ++attackers; }
+				// an attacker can strike: the slot gate (tactics::swingAllowed) holds the ones placed without a reach slot
+				if ( c->monsterState == MONSTER_STATE_ATTACK && (Uint32)c->monsterTarget == pe->getUID() )
+				{
+					if ( tactics::slotGateHolds(c, pe) ) { ++A.unslottedInReachSum; }
+					else { ++attackers; }
+				}
 			}
 			else if ( d < 6 * 16.0 ) { waiters.push_back(c); }
 		}
@@ -634,7 +640,8 @@ namespace bf3
 				Stat* cs = c ? c->getStats() : nullptr;
 				if ( !c || !cs || cs->HP <= 0 ) { continue; }
 				double d = hypot(c->x - pe->x, c->y - pe->y);
-				if ( d >= STRIKERANGE + tactics::bodyR(pe) || c->monsterState != MONSTER_STATE_ATTACK || (Uint32)c->monsterTarget != pe->getUID() ) { continue; }
+				if ( d >= STRIKERANGE + tactics::bodyR(pe) || c->monsterState != MONSTER_STATE_ATTACK || (Uint32)c->monsterTarget != pe->getUID()
+					|| tactics::slotGateHolds(c, pe) ) { continue; }
 				tactics::TacticsState* s = tactics::find(c);
 				printlog("[apx] bf3 overflow arm %d t %u uid %u d %.1f reach %d ring %d placed_here %d stance %d flank %d steer %d atk %d decided_ago %d",
 					(int)armI, ticks - phT, u, d, s ? s->reachIdx : -9, s ? s->ringIdx : -9, s ? (s->slotTarget == pe->getUID() ? 1 : 0) : -9,
@@ -765,7 +772,8 @@ namespace bf3
 			.i("holder_false_arrive", A.holderFalseArrive)
 			.i("flank_fail_target", C.flank_fail_target).i("flank_fail_progress", C.flank_fail_progress).i("flank_fail_time", C.flank_fail_time)
 			.i("flank_fail_nogoal", C.flank_fail_nogoal).i("flank_fail_noroute", C.flank_fail_noroute)
-			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park).i("no_path_holds", C.no_path_holds).i("arrival_decides", C.arrival_decides)
+			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park).i("no_path_holds", C.no_path_holds).i("arrival_decides", C.arrival_decides).i("swings_held_no_slot", C.swings_held_no_slot)
+			.d("in_reach_unslotted_mean", A.ticks ? (double)A.unslottedInReachSum / A.ticks : 0)
 			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
 			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
 			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)
