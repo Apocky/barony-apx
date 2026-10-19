@@ -13,6 +13,7 @@
 #include "draw.hpp"
 #include "game.hpp"
 #include "apx/apx_gen_bridge.hpp"
+#include "apx/parts_engine.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
 #include "entity.hpp"
@@ -4219,6 +4220,7 @@ bool handleEvents(void)
 	}
 	fps = (d / AVERAGEFRAMES) * 1000;
 	apxgenFrameTick();
+	apxPartsProbeTick(); // apx F6 probe (APX_BF6_PROBE)
 
 	if (initialized) {
 		inputs.updateAllMouse();

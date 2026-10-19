@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/parts_engine.hpp"
 #include "main.hpp"
 #include "files.hpp"
 #include "game.hpp"
@@ -2587,6 +2588,7 @@ SaveGameInfo getSaveGameInfo(bool singleplayer, int saveIndex)
 	if (!result) {
 		info.game_version = -1;
 	}
+	apxPartsSidecarLoad(result ? path : nullptr); // apx F6
 	
 	// check hash
 	Uint32 hash = 0;
@@ -6068,6 +6070,7 @@ int saveGame(int saveIndex) {
 	std::string savefile = setSaveGameFileName(multiplayer == SINGLE, SaveFileType::JSON, saveIndex);
 	completePath(path, savefile.c_str(), outputdir);
 	auto result = FileHelper::writeObject(path, *cvar_saveText ? EFileFormat::Json_Compact : EFileFormat::Binary, info);
+	if ( result ) { apxPartsSidecarSave(path); } // apx F6: parts beside the save, the save itself unchanged
 	return result == true ? 0 : 1;
 }
 
@@ -6605,6 +6608,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 			appearance, identified, &stats[statsPlayer]->inventory);
 		i->x = item.x;
 		i->y = item.y;
+		if ( !info.hiscore_dummy_loading ) { apxPartsLoadString(i, apxPartsSidecarGet(player, inventory_index)); } // apx F6
 
 		if ( appraisalMap.find(inventory_index) != appraisalMap.end() )
 		{

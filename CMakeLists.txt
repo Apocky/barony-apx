@@ -573,6 +573,7 @@ if (GAME_ENABLED)
 	add_custom_command(TARGET barony POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/scripts" "$<TARGET_FILE_DIR:barony>/scripts") # apx: Lua scripts
 target_include_directories(barony PRIVATE "${APXGEN_DIR}/include") # apx-gen (src/apx/gen)
 target_compile_definitions(barony PRIVATE "APXGEN_VENDOR_ROOT=\"${APXGEN_DIR}\"")
+target_compile_definitions(barony PRIVATE "APX_PARTS_DATA_DIR=\"${CMAKE_SOURCE_DIR}/data/apx\"") # apx F6 parts data (env APX_PARTS_DATA overrides)
 	if (STEAMWORKS_ENABLED)
 		target_link_libraries(barony ${STEAMWORKS_LIBRARY})
 		target_link_libraries(barony ${NFD_LIBRARY})

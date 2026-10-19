@@ -634,6 +634,7 @@ enum ItemEquippableSlot : int
 };
 
 // inventory item structure
+#include "apx/parts_model.hpp"
 class Item
 {
 public:
@@ -656,6 +657,7 @@ public:
 	bool spellNotifyIcon = false; // if spell can level you up
 	Uint8 itemRequireTradingSkillInShop = 0; // if item hidden in shop view until player has trading req
 	bool itemSpecialShopConsumable = false; // if item is extra non-standard inventory consumable
+	ApxItemData apx; // apx F6: per-instance parts (all zero = vanilla item); POD: Item is malloc/memcpy'd
 
 	// weight, category and other generic info reported by function calls
 
