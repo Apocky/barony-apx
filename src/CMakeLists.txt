@@ -18,6 +18,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/stat.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/acttorch.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actplayer.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/telemetry.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actmonster.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actitem.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/acthudweapon.cpp"

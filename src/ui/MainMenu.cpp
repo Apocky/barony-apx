@@ -1,5 +1,6 @@
 #include "../main.hpp"
 #include "MainMenu.hpp"
+#include "../apx/telemetry.hpp"
 #include "Frame.hpp"
 #include "Image.hpp"
 #include "Field.hpp"
@@ -18834,7 +18835,7 @@ failed:
 			}
 			else
 			{
-				local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+				local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
 			}
 			uniqueLobbyKey = local_rng.getU32();
 	        net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
@@ -25737,7 +25738,7 @@ failed:
 				}
 				else
 				{
-					local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+					local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
 				}
 				uniqueLobbyKey = local_rng.getU32();
 				net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
@@ -27956,7 +27957,7 @@ failed:
 				}
 				else
 				{
-					local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+					local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
 				}
 				uniqueLobbyKey = local_rng.getU32();
 				net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));

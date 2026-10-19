@@ -11,6 +11,7 @@
 
 #include "main.hpp"
 #include "game.hpp"
+#include "apx/telemetry.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
 #include "files.hpp"
@@ -1294,6 +1295,9 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 	// store this map's seed
 	mapseed = seed;
+	memset(apxGen.marks, 0, sizeof(apxGen.marks));
+	apxGen.uidAtGen = entity_uids;
+	apxGen.entitiesAtGen = map.entities ? list_Size(map.entities) : 0;
 	map_rng.seedBytes(&mapseed, sizeof(mapseed));
 	map_server_rng.seedBytes(&mapseed, sizeof(mapseed));
 
@@ -4917,7 +4921,8 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 	if ( svFlags & SV_FLAG_TRAPS )
 	{
-		int numSlimebushes = 0;
+		apxRngMark(1, numGenGold, numGenItems);
+	int numSlimebushes = 0;
 		if ( currentlevel > 5 && currentlevel < 10 )
 		{
 			numSlimebushes += 2 + map_rng.rand() % 3;
@@ -4998,6 +5003,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			int numBells = 0;
 			if ( currentlevel % 2 == 0 )
 			{
+	apxRngMark(4, numGenGold, numGenItems);
 				numBells = 1 + map_rng.rand() % 2;
 			}
 			else
@@ -5101,6 +5107,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		for ( int c = 0; c < std::min(30, numpossibleStationLocations); ++c )
 		{
 			// choose a random location from those available
+	apxRngMark(5, numGenGold, numGenItems);
 			pickedlocation = map_rng.rand() % numpossibleStationLocations;
 			i = -1;
 			int x = 0;
@@ -5241,6 +5248,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				continue;
 			}
 
+	apxRngMark(8, numGenGold, numGenItems);
 			std::set<int> freespaces;
 			numContinuousTiles = 0;
 			maxContinuousTiles = 0;
@@ -5485,6 +5493,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			}
 		}
 
+	apxRngMark(6, numGenGold, numGenItems);
 		std::set<int> allTrees;
 		std::set<int> allMushrooms;
 		for ( auto node = map.entities->first; node; node = node->next )
@@ -5723,6 +5732,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	for ( c = 0; c < std::min(numBreakables, numpossibleBreakableLocations); ++c )
 	{
 		// choose a random location from those available
+	apxRngMark(7, numGenGold, numGenItems);
 		pickedlocation = map_rng.rand() % numpossibleBreakableLocations;
 		i = -1;
 		int x = 0;
@@ -5984,7 +5994,8 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 	int breakableGoodies = breakableLocations.size() * 80 / 100;
 	int breakableMonsters = 0;
-	int breakableMonsterLimit = 2 + (currentlevel / LENGTH_OF_LEVEL_REGION) * (1 + map_rng.rand() % 2);
+	apxRngMark(2, numGenGold, numGenItems);
+	int breakableMonsterLimit =2 + (currentlevel / LENGTH_OF_LEVEL_REGION) * (1 + map_rng.rand() % 2);
 	static ConsoleVariable<int> cvar_breakableMonsterLimit("/breakable_monster_limit", 0);
 	std::set<Uint32> generatedBreakables;
 	if ( svFlags & SV_FLAG_CHEATS )
@@ -6853,6 +6864,9 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	list_FreeAll(&mapList);
 	list_FreeAll(&doorList);
 
+	apxRngMark(3, numGenGold, numGenItems);
+	apxGen.rooms = roomcount; apxGen.monsters = nummonsters; apxGen.gold = numGenGold;
+	apxGen.items = numGenItems; apxGen.decorations = numGenDecorations;
 	printlog("successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.\n", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	//messagePlayer(0, "successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	return secretlevelexit;

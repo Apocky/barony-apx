@@ -16,6 +16,8 @@
 #include "messages.hpp"
 #include "entity.hpp"
 #include "files.hpp"
+#include "apx/telemetry.hpp"
+static std::string apxOutDir;
 #include "menu.hpp"
 #include "classdescriptions.hpp"
 #include "interface/interface.hpp"
@@ -828,7 +830,7 @@ static void demo_record(const char* filename) {
 
     // seed RNG
     local_rng.seedTime();
-    local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+    local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
     net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
     demo_file->write(&uniqueGameKey, sizeof(uniqueGameKey), 1);
 
@@ -2120,6 +2122,10 @@ void gameLogic(void)
 						mapseed = forceMapSeed;
 						forceMapSeed = 0;
 					}
+					if ( apx::seedBase )
+					{
+						mapseed = apx::deriveSeed(currentlevel, secretlevel);
+					}
 
 					if ( !secretlevel )
 					{
@@ -2222,7 +2228,9 @@ void gameLogic(void)
 	                    updateLoadingScreen(10);
 
 					    int checkMapHash = -1;
+					    auto apxT0 = std::chrono::steady_clock::now();
 					    int result = physfsLoadMapFile(currentlevel, mapseed, false, &checkMapHash);
+					    apxLoadMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - apxT0).count();
 					    if (!verifyMapHash(map.filename, checkMapHash))
 					    {
 						    conductGameChallenges[CONDUCT_MODDED] = 1;
@@ -2234,7 +2242,9 @@ void gameLogic(void)
 					    assignActions(&map);
                         updateLoadingScreen(55);
 
+					    apxT0 = std::chrono::steady_clock::now();
 					    generatePathMaps();
+					    apxPathMapsMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - apxT0).count();
 	                    updateLoadingScreen(99);
 
 		                loading_done = true;
@@ -2250,6 +2260,7 @@ void gameLogic(void)
                     createChunks();
 		            loading = false;
 	                int result = loading_task.get();
+	                apx::onFloorLoaded();
 
                     for (int c = 0; c < MAXPLAYERS; ++c) {
                         auto& camera = players[c]->camera();
@@ -5321,6 +5332,7 @@ bool handleEvents(void)
 		{
 			gameLogic();
 			++ticks;
+			if ( apx::enabled ) { apx::onTick(); }
 		}
 		else
 		{
@@ -7266,6 +7278,14 @@ int main(int argc, char** argv)
 						strcpy(configtoload, argv[c] + 5);
 						loadingconfig = true;
 					}
+					else if ( !strncmp(argv[c], "-apx-out=", 9) )
+					{
+						apxOutDir = argv[c] + 9;
+					}
+					else if ( !strncmp(argv[c], "-apx-seed=", 10) )
+					{
+						apx::seedBase = (Uint32)strtoul(argv[c] + 10, nullptr, 10);
+					}
 					else if (!strncmp(argv[c], "-quickstart=", 12))
 					{
 						strcpy(classtoquickstart, argv[c] + 12);
@@ -7342,6 +7362,8 @@ int main(int argc, char** argv)
 		else {
 			skipintro = false;
 		}
+
+		apx::init(apxOutDir.c_str(), !apxOutDir.empty());
 
 		// initialize map
 		map.tiles = nullptr;
@@ -7687,7 +7709,7 @@ int main(int argc, char** argv)
 
 						// generate unique game key
 						local_rng.seedTime();
-						local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+						local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
 						uniqueLobbyKey = local_rng.getU32();
 						net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 						doNewGame(false);
@@ -8317,6 +8339,7 @@ int main(int argc, char** argv)
 		(void)MainMenu::settingsSave();
 
 		// deinit
+		apx::close();
 		deinitGame();
 		return deinitApp();
 	}
