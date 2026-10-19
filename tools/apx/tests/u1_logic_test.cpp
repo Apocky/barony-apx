@@ -85,6 +85,33 @@ int main(int argc, char** argv)
 	r.identified = true;
 	CHECK(inspectLines(r)[4] == "Beatitude: +2");
 
+	// D81: tabs, column sort inside kind groups, compare deltas
+	{
+		std::vector<Row> v = { row(1, WEAPONS, "sword", 30), row(2, WEAPONS, "axe", 40), row(3, ARMOUR, "helm", 20), row(4, WEAPONS, "dagger", 5) };
+		v[0].power = 7; v[0].powerKind = 'D'; v[0].value = 50; v[0].status = 4;
+		v[1].power = 9; v[1].powerKind = 'D'; v[1].value = 30; v[1].status = 1;
+		v[3].power = 3; v[3].powerKind = 'D'; v[3].value = 10; v[3].status = 2;
+		v[2].power = 2; v[2].powerKind = 'A';
+		auto all = entriesSorted(v, 0, COL_NAME, false);
+		CHECK(all.size() == 6 && all[1].row.name == "axe" && all[3].row.name == "sword" && all[4].header);
+		auto weap = entriesSorted(v, 1 + WEAPONS, COL_WEIGHT, true);
+		CHECK(weap.size() == 4 && weap[1].row.name == "axe" && weap[3].row.name == "dagger");
+		auto byVal = entriesSorted(v, 1 + WEAPONS, COL_VALUE, true);
+		CHECK(byVal[1].row.name == "sword");
+		auto byPow = entriesSorted(v, 1 + WEAPONS, COL_POWER, false);
+		CHECK(byPow[1].row.name == "dagger" && byPow[3].row.name == "axe");
+		auto byCond = entriesSorted(v, 1 + WEAPONS, COL_CONDITION, true);
+		CHECK(byCond[1].row.name == "sword");
+		CHECK(entriesSorted(v, 1 + BOOKS, COL_NAME, false).empty());
+		CHECK(tabCount() == KIND_MAX + 1 && std::string(tabName(0)) == "All" && std::string(tabName(1)) == "Weapons");
+		CHECK(compareDelta(v[1], &v[0]) == "+2");
+		CHECK(compareDelta(v[3], &v[0]) == "-4");
+		CHECK(compareDelta(v[0], &v[0]) == "=");
+		CHECK(compareDelta(v[0], nullptr) == "+7");
+		CHECK(compareDelta(v[0], &v[2]) == "+7");    // armour is not compared with a weapon
+		CHECK(compareDelta(row(9, TOOLS, "x", 1), nullptr).empty());
+	}
+
 	// control: one deliberately wrong expectation must fail the run
 	if ( control ) { CHECK(stationOfModel(1617) == ANVIL); }
 

@@ -15,6 +15,7 @@
 #include "menu.hpp"
 #include "monster.hpp"
 #include "apx_bench_api.hpp"
+#include "apx/headless.hpp"
 #include <cmath>
 #include "interface/interface.hpp"
 #include <chrono>
@@ -204,6 +205,14 @@ void selfTestTick()
 {
 	if ( g_test.empty() || intro || !players[0] || !players[0]->entity || !stats[0] ) { return; }
 	if ( apx::selftestall::armed() && !apx::selftestall::active(apx::selftestall::INVENTORY) ) { return; } // D77: wait for the stage
+	// headless runs 50 logic ticks per UI pass: the UI phases advance one step per UI frame there,
+	// so every injected tap and read sees the list update in between (windowed: one tick = one frame)
+	static unsigned seenUiFrame = 0;
+	if ( apx::headlessOn && g_phase >= 1 )
+	{
+		if ( uiFrames() == seenUiFrame ) { return; }
+		seenUiFrame = uiFrames();
+	}
 	++g_ticks;
 	if ( g_ticks < 120 ) { return; }
 	if ( g_phase == 0 )
@@ -328,11 +337,26 @@ static Item* firstLoose(int p, bool single)
 static Entity* g_testChest = nullptr;
 static Entity* g_testFollower = nullptr;
 static Entity* g_testDeco = nullptr;
+static Entity* g_testStation = nullptr;
+// a station or furniture prop placed exactly as map generation places it (maps.cpp cases 300-302):
+// 4x4, on the floor at z 7.5, upright, facing one of four ways
+static Entity* spawnProp(int sprite, void (*behavior)(Entity*), real_t x, real_t y)
+{
+	Entity* e = newEntity(sprite, 1, map.entities, nullptr);
+	e->sizex = 4; e->sizey = 4;
+	e->x = x; e->y = y; e->z = 7.5;
+	e->yaw = 0; e->pitch = 0; e->roll = 0;
+	e->flags[PASSABLE] = false;
+	e->behavior = behavior;
+	return e;
+}
+static bool propPlacedRight(const Entity* e) { return e && std::abs(e->z - 7.5) < 0.01 && e->pitch == 0 && e->roll == 0 && e->sizex == 4; }
 static struct S345 {
 	int menuOpen = 0, menuItemRight = 0, inspectShown = 0, breakGone = 0;
 	int chestFound = 0, chestView = 0, chestRows = 0, takeOk = 0, storeOk = 0, heavyRefused = 0;
 	int followerFound = 0, followerView = 0, giveOk = 0, followerTakeOk = 0;
 	int benchControl = -1, benchShown = 0, benchStation = 0, benchOps = 0;
+	int propOk = 0;
 	int benchTab0Rows = 0, benchTab1Rows = 0, benchTab2Rows = 0, benchTab1 = -1, benchTab2 = -1;
 	int benchShot = 0, followerTicks = 0, followerOpen = 0, benchOpen = 0, followerWindow = 0, benchTicks = 0, benchWindow = 0, giveAt = -1, takeAt = -1;
 } R;
@@ -370,16 +394,26 @@ static void runBench(int dt)
 	{
 		inspectOpen(0, nullptr);
 		Entity* me = pl.entity;
-		g_testDeco = newEntity(1618, 1, map.entities, nullptr);
-		g_testDeco->x = me->x + 16; g_testDeco->y = me->y; g_testDeco->z = 0;
-		g_testDeco->flags[PASSABLE] = true; g_testDeco->flags[NOUPDATE] = true;
+		// control: a yellow mailbox, a real prop that is not a station
+		g_testDeco = spawnProp(1619, &actMailbox, me->x + 16, me->y);
+		R.propOk += propPlacedRight(g_testDeco);
 	}
-	else if ( dt == 154 ) { R.benchControl = viewState(0).benchShown; g_testDeco->sprite = 1617; } // now a workbench
+	else if ( dt == 154 )
+	{
+		R.benchControl = viewState(0).benchShown;
+		g_testDeco->flags[PASSABLE] = true; g_testDeco->x += 4000; // the mailbox goes away
+		g_testStation = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y); // a workbench as map generation makes one
+		R.propOk += propPlacedRight(g_testStation);
+	}
+	else if ( dt == 166 ) { R.propOk += propPlacedRight(g_testStation); } // still on the floor and upright after its own ticks
 	if ( dt >= 158 && dt < 172 ) { ++R.benchWindow; R.benchTicks += viewState(0).benchShown; R.benchOpen += listActive(0); if ( !R.benchShot ) { R.benchShot = 1; shotWhen("bench", "apx-u1b-bench.png"); } }
 	if ( dt == 166 ) { probe("bench"); R.benchShown = R.benchTicks > 0; R.benchStation = viewState(0).station; R.benchOps = viewState(0).stationOps; }
 	else if ( dt == 172 ) { R.benchTab0Rows = viewState(0).benchRows; benchTab(0, 1); }
 	else if ( dt == 176 ) { R.benchTab1Rows = viewState(0).benchRows; R.benchTab1 = viewState(0).benchTab; benchTab(0, 1); }
-	else if ( dt == 180 ) { R.benchTab2Rows = viewState(0).benchRows; R.benchTab2 = viewState(0).benchTab; probe("bench-tabs"); benchTab(0, 1); g_testDeco->x += 4000; }
+	else if ( dt == 180 ) { R.benchTab2Rows = viewState(0).benchRows; R.benchTab2 = viewState(0).benchTab; probe("bench-tabs"); benchTab(0, 1);
+		// both props removed again (Apocky saw a test prop left floating: the old spawn had z 0)
+		for ( Entity* e : { g_testDeco, g_testStation } ) { if ( e ) { list_RemoveNode(e->mynode); } }
+		g_testDeco = g_testStation = nullptr; }
 }
 
 static void runSteps345(int dtIn)
@@ -501,10 +535,10 @@ static void runSteps345(int dtIn)
 			fprintf(f, "{\"test\":\"steps345\",\"mode\":\"%s\",\"menu_open\":%d,\"menu_item_right\":%d,\"inspect_shown\":%d,\"break_gone\":%d,"
 				"\"chest_found\":%d,\"chest_view\":%d,\"chest_rows\":%d,\"take_ok\":%d,\"store_ok\":%d,\"heavy_refused\":%d,"
 				"\"follower_found\":%d,\"follower_view\":%d,\"give_ok\":%d,\"follower_take_ok\":%d,\"bench_control_shown\":%d,\"bench_shown\":%d,\"bench_station\":\"%s\",\"bench_ops\":%d,"
-				"\"bench_rows_craft_salvage_formbook\":[%d,%d,%d],\"follower_view_ticks\":[%d,%d],\"bench_ticks\":[%d,%d],\"list_open_ticks_follower_bench\":[%d,%d],\"bench_tabs_reached\":[%d,%d],\"provider\":\"%s\"}\n",
+				"\"bench_rows_craft_salvage_formbook\":[%d,%d,%d],\"follower_view_ticks\":[%d,%d],\"bench_ticks\":[%d,%d],\"list_open_ticks_follower_bench\":[%d,%d],\"bench_tabs_reached\":[%d,%d],\"provider\":\"%s\",\"props_placed_right\":[%d,3],\"headless\":%d}\n",
 				vanillaGrid() ? "vanilla" : "apx", R.menuOpen, R.menuItemRight, R.inspectShown, R.breakGone, R.chestFound, R.chestView, R.chestRows,
 				R.takeOk, R.storeOk, R.heavyRefused, R.followerFound, R.followerView, R.giveOk, R.followerTakeOk, R.benchControl, R.benchShown,
-				apx_logic::stationName(R.benchStation), R.benchOps, R.benchTab0Rows, R.benchTab1Rows, R.benchTab2Rows, R.followerTicks, R.followerWindow, R.benchTicks, R.benchWindow, R.followerOpen, R.benchOpen, R.benchTab1, R.benchTab2, apx_bench::provider().name);
+				apx_logic::stationName(R.benchStation), R.benchOps, R.benchTab0Rows, R.benchTab1Rows, R.benchTab2Rows, R.followerTicks, R.followerWindow, R.benchTicks, R.benchWindow, R.followerOpen, R.benchOpen, R.benchTab1, R.benchTab2, apx_bench::provider().name, R.propOk, (int)apx::headlessOn);
 			fclose(f);
 		}
 	}
@@ -550,7 +584,7 @@ static void runUiPhases()
 			auto st = [&](const char* k, const ListState& s) {
 				fprintf(f, "\"%s\":{\"shown\":%d,\"rows\":%d,\"visible\":%d,\"drawn\":%d,\"selected\":%d,\"scroll\":%d,\"moves\":%d},",
 					k, s.rowsDrawn > 0, s.rowCount, s.visibleRows, s.rowsDrawn, s.selected, s.scroll, s.moves); };
-			fprintf(f, "{\"test\":\"list_ui\",\"mode\":\"%s\",", vanillaGrid() ? "vanilla" : "apx");
+			fprintf(f, "{\"test\":\"list_ui\",\"mode\":\"%s\",\"headless\":%d,", vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn);
 			st("full", A); st("after_gamepad5", B); st("after_keyboard3", C); st("quarter", D);
 			int itemsNow = itemsAfter;
 			fprintf(f, "\"items_at_start\":%d,\"items_after_140_ticks\":%d,\"items_kept\":%s,", itemsAtStart, itemsNow, itemsNow == itemsAtStart ? "true" : "false");

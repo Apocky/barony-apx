@@ -22,8 +22,76 @@ namespace apx_logic
 		int status = 0; int beatitude = 0; bool identified = true; bool equipped = false;
 		int price = -1;   // shop rows only
 		std::string name;
+		// D81 columns and tooltip (filled by the engine glue; -1 = not applicable)
+		int value = -1;          // Barony gold value
+		int power = -1;          // damage (weapons) or armour class (armour)
+		char powerKind = ' ';    // 'D' damage, 'A' armour, ' ' none
+		int slot = -1;           // equipment slot for compare-to-equipped (engine's own numbering)
+		std::string material, kinds;
 	};
 	struct Entry { bool header = false; Row row; };
+
+	// ---------------------------------------------------------------- D81: columns, tabs, compare
+	enum Column : int { COL_NAME, COL_WEIGHT, COL_VALUE, COL_POWER, COL_CONDITION, COL_MAX };
+	inline const char* columnName(int c)
+	{
+		static const char* n[COL_MAX] = { "Name", "Wt", "Val", "Dmg/AC", "Cond" };
+		return c >= 0 && c < COL_MAX ? n[c] : "?";
+	}
+	// tabs: 0 All, then one per kind
+	inline int tabCount() { return KIND_MAX + 1; }
+	inline const char* tabName(int t) { return t == 0 ? "All" : kindName(t - 1); }
+	inline bool tabShows(int tab, int kind) { return tab == 0 || kind == tab - 1; }
+
+	// rows of one tab, grouped by kind (headers), sorted inside each group by the column; ties by name
+	inline std::vector<Entry> entriesSorted(std::vector<Row> rows, int tab, int col, bool descending)
+	{
+		std::vector<Row> keep;
+		for ( auto& r : rows ) { if ( tabShows(tab, r.kind) ) { keep.push_back(r); } }
+		auto key = [col](const Row& r) -> long long {
+			switch ( col )
+			{
+				case COL_WEIGHT: return r.mass;
+				case COL_VALUE: return r.value;
+				case COL_POWER: return r.power;
+				case COL_CONDITION: return r.status;
+				default: return 0;
+			}
+		};
+		std::stable_sort(keep.begin(), keep.end(), [&](const Row& a, const Row& b) {
+			if ( a.kind != b.kind ) { return a.kind < b.kind; }
+			if ( col != COL_NAME )
+			{
+				long long ka = key(a), kb = key(b);
+				if ( ka != kb ) { return descending ? ka > kb : ka < kb; }
+			}
+			else if ( a.name != b.name ) { return descending ? a.name > b.name : a.name < b.name; }
+			return a.name < b.name;
+		});
+		std::vector<Entry> out;
+		int kind = -1;
+		for ( auto& r : keep )
+		{
+			if ( r.kind != kind )
+			{
+				kind = r.kind;
+				Entry h; h.header = true; h.row.kind = kind; h.row.name = kindName(kind);
+				out.push_back(h);
+			}
+			Entry e; e.row = r;
+			out.push_back(e);
+		}
+		return out;
+	}
+
+	// compare-to-equipped: "+3", "-2", "=" ; empty when not comparable
+	inline std::string compareDelta(const Row& candidate, const Row* equipped)
+	{
+		if ( candidate.power < 0 || candidate.powerKind == ' ' ) { return ""; }
+		int base = equipped && equipped->powerKind == candidate.powerKind && equipped->power >= 0 ? equipped->power : 0;
+		int d = candidate.power - base;
+		return d == 0 ? std::string("=") : (d > 0 ? "+" : "") + std::to_string(d);
+	}
 
 	// a header per kind, then that kind's rows sorted by name (stable)
 	inline std::vector<Entry> entries(std::vector<Row> rows)
