@@ -321,11 +321,15 @@ namespace tactics
 			}
 			if ( hypot(my->x - s.progressX, my->y - s.progressY) > 8 || ticks - s.workingTick < (Uint32)(2 * DECIDE) ) { s.progressX = my->x; s.progressY = my->y; s.progressTick = ticks; } // bashing a breakable in the way is progress
 			else if ( ticks - s.progressTick > 75 ) { flankFail(s, C.flank_fail_progress); return; }
-			if ( ticks - s.flankStart > 10 * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
+			if ( ticks - s.flankStart > (s.loopFlank ? 40 : 10) * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
 			return;
 		}
 		if ( s.flank != 0 && s.flankTarget == tuid ) { return; } // one try per target
-		if ( d > 10 * TILE || d < 2.5 * TILE ) { return; }
+		// D80 (APX_LOOP_FLANK): a creature queued 2 s behind a packmate it cannot pass goes round a loop instead: it starts
+		// close (behind the front rank), the walk is long; any pack member may go, one other mate engaged is enough
+		const bool queued = K.loopflank && s.queueSince && ticks - s.queueSince >= (Uint32)(2 * TICKS_PER_SECOND);
+		s.loopFlank = queued;
+		if ( d > (queued ? 20 : 10) * TILE || d < (queued ? 1.0 : 2.5) * TILE ) { return; }
 		int mates = 0;
 		for ( auto& kv : S )
 		{
@@ -334,7 +338,7 @@ namespace tactics
 			Stat* ms = m ? m->getStats() : nullptr;
 			if ( m && ms && ms->HP > 0 && (Uint32)m->monsterTarget == tuid ) { ++mates; }
 		}
-		if ( mates < 2 ) { return; }
+		if ( mates < (queued ? 1 : 2) ) { return; }
 		s.flankTarget = tuid;
 		// goal: an open tile in the back arc, 1.5 to 2.5 tiles out, in clear sight of the target
 		static const double offs[] = { 0, 0.35, -0.35, 0.7, -0.7, 0.95, -0.95 };
@@ -379,6 +383,7 @@ namespace tactics
 			serverUpdateEntitySkill(my, 0);
 		}
 		++C.flank_started;
+		if ( s.loopFlank ) { ++C.loop_flanks; printlog("[apx] tactics loop flank uid %u from %.1f,%.1f, route %d tiles", my->getUID(), my->x, my->y, (int)s.route.size()); }
 	}
 
 	void packDecide(Entity* my, Stat& st, TacticsState& s, Entity* target)
@@ -450,7 +455,8 @@ namespace tactics
 				onSurrender(my);
 			}
 		}
-		if ( K.packs && target && s.role == ROLE_FLANKER && s.stance == STANCE_NORMAL ) { flankDecide(my, s, target); }
+		const bool queuedLong = K.loopflank && s.queueSince && ticks - s.queueSince >= (Uint32)(2 * TICKS_PER_SECOND);
+		if ( K.packs && target && (s.role == ROLE_FLANKER || queuedLong || s.loopFlank) && s.stance == STANCE_NORMAL ) { flankDecide(my, s, target); }
 	}
 
 	bool followRoute(Entity* my, TacticsState& s, double speed, double& dist2, double fx, double fy, Entity* keepOutOf)

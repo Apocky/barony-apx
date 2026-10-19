@@ -45,11 +45,12 @@
 #endif
 
 ApxGenConfig apxgen;
+bool apxVanillaMode = false; // -apxvanilla / APX_VANILLA=1: a vanilla control (no apx-gen, no impact rule, no colliding bodies)
 
 void apxgenReadEnvironment()
 {
 	if ( const char* v = getenv("APXGEN") ) { apxgen.enabled = atoi(v) != 0; }
-	if ( const char* v = getenv("APX_VANILLA") ) { if ( v[0] == '1' ) { apxgen.enabled = false; } }
+	if ( const char* v = getenv("APX_VANILLA") ) { if ( v[0] == '1' ) { apxgen.enabled = false; apxVanillaMode = true; } }
 	if ( const char* v = getenv("APXGEN_SIZE") ) { apxgen.size = atoi(v); }
 	if ( const char* v = getenv("APXGEN_POP") ) { apxgen.populationPct = atoi(v); }
 	if ( const char* v = getenv("APXGEN_ROOT") ) { apxgen.kitsRoot = v; }
@@ -59,7 +60,7 @@ void apxgenReadEnvironment()
 bool apxgenParseArgument(const char* a)
 {
 	if ( !strcmp(a, "-apxgen") ) { apxgen.enabled = true; return true; }
-	if ( !strcmp(a, "-apxvanilla") ) { apxgen.enabled = false; apx::combat::setEnabled(false); return true; } // controls and parity
+	if ( !strcmp(a, "-apxvanilla") ) { apxgen.enabled = false; apx::combat::setEnabled(false); apxVanillaMode = true; return true; } // controls and parity
 	if ( !strncmp(a, "-apxgen-size=", 13) ) { apxgen.enabled = true; apxgen.size = atoi(a + 13); return true; }
 	if ( !strncmp(a, "-apxgen-pop=", 12) ) { apxgen.populationPct = atoi(a + 12); return true; }
 	if ( !strncmp(a, "-apxgen-root=", 13) ) { apxgen.kitsRoot = a + 13; return true; }

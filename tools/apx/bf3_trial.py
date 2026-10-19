@@ -62,9 +62,11 @@ def run_once(args, n, env_extra):
     env["BARONY_DATADIR"] = str(STEAM)
     env["APX_BUILD_HASH"] = args.build_hash
     env.update(env_extra)
-    cmd = [str(Path(args.exe).resolve()), "-quickstart=barbarian", f"-apx-out={out}", f"-apx-seed={args.seed}", "-apx-bf3trial"]
+    cmd = [str(Path(args.exe).resolve()), "-quickstart=barbarian", f"-apx-out={out}", f"-apx-seed={args.seed}", "-apx-bf3trial"] + list(args.game_arg)
     if args.mode == "slot":
-        cmd.append("-windowed")   # D70: slot runs are windowed
+        # lane rule 14 (Apocky saw test windows pop up): automated launches are headless (proven identical: same hashes
+        # and lines); --windowed only for a step that needs a screenshot
+        cmd.append("-windowed" if args.windowed else "-apxheadless")
     lock = take_lock(args)
     t0 = time.time()
     finish = "exit"
@@ -247,7 +249,7 @@ def d75_summary(arms):
         if k.count(":") == 4 and a.get("kit") in ("robed", "armoured"):
             crowd = f'{a.get("kind", "?")}/{a.get("tier_mode", "wild")}'
             poise.setdefault(crowd, {}).setdefault(a.get("poise_model", "?"), {}).setdefault(a["kit"], []).append(a)
-        elif k.count(":") == 2 and a.get("arm_base") in ("vanilla", "on", "vcollide", "oncollide"):
+        elif k.count(":") == 2 and a.get("arm_base") in ("vanilla", "on", "vcollide", "oncollide", "nocollide", "loopflank"):
             jam.setdefault(f'{a.get("arena", "open")}/{a.get("kind", "?")}', {}).setdefault(a["arm_base"], []).append(a)
 
     def m(v, f, nd=2):
@@ -261,6 +263,10 @@ def d75_summary(arms):
                      "in_reach": m(v, "in_reach_mean"), "contact": m(v, "contact_mean"), "blocked_share": m(v, "blocked_share", 3),
                      "friendly_fire": m(v, "friendly_fire_dmg", 1), "body_overlap": m(v, "body_overlap_mean", 2),
                      "body_overlap_max": max(x.get("body_overlap_max", 0) for x in v), "stuck": sum(x.get("stuck", 0) for x in v),
+                     "stuck_mean": m(v, "stuck", 1), "steer_ticks": sum(x.get("steer_ticks", 0) for x in v),
+                     "sidesteps": m(v, "body_sidesteps", 1), "goal_holds": m(v, "body_goal_holds", 1), "queue_holds": m(v, "body_queue_holds", 1), "wall_holds": m(v, "wall_holds", 1), "loop_flanks": m(v, "loop_flanks", 1),
+                     "flanks_arrived": m(v, "flank_arrived_n", 1), "loop_tiles": sorted(set(x.get("loop_tiles", 0) for x in v)),
+                     "collide_on": sorted(set(x.get("collide_on", -1) for x in v)), "vanilla_run": sorted(set(x.get("apx_vanilla", 0) for x in v)),
                      "spawned": sorted(set(x.get("creatures", 0) for x in v)), "flags": sorted(set(x.get("flags", "") for x in v))}
                  for b, v in sorted(bases.items())} for k, bases in sorted(jam.items())}
     return {"poise": out_p, "jam": out_j}
@@ -306,6 +312,22 @@ def d75_gates(base, args):
     g["d75_floor1_rats_fodder"] = {"pass": (bool(infos) and all("rat:fodder/band" in i for i in infos)) if infos else None, "tier_info": infos}
     if d.get("jam"):
         g["d75_jam_report"] = d["jam"]
+        # D80: steering with colliding bodies: stuck near 0 in every cell where limits steer and bodies collide
+        cells = {f"{k}/{b}": r for k, bases in d["jam"].items() for b, r in bases.items()
+                 if b in ("on", "oncollide", "loopflank") and 1 in r.get("collide_on", [])}
+        # D80 corridors: queued creatures go round the floor's loop (APX_LOOP_FLANK, arm kind loopflank) in a looped corridor
+        lc = {b: r for k, bases in d["jam"].items() if k.startswith("loopcorridor/") for b, r in bases.items()}
+        if "loopflank" in lc and "on" in lc:
+            on_, off_ = lc["loopflank"], lc["on"]
+            g["d80b_loop_flank"] = {"pass": on_["attackers"] >= 1.5 and on_["attackers"] > off_["attackers"],
+                                    "attackers_knob_on": on_["attackers"], "attackers_knob_off": off_["attackers"],
+                                    "loop_flanks": on_.get("loop_flanks"), "flanks_arrived": on_.get("flanks_arrived"),
+                                    "loop_tiles": on_.get("loop_tiles"), "dmg_on_off": [on_["dmg"], off_["dmg"]], "n": [on_["n"], off_["n"]]}
+        g["d80_stuck_near_zero"] = {"pass": all(r["stuck_mean"] <= 25 and r["stuck"] <= 0.005 * max(1, r["steer_ticks"]) for r in cells.values())
+                                    if cells else None, "rule": "colliding bodies, limits on: stuck <= 25 ticks per 20 s and <= 0.5 pct of steer ticks",
+                                    **{k: {"stuck_mean": r["stuck_mean"], "steer_ticks": r["steer_ticks"], "sidesteps": r["sidesteps"],
+                                           "goal_holds": r["goal_holds"], "queue_holds": r.get("queue_holds"), "wall_holds": r.get("wall_holds"), "n": r["n"],
+                                           "dmg": r["dmg"], "attackers": r["attackers"]} for k, r in cells.items()}}
     return g
 
 
@@ -509,6 +531,8 @@ def main():
     ap.add_argument("--ref-dmg", type=float, default=268.3,
                     help="D71 reference: damage per 20 s arm with limits on at floor 1, 12 skeletons (MEASURED full3, 02:49)")
     ap.add_argument("--env", action="append", default=[], help="extra KEY=VALUE for the game")
+    ap.add_argument("--game-arg", action="append", default=[], help="extra command-line switch for the game (e.g. -apxvanilla)")
+    ap.add_argument("--windowed", action="store_true", help="a visible window (only for a step that needs a screenshot; default headless)")
     ap.add_argument("--mode", choices=("slot", "exclusive"), default="slot",
                     help="slot: D70 correctness slot, windowed (damage, counts); exclusive: the whole machine "
                          "(report decide_us / tick_us only from exclusive runs)")

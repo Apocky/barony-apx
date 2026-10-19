@@ -29,6 +29,8 @@ class Entity;
 class Stat;
 union SDL_Event;
 
+extern bool apxVanillaMode; // apx_gen_bridge.cpp: -apxvanilla / APX_VANILLA=1 (a vanilla control)
+
 namespace apx
 {
 namespace tactics
@@ -37,11 +39,16 @@ namespace tactics
 	{
 		bool tactics = true, reach = true, interleave = true, allyavoid = true, ring = true, packs = true, morale = true;
 		bool astardiag = true;   // APX_ASTAR_DIAG: the engine A*'s diagonal side test fixed (paths.cpp generatePath)
-		// D75 jam experiment, default OFF (APX_CROWD_COLLIDE=1): hostile creatures of allied kinds collide as bodies
-		// (collision.cpp barony_clear skips monsterally[][] pairs: a same-kind crowd stands inside itself)
-		bool collide = false;
+		// D80 (Apocky): hostile creatures of allied kinds collide as bodies, ON by default (collision.cpp barony_clear
+		// skipped monsterally[][] pairs: a same-kind crowd stood inside itself, D75 rule 3). APX_CROWD_COLLIDE=0 is the
+		// control; -apxvanilla / APX_VANILLA=1 turn it off with the other apx features (collideOn()).
+		bool collide = true;
+		// D80 corridors (default OFF, APX_LOOP_FLANK=1): a creature waiting in a queue it cannot pass takes the flank route
+		// round the floor's loops to the target's far side (flankDecide, longer limits)
+		bool loopflank = false;
 	};
 	extern Knobs K;           // live knob set (the BF3 trial switches it between arms)
+	bool collideOn();         // K.collide and not a vanilla control (-apxvanilla, APX_VANILLA=1)
 	extern bool active;       // K.tactics && !client: the master guard every hook tests first
 	extern bool astarDiagOn;  // K.tactics && K.astardiag: read by paths.cpp generatePath on every diagonal
 	std::string knobString(); // "tactics=1,reach=1,..." for telemetry rows
@@ -80,6 +87,10 @@ namespace tactics
 		long long reach_assign = 0, reach_slots_sum = 0, reach_slots_n = 0, reach_overflow_creatures = 0;
 		long long ally_blocked = 0, ally_blocked_wide = 0, ally_blocked_thin = 0, reposition = 0, gap_wait = 0;
 		long long keep_engaged = 0, promoted = 0, steer_moves = 0, steer_holds = 0, target_dropped_by_tactics = 0;
+		long long body_sidesteps = 0, body_goal_holds = 0;   // D80: slid round a packmate's body; waited for a place it holds
+		long long body_queue_holds = 0;                     // D80: no room to slide round a body (corridor): waited in line
+		long long wall_holds = 0;                           // D80: a make-room move (out, arc) a wall blocks: held in place
+		long long loop_flanks = 0;                          // D80: queued creatures sent round a loop (APX_LOOP_FLANK)
 		long long ring_holds = 0, ring_assign = 0, ring_slot_fail = 0, feints = 0, stuck = 0, stuck_episodes = 0, steer_ticks = 0;
 		long long flank_started = 0, flank_arrived = 0, flank_failed = 0;
 		long long retreats = 0, regroups = 0, morale_breaks = 0, morale_events = 0, surrenders_offered = 0, home_moved = 0;

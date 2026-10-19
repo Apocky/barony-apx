@@ -205,6 +205,33 @@ def d75_chain(args, bh, py, out, save):
     f4c_step(args, py, out, save)  # apx_combat.hpp changed (player poise): F4c's own in-game gate, once
 
 
+# D80: bodies collide by default; stuck near 0 with limits on; the crowd control in both places (open, corridor).
+# Default launch (apx-gen floors, impact, bodies colliding) and a -apxvanilla launch for the vanilla control (D80).
+D80_DEFAULT = ["on:12:skeleton@dmg", "nocollide:12:skeleton@dmg", "on:12:skeleton!corridor@dmg", "nocollide:12:skeleton!corridor@dmg"]
+D80_VANILLA = ["vanilla:12:skeleton@dmg", "vanilla:12:skeleton!corridor@dmg"]
+
+
+def d80_chain(args, bh, py, out, save):
+    common = ["--exe", args.exe, "--runs", "1", "--mode", "slot", "--env", "APX_BF3_MORALE=0", "--env", "APX_BF3_HELP=0",
+              "--timeout", "3600", "--poll", "3", "--build-hash", bh] + STOP
+    dirs = []
+    for tag, cells, extra in ((args.tag, D80_DEFAULT, []), (args.tag + "-vanilla", D80_VANILLA, ["--game-arg=-apxvanilla"])):
+        code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--tag", tag, "--arms", ",".join(cells)] + extra + common, RUNS / f"bf3-{tag}.out.txt")
+        d = run_dir_of(tag)
+        if d:
+            dirs.append(d)
+        out["steps"].append({"step": f"d80-{tag}", "exit": code, "wall_s": wall, "run_dir": d})
+        save()
+    comb = DIAG / f"bf3-{args.tag}-d80.jsonl"
+    code, wall, base = regate_gates(list(dirs), comb, args.tag, py)
+    g = base.get("gates", {})
+    out["steps"].append({"step": "d80-gates", "exit": code, "wall_s": wall, "runs": dirs, "combined": str(comb),
+                         "pass": {"d80_stuck_near_zero": (g.get("d80_stuck_near_zero") or {}).get("pass")},
+                         "stuck": g.get("d80_stuck_near_zero"), "jam": (base.get("d75") or {}).get("jam")})
+    save()
+    golden_step(args, out, save)  # T3: vanilla parity (bodies colliding change no generation; -apxvanilla keeps them off)
+
+
 def golden_step(args, out, save):
     """Vanilla floors unchanged: golden parity against the F0 lines recorded from Steam vanilla (its own slot)."""
     code, wall = run(["pwsh", "-NoProfile", "-File", "tools/apx/golden_parity.ps1", "-Exe", str(Path(args.exe).resolve()), "-Tag", f"bf3-{args.tag}"],
@@ -271,6 +298,7 @@ def main():
     ap.add_argument("--skip-parity", action="store_true")
     ap.add_argument("--exe", default="build/vs2022/Release/barony.exe", help="the build under test (build.ps1 -Cache ccache: build/ninja-ccache/barony.exe)")
     ap.add_argument("--d74", action="store_true", help="D74 tier damage: fodder vs both vanilla controls, F2 hashes, golden parity")
+    ap.add_argument("--d80", action="store_true", help="D80: steering with colliding bodies (stuck), the crowd control open and corridor")
     ap.add_argument("--d75", action="store_true", help="D75: physical poise (robed vs armoured, F4c control), jam arms (open, corridor,"
                     " bodies colliding), F2's gate matrix as the new apx-gen baseline, golden parity")
     ap.add_argument("--skip-golden", action="store_true", help="with --merge-gates: golden parity already ran on this build")
@@ -285,8 +313,8 @@ def main():
     def save():
         report.write_text(json.dumps(out, indent=1), encoding="utf-8")
 
-    if args.d74 or args.d75:
-        (d75_chain if args.d75 else d74_chain)(args, bh, py, out, save)
+    if args.d74 or args.d75 or args.d80:
+        (d80_chain if args.d80 else d75_chain if args.d75 else d74_chain)(args, bh, py, out, save)
         out["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
         save()
         for s in out["steps"]:
