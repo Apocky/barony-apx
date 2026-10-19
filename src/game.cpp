@@ -12,6 +12,7 @@
 #include "main.hpp"
 #include "draw.hpp"
 #include "game.hpp"
+#include "apx/apx_gen_bridge.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
 #include "entity.hpp"
@@ -45,16 +46,49 @@ static std::string apxOutDir;
 #include "paths.hpp"
 #include "player.hpp"
 #include "mod_tools.hpp"
+#include "apx_inventory.hpp"
 
+#include "apx/combat/impact.hpp" // apx F4b
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
 static int apxFloor = 0; // apx: -apxfloor=<n>: test path, quickstart straight to floor n (no splash, no menu)
+static bool apxImpactTest = false; // apx F4b: -apximpacttest: log old vs new damage multipliers for every monster, then quit
 static Uint32 apxMapSeed = 0; // apx: -apxmapseed=<n>: map seed for that floor (as /setmapseed)
 static bool apxSkipSplash() // the control BARONY_APX_KEEPSPLASH=1 keeps the logo splash on the test path
 {
 	static const bool keep = getenv("BARONY_APX_KEEPSPLASH") && getenv("BARONY_APX_KEEPSPLASH")[0] == '1';
 	return apxFloor > 0 && !keep;
 }
+
+// apx F4b: one batched integration check through the real Entity::getDamageTableMultiplier.
+// For every monster type and every class: upstream value (switch off) and impact value (switch on).
+static void apxRunImpactSelfTest()
+{
+	const bool was = apx::combat::enabled();
+	int rows = 0, changed = 0, magicChanged = 0;
+	for ( int t = 1; t < NUMMONSTERS; ++t )
+	{
+		Stat st(t + 1000);
+		for ( int c = 0; c < numDamageTableTypes; ++c )
+		{
+			apx::combat::setEnabled(false);
+			const real_t off = Entity::getDamageTableMultiplier(nullptr, st, (DamageTableType)c);
+			apx::combat::setEnabled(true);
+			const real_t on = Entity::getDamageTableMultiplier(nullptr, st, (DamageTableType)c);
+			++rows;
+			if ( fabs(on - off) > 1e-4 ) { ++changed; if ( c == DAMAGE_TABLE_MAGIC ) { ++magicChanged; } }
+			printlog("[apx impacttest] monster %d %s class %d: upstream %.3f impact %.3f", t,
+				apx::combat::materialName(apx::combat::monsterMaterial(t)), c, off, on);
+		}
+	}
+	apx::combat::setEnabled(was);
+	printlog("[apx impacttest] rows %d changed %d magic_changed %d uses %llu gate %s", rows, changed, magicChanged,
+		apx::combat::uses(), (changed > rows / 4 && magicChanged == 0) ? "PASS" : "FAIL");
+	mainloop = 0;
+}
+
 #include "lobbies.hpp"
+#include "apx/headless.hpp"
+static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
 #include "ui/MainMenu.hpp"
@@ -67,6 +101,9 @@ static bool apxSkipSplash() // the control BARONY_APX_KEEPSPLASH=1 keeps the log
 #include "ui/LoadingScreen.hpp"
 
 #include "UnicodeDecoder.h"
+#include "apx/lua_layer.hpp"
+static bool apxLuaTestMode = false;
+#include "apx_stamina.hpp"
 
 #include <atomic>
 #include <future>
@@ -951,6 +988,7 @@ static real_t drunkextend[MAXPLAYERS] = { (real_t)0.0 };
 
 void gameLogic(void)
 {
+	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -3084,7 +3122,8 @@ void gameLogic(void)
 					if ( itemCategory(item) != SPELL_CAT 
 						&& item->x != Player::PaperDoll_t::ITEM_PAPERDOLL_COORDINATE
 						&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
-						&& (item->x >= players[player]->inventoryUI.getSizeX() || item->y >= backpack_sizey[player]) )
+						&& (item->x >= players[player]->inventoryUI.getSizeX()
+						|| item->y >= (apx_inv::vanillaGrid() ? backpack_sizey[player] : players[player]->inventoryUI.getSizeY())) ) // apx: virtual rows are room (U1)
 					{
 						messagePlayer(player, MESSAGE_INVENTORY, Language::get(727), item->getName());
 						bool droppedAll = false;
@@ -3817,7 +3856,8 @@ void gameLogic(void)
 				if ( itemCategory(item) != SPELL_CAT 
 					&& item->x != Player::PaperDoll_t::ITEM_PAPERDOLL_COORDINATE
 					&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
-					&& (item->x >= players[clientnum]->inventoryUI.getSizeX() || item->y >= backpack_sizey) )
+					&& (item->x >= players[clientnum]->inventoryUI.getSizeX()
+						|| item->y >= (apx_inv::vanillaGrid() ? backpack_sizey : players[clientnum]->inventoryUI.getSizeY())) ) // apx: virtual rows are room (U1)
 				{
 					messagePlayer(clientnum, MESSAGE_INVENTORY, Language::get(727), item->getName());
 					bool droppedAll = false;
@@ -4161,6 +4201,7 @@ bool handleEvents(void)
 		//printlog("dropped %d frames", numframes - max_frames);
 		numframes = max_frames;
 	}
+	if ( apx::headlessOn ) { numframes = apx::headlessBatch(); } // apx headless: fixed tick batch per pass, no real-time pacing
 
 	// calculate fps
 	if ( timesync != 0 )
@@ -4177,6 +4218,7 @@ bool handleEvents(void)
 		d += frameval[j];
 	}
 	fps = (d / AVERAGEFRAMES) * 1000;
+	apxgenFrameTick();
 
 	if (initialized) {
 		inputs.updateAllMouse();
@@ -5338,6 +5380,7 @@ bool handleEvents(void)
 			++ticks;
 			if ( apx::enabled ) { apx::onTick(); }
 			if ( apx::bf3::on ) { apx::bf3::onGameTick(); }
+			apxLuaTick();
 		}
 		else
 		{
@@ -5487,7 +5530,7 @@ void pauseGame(int mode /* 0 == toggle, 1 == force unpause, 2 == force pause */,
                     SDL_WarpMouseInWindow(screen, w/2, h/2);
                 }
             }
-			SDL_SetRelativeMouseMode(EnableMouseCapture);
+			SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
 		}
 		if (keystatus[SDLK_ESCAPE]) {
 			keystatus[SDLK_ESCAPE] = 0;
@@ -6156,7 +6199,7 @@ void ingameHud()
                             SDL_WarpMouseInWindow(screen, w/2, h/2);
                         }
                     }
-				    SDL_SetRelativeMouseMode(EnableMouseCapture);
+				    SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
 				}
 			}
 
@@ -7246,6 +7289,7 @@ int main(int argc, char** argv)
 		strcpy(outputdir, "save:");
  #endif // NINTENDO
 #endif
+		apxgenReadEnvironment(); // APXGEN* variables; the command line below wins
 		// read command line arguments
 		if ( argc > 1 )
 		{
@@ -7257,7 +7301,11 @@ int main(int argc, char** argv)
 #endif
 				if ( argv[c] != NULL )
 				{
-					if ( !strcmp(argv[c], "-windowed") )
+					if ( apxgenParseArgument(argv[c]) )
+					{
+						// -apxgen, -apxgen-size=, -apxgen-pop=, -apxgen-root=
+					}
+					else if ( !strcmp(argv[c], "-windowed") )
 					{
 						fullscreen = 0;
 					}
@@ -7306,6 +7354,18 @@ int main(int argc, char** argv)
 					{
 						apxFloor = std::max(0, atoi(argv[c] + 10));
 					}
+					else if ( !strcmp(argv[c], "-apximpact") )
+					{
+						apx::combat::setEnabled(true); // apx F4b (D66)
+					}
+					else if ( !strcmp(argv[c], "-apximpacttest") )
+					{
+						apxImpactTest = true;
+					}
+					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
+					{
+						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
+					}
 					else if ( !strncmp(argv[c], "-apxmapseed=", 12) )
 					{
 						apxMapSeed = (Uint32)strtoul(argv[c] + 12, nullptr, 10);
@@ -7316,9 +7376,19 @@ int main(int argc, char** argv)
 						// (load-time measurement and headless mod tests; see Apockalypsis BL-load-card.md).
 						apxLoadModPath = argv[c] + 12;
 					}
+					else if ( !strncmp(argv[c], "-apx-luatest=", 13) )
+					{
+						// apx: Lua self-test, only with this flag; the seed is forced too so a test run is reproducible
+						apxLuaTestMode = true;
+						forceMapSeed = (Uint32)strtoul(argv[c] + 13, nullptr, 10);
+					}
 					else if ( !strcmp(argv[c], "-nosound") )
 					{
 						no_sound = true;
+					}
+					else if ( !strcmp(argv[c], "-apxheadless") )
+					{
+						apxHeadlessFlag = true;
 					}
 					else
 					{
@@ -7346,7 +7416,9 @@ int main(int argc, char** argv)
 #endif
 		printlog("Data path is %s", datadir);
 		printlog("Output path is %s", outputdir);
-        
+		apx::headlessInit(apxHeadlessFlag);
+		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
+
         // init sdl
         Uint32 init_flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS;
         init_flags |= SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC;
@@ -7355,6 +7427,8 @@ int main(int argc, char** argv)
             printlog("failed to initialize SDL: %s\n", SDL_GetError());
             return 1;
         }
+
+        apxLuaInit(apxLuaTestMode);
 
         // load game config
 		Input::defaultBindings();
@@ -7728,6 +7802,7 @@ int main(int argc, char** argv)
 							currentlevel = apxFloor - 1;
 							loadnextlevel = true;
 							printlog("[apx] test path: to floor %d (map seed %u) at %u ms since SDL init, splash %s", apxFloor, apxMapSeed, SDL_GetTicks(), apxSkipSplash() ? "skipped" : "kept");
+							if ( apxImpactTest ) { apxRunImpactSelfTest(); }
 						}
 					}
 					else
@@ -8253,22 +8328,30 @@ int main(int argc, char** argv)
 			// update screen
 			GO_SwapBuffers(screen);
 
+			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
+			if ( const char* apxShot = apx_inv::takeShotRequest() )
+			{
+				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }
+				takeScreenshot(apxShot);
+				if (!hdrEnabled) { main_framebuffer.bindForWriting(); }
+			}
+
 			// screenshots
-			const char* apxShot = apx::bf3::screenshotWanted(); // apx BF3 trial: a frame on request (its input is dropped)
-			if (apxShot || Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||
+			const char* bf3Shot = apx::bf3::screenshotWanted(); // apx BF3 trial: a frame on request (its input is dropped)
+			if (bf3Shot || apx::consumeShot() || Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||
 			    (inputs.hasController(clientnum) && Input::inputs[clientnum].consumeBinaryToggle("GamepadScreenshot")))
 			{
                 if (!hdrEnabled) {
                     main_framebuffer.unbindForWriting();
                 }
-				takeScreenshot(apxShot);
+				takeScreenshot(bf3Shot); // nullptr: the default path, as takeScreenshot()
                 if (!hdrEnabled) {
                     main_framebuffer.bindForWriting();
                 }
 			}
 
-			// frame rate limiter
-			while ( frameRateLimit(fpsLimit, true, true) )
+			// frame rate limiter (apx headless: none)
+			while ( !apx::headlessOn && frameRateLimit(fpsLimit, true, true) )
 			{
 				if ( !intro )
 				{
@@ -8349,6 +8432,7 @@ int main(int argc, char** argv)
 
 		// deinit
 		apx::close();
+		apxLuaShutdown();
 		deinitGame();
 		return deinitApp();
 	}

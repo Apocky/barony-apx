@@ -1,0 +1,49 @@
+# kits/rooms/crypt-hall.toml
+[meta]
+id = "crypt-hall"            # the dictionary key with the seed and bounds
+level = "MICRO"              # level the CARVE ops run at
+fits = { min = [6, 4, 10], max = [14, 6, 30] }   # TILE extents this program accepts
+tags = ["dungeon", "undead", "hall"]
+
+[[op]]  # 1. the void
+kind = "stamp"
+shape = "box"
+mask = "void"
+from = [1, 1, 1]
+to = ["w-1", "h-1", "d-1"]
+[[op]]  # 2. a vaulted ceiling: subtract a half-cylinder along z
+kind = "stamp"
+shape = "cylinder"
+mask = "vault"
+axis = "z"
+center = ["w/2", "h-1"]
+radius = "w/2-1"
+[[op]]
+kind = "union"
+dst = "void"
+src = "vault"
+[[op]]  # 3. pillars every 4 m
+kind = "repeat"
+along = "z"
+step = 4
+from = 2
+ops = [
+  { kind = "stamp", shape = "box", mask = "pillar", from = [2, 0, "i"], to = [3, "h", "i+1"] },
+  { kind = "stamp", shape = "box", mask = "pillar", from = ["w-3", 0, "i"], to = ["w-2", "h", "i+1"] },
+  { kind = "subtract", dst = "void", src = "pillar" } ]
+[[op]]  # 4. the solid is the room box minus the void; write it
+kind = "assign"
+material = "crypt_stone"
+mask = "!void"
+
+[detail]  # runs at FINE after the 4x refine (scale_cells in FINE cells; threshold_1024 out of 1024: integer only)
+ops = [
+  { kind = "edge", mask = "edges" },
+  { kind = "noise", mask = "wear", seed = "dress", scale_cells = 8, threshold_1024 = 358 },
+  { kind = "intersect", dst = "edges", src = "wear" },
+  { kind = "subtract", dst = "solid", src = "edges" },                 # worn edges
+  { kind = "noise", mask = "crack", seed = "crack", scale_cells = 4, threshold_1024 = 82, thin = true },
+  { kind = "subtract", dst = "solid", src = "crack" },                 # hairline cracks
+  { kind = "erode", mask = "rubble", src = "solid", k = 1 }, { kind = "xor", dst = "rubble", src = "solid" },
+  { kind = "ccl", mask = "rubble", min = 8, out = "instances", kit = "rubble" },   # fallen chips
+  { kind = "assign", material = "crypt_trim", mask = "edges" } ]

@@ -1,0 +1,17 @@
+# kits/rooms/plain-chamber.toml (card L42): a plain chamber, any proportion, 1-tile walls.
+[meta]
+id = "plain-chamber"
+level = "MICRO"
+fits = { min = [4, 3, 4], max = [16, 6, 16] }
+tags = ["dungeon", "chamber"]
+
+[[op]]
+kind = "stamp"
+shape = "box"
+mask = "void"
+from = [1, 1, 1]
+to = ["w-1", "h-1", "d-1"]
+[[op]]
+kind = "assign"
+material = "crypt_stone"
+mask = "!void"

@@ -315,8 +315,12 @@ else( NOT WIN32 )
 	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -pg ${OPTIMIZATION_LEVEL} -ffast-math -funroll-loops -malign-double -fstrict-aliasing -mwindows")
 	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${OPTIMIZATION_LEVEL} -ffast-math -funroll-loops -malign-double -fstrict-aliasing -mwindows")
 	# We should be using Visual Studio flags...or better yet, providing an option to select which you'd prefer.
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MP")
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MP ")
+	# apx: /MP batches many sources into one cl.exe; only the Visual Studio generator needs it. Under Ninja
+	# each cl.exe compiles one file, which compiler caches (sccache, ccache) require.
+	if ( CMAKE_GENERATOR MATCHES "Visual Studio" )
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MP")
+		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MP ")
+	endif()
 	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
 	# apx: the code needs C++17 (std::variant, std::clamp); the GCC/Clang branches pass -std=c++17 and
 	# VS.2015/Barony.vcxproj sets LanguageStandard stdcpp17, but MSVC defaults to C++14 under CMake.
@@ -503,6 +507,7 @@ message("***************************")
 
 
 add_subdirectory(src)
+add_subdirectory(third_party/lua) # apx: Lua 5.4 content layer (D52)
 if( WIN32 )
 	set(GAME_RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/barony.rc")
 	set(EDITOR_RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/editor.rc")
@@ -564,6 +569,10 @@ if (GAME_ENABLED)
 	endif()
 	target_link_libraries(barony ${SDL2_LIBRARIES} ${SDL2_LIBRARY} ${SDL2IMAGE_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_TTF_LIBRARIES} ${SDL2TTF_LIBRARY})
 	target_link_libraries(barony ${GLEW_LIBRARIES}) # apx: see find_package(GLEW) above
+	target_link_libraries(barony apx_lua)
+	add_custom_command(TARGET barony POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/scripts" "$<TARGET_FILE_DIR:barony>/scripts") # apx: Lua scripts
+target_include_directories(barony PRIVATE "${APXGEN_DIR}/include") # apx-gen (src/apx/gen)
+target_compile_definitions(barony PRIVATE "APXGEN_VENDOR_ROOT=\"${APXGEN_DIR}\"")
 	if (STEAMWORKS_ENABLED)
 		target_link_libraries(barony ${STEAMWORKS_LIBRARY})
 		target_link_libraries(barony ${NFD_LIBRARY})

@@ -13,6 +13,11 @@
 #include "../../files.hpp"
 #include "../../ui/LoadingScreen.hpp"
 #include "sound.hpp"
+#include <algorithm>
+#include <mutex>
+#include <atomic>
+#include <future>
+#include <thread>
 
 #ifndef EDITOR
 #include "../../ui/MainMenu.hpp"
@@ -366,6 +371,113 @@ bool initSoundEngine()
 	return !no_sound; //No double negatives pls
 }
 
+#ifdef USE_FMOD
+// apx (BL-load fixes 3 and 4): FMOD decodes every sound effect (860 .ogg) and every ensemble music file
+// into memory on one thread -- sound effects synchronously (~3 s), ensemble music on FMOD's single
+// non-blocking loader thread (~6 s, waited for in EnsembleSounds_t::setup). The FMOD Core API is
+// thread-safe, so both now decode across worker threads with plain synchronous createSound calls.
+// Measured and rejected (2026-10-19): FMOD_NONBLOCKING for sound effects queues them ahead of the music
+// on that one loader thread (floor 1 later by 2.3 s); FMOD_CREATECOMPRESSEDSAMPLE gains nothing for .ogg.
+// Controls: BARONY_APX_SOUNDS=sync (old serial loop), BARONY_APX_ENSEMBLE=nonblocking (old loader thread).
+static bool apxEnvIs(const char* name, const char* value)
+{
+	const char* env = getenv(name);
+	return env && !strcmp(env, value);
+}
+
+unsigned apxSoundThreads()
+{
+	const unsigned hw = std::thread::hardware_concurrency();
+	return std::max(2u, std::min(8u, hw > 1 ? hw - 1 : 2u));
+}
+
+struct ApxSoundJob
+{
+	std::string path;
+	FMOD_MODE flags;
+	FMOD::Sound** out;
+	int line;
+};
+
+// creates every job's sound on worker threads; returns the number that failed
+static int apxCreateSoundsParallel(std::vector<ApxSoundJob>& jobs, const char* what)
+{
+	std::atomic<size_t> next{ 0 };
+	std::atomic<int> failed{ 0 };
+	std::mutex logMutex;
+	auto worker = [&]() {
+		for ( size_t k = next++; k < jobs.size(); k = next++ )
+		{
+			FMOD::Sound* sound = nullptr;
+			const FMOD_RESULT result = fmod_system->createSound(jobs[k].path.c_str(), jobs[k].flags, nullptr, &sound);
+			*jobs[k].out = sound;
+			if ( result != FMOD_OK )
+			{
+				++failed;
+				std::lock_guard<std::mutex> lock(logMutex);
+				printlog("warning: failed to load '%s' listed at line %d in %s (FMOD error %d)\n", jobs[k].path.c_str(), jobs[k].line, what, (int)result);
+			}
+		}
+	};
+	std::vector<std::thread> threads;
+	const unsigned n = std::min<unsigned>(apxSoundThreads(), (unsigned)std::max<size_t>(1, jobs.size()));
+	for ( unsigned t = 0; t < n; ++t ) { threads.emplace_back(worker); }
+	for ( auto& t : threads ) { t.join(); }
+	return failed;
+}
+
+// ensemble music: queued while physfsReloadMusic walks the music list, decoded in the background, and
+// joined in EnsembleSounds_t::setup. Results land in private slots and are copied out only at the join,
+// so nothing reads a half-made pointer meanwhile.
+static std::vector<ApxSoundJob> apxEnsembleQueued;
+static std::vector<ApxSoundJob> apxEnsembleRunning;
+static std::vector<FMOD::Sound*> apxEnsembleResults;
+static std::vector<FMOD::Sound**> apxEnsembleTargets;
+static std::future<int> apxEnsembleFuture;
+static Uint32 apxEnsembleStartTick = 0;
+
+bool apxEnsembleParallel()
+{
+	return !apxEnvIs("BARONY_APX_ENSEMBLE", "nonblocking");
+}
+
+void apxQueueEnsembleSound(const std::string& path, FMOD_MODE flags, FMOD::Sound** out, int index)
+{
+	*out = nullptr; // the old sound was released by the caller; the new one is copied in at the join
+	apxEnsembleQueued.push_back(ApxSoundJob{ path, flags & ~FMOD_NONBLOCKING, out, index });
+}
+
+void apxJoinEnsembleLoads()
+{
+	if ( !apxEnsembleFuture.valid() ) { return; }
+	const Uint32 waitStart = SDL_GetTicks();
+	const int failed = apxEnsembleFuture.get();
+	for ( size_t k = 0; k < apxEnsembleTargets.size(); ++k ) { *apxEnsembleTargets[k] = apxEnsembleResults[k]; }
+	printlog("[apx] ensemble music: %d files decoded on %u threads in %u ms, waited %u ms at the join, %d errors",
+		(int)apxEnsembleRunning.size(), apxSoundThreads(), SDL_GetTicks() - apxEnsembleStartTick, SDL_GetTicks() - waitStart, failed);
+	apxEnsembleRunning.clear();
+	apxEnsembleResults.clear();
+	apxEnsembleTargets.clear();
+}
+
+void apxStartEnsembleLoads()
+{
+	if ( apxEnsembleQueued.empty() ) { return; }
+	apxJoinEnsembleLoads(); // a previous batch must land before its slots are reused
+	apxEnsembleRunning = std::move(apxEnsembleQueued);
+	apxEnsembleQueued.clear();
+	apxEnsembleResults.assign(apxEnsembleRunning.size(), nullptr);
+	apxEnsembleTargets.clear();
+	for ( size_t k = 0; k < apxEnsembleRunning.size(); ++k )
+	{
+		apxEnsembleTargets.push_back(apxEnsembleRunning[k].out);
+		apxEnsembleRunning[k].out = &apxEnsembleResults[k];
+	}
+	apxEnsembleStartTick = SDL_GetTicks();
+	apxEnsembleFuture = std::async(std::launch::async, []() { return apxCreateSoundsParallel(apxEnsembleRunning, "the ensemble music list"); });
+}
+#endif
+
 int loadSoundResources(real_t base_load_percent, real_t top_load_percent)
 {
 	File* fp;
@@ -401,8 +513,12 @@ int loadSoundResources(real_t base_load_percent, real_t top_load_percent)
 	}
 #ifdef USE_FMOD
 	sounds = (FMOD::Sound**) malloc(sizeof(FMOD::Sound*)*numsounds);
+	memset(sounds, 0, sizeof(FMOD::Sound*) * numsounds);
 	fp = openDataFile(soundsDirectory.c_str(), "rb");
 	char full_path[PATH_MAX];
+	const bool apxSerial = apxEnvIs("BARONY_APX_SOUNDS", "sync");
+	const Uint32 apxSoundsStart = SDL_GetTicks();
+	std::vector<ApxSoundJob> apxJobs;
 	for ( c = 0; !fp->eof(); ++c )
 	{
 		fp->gets2(name, 128);
@@ -412,6 +528,11 @@ int loadSoundResources(real_t base_load_percent, real_t top_load_percent)
 		{
 			flags |= FMOD_LOOP_NORMAL;
 		}
+		if ( !apxSerial )
+		{
+			apxJobs.push_back(ApxSoundJob{ full_path, flags, &sounds[c], (int)c + 1 });
+			continue;
+		}
 		fmod_result = fmod_system->createSound(full_path, flags, nullptr, &sounds[c]);
 		if (FMODErrorCheck())
 		{
@@ -420,6 +541,16 @@ int loadSoundResources(real_t base_load_percent, real_t top_load_percent)
 		updateLoadingScreen(base_load_percent + (top_load_percent * c) / numsounds);
 	}
 	FileIO::close(fp);
+	if ( !apxSerial )
+	{
+		const int failed = apxCreateSoundsParallel(apxJobs, "sounds.txt");
+		updateLoadingScreen(base_load_percent + top_load_percent);
+		printlog("[apx] sounds: %d files on %u threads in %u ms, %d errors", (int)apxJobs.size(), apxSoundThreads(), SDL_GetTicks() - apxSoundsStart, failed);
+	}
+	else
+	{
+		printlog("[apx] sounds: serial (BARONY_APX_SOUNDS=sync) in %u ms", SDL_GetTicks() - apxSoundsStart);
+	}
 	fmod_system->set3DSettings(1.0, 2.0, 1.0);
 #elif defined USE_OPENAL
 	sounds = (OPENAL_BUFFER**) malloc(sizeof(OPENAL_BUFFER*)*numsounds);

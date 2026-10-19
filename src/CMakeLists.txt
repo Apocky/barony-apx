@@ -1,5 +1,6 @@
 list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/lua_layer.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/init.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/collision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/light.cpp"
@@ -11,6 +12,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/list.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/files.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/items.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx_inventory.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx_inventory_ui.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/paths.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/charclass.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/net.cpp"
@@ -34,6 +37,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/input.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/item_usage_funcs.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/entity.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/impact.cpp" # apx F4b
 	"${CMAKE_CURRENT_SOURCE_DIR}/messages.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actflame.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actcampfire.cpp"
@@ -118,6 +122,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_summons.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_moth.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_duck.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/headless.cpp"
 )
 
 list(APPEND EDITOR_SOURCES
@@ -146,6 +151,21 @@ list(APPEND EDITOR_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/prng.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/shader.cpp"
 )
+
+# apx-gen (vendored, src/apx/gen) and its Barony bridge; game only, never the editor
+set(APXGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/apx/gen")
+set(APXGEN_SOURCES
+	"${APXGEN_DIR}/src/mission.cpp"
+	"${APXGEN_DIR}/src/program.cpp"
+	"${APXGEN_DIR}/src/layout.cpp"
+	"${APXGEN_DIR}/src/critic.cpp"
+	"${APXGEN_DIR}/src/dress.cpp"
+	"${APXGEN_DIR}/src/vox.cpp"
+	"${APXGEN_DIR}/src/site.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/apx_gen_bridge.cpp"
+)
+list(APPEND GAME_SOURCES ${APXGEN_SOURCES})
+set(APXGEN_DIR ${APXGEN_DIR} PARENT_SCOPE) # the barony target (root CMakeLists) adds its include dir and root define
 
 add_subdirectory(magic)
 add_subdirectory(interface)

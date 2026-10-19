@@ -30,6 +30,7 @@
 #include "apx/tactics.hpp"
 #include "apx/flow.hpp"
 #include "ui/MainMenu.hpp"
+#include "apx/lua_layer.hpp"
 #include "menu.hpp"
 
 float limbs[NUMMONSTERS][30][3];
@@ -1452,6 +1453,7 @@ end:
 		}
 	}
 
+	apxLuaMonsterSpawned(entity, "summon");
 	return entity;
 }
 

@@ -50,6 +50,7 @@
 #include "mod_tools.hpp"
 #include "ui/MainMenu.hpp"
 #include "interface/consolecommand.hpp"
+#include "apx/headless.hpp"
 static ConsoleVariable<bool> cvar_sdl_disablejoystickrawinput("/sdl_joystick_rawinput_disable", false, "disable SDL rawinput for gamepads (helps SDL_HapticOpen())");
 #endif
 
@@ -1621,6 +1622,15 @@ bool initVideo()
             flags |= SDL_WINDOW_BORDERLESS;
         }
 #endif
+#ifndef EDITOR
+        if ( apx::headlessOn )
+        {
+            // apx headless: a GL context on a window that is never shown (no focus, no key presses)
+            flags &= ~(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_BORDERLESS);
+            flags |= SDL_WINDOW_HIDDEN;
+            apx::headlessLog();
+        }
+#endif
 
 		positionAndLimitWindow(screen_x, screen_y, screen_width, screen_height);
         
@@ -1658,7 +1668,11 @@ bool initVideo()
         SDL_GL_GetDrawableSize(screen, &xres, &yres);
         printlog("set window size to %dx%d", xres, yres);
 
+#ifndef EDITOR
+		if (fullscreen && !apx::headlessOn) {
+#else
 		if (fullscreen) {
+#endif
 			SDL_DisplayMode mode;
 			SDL_GetDesktopDisplayMode(display_id, &mode);
 			mode.w = xres;
@@ -1708,7 +1722,11 @@ bool initVideo()
         GL_CHECK_ERR(glClearColor(0.f, 0.f, 0.f, 0.f));
 	}
 
+#ifndef EDITOR
+	if ( verticalSync && !apx::headlessOn ) // apx headless: never wait for vsync
+#else
 	if ( verticalSync )
+#endif
 	{
 		SDL_GL_SetSwapInterval(1);
 	}

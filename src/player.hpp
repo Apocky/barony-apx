@@ -648,6 +648,8 @@ void initGameControllers();
 static const unsigned NUM_HOTBAR_SLOTS = 10; //NOTE: If you change this, you must dive into drawstatus.c and update the hotbar code. It expects 10.
 static const unsigned NUM_HOTBAR_ALTERNATES = 5;
 
+namespace apx_inv { bool vanillaGrid(); int virtualRows(int sizeX); } // apx: apx_inventory.hpp
+
 class Player
 {
 	//Splitscreen support. Every player gets their own screen.
@@ -1063,7 +1065,7 @@ public:
 			DEFAULT_INVENTORY_SIZEY(3)
 		{
 			sizex = DEFAULT_INVENTORY_SIZEX;
-			sizey = DEFAULT_INVENTORY_SIZEY;
+			setSizeY(DEFAULT_INVENTORY_SIZEY);
 		};
 		~Inventory_t() {};
 		const int getTotalSize() const { return sizex * sizey; }
@@ -1071,7 +1073,7 @@ public:
 		const int getSizeY() const { return sizey; }
 		const int getSlotSize() const { return 40; }
 		const int getItemSpriteSize() const { return 36; }
-		void setSizeY(int size) { sizey = size; }
+		void setSizeY(int size) { sizey = apx_inv::vanillaGrid() ? size : apx_inv::virtualRows(sizex); } // apx: the virtual grid (U1)
 		void selectSlot(const int x, const int y) { selectedSlotX = x; selectedSlotY = y; }
 		const int getSelectedSlotX() const { return selectedSlotX; }
 		const int getSelectedSlotY() const { return selectedSlotY; }
@@ -1113,7 +1115,7 @@ public:
 				DEFAULT_INVENTORY_SIZEY = 3;
 			}
 			sizex = DEFAULT_INVENTORY_SIZEX;
-			sizey = DEFAULT_INVENTORY_SIZEY;
+			setSizeY(DEFAULT_INVENTORY_SIZEY);
 		}
 		const int freeVisibleInventorySlots() const
 		{
@@ -1502,6 +1504,7 @@ public:
 		Frame* skillupFrame = nullptr;
 		Frame* hpFrame = nullptr;
 		Frame* mpFrame = nullptr;
+		Frame* staminaFrame = nullptr; // apx BF4: yellow stamina bar under the MP bar
 		Frame* minimapFrame = nullptr;
 		Frame* gameTimerFrame = nullptr;
 		Frame* allyStatusFrame = nullptr;
@@ -1730,6 +1733,7 @@ public:
 		int HPMP_FRAME_HEIGHT = 34;
 		void updateHPBar();
 		void updateMPBar();
+		void updateStaminaBar();
 		const int ENEMYBAR_FRAME_WIDTH = 564;
 		const int ENEMYBAR_BAR_WIDTH = 556;
 		const int ENEMYBAR_FRAME_START_Y = 182;

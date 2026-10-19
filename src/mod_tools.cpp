@@ -11833,8 +11833,24 @@ void Mods::loadMods()
 		int modelsIndexUpdateEnd = nummodels;
 		bool oldModelCache = useModelCache;
 		useModelCache = false;
+		// apx (BL-load fix 2): rebuild only the models that come from a mod now or did before this load,
+		// not every model between the lowest and highest such index. BARONY_APX_MODELRANGE=1 restores the
+		// old whole-range rebuild as a control.
+		std::vector<int> modelsToRebuild(Mods::modelsListModifiedIndexes.begin(), Mods::modelsListModifiedIndexes.end());
 		physfsModelIndexUpdate(modelsIndexUpdateStart, modelsIndexUpdateEnd);
-		for (int c = modelsIndexUpdateStart; c < modelsIndexUpdateEnd && c < nummodels; ++c) {
+		modelsToRebuild.insert(modelsToRebuild.end(), Mods::modelsListModifiedIndexes.begin(), Mods::modelsListModifiedIndexes.end());
+		const char* apxRangeEnv = getenv("BARONY_APX_MODELRANGE");
+		if ( apxRangeEnv && apxRangeEnv[0] == '1' )
+		{
+			modelsToRebuild.clear();
+			for ( int c = modelsIndexUpdateStart; c < modelsIndexUpdateEnd && c < nummodels; ++c ) { modelsToRebuild.push_back(c); }
+		}
+		std::sort(modelsToRebuild.begin(), modelsToRebuild.end());
+		modelsToRebuild.erase(std::unique(modelsToRebuild.begin(), modelsToRebuild.end()), modelsToRebuild.end());
+		modelsToRebuild.erase(std::remove_if(modelsToRebuild.begin(), modelsToRebuild.end(),
+			[](int c) { return c < 0 || c >= nummodels; }), modelsToRebuild.end());
+		const Uint32 apxRebuildStart = SDL_GetTicks();
+		for (int c : modelsToRebuild) {
 			if (polymodels[c].faces) {
 				free(polymodels[c].faces);
 				polymodels[c].faces = nullptr;
@@ -11856,8 +11872,19 @@ void Mods::loadMods()
 		// polymodels will get free'd if generating all models in generatePolyModels
 		//free(polymodels);
 		//polymodels = nullptr;
-		generatePolyModels(modelsIndexUpdateStart, modelsIndexUpdateEnd, true);
-		generateVBOs(modelsIndexUpdateStart, modelsIndexUpdateEnd);
+		for (size_t r = 0; r < modelsToRebuild.size(); ) {
+			size_t e = r + 1;
+			while (e < modelsToRebuild.size() && modelsToRebuild[e] == modelsToRebuild[e - 1] + 1) { ++e; }
+			const int runStart = modelsToRebuild[r];
+			const int runEnd = modelsToRebuild[e - 1] + 1;
+			// a run of [0, nummodels) (every model flagged) takes generatePolyModels' generate-all path, as the
+			// old code did for that case.
+			generatePolyModels(runStart, runEnd, true);
+			generateVBOs(runStart, runEnd);
+			r = e;
+		}
+		printlog("[apx] mod models rebuilt: %d models (index range %d..%d) in %u ms",
+			(int)modelsToRebuild.size(), modelsIndexUpdateStart, modelsIndexUpdateEnd, SDL_GetTicks() - apxRebuildStart);
 		useModelCache = oldModelCache;
 		Mods::modelsListRequiresReloadUnmodded = true;
 	}

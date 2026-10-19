@@ -3436,6 +3436,7 @@ void EnsembleSounds_t::setup()
 	}
 
 	Uint32 startTick = SDL_GetTicks();
+	apxJoinEnsembleLoads(); // apx: ensemble music decoded on worker threads lands here
 
 	for ( int i = 0; i < NUMENSEMBLEMUSIC; )
 	{

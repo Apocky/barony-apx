@@ -23,6 +23,7 @@
 #include "ui/MainMenu.hpp"
 #include "init.hpp"
 #include "ui/Image.hpp"
+#include "apx/headless.hpp"
 
 static real_t getLightAtModifier = 1.0;
 static real_t getLightAtAdder = 0.0;
@@ -2349,7 +2350,7 @@ void glDrawWorld(view_t* camera, int mode)
 {
 #ifndef EDITOR
     static ConsoleVariable<bool> cvar_skipDrawWorld("/skipdrawworld", false);
-    if (*cvar_skipDrawWorld) {
+    if (*cvar_skipDrawWorld || apx::headlessOn) { // apx headless: no drawing
         return;
     }
 #endif
@@ -2604,6 +2605,9 @@ const char* gl_error_string(GLenum err) {
 
 void GO_SwapBuffers(SDL_Window* screen)
 {
+#ifndef EDITOR
+	if ( apx::headlessOn ) { return; } // apx headless: nothing is presented
+#endif
 	dirty = 1;
     
     if (!hdrEnabled) {

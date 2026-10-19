@@ -14,6 +14,7 @@
 #include "game.hpp"
 #include "stat.hpp"
 #include "net.hpp"
+#include "apx/apx_gen_bridge.hpp"
 #include "messages.hpp"
 #include "entity.hpp"
 #include "files.hpp"
@@ -47,6 +48,7 @@
 #include <atomic>
 #include <future>
 #include <thread>
+#include "apx_stamina.hpp"
 
 NetHandler* net_handler = nullptr;
 
@@ -118,6 +120,7 @@ void pollNetworkForShutdown() {
 
 int sendPacket(UDPsocket sock, int channel, UDPpacket* packet, int hostnum, bool tryReliable)
 {
+	if ( packet ) { apxgenNetSent(hostnum, packet->len); }
 	if ( directConnect )
 	{
 		return SDLNet_UDP_Send(sock, channel, packet);
@@ -2641,6 +2644,11 @@ static void changeLevel() {
 }
 
 static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
+	// apx: stamina / move state relayed by the host
+	{'APXS', [](){
+		apx::onPacket();
+	}},
+
 	// keep alive
 	{'KPAL', [](){
 		client_keepalive[0] = ticks;
@@ -6288,6 +6296,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		local_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 		net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 		uniqueLobbyKey = SDLNet_Read32(&net_packet->data[13]);
+		apxgenReadNet(&net_packet->data[17], (int)net_packet->len - 17);
 	    if (net_packet->data[12] == 0) {
 		    loadingsavegame = 0;
 			loadinglobbykey = 0;
@@ -8528,11 +8537,18 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		free(item);
 	}},
 
+	// apx: stamina / move state of a client
+	{'APXS', [](){
+		apx::onPacket();
+	}},
+
 	// attacking
 	{'ATAK', [](){
 	    const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
 		if (players[player] && players[player]->entity)
 		{
+			apx::pendingMove[player] = (net_packet->len >= 16) ? net_packet->data[15] : 0; // apx: sword move
+			apx::get(player).sweepExtras = 0;
 			ItemType type = static_cast<ItemType>(SDLNet_Read32(&net_packet->data[7]));
 			Uint32 appearance = static_cast<ItemType>(SDLNet_Read32(&net_packet->data[11]));
 			if ( stats[player]->weapon && stats[player]->weapon->type == type )

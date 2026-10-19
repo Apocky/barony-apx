@@ -2150,8 +2150,12 @@ bool completePath(char *dest, const char * const filename, const char *base) {
 		return false;
 	}
 
-	// Already absolute
-	if (filename[0] == '/') {
+	// Already absolute (a drive-letter path on Windows too: the apx-gen floor file lives in the run folder)
+	if (filename[0] == '/'
+#ifdef WINDOWS
+		|| (isalpha((unsigned char)filename[0]) && filename[1] == ':' && (filename[2] == '/' || filename[2] == '\\'))
+#endif
+		) {
 		strcpy(dest, filename);
 		return true;
 	}

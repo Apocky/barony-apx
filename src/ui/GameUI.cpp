@@ -1,6 +1,7 @@
 // GameUI.cpp
 
 #include "GameUI.hpp"
+#include "../apx/headless.hpp"
 #include "MainMenu.hpp"
 #include "Frame.hpp"
 #include "Image.hpp"
@@ -27,9 +28,11 @@
 #include "../shops.hpp"
 #include "../colors.hpp"
 #include "../book.hpp"
+#include "../apx_inventory.hpp"
 #include "../ui/MainMenu.hpp"
 
 #include <assert.h>
+#include "../apx_stamina.hpp"
 
 const Uint32 playerColor(int index, bool colorblind, bool ally)
 {
@@ -718,6 +721,12 @@ void createHPMPBars(const int player)
 {
 	auto& hud_t = players[player]->hud;
 	const int barTotalHeight = hud_t.HPMP_FRAME_HEIGHT;
+	if ( apx::staminaEnabled() )
+	{
+		// apx BF4 (D68): HP and MP move up one bar height so the stamina bar fits under them
+		// (below MP would fall off a 720p screen; above HP collides with the status-effect strip).
+		hud_t.HPMP_FRAME_START_Y += barTotalHeight;
+	}
 	const int hpBarStartY = (hud_t.hudFrame->getSize().h - hud_t.HPMP_FRAME_START_Y);
 	const int mpBarStartY = hpBarStartY + barTotalHeight;
 	const int barWidth = hud_t.HPMP_FRAME_WIDTH;
@@ -863,6 +872,47 @@ void createHPMPBars(const int player)
 		mptext->setVJustify(Field::justify_t::CENTER);
 		mptext->setHJustify(Field::justify_t::CENTER);
 		mptext->setColor(makeColor( 255, 255, 255, 255));
+	}
+
+	// apx BF4 (D68): stamina bar, yellow, directly below the MP bar (see the HPMP_FRAME_START_Y shift above). Same frame, base, endcap and number
+	// field as the HP/MP bars; the fill is a solid tinted strip because the shipped art has no yellow set.
+	{
+		hud_t.staminaFrame = hud_t.hudFrame->addFrame("stamina bar");
+		hud_t.staminaFrame->setHollow(true);
+		SDL_Rect pos{ barStartX, mpBarStartY + barTotalHeight, barWidth, barTotalHeight };
+		hud_t.staminaFrame->setSize(pos);
+
+		auto fadeFrame = hud_t.staminaFrame->addFrame("stamina fade frame");
+		fadeFrame->setSize(SDL_Rect{ 0, 0, barWidth, barTotalHeight });
+		fadeFrame->setInheritParentFrameOpacity(false);
+		auto foregroundFrame = hud_t.staminaFrame->addFrame("stamina foreground frame");
+		foregroundFrame->setSize(SDL_Rect{ 0, 0, barWidth, barTotalHeight });
+
+		hud_t.staminaFrame->addImage(SDL_Rect{ 54, 4, barWidth - 54, 26 }, 0xFFFFFFFF,
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Base_00.png", "stamina img base");
+
+		const int progressBarHeight = 22;
+		const Uint32 yellow = makeColorRGB(235, 200, 40);
+		const Uint32 yellowFade = makeColorRGB(130, 108, 30);
+		fadeFrame->addImage(SDL_Rect{ 54, 6, barWidth - 54 - 8, progressBarHeight }, yellowFade,
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Divider_01_White.png", "stamina img fade");
+		foregroundFrame->addImage(SDL_Rect{ 0, 4, 48, 26 }, 0xFFFFFFFF,
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Base_00.png", "stamina img value");
+		foregroundFrame->addImage(SDL_Rect{ 46, 0, 8, 34 }, 0xFFFFFFFF,
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Separator_00.png", "stamina img div");
+		foregroundFrame->addImage(SDL_Rect{ 54, 6, barWidth - 54 - 8, progressBarHeight }, yellow,
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Divider_01_White.png", "stamina img progress");
+		foregroundFrame->addImage(SDL_Rect{ barWidth - 16, 0, 16, barTotalHeight }, 0xFFFFFFFF,
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_EndCap_00.png", "stamina img endcap");
+
+		auto font = "fonts/pixel_maz.ttf#32#2";
+		auto text = foregroundFrame->addField("stamina text", 16);
+		text->setText("0");
+		text->setSize(SDL_Rect{ 0, 4, 48, 26 });
+		text->setFont(font);
+		text->setVJustify(Field::justify_t::CENTER);
+		text->setHJustify(Field::justify_t::CENTER);
+		text->setColor(makeColor(255, 235, 120, 255));
 	}
 }
 
@@ -12740,6 +12790,7 @@ void Player::HUD_t::processHUD()
 	updateXPBar();
 	updateHPBar();
 	updateMPBar();
+	updateStaminaBar();
 	updateCalloutPromptFrame(player.playernum);
 	updateVoicePromptFrame(player.playernum, player.hud.voicePromptFrame, player.hud.allyPlayerFrame);
 	updateActionPrompts();
@@ -30904,6 +30955,8 @@ void Player::Inventory_t::processInventory()
 	bool tooltipWasDisabled = tooltipFrame->isDisabled();
 
 	updateInventory();
+	apx_inv::listUpdate(player.playernum, frame, playerInventoryFrames[player.playernum].invSlotsFrame,
+		playerInventoryFrames[player.playernum].backpackSlotsFrame); // apx: the list replaces the grid (U1)
 
 	player.shopGUI.updateShop();
 
@@ -33830,6 +33883,84 @@ void Player::HUD_t::updateHPBar()
 	hpFrame->setDisabled(player.ghost.isActive() && !player.entity);
 }
 
+void Player::HUD_t::updateStaminaBar()
+{
+	if ( !staminaFrame )
+	{
+		return;
+	}
+	const bool show = apx::staminaEnabled() && stats[player.playernum] && stats[player.playernum]->HP > 0
+		&& !(player.ghost.isActive() && !player.entity);
+	staminaFrame->setDisabled(!show);
+	if ( !show )
+	{
+		return;
+	}
+
+	// same placement rules as the HP/MP bars, one bar height below MP
+	bool bCompactWidth = false;
+	bool bCompactHeight = player.bUseCompactGUIHeight();
+	if ( player.bUseCompactGUIWidth() || (keystatus[SDLK_t] && enableDebugKeys) )
+	{
+		bCompactWidth = true;
+	}
+	SDL_Rect pos = staminaFrame->getSize();
+	pos.w = HPMP_FRAME_WIDTH + (bCompactWidth ? hpmpbarCompactOffsetWidth : hpmpbarOffsetWidth);
+	pos.x = HPMP_FRAME_START_X + ((bCompactWidth || bCompactHeight) ? hpmpbarCompactOffsetX : hpmpbarOffsetX);
+	pos.y = hudFrame->getSize().h - HPMP_FRAME_START_Y + HPMP_FRAME_HEIGHT * 2
+		+ ((bCompactWidth || bCompactHeight) ? hpmpbarCompactOffsetY : hpmpbarOffsetY);
+	pos.y -= player.hud.offsetHUDAboveHotbarHeight;
+	staminaFrame->setSize(pos);
+
+	auto foreground = staminaFrame->findFrame("stamina foreground frame");
+	auto fadeFrame = staminaFrame->findFrame("stamina fade frame");
+	{
+		auto s = foreground->getSize(); s.w = pos.w; foreground->setSize(s);
+		auto f = fadeFrame->getSize(); f.w = pos.w; fadeFrame->setSize(f);
+	}
+	auto base = staminaFrame->findImage("stamina img base");
+	auto endcap = foreground->findImage("stamina img endcap");
+	auto progress = foreground->findImage("stamina img progress");
+	auto fade = fadeFrame->findImage("stamina img fade");
+
+	const apx::Stamina_t& st = apx::get(player.playernum);
+	const real_t fullWidth = pos.w - 54 - 8;
+	base->pos.w = pos.w - 54;
+	endcap->pos.x = pos.w - endcap->pos.w;
+
+	// bar length follows max stamina the way MP's follows MAXMP: 30 percent at the base, up to full
+	const real_t multiplier = std::min<real_t>(1.0, 0.3 + 0.7 * (st.maxValue / 200.0));
+	const real_t barWidthPx = fullWidth * std::max<real_t>(0.3, multiplier);
+	const real_t percent = st.maxValue > 0.0 ? st.value / st.maxValue : 0.0;
+
+	// trailing (faded) segment lags the real value, like the HP/MP bars
+	static real_t fadePercent[MAXPLAYERS] = {};
+	real_t& trail = fadePercent[player.playernum];
+	if ( trail < percent ) { trail = percent; }
+	else { trail = std::max(percent, trail - 0.01); }
+
+	progress->pos.w = std::max(1, static_cast<int>(barWidthPx * percent));
+	fade->pos.w = std::max(1, static_cast<int>(barWidthPx * trail));
+	progress->disabled = (st.value <= 0.0);
+
+	char text[16];
+	snprintf(text, sizeof(text), "%d", static_cast<int>(st.value + 0.5));
+	foreground->findField("stamina text")->setText(text);
+
+	// coordinates for the measurement (printed once per change of position/size)
+	static SDL_Rect lastLogged[MAXPLAYERS] = {};
+	const SDL_Rect abs = staminaFrame->getAbsoluteSize();
+	SDL_Rect& last = lastLogged[player.playernum];
+	if ( abs.x != last.x || abs.y != last.y || abs.w != last.w || abs.h != last.h )
+	{
+		last = abs;
+		SDL_Rect mp = mpFrame ? mpFrame->getAbsoluteSize() : SDL_Rect{ 0, 0, 0, 0 };
+		SDL_Rect hp = hpFrame ? hpFrame->getAbsoluteSize() : SDL_Rect{ 0, 0, 0, 0 };
+		printlog("[apx-stamina] hud p=%d stamina_abs=%d,%d,%d,%d mp_abs=%d,%d,%d,%d hp_abs=%d,%d,%d,%d xres=%d yres=%d",
+			player.playernum, abs.x, abs.y, abs.w, abs.h, mp.x, mp.y, mp.w, mp.h, hp.x, hp.y, hp.w, hp.h, xres, yres);
+	}
+}
+
 void Player::HUD_t::updateMPBar()
 {
 	if ( !mpFrame )
@@ -35170,7 +35301,7 @@ Frame::result_t doFrames() {
 	    }
 
         static ConsoleVariable<bool> gui_draw("/gui_draw", true);
-        if (*gui_draw) {
+        if (*gui_draw && !apx::headlessOn) { // apx headless: UI logic runs, nothing is drawn
 		    gui->predraw();
 		    gui->draw();
             if (!movie) {

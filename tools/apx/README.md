@@ -37,6 +37,36 @@ pwsh -NoProfile -File tools\apx\build.ps1 -Editor  # -> build\vs2022\Release\bar
   install rules that copy barony.exe into that folder (for us the Steam install, whose barony.exe
   is Apocky's S.A.M build). build.ps1 removes the variable from its own environment.
 
+### Shared compiler cache (ccache, all worktrees)
+
+```
+winget install Ccache.Ccache Ninja-build.Ninja                       # once per machine
+pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache              # -> build\ninja-ccache\barony.exe
+```
+
+`-Cache ccache` builds with Ninja in the VS 2022 Build Tools x64 environment (vcvars64, the same v143
+compiler as the VS build) and runs every cl.exe through ccache. The cache is
+`C:\Apocrypha\cache\ccache` (20 GB cap), shared by every barony-apx worktree: paths are rewritten
+relative to each worktree's root (CCACHE_BASEDIR), so a second worktree reuses what the first compiled.
+Release builds have no /Zi, so there is no shared PDB to defeat the cache; /MP is passed only to the
+Visual Studio generator (CMakeLists.txt). The exe lands in `build\ninja-ccache\` (Ninja is single-config),
+not `build\vs2022\Release\`. `-Cache vs` (default) is the original Visual Studio build, `-Cache none` is
+Ninja without a cache, `-Cache sccache` also works but measured slower.
+
+Measured 2026-10-19 (tools\apx\build_cache_bench.ps1; rows in C:\Apocrypha\diagnostics\barony-build),
+seconds; free commit memory varied 3.4-10.4 GB between steps (other lanes were building):
+
+| mode | cold, worktree A | clean build, worktree B, warm cache | one file changed |
+|---|---|---|---|
+| vs (original) | 184.8 | -- | 9.3 |
+| none (Ninja, control) | 184.0 | 248.5 | 10.0 |
+| sccache 0.18 | 547.3 (1 compiler process at 3.4 GB free) | 56.2 (158/158 hits) | 4.0 |
+| ccache 4.14.1 | 271.3 | 8.6 (158/158 hits) | 3.7 |
+
+F0 parity gate on the exe built entirely from the ccache in a second worktree (barony-apx-cachetest, 158/158 hits): PASS (2026-10-19 05:3x; output C:\Apocrypha\diagnostics\barony-build\parity-ccache).
+
+**Lanes: build with `-Cache ccache`** (exe: `build\ninja-ccache\barony.exe`, DLLs beside it). The default stays `-Cache vs` (exe: `build\vs2022\Release\barony.exe`) until every lane script has moved to the new path.
+
 ## Run against the Steam assets
 
 ```
@@ -90,3 +120,74 @@ From-scratch check (2026-10-18 22:50, MEASURED): `build.ps1 -BuildDir build\vs20
 (clean tree) built barony.exe in 227 s with 2 compiler processes; with that exe a 4-run matrix
 (ours and vanilla, both seeds) gave the same two lines, gate PASS, 0 install files changed
 (`C:\Apocrypha\diagnostics\barony-f0\clean-build`).
+
+## Test farm: -apxheadless and farm.py
+
+`-apxheadless` (or `APX_HEADLESS=1`) runs the game with a hidden window (never focused, so no key
+press reaches it), no audio device, no vsync, no frame limiter, no drawing, and a fixed batch of
+logic ticks per main-loop pass (`APX_HEADLESS_BATCH`, default 50). Logic that lives inside draw paths
+(the crosshair pick) does not run headless; scenario bots that need it stay windowed.
+
+`farm.py` is the one runner for Barony jobs on this PC. A job is a JSON file (exe, args, mode
+headless | windowed | exclusive, timeout_s, lane, optional until regex, env, datadir, cwd); the
+runner starts jobs first in, first out per mode under capacity (headless 6, windowed 3, exclusive 1)
+and a commit-memory budget (headless 2.3 GB, windowed 3.2 GB per game, MEASURED peaks 2.23 and 3.13),
+and follows the run protocol (11-MASTER-PLAN section 5 rule 1): nothing new starts while Apocky
+plays, while any `.WANT` exists or another lane holds `barony\*.LOCK`; windowed jobs hold a D70 slot
+file; an exclusive job writes `barony-want\farm-<id>.WANT` when it is first in line and runs alone.
+Each job gets `C:\Apocrypha\barony-jobs\runs\<id>` as working folder; `done\<id>.json` holds exit
+code, wall time, how it ended (exit, until, timeout, launch_error, orphaned), peak memory, log paths.
+
+```
+python tools\apx\farm.py run --exe build\vs2022\Release\barony.exe --mode headless --timeout 120 ^
+    --lane mylane --until "successfully generated a dungeon with[^.]*\." -- ^
+    -quickstart=barbarian -apxfloor=1 -apxmapseed=1234567 -apxheadless
+python tools\apx\farm.py submit job.json      # returns at once; done\<id>.json appears later
+python tools\apx\farm.py status
+python tools\apx\test_farm.py                 # offline: 13 tests, about 18 s, no Barony
+python tools\apx\headless_gate.py --exe <exe with -apxheadless and F1's floor hash>
+python tools\apx\farm_bench.py --exe <exe> --n 24
+```
+
+`farm.py run` is the one-line submit-and-wait: put it in a lane's single background job; it starts
+the runner (hidden) when none runs and exits with the job's exit code.
+
+Headless gate (2026-10-19, MEASURED, local merge of apx/farm and apx/f1-instruments 5fa55c3a, 22
+jobs in 222 s): 10/10 seeds give the same F1 floor-1 hash and F0 line windowed and headless; seed + 1
+and APX_HASH_POKE=1 change the hash; the headless window was never visible; audio devices opened:
+headless 0, windowed at least 5. Rows: `C:\Apocrypha\diagnostics\barony-farm\gate.jsonl`.
+
+Throughput (2026-10-19, MEASURED, farm_bench.py, 24 floor-1 jobs, same dungeon lines both ways): before,
+one windowed launch at a time: 313.7 s = 275 jobs per hour; after, all 24 submitted to the farm headless
+(code 76491ea6, 13.8 GB commit free, at most 5 games at once by the memory budget): 35.0 s = 2,468 jobs
+per hour, 8.96x. Rows: `C:\Apocrypha\diagnostics\barony-farm\bench.jsonl`.
+## F2: apx-gen floors (`-apxgen`)
+
+`-apxgen` (or `APXGEN=1`) makes `generateDungeon` (src/maps.cpp) build each generated floor with the
+apx-gen core vendored at `src/apx/gen` (apx-gen 7057f3d9, see VENDOR.txt). Without the switch the vanilla
+generator runs unchanged: it is the control. Knobs: `-apxgen-size=N` (tiles per side, default 128),
+`-apxgen-pop=PCT` (population, 100 = 1x), `-apxgen-root=DIR` (kits); `APXGEN_CONTROL=1` moves every key
+behind its own lock (the W2 control, must fail).
+
+What the bridge (src/apx/apx_gen_bridge.cpp) does per floor:
+1. reads the band's floor/wall/ceiling/water/lava tiles from the level set's own template map;
+2. `apx::generate` + `apx::dress_floor` on (map seed, size);
+3. writes the tiles as a tile-only `.lmp` in the run folder and reloads it with `loadMap`, so every
+   size-dependent buffer is Barony's own (vismaps, lightmaps, shoparea);
+4. entity rows: player starts, ladder, doors (a Lock room's every opening gets a locked door; an
+   opening is walled down to one tile only where the floor stays one piece), skeleton keys, torches
+   (one per 6 wall faces, one per 12 corridor tiles), free light sources where a room interior is
+   over 5 tiles from any light, monsters (monstercurve via sprite 10), items, gold, chests, boss,
+   shopkeeper, table/chair fixtures;
+5. in-engine W2 on Barony's tiles and door entities (connected, keys open their locks in order, each
+   lock seals its room, exit reachable) and a floor hash over tiles + entity rows (W5).
+
+Log lines: `apxgen: floor|entities|W2|hash ...`; a failure logs `apxgen: FAILED` then
+`apxgen: FALLBACK` (vanilla floor), never silently. Instruments: `/apxfps_begin [uncap]`,
+`/apxfps_end`, `/apxhall`, `/apxnet`. Gate runs: `-apxhost` / `-apxjoin=ADDR` open, join and ready a
+LAN lobby through the lobby's own calls. Driver: `tools/apx/gate_f2.py` (sweep, w1, mp),
+`tools/apx/gates_f2.ps1`, sheet `tools/apx/f2_sheet.py`, top-down `tools/apx/f2_topdown.py`.
+Results: D46 sheet `C:\Apocrypha\diagnostics\barony-f2\sheet` (game art, outside the repository).
+
+Clients regenerate the floor from the map seed like vanilla clients do; both sides must run with the
+same `-apxgen*` switches (not yet carried in the lobby's svFlags).

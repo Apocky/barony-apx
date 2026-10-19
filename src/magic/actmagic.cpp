@@ -25,6 +25,7 @@
 #include "../prng.hpp"
 #include "magic.hpp"
 #include "../mod_tools.hpp"
+#include "../apx_stamina.hpp"
 
 static ConsoleVariable<float> cvar_magic_fx_light_bonus("/magic_fx_light_bonus", 0.25f);
 static ConsoleVariable<bool> cvar_magic_fx_use_vismap("/magic_fx_use_vismap", true);
@@ -12379,7 +12380,9 @@ void actParticleTimer(Entity* my)
 							{
 								angle += PI * 2;
 							}
-							if ( abs(angle) > 1 * PI / 3 ) { continue; }
+							if ( abs(angle) > apx::sweepArc(parent) ) { continue; }
+							const bool apxSlash = parent->behavior == &actPlayer && apx::moveFor(parent->skill[2]) == apx::SWORD_SLASH;
+							if ( apxSlash && apx::get(parent->skill[2]).sweepExtras >= apx::kSlashExtraTargets ) { continue; } // apx: 2-3 targets total
 							bool oldPassable = entity->flags[PASSABLE];
 							entity->flags[PASSABLE] = false;
 							real_t d = lineTraceTarget(parent, parent->x, parent->y, tangent, STRIKERANGE, LINETRACE_ATK_CHECK_FRIENDLYFIRE
@@ -12393,7 +12396,14 @@ void actParticleTimer(Entity* my)
 							{
 								Sint32 prevAtk = parent->monsterAttack;
 								Sint32 prevAtkTime = parent->monsterAttackTime;
+								if ( apxSlash )
+								{
+									auto& apxS = apx::get(parent->skill[2]);
+									apx::extraScale = apx::kSlashFalloff[std::min(apxS.sweepExtras, 1)]; // apx: falloff per extra target
+									++apxS.sweepExtras;
+								}
 								parent->attack(MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE, Stat::getMaxAttackCharge(parent->getStats()), entity);
+								apx::extraScale = 1.0;
 								parent->monsterAttack = prevAtk;
 								parent->monsterAttackTime = prevAtkTime;
 

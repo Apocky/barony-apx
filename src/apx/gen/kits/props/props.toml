@@ -1,0 +1,317 @@
+# kits/props/props.toml (apx-gen F3): small props, their content kind (gameplay/20 section 3)
+# and where they sit: on (a fixture top), floor, wall (one per wall face).
+
+[[prop]]
+id = "candle"
+content = "light"
+place = "on"
+
+[[prop]]
+id = "lantern"
+content = "light"
+place = "floor"
+
+[[prop]]
+id = "skull"
+content = ""
+place = "on"
+
+[[prop]]
+id = "bones"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "book"
+content = "writing"
+place = "on"
+
+[[prop]]
+id = "scroll"
+content = "writing"
+place = "on"
+
+[[prop]]
+id = "note"
+content = "writing"
+place = "floor"
+
+[[prop]]
+id = "plate"
+content = ""
+place = "on"
+
+[[prop]]
+id = "cup"
+content = ""
+place = "on"
+
+[[prop]]
+id = "coins"
+content = "container"
+place = "on"
+
+[[prop]]
+id = "sack"
+content = "container"
+place = "floor"
+
+[[prop]]
+id = "urn"
+content = "container"
+place = "floor"
+
+[[prop]]
+id = "chest_small"
+content = "container"
+place = "floor"
+
+[[prop]]
+id = "bucket"
+content = "liquid"
+place = "floor"
+
+[[prop]]
+id = "puddle"
+content = "liquid"
+place = "floor"
+
+[[prop]]
+id = "cauldron"
+content = "liquid"
+place = "floor"
+
+[[prop]]
+id = "spikes"
+content = "hazard"
+place = "floor"
+
+[[prop]]
+id = "trap_plate"
+content = "hazard"
+place = "floor"
+
+[[prop]]
+id = "nest"
+content = "den"
+place = "floor"
+
+[[prop]]
+id = "creature_den"
+content = "den"
+place = "floor"
+
+[[prop]]
+id = "keeper"
+content = "npc"
+place = "floor"
+
+[[prop]]
+id = "pilgrim"
+content = "npc"
+place = "floor"
+
+[[prop]]
+id = "chalk_circle"
+content = "writing"
+place = "floor"
+
+[[prop]]
+id = "ore_pile"
+content = "container"
+place = "floor"
+
+[[prop]]
+id = "pickaxe"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "anvil"
+content = "station"
+place = "floor"
+
+[[prop]]
+id = "tools"
+content = "station"
+place = "on"
+
+[[prop]]
+id = "bedroll"
+content = "den"
+place = "floor"
+
+[[prop]]
+id = "weapon_pile"
+content = "container"
+place = "floor"
+
+[[prop]]
+id = "rusty_sword"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "pack"
+content = "container"
+place = "floor"
+
+[[prop]]
+id = "mushrooms"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "crystal"
+content = "light"
+place = "floor"
+
+[[prop]]
+id = "rat_nest"
+content = "den"
+place = "floor"
+
+[[prop]]
+id = "grate"
+content = "liquid"
+place = "floor"
+
+[[prop]]
+id = "incense"
+content = "light"
+place = "on"
+
+[[prop]]
+id = "offering"
+content = "container"
+place = "on"
+
+[[prop]]
+id = "map_scroll"
+content = "writing"
+place = "on"
+
+[[prop]]
+id = "banner"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "sconce"
+content = "light"
+place = "wall"
+
+[[prop]]
+id = "plaque"
+content = "writing"
+place = "wall"
+
+[[prop]]
+id = "graffiti"
+content = "writing"
+place = "wall"
+
+[[prop]]
+id = "chains"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "roots"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "pipes"
+content = "liquid"
+place = "wall"
+
+[[prop]]
+id = "tapestry"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "niche_bones"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "cobweb"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "timber_brace"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "ore_vein"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "mosaic"
+content = "writing"
+place = "wall"
+
+[[prop]]
+id = "shield_mount"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "moss"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "tree"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "bush"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "stump"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "tent"
+content = "den"
+place = "floor"
+
+[[prop]]
+id = "campfire"
+content = "light"
+place = "floor"
+
+[[prop]]
+id = "ruin_stone"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "reeds"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "glowworms"
+content = "light"
+place = "wall"
+
+[[prop]]
+id = "arrow_slit"
+content = ""
+place = "wall"
+
+[[prop]]
+id = "drain_spout"
+content = "liquid"
+place = "wall"
