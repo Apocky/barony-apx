@@ -61,6 +61,7 @@ namespace bf3
 	static double helpMinDist = 1e9;
 	// flow self-test (BF3-5a): APX_BF3_FLOWTEST pairs per floor over APX_BF3_FLOWFLOORS (default 1,2,3,4,5)
 	static int flowTest = 0;
+	static int dumpCreatures = 0;
 	static std::vector<int> ftFloors;
 	static size_t ftI = 0;
 
@@ -108,6 +109,7 @@ namespace bf3
 		moraleTest = envInt("APX_BF3_MORALE", 1);
 		helpTest = envInt("APX_BF3_HELP", 1);
 		flowTest = envInt("APX_BF3_FLOWTEST", 0);
+		dumpCreatures = envInt("APX_BF3_DUMP", 0);
 		{
 			const char* ff = getenv("APX_BF3_FLOWFLOORS");
 			std::string fs = (ff && *ff) ? ff : "1,2,3,4,5";
@@ -299,6 +301,7 @@ namespace bf3
 		else if ( a == "noally" ) { tactics::K.allyavoid = false; }
 		else if ( a == "nojitter" ) { tactics::K.interleave = false; }
 		flow::enabled = a != "noflow";                             // control for flow fields: the engine's A* for every path
+		tactics::setElbow(a == "slots5" ? 16.0 : -1.0);          // slots5: two body widths of swing room -> 5 slots
 		tactics::refresh();
 	}
 
@@ -729,11 +732,11 @@ namespace bf3
 			}
 		}
 		std::vector<std::pair<double, double>> views;   // every walkable tile of the fight: within 5 tiles of the arena
-		for ( int y = pTY - 5; y <= pTY + 5; ++y )
+		for ( int y = pTY - 8; y <= pTY + 8; ++y )
 		{
-			for ( int x = pTX - 5; x <= pTX + 5; ++x )
+			for ( int x = pTX - 8; x <= pTX + 8; ++x )
 			{
-				if ( x < 0 || y < 0 || x >= W || y >= H || hypot(x - pTX, y - pTY) > 5 || dist[x + (size_t)y * W] < 0 ) { continue; }
+				if ( x < 0 || y < 0 || x >= W || y >= H || hypot(x - pTX, y - pTY) > 8 || dist[x + (size_t)y * W] < 0 ) { continue; }
 				views.push_back({ x * 16.0 + 8, y * 16.0 + 8 });
 			}
 		}
@@ -886,6 +889,20 @@ namespace bf3
 				break;
 			case P_MEASURE:
 				sample(pe);
+				if ( dumpCreatures && ticks - phT == (Uint32)(measureTicks / 2) )
+				{
+					for ( Uint32 u : trialUids )
+					{
+						Entity* c = uidToEntity(u);
+						Stat* cs = c ? c->getStats() : nullptr;
+						if ( !c || !cs ) { printlog("[apx] bf3 dump arm %d uid %u gone", (int)armI, u); continue; }
+						tactics::TacticsState* s = tactics::find(c);
+						printlog("[apx] bf3 dump arm %d uid %u hp %d d %.1f ang %.2f st %d tgt %d elig %d reach %d ring %d stance %d flank %d atk %d spec %d ally %d leader %u",
+							(int)armI, u, cs->HP, hypot(c->x - pe->x, c->y - pe->y), atan2(c->y - pe->y, c->x - pe->x), (int)c->monsterState,
+							(Uint32)c->monsterTarget == pe->getUID() ? 1 : 0, tactics::eligible(c, *cs) ? 1 : 0, s ? s->reachIdx : -9, s ? s->ringIdx : -9,
+							s ? (int)s->stance : -9, s ? (int)s->flank : -9, (int)c->monsterAttack, (int)c->monsterSpecialState, (int)c->monsterAllyIndex, cs->leader_uid);
+					}
+				}
 				if ( ticks - phT == (Uint32)(measureTicks / 2) )
 				{
 					std::string k = armKind(arms[armI]);
@@ -1004,7 +1021,8 @@ namespace bf3
 						if ( std::find(helpUids.begin(), helpUids.end(), u) == helpUids.end() ) { c->monsterAcquireAttackTarget(*pe, MONSTER_STATE_PATH); }
 					}
 				}
-				if ( ticks - phT >= 100 )
+				// the call comes from the fight: once pack A's leader is within 3 tiles of the character (or after 10 s)
+				if ( ticks - phT >= 100 && (ticks - phT >= 500 || (uidToEntity(leaderUid) && hypot(uidToEntity(leaderUid)->x - pe->x, uidToEntity(leaderUid)->y - pe->y) <= 3 * 16.0)) )
 				{
 					if ( Entity* v = uidToEntity(leaderUid) ) { v->alertAlliesOnBeingHit(pe, nullptr); } // the engine's own call
 					callTick = ticks;

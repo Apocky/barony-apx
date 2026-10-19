@@ -44,6 +44,7 @@ namespace tactics
 	void init();                                  // read env knobs (after argv parsing)
 	void refresh();                               // recompute `active` after a knob change
 	void setProbeUs(double us);                   // CONTROL for the timing probe: busy-wait per decide (0 = off)
+	void setElbow(double units);                  // swing room between attackers; -1 = one body width (default)
 	void onLevelChange();                         // clears all per-creature state
 
 	// hooks (each called from ONE guarded line in the engine)
