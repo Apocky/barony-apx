@@ -24,6 +24,7 @@
 #include "scores.hpp"
 #include "mod_tools.hpp"
 #include "paths.hpp"
+#include "apx/props.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -282,6 +283,7 @@ void Entity::actFurniture()
 					serverUpdateEntitySkill(entity, 18); //update both the above flags.
 					serverUpdateEntitySkill(entity, 19);
 				}
+				apx::props::onDestroyed(this); // apx BP1: furniture yields (wood, F6)
 				list_RemoveNode(mynode);
 				return;
 			}
@@ -294,6 +296,7 @@ void Entity::actFurniture()
 				{
 					if (inrange[i])
 					{
+						if ( apx::props::onUse(this, i) ) { continue; } // apx BP1: rest, sit, field bench, read
 						switch ( furnitureType )
 						{
 							case FURNITURE_CHAIR:
@@ -1236,6 +1239,7 @@ void Entity::colliderOnDestroy()
 	removeLightField();
 	if ( multiplayer == CLIENT ) { return; }
 	flags[PASSABLE] = true;
+	apx::props::onColliderBreak(this); // apx BP1: bone cage skeleton or trinket, empty cage scrap
 
 	Entity* killer = nullptr;
 	if ( colliderKillerUid != 0 )

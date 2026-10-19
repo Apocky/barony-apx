@@ -161,6 +161,7 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 {
 	const Provider& pv = provider();
 	if ( row.header ) { return false; }
+	if ( tab == 0 && row.row.kind == 1 && station == apx_logic::FIELD ) { msg = "No crafting at a field bench."; return false; } // apx BP1
 	if ( tab == 0 && row.row.kind == 1 )
 	{
 		if ( selectedForm != row.row.uid ) { selectedForm = row.row.uid; return true; } // first press picks the Form
