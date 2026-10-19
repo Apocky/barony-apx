@@ -75,6 +75,8 @@ namespace bf3
 	struct Arm
 	{
 		long long dmg = 0, foreignDmg = 0, hits = 0, attempts = 0, thin = 0, wide = 0, playerMoved = 0, creatureDmg = 0;
+		long long dmgHits = 0, dmgOther = 0, otherEvents = 0;    // damage from swings vs damage over time (bleeding etc.)
+		int acStart = -1, acEnd = -1, gearFixes = 0;            // the character's armour class; gear repaired at the arm's start
 		long long targetLostTicks = 0, ticks = 0, overflowTicks = 0, inReachSum = 0, attackersSum = 0, near6Sum = 0;
 		long long attackersMax = 0, inReachMax = 0, lost = 0, standoffN = 0, spreadN = 0, waitPairN = 0;
 		double standoffSum = 0, spreadSum = 0, waitPairSum = 0;
@@ -164,6 +166,86 @@ namespace bf3
 		return e && std::find(trialUids.begin(), trialUids.end(), e->getUID()) != trialUids.end();
 	}
 
+	// The test character is restored at every arm. Damage per hit drifted across a run and between runs (s12: skeleton
+	// 6.3 -> 9.3 per hit, rats 7.0; s13: 6.3 -> 4.8, rats 2.0 then 5.9 two arms later): its armour wears and breaks
+	// under thousands of blows and effects (bleeding) carried from one arm into the next. A snapshot taken before the
+	// first fight is put back at every arm: attributes, skills, effects, and each equipped item (re-created if broken).
+	struct GearSnap { bool has = false; int type = 0; int status = 0; Sint16 beatitude = 0; Uint32 appearance = 0; bool identified = true; };
+	static bool snapTaken = false;
+	static Sint32 snapAttr[11];
+	static Sint32 snapProf[NUMPROFICIENCIES];
+	static Uint8 snapEff[NUMEFFECTS];
+	static Sint32 snapEffT[NUMEFFECTS];
+	static GearSnap snapGear[10];
+	static Item** gearSlot(Stat* st, int i)
+	{
+		Item** s[10] = { &st->helmet, &st->breastplate, &st->gloves, &st->shoes, &st->shield, &st->weapon, &st->cloak, &st->amulet, &st->ring, &st->mask };
+		return s[i];
+	}
+	static void snapCharacter(Stat* st)
+	{
+		Sint32 a[11] = { st->STR, st->DEX, st->CON, st->INT, st->PER, st->CHR, st->EXP, st->LVL, st->MAXHP, st->MAXMP, st->HUNGER };
+		for ( int i = 0; i < 11; ++i ) { snapAttr[i] = a[i]; }
+		for ( int i = 0; i < NUMPROFICIENCIES; ++i ) { snapProf[i] = st->getProficiency(i); }
+		for ( int i = 0; i < NUMEFFECTS; ++i ) { snapEff[i] = st->getEffectActive(i); snapEffT[i] = st->EFFECTS_TIMERS[i]; }
+		for ( int i = 0; i < 10; ++i )
+		{
+			Item* it = *gearSlot(st, i);
+			snapGear[i] = GearSnap();
+			if ( it )
+			{
+				snapGear[i].has = true; snapGear[i].type = (int)it->type; snapGear[i].status = (int)it->status;
+				snapGear[i].beatitude = it->beatitude; snapGear[i].appearance = it->appearance; snapGear[i].identified = it->identified;
+			}
+		}
+		snapTaken = true;
+		printlog("[apx] bf3 character snapshot: AC %d, STR %d DEX %d CON %d, LVL %d", AC(st), st->STR, st->DEX, st->CON, st->LVL);
+	}
+	static int restoreCharacter(Stat* st) // the gear repaired or re-created
+	{
+		if ( !snapTaken ) { return 0; }
+		st->STR = snapAttr[0]; st->DEX = snapAttr[1]; st->CON = snapAttr[2]; st->INT = snapAttr[3]; st->PER = snapAttr[4]; st->CHR = snapAttr[5];
+		st->EXP = snapAttr[6]; st->LVL = snapAttr[7]; st->MAXHP = snapAttr[8]; st->MAXMP = snapAttr[9]; st->HUNGER = snapAttr[10];
+		st->HP = st->MAXHP; st->MP = st->MAXMP;
+		for ( int i = 0; i < NUMPROFICIENCIES; ++i ) { st->setProficiencyUnsafe(i, snapProf[i]); }
+		for ( int i = 0; i < NUMEFFECTS; ++i ) { st->setEffectValueUnsafe(i, snapEff[i]); st->EFFECTS_TIMERS[i] = snapEffT[i]; }
+		int fixes = 0;
+		for ( int i = 0; i < 10; ++i )
+		{
+			const GearSnap& g = snapGear[i];
+			if ( !g.has ) { continue; }
+			Item** slot = gearSlot(st, i);
+			if ( !*slot || (int)(*slot)->type != g.type )
+			{
+				*slot = newItem((ItemType)g.type, (Status)g.status, g.beatitude, 1, g.appearance, g.identified, &st->inventory);
+				++fixes;
+			}
+			else if ( (int)(*slot)->status != g.status || (*slot)->beatitude != g.beatitude )
+			{
+				(*slot)->status = (Status)g.status;
+				(*slot)->beatitude = g.beatitude;
+				++fixes;
+			}
+		}
+		return fixes;
+	}
+	static std::string gearString(Stat* st) // each slot's status (4 excellent ... 0 broken, - empty)
+	{
+		std::string s;
+		for ( int i = 0; i < 10; ++i ) { Item* it = *gearSlot(st, i); s += it ? std::to_string((int)it->status) : std::string("-"); }
+		return s;
+	}
+	static void freshCharacter(Entity* pe)
+	{
+		Stat* st = pe ? pe->getStats() : nullptr;
+		if ( !st ) { return; }
+		if ( !snapTaken ) { snapCharacter(st); }
+		A.gearFixes = restoreCharacter(st);
+	}
+
+	// a swing by a trial creature at the character is in flight from its timer reset to its damage (same tick)
+	static Uint32 swingUid = 0, swingTick = 0;
+
 	bool absorbPlayerDamage(Entity* player, int amount)
 	{
 		if ( !on || !absorbing || amount >= 0 || !players[0] || player != players[0]->entity ) { return false; }
@@ -172,8 +254,11 @@ namespace bf3
 			// a hit with no trial creature within melee distance (a trap, a stray) is counted apart
 			double nearest = 1e9;
 			for ( Uint32 u : trialUids ) { if ( Entity* c = uidToEntity(u) ) { nearest = std::min(nearest, hypot(c->x - player->x, c->y - player->y)); } }
+			bool swing = swingUid != 0 && swingTick == ticks;
+			swingUid = 0;
 			if ( nearest > STRIKERANGE + 16 ) { A.foreignDmg += -amount; }
-			else { A.dmg += -amount; ++A.hits; A.hitTicks.push_back(ticks); }
+			else if ( swing ) { A.dmg += -amount; A.dmgHits += -amount; ++A.hits; A.hitTicks.push_back(ticks); }
+			else { A.dmg += -amount; A.dmgOther += -amount; ++A.otherEvents; } // bleeding and other damage over time
 		}
 		return true;
 	}
@@ -187,6 +272,7 @@ namespace bf3
 	{
 		(void)dist;
 		if ( !measuring || !players[0] || target != players[0]->entity || !isTrial(my) ) { return; }
+		swingUid = my->getUID(); swingTick = ticks;
 		++A.attempts;
 		++A.swing[my->getUID()].first;
 		A.attemptTicks.push_back(ticks);
@@ -633,6 +719,11 @@ namespace bf3
 			.i("creatures", A.spawned).i("pack_size", packSize)
 			.str("pack_template", "trial-3x4").i("arena_x", pTX).i("arena_y", pTY).d("window_s", secs)
 			.i("dmg", A.dmg).d("dmg_pm", A.dmg / (secs / 60.0)).d("dmg_in_per_player_per_min", A.dmg / (secs / 60.0))
+			.i("dmg_hits", A.dmgHits).i("dmg_other", A.dmgOther).i("other_events", A.otherEvents)
+			.d("dmg_per_hit", A.hits ? (double)A.dmgHits / A.hits : 0).i("ac_start", A.acStart)
+			.i("ac_end", (players[0] && players[0]->entity && players[0]->entity->getStats()) ? AC(players[0]->entity->getStats()) : -1)
+			.str("gear_end", (players[0] && players[0]->entity && players[0]->entity->getStats()) ? gearString(players[0]->entity->getStats()) : std::string("?"))
+			.i("gear_fixes", A.gearFixes)
 			.i("dmg_foreign", A.foreignDmg).i("hits", A.hits).d("burst_share", shareNear(A.hitTicks, 5, true))
 			.i("swing_attempts", A.attempts).d("attempt_lockstep_share", shareNear(A.attemptTicks, 5, false))
 			.d("standoff_mean", A.standoffN ? A.standoffSum / A.standoffN : 0).i("blocked_thin", A.thin).i("blocked_wide", A.wide)
@@ -658,7 +749,7 @@ namespace bf3
 			.i("holder_false_arrive", A.holderFalseArrive)
 			.i("flank_fail_target", C.flank_fail_target).i("flank_fail_progress", C.flank_fail_progress).i("flank_fail_time", C.flank_fail_time)
 			.i("flank_fail_nogoal", C.flank_fail_nogoal).i("flank_fail_noroute", C.flank_fail_noroute)
-			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park).i("no_path_holds", C.no_path_holds)
+			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park).i("no_path_holds", C.no_path_holds).i("arrival_decides", C.arrival_decides)
 			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
 			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
 			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)
@@ -950,6 +1041,7 @@ namespace bf3
 				setArmMonster(arms[armI]);
 				tactics::onLevelChange();
 				A = Arm();
+				freshCharacter(pe);
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
 				if ( armKind(arms[armI]) == "flow" || armKind(arms[armI]) == "noflow" ) { spawnFar(pe, armN(arms[armI])); }
 				else { spawnPacks(pe, armN(arms[armI]), packSize, true); }
@@ -966,9 +1058,10 @@ namespace bf3
 					tactics::timingReset();
 					flow::resetStats();
 					long long k0 = A.keys0, b0 = A.buttons0, m0 = A.motion0, o0 = A.other0;
-					int slots = A.slots, spawned = A.spawned;
+					int slots = A.slots, spawned = A.spawned, fixes = A.gearFixes;
 					A = Arm();
-					A.keys0 = k0; A.buttons0 = b0; A.motion0 = m0; A.other0 = o0; A.slots = slots; A.spawned = spawned;
+					A.keys0 = k0; A.buttons0 = b0; A.motion0 = m0; A.other0 = o0; A.slots = slots; A.spawned = spawned; A.gearFixes = fixes;
+					if ( Stat* pst = pe ? pe->getStats() : nullptr ) { A.acStart = AC(pst); }
 					measuring = true;
 					go(P_MEASURE);
 				}
@@ -1029,6 +1122,7 @@ namespace bf3
 				tactics::onLevelChange();
 				tactics::resetCounters();
 				A = Arm();
+				freshCharacter(pe);
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
 				spawnPacks(pe, packSize, packSize, false, 3 * packSize);
 				firstRegroup = 0;
@@ -1122,6 +1216,7 @@ namespace bf3
 				tactics::onLevelChange();
 				tactics::resetCounters();
 				A = Arm();
+				freshCharacter(pe);
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
 				if ( !hsSearched ) { findHiddenSpot(); }
 				firstHelpArrival = 0; helpMinDist = 1e9; callTick = 0;

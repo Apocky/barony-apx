@@ -606,7 +606,18 @@ namespace tactics
 		if ( s.self != my ) { s = TacticsState(); s.self = my; }
 		if ( !s.seen ) { s.seen = true; s.homeX = my->x; s.homeY = my->y; s.morale = MORALE_START; }
 		holdInFight(my, s);
-		if ( (ticks + uid) % DECIDE != 0 ) { return; }
+		// A creature newly within reach of the fight it hunts decides at once, and its target's slots are reassigned at
+		// once: waiting up to DECIDE ticks for its staggered decide let it walk into reach unassigned and swing (s13-excl
+		// 150-creature arms: up to 9 attackers on 7 slots in 15 to 139 of 2000 ticks).
+		bool arrival = false;
+		if ( (ticks + uid) % DECIDE != 0 )
+		{
+			Entity* t0 = my->monsterTarget ? uidToEntity((Uint32)my->monsterTarget) : nullptr;
+			if ( !(K.reach && t0 && (t0->behavior == &actPlayer || t0->behavior == &actMonster) && s.slotTarget != (Uint32)t0->getUID()
+				&& s.stance == STANCE_NORMAL && s.flank != 1 && hypot(t0->x - my->x, t0->y - my->y) <= ENGAGE_R + TILE) ) { return; }
+			arrival = true;
+			++C.arrival_decides;
+		}
 		Timer tm;
 		HitSave hs;
 		++C.decides;
@@ -640,7 +651,7 @@ namespace tactics
 					++C.promoted;
 				}
 				TargetSlots& ts = T[target->getUID()];
-				if ( !ts.assigned || ticks - ts.assignTick >= (Uint32)DECIDE ) { assignTarget(target); }
+				if ( !ts.assigned || ticks - ts.assignTick >= (Uint32)DECIDE || arrival ) { assignTarget(target); }
 				if ( s.reachIdx >= 0 && K.allyavoid && d < bodyR(target) + STRIKERANGE + 4 )
 				{
 					if ( corridorBlocked(my, target) )
@@ -653,7 +664,7 @@ namespace tactics
 				if ( s.ringIdx >= 0 ) { ++C.ring_holds; }
 			}
 		}
-		if ( !managed && s.stance == STANCE_NORMAL && s.flank != 1 ) { s.reachIdx = -1; s.ringIdx = -1; s.ringSlot = 0; }
+		if ( !managed && s.stance == STANCE_NORMAL && s.flank != 1 ) { s.reachIdx = -1; s.ringIdx = -1; s.ringSlot = 0; s.slotTarget = 0; } // a return is an arrival
 		if ( gProbeUs > 0 ) { while ( tm.us() < gProbeUs ) {} } // CONTROL only: the probe must see this
 		addDecideUs(tm.us());
 	}

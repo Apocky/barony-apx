@@ -169,6 +169,9 @@ def summarise(results, args):
                                   "attackers_max": max(x["attackers_max_per_target"] for x in v), "reach_slots": v[0].get("reach_slots"),
                                   "friendly_fire_mean": round(mean([x.get("friendly_fire_dmg", 0) for x in v]), 1),
                                   "hits_mean": round(mean([x.get("hits", 0) for x in v]), 1),
+                                  "dmg_per_hit": round(sum(x.get("dmg_hits", 0) for x in v) / max(1, sum(x.get("hits", 0) for x in v)), 2),
+                                  "dmg_other_mean": round(mean([x.get("dmg_other", 0) for x in v]), 1),
+                                  "ac_start": sorted(set(x.get("ac_start", -1) for x in v)), "gear_fixes": sum(x.get("gear_fixes", 0) for x in v),
                                   "reach_overflow": sum(x.get("reach_overflow", 0) for x in v), "group_kind": v[0].get("group_kind"),
                                   "stuck": sum(x.get("stuck", 0) for x in v), "stuck_episodes": sum(x.get("stuck_episodes", 0) for x in v),
                                   "steer_ticks": sum(x.get("steer_ticks", 0) for x in v), "no_path_holds": sum(x.get("no_path_holds", 0) for x in v)}
