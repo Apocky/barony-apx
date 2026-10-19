@@ -56,6 +56,8 @@ bool apxgenParseArgument(const char* a)
 	if ( !strncmp(a, "-apxgen-size=", 13) ) { apxgen.enabled = true; apxgen.size = atoi(a + 13); return true; }
 	if ( !strncmp(a, "-apxgen-pop=", 12) ) { apxgen.populationPct = atoi(a + 12); return true; }
 	if ( !strncmp(a, "-apxgen-root=", 13) ) { apxgen.kitsRoot = a + 13; return true; }
+	if ( !strcmp(a, "-apxhost") ) { apxgen.lobby = 1; return true; }
+	if ( !strncmp(a, "-apxjoin=", 9) ) { apxgen.lobby = 2; apxgen.joinAddress = a + 9; return true; }
 	return false;
 }
 
@@ -305,7 +307,50 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	// locked door in every opening, the opening walled down to one tile (Barony doors are one tile
 	// wide; counted as narrowed); an ordinary room gets an open door where an opening is already one
 	// tile wide. The in-engine W2 below re-checks reach on the resulting tiles.
-	int nNarrowed = 0, nLockOpenings = 0, nLockUnsealed = 0;
+	int nNarrowed = 0, nLockOpenings = 0, nLockUnsealed = 0, nWallRejected = 0;
+	// a narrowing wall is kept only if the floor stays one piece: the start's component loses exactly
+	// that tile (doors count as open). A wall that would cut a route is reverted and counted.
+	Placed origin = { -1, -1 };
+	if ( const apx::RoomRow* er = roomOf(entranceNode) )
+	{
+		for ( int y = er->z0; y < er->z1 && origin.x < 0; ++y )
+		{
+			for ( int x = er->x0; x < er->x1 && origin.x < 0; ++x ) { if ( isWalkTile(x, y) ) { origin = { x, y }; } }
+		}
+	}
+	std::vector<char> seenR((size_t)W * H);
+	auto reachCount = [&]() {
+		if ( origin.x < 0 || !isWalkTile(origin.x, origin.y) ) { return -1; }
+		std::fill(seenR.begin(), seenR.end(), 0);
+		std::vector<int> st{ origin.y * W + origin.x };
+		seenR[st[0]] = 1;
+		int n = 0;
+		while ( !st.empty() )
+		{
+			int c = st.back(); st.pop_back(); ++n;
+			int cx = c % W, cy = c / W;
+			static const int DX[4] = { 1, -1, 0, 0 }, DY[4] = { 0, 0, 1, -1 };
+			for ( int d = 0; d < 4; ++d )
+			{
+				int nx = cx + DX[d], ny = cy + DY[d], ni = ny * W + nx;
+				if ( seenR[ni] || !isWalkTile(nx, ny) ) { continue; }
+				seenR[ni] = 1;
+				st.push_back(ni);
+			}
+		}
+		return n;
+	};
+	int reachBase = reachCount();
+	auto wallIfSafe = [&](int x, int y) {
+		if ( isWall(x, y) ) { return false; }
+		const Sint32 old = tileAt(x, y, 1);
+		tileAt(x, y, 1) = tx.wall;
+		const int n = reachCount();
+		if ( reachBase >= 0 && n == reachBase - 1 ) { reachBase = n; ++nNarrowed; return true; }
+		tileAt(x, y, 1) = old;
+		++nWallRejected;
+		return false;
+	};
 	for ( auto& ro : f.rooms )
 	{
 		const bool lock = f.mission.nodes[ro.node].kind == apx::Kind::Lock;
@@ -341,8 +386,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 						{
 							if ( c == pick ) { continue; }
 							Placed q = ringTile(c);
-							tileAt(q.x, q.y, 1) = tx.wall;
-							++nNarrowed;
+							wallIfSafe(q.x, q.y);
 						}
 					}
 					Placed q = ringTile(pick);
@@ -353,11 +397,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 						for ( int sgn = -1; sgn <= 1; sgn += 2 )
 						{
 							const int cx = q.x + sgn * lx, cy = q.y + sgn * ly;
-							if ( cx > 0 && cy > 0 && cx < W - 1 && cy < H - 1 && !isWall(cx, cy) && !used[(size_t)cy * W + cx] )
-							{
-								tileAt(cx, cy, 1) = tx.wall;
-								++nNarrowed;
-							}
+							if ( cx > 0 && cy > 0 && cx < W - 1 && cy < H - 1 && !used[(size_t)cy * W + cx] ) { wallIfSafe(cx, cy); }
 						}
 					}
 					// the ring runs along x on north/south sides: walls east-west of the door, passage along y
@@ -405,8 +445,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 							{
 								if ( c == pick ) { continue; }
 								Placed q = ringTile(c);
-								tileAt(q.x + ix, q.y + iy, 1) = tx.wall;
-								++nNarrowed;
+								wallIfSafe(q.x + ix, q.y + iy);
 							}
 							Placed rq = ringTile(pick);
 							Placed d = { rq.x + ix, rq.y + iy };
@@ -414,7 +453,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 							for ( int sgn = -1; sgn <= 1; sgn += 2 )
 							{
 								const int cx = d.x + sgn * lx, cy = d.y + sgn * ly;
-								if ( !isWall(cx, cy) && !used[(size_t)cy * W + cx] ) { tileAt(cx, cy, 1) = tx.wall; ++nNarrowed; }
+								if ( !used[(size_t)cy * W + cx] ) { wallIfSafe(cx, cy); }
 							}
 							const bool shaped = horiz ? (isWall(d.x - 1, d.y) && isWall(d.x + 1, d.y)) : (isWall(d.x, d.y - 1) && isWall(d.x, d.y + 1));
 							if ( shaped && !used[(size_t)d.y * W + d.x] && isWalkTile(d.x, d.y) )
@@ -765,8 +804,8 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	printlog("apxgen: floor seed %u level %d set '%s' size %dx%d theme %s attempt %d rooms %d corridors %d tiles; textures floor %d wall %d ceiling %d water %d lava %d; water %d lava %d pit %d\n",
 		seed, currentlevel, levelset, W, H, f.theme.c_str(), f.attempt, (int)f.rooms.size(), f.corridor_tiles,
 		tx.floor, tx.wall, tx.ceiling, tx.water, tx.lava, nWater, nLava, nPit);
-	printlog("apxgen: entities %d: starts %d doors %d locked %d lock-openings %d lock-unsealed %d narrowed %d torches %d chests %d keys %d boss %d merchant %d monsters %d items %d gold %d fixtures %d unmapped-dress %d\n",
-		nEntities, nStarts, nDoors, nLocked, nLockOpenings, nLockUnsealed, nNarrowed, nTorches, nChests, nKeys, nBoss, nMerchant, nMonsters, nItems, nGold, nFixtures, nUnmapped);
+	printlog("apxgen: entities %d: starts %d doors %d locked %d lock-openings %d lock-unsealed %d narrowed %d wall-rejected %d torches %d chests %d keys %d boss %d merchant %d monsters %d items %d gold %d fixtures %d unmapped-dress %d\n",
+		nEntities, nStarts, nDoors, nLocked, nLockOpenings, nLockUnsealed, nNarrowed, nWallRejected, nTorches, nChests, nKeys, nBoss, nMerchant, nMonsters, nItems, nGold, nFixtures, nUnmapped);
 	printlog("apxgen: W2 %s connected %d (%d/%d walk tiles) locks %d (%d/%d opened) exit %d keys-behind-own-lock %d control %d locks-unsealed %d\n",
 		w2 ? "PASS" : "FAIL", (int)w2Connected, reached, walkTotal, (int)w2Locks, (int)open.size(), (int)lockIds.size(), (int)w2Exit,
 		keysBehindOwnLock, apxgen.control, locksUnsealed);

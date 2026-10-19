@@ -1,5 +1,6 @@
 #include "../main.hpp"
 #include "MainMenu.hpp"
+#include "../apx/apx_gen_bridge.hpp"
 #include "Frame.hpp"
 #include "Image.hpp"
 #include "Field.hpp"
@@ -26281,7 +26282,71 @@ failed:
 		}
 	}
 
+	// apx gate runs (tools/apx/gate_f2.py): -apxhost opens a LAN lobby and readies once a client is
+	// in and ready; -apxjoin=ADDR joins it and readies. Only the lobby's own calls are used.
+	static void apxAutoLobbyTick(bool ingame) {
+		static int state = 0;
+		static Uint32 since = 0;
+		if (!apxgen.lobby || ingame || !main_menu_frame || main_menu_frame->isToBeDeleted()) {
+			return;
+		}
+		if (fadeout) {
+			since = ticks;
+			return;
+		}
+		if (ticks - since < TICKS_PER_SECOND) {
+			return; // let each screen settle for a second
+		}
+		auto lobby = main_menu_frame->findFrame("lobby");
+		switch (state) {
+		case 0: // title screen: open or join
+			if (lobby) { state = 1; break; }
+			if (apxgen.lobby == 1) {
+				auto dummy = main_menu_frame->addButton("apx_dummy");
+				hostLANLobby(*dummy);
+				printlog("apxlobby: hosting LAN lobby");
+			} else {
+				closeNetworkInterfaces();
+				directConnect = true;
+				(void)connectToServer(apxgen.joinAddress.c_str(), nullptr, LobbyType::LobbyLAN);
+				printlog("apxlobby: joining %s", apxgen.joinAddress.c_str());
+			}
+			state = 1;
+			since = ticks;
+			break;
+		case 1: // in the lobby: make our character
+			if (!lobby) { return; }
+			if (apxgen.lobby == 1) {
+				bool clientIn = false;
+				for (int c = 1; c < MAXPLAYERS; ++c) { clientIn = clientIn || !client_disconnected[c]; }
+				if (!clientIn) { return; }
+			}
+			createCharacterCard(clientnum);
+			printlog("apxlobby: character card %d", clientnum);
+			state = 2;
+			since = ticks;
+			break;
+		case 2: // ready (the host only once every connected client shows ready)
+			if (!lobby) { return; }
+			if (apxgen.lobby == 1) {
+				for (int c = 1; c < MAXPLAYERS; ++c) {
+					if (client_disconnected[c]) { continue; }
+					auto card = lobby->findFrame((std::string("card") + std::to_string(c)).c_str());
+					auto backdrop = card ? card->findImage("backdrop") : nullptr;
+					if (!backdrop || backdrop->path != "*images/ui/Main Menus/Play/PlayerCreation/UI_Ready_Window00.png") { return; }
+				}
+			}
+			createReadyStone(clientnum, true, true);
+			printlog("apxlobby: ready %d", clientnum);
+			state = 3;
+			break;
+		default:
+			break;
+		}
+	}
+
 	void doMainMenu(bool ingame) {
+		apxAutoLobbyTick(ingame);
         if (video_refresh) {
 			Frame::guiResize(0, 0); // resize gui for new aspect ratio
             createMainMenu(!intro);

@@ -11,6 +11,8 @@ struct ApxGenConfig
 	int populationPct = 100;   // -apxgen-pop=N (percent of the 1x density)
 	std::string kitsRoot;      // -apxgen-root=DIR or APXGEN_ROOT; default: the vendored copy
 	int control = 0;           // APXGEN_CONTROL=1: move each key behind its own lock (W2 must fail)
+	int lobby = 0;             // gate runs: 1 = -apxhost (open a LAN lobby), 2 = -apxjoin=ADDR (join one)
+	std::string joinAddress;
 };
 extern ApxGenConfig apxgen;
 

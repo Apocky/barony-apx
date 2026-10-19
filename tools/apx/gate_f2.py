@@ -224,9 +224,89 @@ def session(label, exe, seeds, extra, args, rows_out, w1=False):
             cache.unlink()
 
 
+RE_NET = re.compile(r"apxnet: host (\d+) bytes (\d+) packets (\d+) seconds ([\d.]+) bytes/s (\d+) map (\d+)x(\d+)")
+
+
+def mp_session(exe, seed, size, args):
+    """Host + client on this PC (two processes, both ours, under our one lock). The host drives;
+    both logs must show the same apxgen hash; the host's /apxnet gives bytes/s sent per client."""
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    env = {"APXGEN": "1", "APXGEN_SIZE": str(size)} if size != "vanilla" else {}
+    dirs, procs, logs = {}, {}, {}
+    row = {"ts": datetime.datetime.now().astimezone().isoformat(timespec="seconds"), "kind": "mp", "seed_asked": seed,
+           "size": size, "env": env, "finish": "error", "flags": []}
+    t0 = time.monotonic()
+    deadline = t0 + args.run_timeout + 120
+    try:
+        for role, extra in (("host", ["-apxhost"]), ("client", ["-apxjoin=127.0.0.1"])):
+            d = args.out / "runs" / f"{stamp}-mp{size}-{role}"
+            d.mkdir(parents=True)
+            dirs[role], logs[role] = d, d / "log.txt"
+            e = os.environ.copy()
+            for k in list(e):
+                if k.startswith("APXGEN"):
+                    e.pop(k)
+            e["BARONY_DATADIR"] = str(args.datadir)
+            e.update(env)
+            procs[role] = pf.subprocess.Popen([str(exe)] + extra, cwd=d, env=e)
+            if role == "host":
+                pf.wait_for(logs["host"], re.compile(r"apxlobby: hosting"), deadline, procs["host"])
+        row["run_dirs"] = {k: str(v) for k, v in dirs.items()}
+        for role in ("host", "client"):
+            pf.wait_for(logs[role], re.compile(r"apxlobby: ready"), deadline, procs[role])
+            pf.wait_for(logs[role], pf.RE_START_MAP, deadline, procs[role])
+        row["t_lobby_to_game_s"] = round(time.monotonic() - t0, 1)
+        hwnd = None
+        while hwnd is None and time.monotonic() < deadline:
+            hwnd = pf.find_game_window(procs["host"].pid)
+            time.sleep(0.25)
+        chwnd = pf.find_game_window(procs["client"].pid)
+        for h in (hwnd, chwnd):
+            if h:
+                pf.keep_visible(h)
+        time.sleep(args.settle + 2)
+        off = len(pf.read_log(logs["host"]))
+        coff = len(pf.read_log(logs["client"]))
+        pf.chat_command(hwnd, "/enablecheats")
+        pf.chat_command(hwnd, "/god")
+        off, text, wall_s = next_floor(hwnd, procs["host"], logs["host"], seed, off, deadline)
+        row["host"] = parse_floor(text)
+        m, _ = pf.wait_for(logs["client"], RE_HASH if size != "vanilla" else RE_LEVEL_DONE, deadline, procs["client"], coff)
+        ctext = pf.read_log(logs["client"])[coff:]
+        row["client"] = parse_floor(ctext)
+        row["same_hash"] = row["host"].get("hash") is not None and row["host"].get("hash") == row["client"].get("hash")
+        row["same_counts"] = row["host"].get("generated") == row["client"].get("generated")
+        time.sleep(3)
+        pf.chat_command(hwnd, "/apxnet")                       # reset the window
+        time.sleep(args.net_seconds)
+        pf.chat_command(hwnd, "/apxnet")
+        time.sleep(1.5)
+        nets = [x.groups() for x in RE_NET.finditer(pf.read_log(logs["host"])[off:])]
+        if nets:
+            g = nets[-1] if len(nets) == 1 else nets[-1]
+            row["net"] = {"host_index": int(g[0]), "bytes": int(g[1]), "packets": int(g[2]), "seconds": float(g[3]),
+                          "bytes_per_s": int(g[4])}
+            row["net_all"] = [list(x) for x in nets]
+        row["finish"] = "ok"
+    except Exception as e:  # noqa: BLE001
+        row["error"] = f"{type(e).__name__}: {e}"
+        row["finish"] = "timeout" if isinstance(e, TimeoutError) else "error"
+    finally:
+        for role, p in procs.items():
+            h = pf.find_game_window(p.pid) if p.poll() is None else None
+            row.setdefault("stopped", {})[role] = pf.stop(p, h)
+        row["t_total_s"] = round(time.monotonic() - t0, 1)
+    with open(args.out / "f2.jsonl", "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")
+    print(f"[f2] mp {size} seed {seed}: {row['finish']} same_hash={row.get('same_hash')} "
+          f"host={row.get('host', {}).get('hash')} client={row.get('client', {}).get('hash')} net={row.get('net')} "
+          f"err={row.get('error', '')}", flush=True)
+    return row
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["sweep", "w1", "one"])
+    ap.add_argument("mode", choices=["sweep", "w1", "one", "mp"])
     ap.add_argument("--exe", type=Path, required=True)
     ap.add_argument("--datadir", type=Path, default=pf.STEAM_DIR)
     ap.add_argument("--out", type=Path, default=Path(r"C:\Apocrypha\diagnostics\barony-f2"))
@@ -241,6 +321,7 @@ def main():
     ap.add_argument("--run-timeout", type=float, default=150.0)
     ap.add_argument("--settle", type=float, default=4.0)
     ap.add_argument("--shot-delay", type=float, default=4.0)
+    ap.add_argument("--net-seconds", type=float, default=20.0)
     ap.add_argument("--lock-dir", type=Path, default=None)
     ap.add_argument("--wait-foreign", type=float, default=1800.0)
     args = ap.parse_args()
@@ -259,6 +340,9 @@ def main():
             for i in range(0, len(seeds), args.per_process):
                 session(f"apx{args.size}-c{args.control}-{seeds[i]}", args.exe, seeds[i:i + args.per_process],
                         {"env": env}, args, rows)
+        elif args.mode == "mp":
+            for s in args.sizes.split(","):
+                mp_session(args.exe, seeds[0], s, args)
         else:
             for s in args.sizes.split(","):
                 extra = {"env": {}} if s == "vanilla" else {"env": {"APXGEN": "1", "APXGEN_SIZE": s}}
