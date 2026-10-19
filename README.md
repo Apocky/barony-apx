@@ -311,6 +311,25 @@ Not done / not checked (H1a):
 - Spec rows not built here: Vertical (30 percent with a second level, pit, shaft or balcony),
   interactive materials, the director's three-candidate pick, decay stages, crafting depth.
 
+## Small floor sizes (F2-integration report)
+
+MEASURED 2026-10-19, seeds 3001-3050, `--size N`: every failure below 128 was "N BSP cells for N
+nodes", fewer BSP cells than mission rooms. Fix: when cells < nodes + 2 the BSP splits again with a
+smaller largest leaf (24, 22, ... down to 2 * leaf_min - 1), `Params::adaptive_leaf`,
+`--no-adaptive-leaf` is the control.
+
+| size | before (adaptive off) | after |
+|---|---|---|
+| 48 | 0 / 50 | 0 / 50 |
+| 64 | 0 / 50 | 0 / 50 |
+| 80 | 8 / 50 | 35 / 50 |
+| 96 | 48 / 50 | 50 / 50 |
+| 128 | 1000 / 1000 | 1000 / 1000 (retried 1; sites 200 / 200) |
+
+48 and 64 cannot hold the mission: a 62-tile interior with 10-tile minimum cells holds at most 36
+cells, the mission has 24-40 rooms, and two bosses need cells of 16 or more. That needs a design
+decision (floor size at least 96, a mission scaled to the floor, or smaller rooms), not a patch.
+
 ## Not done / not checked (F3)
 
 - ASSUMED: 1 tile = 1 m^2 for the density rule (`DressLib::m2_per_tile`); no spec gives Barony's

@@ -193,6 +193,16 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
 
     std::vector<Rect> cells;
     bsp(r, {1, 1, S - 1, S - 1}, P, cells);
+    // too few cells for the mission (small floors): split again with a smaller largest leaf, down
+    // to 2 * leaf_min - 1 (the smallest a cut can still halve); counted in f.leaf_shrinks
+    for (int lm = P.leaf_max - 2; (int)cells.size() < N + 2 && P.adaptive_leaf && lm >= 2 * P.leaf_min - 1; lm -= 2) {
+        Params Q = P;
+        Q.leaf_max = lm;
+        cells.clear();
+        Rng r2(hash_words({seed, 0x1EAF, (uint64_t)attempt, (uint64_t)lm}));
+        bsp(r2, {1, 1, S - 1, S - 1}, Q, cells);
+        ++f.leaf_shrinks;
+    }
     f.cells = (int)cells.size();
     if ((int)cells.size() < N) return std::to_string(cells.size()) + " BSP cells for " + std::to_string(N) + " nodes";
 
