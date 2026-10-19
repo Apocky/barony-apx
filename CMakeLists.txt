@@ -503,6 +503,7 @@ message("***************************")
 
 
 add_subdirectory(src)
+add_subdirectory(third_party/lua) # apx: Lua 5.4 content layer (D52)
 if( WIN32 )
 	set(GAME_RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/barony.rc")
 	set(EDITOR_RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/editor.rc")
@@ -564,6 +565,8 @@ if (GAME_ENABLED)
 	endif()
 	target_link_libraries(barony ${SDL2_LIBRARIES} ${SDL2_LIBRARY} ${SDL2IMAGE_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_TTF_LIBRARIES} ${SDL2TTF_LIBRARY})
 	target_link_libraries(barony ${GLEW_LIBRARIES}) # apx: see find_package(GLEW) above
+	target_link_libraries(barony apx_lua)
+	add_custom_command(TARGET barony POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/scripts" "$<TARGET_FILE_DIR:barony>/scripts") # apx: Lua scripts
 	if (STEAMWORKS_ENABLED)
 		target_link_libraries(barony ${STEAMWORKS_LIBRARY})
 		target_link_libraries(barony ${NFD_LIBRARY})

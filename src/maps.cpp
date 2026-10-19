@@ -28,6 +28,7 @@
 #include "mod_tools.hpp"
 #include "menu.hpp"
 #include "ui/MainMenu.hpp"
+#include "apx/lua_layer.hpp"
 
 int startfloor = 0;
 BaronyRNG map_rng;
@@ -10987,6 +10988,8 @@ void assignActions(map_t* map)
 #endif
 
     keepInventoryGlobal = svFlags & SV_FLAG_KEEPINVENTORY;
+
+	apxLuaLevelEntered();
 }
 
 int mapLevel(int player, int radius, int _x, int _y, bool usingSpell)
