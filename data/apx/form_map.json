@@ -1,0 +1,3564 @@
+{
+ "AMULET_BURNINGRESIST": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "AMULET_LIFESAVING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "AMULET_MAGICREFLECTION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "AMULET_POISONRESISTANCE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "AMULET_SEXCHANGE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "AMULET_STRANGULATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "AMULET_WATERBREATHING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "ANELACE_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "ARTIFACT_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_BOW": {
+  "family": "Bows",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_CLOAK": {
+  "family": "Cloth",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_GLOVES": {
+  "family": "Armour",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_HELM": {
+  "family": "Armour",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_ORB_BLUE": {
+  "family": "Plain",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_ORB_GREEN": {
+  "family": "Plain",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_ORB_PURPLE": {
+  "family": "Plain",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_ORB_RED": {
+  "family": "Plain",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_SPEAR": {
+  "family": "Hafts",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "ARTIFACT_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "BANDIT_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "BLACKIRON_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_CROSSBOW": {
+  "family": "Bows",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_DART": {
+  "family": "Plain",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_GAUNTLETS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_HELM": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BLACKIRON_TRIDENT": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "BOLAS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "BONE_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_BRACERS": {
+  "family": "Armour",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_HELM": {
+  "family": "Armour",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_SHORTBOW": {
+  "family": "Bows",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_SPEAR": {
+  "family": "Hafts",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BONE_THROWING": {
+  "family": "Plain",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "BOOMERANG": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "BRACERS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "BRACERS_CONSTITUTION": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "BRANCH_BOW": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "BRANCH_BOW_INFECTED": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "hide"
+  ]
+ },
+ "BRANCH_STAFF": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "BRASS_KNUCKLES": {
+  "family": "Fists",
+  "materials": [
+   "iron",
+   "hide"
+  ]
+ },
+ "BRONZE_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "bronze",
+   "wood",
+   "hide"
+  ]
+ },
+ "BRONZE_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "bronze",
+   "wood",
+   "hide"
+  ]
+ },
+ "BRONZE_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "bronze",
+   "wood",
+   "hide"
+  ]
+ },
+ "BRONZE_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "bronze",
+   "wood",
+   "hide"
+  ]
+ },
+ "BRONZE_TOMAHAWK": {
+  "family": "Plain",
+  "materials": [
+   "bronze",
+   "wood",
+   "hide"
+  ]
+ },
+ "CHAIN_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "CHAIN_COIF": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "CHAIN_GLOVES": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "CHAIN_HAUBERK": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "CLAYMORE_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "CLEAT_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "CLOAK": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_BACKPACK": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_BLACK": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_DENDRITE": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_GUARDIAN": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_INVISIBILITY": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_MAGICREFLECTION": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_PROTECTION": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "CLOAK_SILVER": {
+  "family": "Cloth",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "COMPOUND_BOW": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "CROSSBOW": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "hide"
+  ]
+ },
+ "CRYSTAL_BATTLEAXE": {
+  "family": "Hafts",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_GLOVES": {
+  "family": "Armour",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_HELM": {
+  "family": "Armour",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_SHURIKEN": {
+  "family": "Plain",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_SPEAR": {
+  "family": "Hafts",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "CRYSTAL_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "DUST_BALL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "ENCHANTED_FEATHER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_APPLE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_BLOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_BREAD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_CHEESE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_CREAMPIE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_FISH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_MEAT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_NUT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION_BITTER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION_HEARTY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION_HERBAL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION_SOUR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION_SPICY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_RATION_SWEET": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_SHROOM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_TIN": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "FOOD_TOMALLEY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GAUNTLETS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "GAUNTLETS_STRENGTH": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "GEM_AMBER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_AMETHYST": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_AQUAMARINE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_CITRINE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_DIAMOND": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_EMERALD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_FLUORITE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_GARNET": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_GLASS": {
+  "family": "Plain",
+  "materials": [
+   "glass",
+   "copper"
+  ]
+ },
+ "GEM_JACINTH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_JADE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_JETSTONE": {
+  "family": "Plain",
+  "materials": [
+   "stone",
+   "wood"
+  ]
+ },
+ "GEM_JEWEL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_LUCK": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_OBSIDIAN": {
+  "family": "Plain",
+  "materials": [
+   "obsidian",
+   "wood",
+   "hide"
+  ]
+ },
+ "GEM_OPAL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_ROCK": {
+  "family": "Plain",
+  "materials": [
+   "stone",
+   "wood"
+  ]
+ },
+ "GEM_RUBY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GEM_SAPPHIRE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "GLOVES": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "GLOVES_DEXTERITY": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "GREASE_BALL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "HAT_BANDANA": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_BEAR_HOOD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_BOUNTYHUNTER": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_BUNNY_HOOD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_BYCOCKET": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CHEF": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CIRCLET": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CIRCLET_SORCERY": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CIRCLET_THAUMATURGY": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CIRCLET_WISDOM": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CROWN": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_CROWNED_HELM": {
+  "family": "Armour",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_FELT": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_FEZ": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_HEADDRESS": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_HOOD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_HOOD_APPRENTICE": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_HOOD_ASSASSIN": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_HOOD_RED": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_HOOD_SILVER": {
+  "family": "Cloth",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "HAT_HOOD_WHISPERS": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_JESTER": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_LAURELS": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_MITER": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_PHRYGIAN": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_PLUMED_CAP": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_SILKEN_BOW": {
+  "family": "Cloth",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "HAT_STAG_HOOD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_TOPHAT": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_TURBAN": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_WARM": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_WIZARD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HAT_WOLF_HOOD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "HEALER_DOUBLET": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "HEAVY_CROSSBOW": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "hide"
+  ]
+ },
+ "HELM_MINING": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "HOOD_TEAL": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "INSTRUMENT_DRUM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "INSTRUMENT_FLUTE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "INSTRUMENT_HORN": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "INSTRUMENT_LUTE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "INSTRUMENT_LYRE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "IRON_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_BOOTS_WATERWALKING": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_DAGGER": {
+  "family": "Blades",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_HELM": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_KNUCKLES": {
+  "family": "Fists",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_PAULDRONS": {
+  "family": "Plain",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_SPEAR": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "IRON_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "KEY_BONE": {
+  "family": "Plain",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "KEY_BRONZE": {
+  "family": "Plain",
+  "materials": [
+   "bronze",
+   "wood",
+   "hide"
+  ]
+ },
+ "KEY_CRYSTAL": {
+  "family": "Plain",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "KEY_GOLD": {
+  "family": "Plain",
+  "materials": [
+   "gold",
+   "oak",
+   "hide"
+  ]
+ },
+ "KEY_IRON": {
+  "family": "Plain",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "KEY_MACHINE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "KEY_SILVER": {
+  "family": "Plain",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "KEY_STONE": {
+  "family": "Plain",
+  "materials": [
+   "stone",
+   "wood"
+  ]
+ },
+ "LANCE_SPEAR": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "LEATHER_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "hide",
+   "cloth"
+  ]
+ },
+ "LEATHER_BOOTS_SPEED": {
+  "family": "Armour",
+  "materials": [
+   "hide",
+   "cloth"
+  ]
+ },
+ "LEATHER_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "hide",
+   "cloth"
+  ]
+ },
+ "LEATHER_HELM": {
+  "family": "Armour",
+  "materials": [
+   "hide",
+   "cloth"
+  ]
+ },
+ "LOAFERS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "LONGBOW": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "MACHINIST_APRON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_BLEED": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_CHARM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_COLD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_DIGGING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_FIRE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_LIGHT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_LIGHTNING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_LOCKING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_MAGICMISSILE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_OPENING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_POISON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_SCEPTER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_SLEEP": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_SLOW": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MAGICSTAFF_STONEBLOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone",
+   "wood"
+  ]
+ },
+ "MAGICSTAFF_SUMMON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "MASK_ARTIFACT_VISOR": {
+  "family": "Armour",
+  "materials": [
+   "aethite",
+   "steel"
+  ]
+ },
+ "MASK_BANDIT": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_CRYSTAL_VISOR": {
+  "family": "Armour",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "MASK_EYEPATCH": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_GOLDEN": {
+  "family": "Armour",
+  "materials": [
+   "gold",
+   "oak",
+   "hide"
+  ]
+ },
+ "MASK_GRASS_SPRIG": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_HAZARD_GOGGLES": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_MARIGOLD": {
+  "family": "Armour",
+  "materials": [
+   "gold",
+   "oak",
+   "hide"
+  ]
+ },
+ "MASK_MASQUERADE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_MOUTHKNIFE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_MOUTH_ROSE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_PHANTOM": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_PIPE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_PLAGUE": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_SHAMAN": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_SPOOKY": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MASK_STEEL_VISOR": {
+  "family": "Armour",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "MASK_TECH_GOGGLES": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "MIRROR_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "wood",
+   "iron",
+   "hide"
+  ]
+ },
+ "MONOCLE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_ACID": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_BLINDNESS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_BOOZE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_CONFUSION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_CUREAILMENT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_EMPTY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_EXTRAHEALING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_FIRESTORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_HEALING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_ICESTORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_INVISIBILITY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_JUICE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_LEVITATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_PARALYSIS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_POLYMORPH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_RESTOREMAGIC": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_SICKNESS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_SPEED": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_STRENGTH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_THUNDERSTORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "POTION_WATER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "PUNISHER_HOOD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "QUARTERSTAFF": {
+  "family": "Hafts",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "QUILTED_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "QUILTED_CAP": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUILTED_GAMBESON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUILTED_GLOVES": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "QUIVER_BLACKIRON": {
+  "family": "Plain",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "QUIVER_BONE": {
+  "family": "Plain",
+  "materials": [
+   "bone",
+   "hide"
+  ]
+ },
+ "QUIVER_CRYSTAL": {
+  "family": "Plain",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "QUIVER_FIRE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUIVER_HUNTING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUIVER_KNOCKBACK": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUIVER_LIGHTWEIGHT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUIVER_PIERCE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "QUIVER_SILVER": {
+  "family": "Plain",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "RAPIER": {
+  "family": "Blades",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "READABLE_BOOK": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_ADORNMENT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_CONFLICT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_CONSTITUTION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_INVISIBILITY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_LEVITATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_MAGICRESISTANCE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_PROTECTION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_REGENERATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_RESOLVE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_SLOWDIGESTION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_STRENGTH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_TELEPORTATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "RING_WARNING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "ROBE_CULTIST": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "ROBE_HEALER": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "ROBE_MONK": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "ROBE_WIZARD": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "SCROLL_BLANK": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_CHARGING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_CONJUREARROW": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_DESTROYARMOR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_ENCHANTARMOR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_ENCHANTWEAPON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_FIRE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_FOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_IDENTIFY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_LIGHT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_MAGICMAPPING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_MAIL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_REMOVECURSE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_REPAIR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_SUMMON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCROLL_TELEPORTATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SCUTUM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SHAWL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SHILLELAGH_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "SHORTBOW": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_DOUBLET": {
+  "family": "Plain",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_GAUNTLETS": {
+  "family": "Armour",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_GLAIVE": {
+  "family": "Plain",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_HELM": {
+  "family": "Armour",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_PLUMBATA": {
+  "family": "Plain",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SILVER_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "silver",
+   "oak",
+   "hide"
+  ]
+ },
+ "SLING": {
+  "family": "Bows",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ },
+ "SLOP_BALL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_10": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_9": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ABSORB_MAGIC": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ABUNDANCE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ACID_SPRAY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ALTER_ARROW": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_AMPLIFY_MAGIC": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ATTRACT_ITEMS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_BLEED": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_BLESS_FOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_BLOOD_WARD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_BLOOD_WAVES": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_CHARM_MONSTER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_CLEANSE_FOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_COLD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_COMMAND": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_CONFUSE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_COWARDICE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_CUREAILMENT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_CURSE_FLESH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DASH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DEEP_SHADE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DEFY_FLESH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DEMON_ILLU": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DETECT_ENEMY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DETECT_FOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DIG": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DISARM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DISRUPT_EARTH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DIVINE_GUARD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DIVINE_ZEAL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DOMINATE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DONATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_DRAIN_SOUL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ENVENOM_WEAPON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_EXTRAHEALING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FEAR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FIREBALL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FIRE_SPRITE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FIRE_WALL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FLAME_CLOAK": {
+  "family": "Plain",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "SPELLBOOK_FLUTTER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FORCEBOLT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FORCE_SHIELD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_FORGE_KEY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_GREASE_SPRAY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_GUARD_BODY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_GUARD_SPIRIT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_HEALING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_HEAL_MINOR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_HEAL_OTHER": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_HOLY_BEAM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_ICE_WAVE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_IDENTIFY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_IGNITE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_IMP_FORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_INCOHERENCE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_INVISIBILITY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_KINETIC_FIELD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_LEAD_BOLT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_LEVITATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_LIGHT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_LIGHTNING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_LIGHTNING_BOLT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_LOCKING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_MAGICIANS_ARMOR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_MAGICMAPPING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_MAGICMISSILE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_MAXIMISE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_METALLURGY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_METEOR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_MINIMISE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_MIST_FORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_NULL_AREA": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_NUMBING_BOLT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_OPENING": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_OVERCHARGE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PINPOINT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_POISON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PRESERVE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PROF_COUNSEL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PROF_GREATER_MIGHT": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PROF_NIMBLENESS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PROF_STURDINESS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_PSYCHIC_SPEAR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_RAT_FORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_REFLECT_MAGIC": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_REMOVECURSE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_RESHAPE_WEAPON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_REVERT_FORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SABOTAGE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SALVAGE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SANCTUARY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SCRY_ALLIES": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SCRY_TRAPS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SCRY_TREASURES": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SEEK_ALLY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SELF_POLYMORPH": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SHADOW_TAG": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SHATTER_OBJECTS": {
+  "family": "Plain",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "SPELLBOOK_SIGIL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SLAM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SLEEP": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SLOW": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPEED": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPIDER_FORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPIN": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPIRIT_WEAPON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPLINTER_GEAR": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPORES": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SPRAY_WEB": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_STEAL_WEAPON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_STONEBLOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone",
+   "wood"
+  ]
+ },
+ "SPELLBOOK_STRIKE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_SUMMON": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TELEKINESIS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TELEPORTATION": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TELEPULL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_THORNS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TROLLS_BLOOD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TROLL_FORM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TUNNEL": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_TURN_UNDEAD": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_VAMPIRIC_AURA": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_VOID_CHEST": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_WEAKNESS": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELLBOOK_WINDGATE": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPELL_ITEM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "SPIKED_GAUNTLETS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "STEEL_AXE": {
+  "family": "Hafts",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_BOOTS_FEATHER": {
+  "family": "Armour",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_BOOTS_LEVITATION": {
+  "family": "Armour",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_BREASTPIECE": {
+  "family": "Armour",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_CHAKRAM": {
+  "family": "Plain",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_FALSHION": {
+  "family": "Plain",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_FLAIL": {
+  "family": "Hafts",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_GREATAXE": {
+  "family": "Hafts",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_HALBERD": {
+  "family": "Hafts",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_HELM": {
+  "family": "Armour",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_MACE": {
+  "family": "Hafts",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_SHIELD_RESISTANCE": {
+  "family": "Shields",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "STEEL_SWORD": {
+  "family": "Blades",
+  "materials": [
+   "steel",
+   "oak",
+   "hide"
+  ]
+ },
+ "SUEDE_BOOTS": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "SUEDE_GLOVES": {
+  "family": "Armour",
+  "materials": [
+   "iron",
+   "hide",
+   "cloth"
+  ]
+ },
+ "TOME_MYSTICISM": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "TOME_SORCERY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "TOME_THAUMATURGY": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "TOOL_ALEMBIC": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_BEARTRAP": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_BLINDFOLD": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_BLINDFOLD_FOCUS": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_BLINDFOLD_TELEPATHY": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_BOMB": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_CRYSTALSHARD": {
+  "family": "Tools",
+  "materials": [
+   "glass",
+   "silver"
+  ]
+ },
+ "TOOL_DECOY": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_DETONATOR_CHARGE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_DUCK": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_DUMMYBOT": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_ARCS": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_DARK_LIFE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_DARK_RIFT": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_DARK_SILENCE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_DARK_SUPPRESS": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_DARK_VENGEANCE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_FIRE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_LIGHT_JUSTICE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_LIGHT_PEACE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_LIGHT_PROVIDENCE": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_LIGHT_PURITY": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_LIGHT_SANCTUARY": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_NEEDLES": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_SAND": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FOCI_SNOW": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FREEZE_BOMB": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_FRYING_PAN": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_GLASSES": {
+  "family": "Tools",
+  "materials": [
+   "glass",
+   "copper"
+  ]
+ },
+ "TOOL_GYROBOT": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_LANTERN": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_LOCKPICK": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_MAGIC_SCRAP": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_METAL_SCRAP": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_MIRROR": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_PICKAXE": {
+  "family": "Hafts",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_PLAYER_LOOT_BAG": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_SENTRYBOT": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_SKELETONKEY": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_SLEEP_BOMB": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_SPELLBOT": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_TELEPORT_BOMB": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_TINKERING_KIT": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_TINOPENER": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_TORCH": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_TOWEL": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TOOL_WHIP": {
+  "family": "Tools",
+  "materials": [
+   "iron",
+   "wood",
+   "hide"
+  ]
+ },
+ "TUNIC": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "TUNIC_BLOUSE": {
+  "family": "Cloth",
+  "materials": [
+   "cloth",
+   "hide"
+  ]
+ },
+ "VAMPIRE_DOUBLET": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "WIZARD_DOUBLET": {
+  "family": "Plain",
+  "materials": [
+   "stone"
+  ]
+ },
+ "WOODEN_SHIELD": {
+  "family": "Shields",
+  "materials": [
+   "wood",
+   "oak",
+   "hide"
+  ]
+ }
+}
