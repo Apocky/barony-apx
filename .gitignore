@@ -75,6 +75,7 @@ steam_appid.txt
 xcode/Barony/Barony.xcodeproj/project.xcworkspace/*
 xcode/Barony/Barony.xcodeproj/xcuserdata/*
 *.ps1
+!tools/apx/*.ps1
 !LICENSE.nativefiledialog.txt
 /VS.2015/Barony/x64/Debug
 *.sarif
