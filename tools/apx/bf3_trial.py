@@ -252,6 +252,14 @@ def gates(by, base, args):
                           "astar_path_us_mean": round(apm, 1), "pass_ratio": bool(fpm and apm / fpm >= 3.0),
                           "flow_tick_us_p99": round(tick, 1), "pass_tick": (tick < 2000) if args.mode == "exclusive" else None,
                           "timing_valid": args.mode == "exclusive", "creatures": fl[0].get("creatures")}
+    pr = [a for k, rows in by.items() if k == "probe" or k.startswith("probe:") for a in rows]
+    if pr:
+        ptick = max(a["tick_us_p99"] for a in pr)
+        # CONTROL: every knob on plus a 1 ms busy-wait per decide must break the 2000 us budget, or the tick timer
+        # cannot see a slow decide and a passing flow_tick_us_p99 proves nothing
+        g["timing_probe_control"] = {"pass": (ptick >= 2000) if args.mode == "exclusive" else None,
+                                     "probe_tick_us_p99": round(ptick, 1), "creatures": pr[0].get("creatures"),
+                                     "timing_valid": args.mode == "exclusive"}
     ft = base["flowtest"]
     if ft:
         both = sum(r["both_ok"] for r in ft)
