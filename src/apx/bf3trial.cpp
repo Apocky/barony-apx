@@ -102,6 +102,7 @@ namespace bf3
 		// D74: each blow as the tier rule saw it (vanilla, by tier, after F4c zones and stagger), by attacker tier
 		long long tierHits = 0, tierUnmatched = 0, tierOnHits = 0, vanillaSum = 0, tieredSum = 0, finalSum = 0, tieredMax = 0, finalMax = 0;
 		long long tierN[6] = {}, tierV[6] = {}, tierT[6] = {}, tierF[6] = {}, tierChanged[6] = {};
+		long long poiseN = 0, poiseVanSum = 0, poiseTierSum = 0;      // the same blows' F4c poise hit, vanilla and by tier
 		int charMaxHP = 0;                                      // the test character's MAXHP (HP at the arm's start)
 		Uint32 measureStart = 0, deadTick = 0;                  // a passive character with MAXHP would be dead at deadTick
 	};
@@ -150,7 +151,6 @@ namespace bf3
 		printlog("[apx] bf3 trial: %d arms (%s), %d %s in packs of %d, settle %d, measure %d ticks, floor %d, morale %d",
 			(int)arms.size(), spec.c_str(), nCreatures, kindName.c_str(), packSize, settleTicks, measureTicks, floorWanted, moraleTest);
 		tierdmg::setLogHits(true); // D74: a "[apx-tierdmg]" line per creature blow on the character (evidence for the rows)
-		printlog("[apx] bf3 trial: tier damage %s (APX_TIER_DAMAGE)", tierdmg::enabled() ? "on" : "off");
 	}
 
 	bool swallowInput(const SDL_Event& ev)
@@ -283,6 +283,7 @@ namespace bf3
 					A.tieredMax = std::max(A.tieredMax, (long long)L.tiered); A.finalMax = std::max(A.finalMax, (long long)-amount);
 					++A.tierN[t]; A.tierV[t] += L.vanilla; A.tierT[t] += L.tiered; A.tierF[t] += -amount;
 					A.tierChanged[t] += L.tiered != L.vanilla ? 1 : 0;
+					if ( L.poiseVanilla >= 0 ) { ++A.poiseN; A.poiseVanSum += L.poiseVanilla; A.poiseTierSum += L.poiseTiered; }
 				}
 				else { ++A.tierUnmatched; }
 			}
@@ -825,6 +826,8 @@ namespace bf3
 			.i("regular_hits", A.tierN[1]).i("regular_vanilla", A.tierV[1]).i("regular_tiered", A.tierT[1]).i("regular_final", A.tierF[1])
 			.i("regular_changed", A.tierChanged[1]).i("elite_hits", A.tierN[2]).i("elite_changed", A.tierChanged[2])
 			.i("char_maxhp", A.charMaxHP)
+			.i("poise_hits", A.poiseN).d("poise_vanilla_per_hit", A.poiseN ? (double)A.poiseVanSum / A.poiseN : 0)
+			.d("poise_tiered_per_hit", A.poiseN ? (double)A.poiseTierSum / A.poiseN : 0)
 			.d("survive_s", A.deadTick ? (A.deadTick - A.measureStart) / (double)TICKS_PER_SECOND : -1.0)
 			.d("survive_s_rate", A.dmg > 0 ? A.charMaxHP / (A.dmg / secs) : -1.0)
 			.i("player_staggers", (players[0] && players[0]->entity && apx::combat_glue::table().count(players[0]->entity->getUID()))

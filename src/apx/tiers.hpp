@@ -46,7 +46,16 @@ namespace tierdmg
 	// engine's damage for the hit after armour; returned unchanged for any other hit, or with the rule off.
 	int onCreatureHit(Entity* attacker, Entity* target, int damage, Path path);
 
-	struct LastHit { unsigned attacker = 0; unsigned tick = 0; Tier tier = Tier::Regular; int vanilla = 0, tiered = 0, path = 0; bool on = false; };
+	// The same blow's F4c poise hit by the creature's tier (fodder a third). Knob APX_TIER_POISE=0 keeps the
+	// weapon's full poise hit while the damage rule stays on (isolates the poise channel); APX_TIER_DAMAGE=0 = both off.
+	bool poiseEnabled();
+	int poiseForHit(Entity* attacker, Entity* target, int poise);
+
+	struct LastHit
+	{
+		unsigned attacker = 0; unsigned tick = 0; Tier tier = Tier::Regular; int vanilla = 0, tiered = 0, path = 0; bool on = false;
+		int poiseVanilla = -1, poiseTiered = -1; // -1: no poise hit seen for this blow
+	};
 	extern LastHit last;       // the latest hit the rule saw (the trial attributes per-hit damage with it)
 
 	struct Counters
@@ -54,6 +63,7 @@ namespace tierdmg
 		long long hits[NTIERS][NPATHS] = {};
 		long long vanilla[NTIERS][NPATHS] = {};
 		long long out[NTIERS][NPATHS] = {};
+		long long poiseHits[NTIERS] = {}, poiseVanilla[NTIERS] = {}, poiseOut[NTIERS] = {};
 	};
 	extern Counters C;         // since start
 } // namespace tierdmg

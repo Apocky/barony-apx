@@ -71,5 +71,17 @@ namespace tierrules
 		const int third = (vanilla * r.fodderPct + 50) / 100;
 		return std::max(1, std::min(r.fodderCap, third));
 	}
+
+	// The same rule on the second damage channel: a creature's poise damage per hit (F4c, by weapon class) by its
+	// tier. Fodder breaks a target's poise with a third of its weapon's poise hit, at least 1; regular and above
+	// unchanged. With the weapon's full poise hit, 12 fodder sword skeletons kept a passive floor-1 character
+	// staggered (F4c: paralysed, taking 1.5x) 18-19 times per 20 s (MEASURED d74-s1): the crowd's danger came from
+	// each hit again. Not depth-scaled: F4c's poise pools and poise hits are not.
+	constexpr int kFodderPoisePct = 33;
+	inline int poiseForTier(Tier attacker, int poiseHit)
+	{
+		if ( poiseHit <= 0 || attacker != Tier::Fodder ) { return poiseHit; }
+		return std::max(1, (poiseHit * kFodderPoisePct + 50) / 100);
+	}
 } // namespace tierrules
 } // namespace apx

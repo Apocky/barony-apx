@@ -20,6 +20,7 @@
 #include "player.hpp"
 #include "monster.hpp"
 #include "apx_combat_units.hpp"
+#include "apx/tiers.hpp"
 #include <cstdlib>
 #include <cmath>
 #include <unordered_map>
@@ -135,7 +136,8 @@ namespace combat_glue
 		if ( zonesOn() ) out = hitDamage(damage, z, wasStaggered);
 		else if ( wasStaggered ) out = hitDamage(damage, Zone::Torso, true);
 		if ( zonesOn() && out > 0 ) r.zones.damage(z, out);
-		if ( poiseOn() && r.poise.hit(poiseHit(w)) ) startStagger(target, r);
+		// apx D74: a hostile creature's poise hit on a player or follower by its tier (fodder a third; apx/tiers.hpp)
+		if ( poiseOn() && r.poise.hit(apx::tierdmg::poiseForHit(attacker, target, poiseHit(w))) ) startStagger(target, r);
 		printlog("[apx-f4c] hit uid=%u type=%d zone=%s base=%d dmg=%d poise=%.0f/%d staggered=%d legs=%d/%d arms=%d/%d", target->getUID(),
 			(int)tStats->type, zoneName(z), damage, out, r.poise.value, r.poise.max, (int)r.poise.staggered(),
 			r.zones.hp[(int)Zone::Legs], r.zones.max[(int)Zone::Legs], r.zones.hp[(int)Zone::Arms], r.zones.max[(int)Zone::Arms]);

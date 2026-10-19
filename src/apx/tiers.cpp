@@ -21,6 +21,7 @@ namespace apx
 namespace tierdmg
 {
 	static void floorSummary(int level);
+	static void floorHeader(int level, const char* mapName);
 }
 
 namespace tiers
@@ -52,6 +53,7 @@ namespace tiers
 		seenLevel = currentlevel;
 		seenMap = m;
 		tags.clear();
+		apx::tierdmg::floorHeader(currentlevel, m.c_str()); // the knobs in every floor's log (start-up lines come before the log opens)
 		if ( band.valid && (band.level != currentlevel || band.map != m) ) { band.valid = false; }
 	}
 
@@ -155,14 +157,6 @@ namespace tierdmg
 			k = (v && *v) ? (atoi(v) != 0 ? 1 : 0) : 1;
 			const char* lg = getenv("APX_TIER_DAMAGE_LOG");
 			if ( lg && *lg && atoi(lg) ) { logHits = true; }
-			std::string rows;
-			for ( const auto& r : apx::tierrules::kDepth )
-			{
-				char b[64];
-				snprintf(b, sizeof(b), " %d+: %d%% cap %d (player %d);", r.floorFrom, r.fodderPct, r.fodderCap, r.refPlayerHit);
-				rows += b;
-			}
-			printlog("[apx-tierdmg] APX_TIER_DAMAGE=%d. Fodder by floor:%s regular, elite and above vanilla", k, rows.c_str());
 		}
 		return k;
 	}
@@ -194,13 +188,50 @@ namespace tierdmg
 		F = Counters();
 	}
 
+	// a hostile creature striking a player or a player's follower (the only blows the rule touches)
+	static bool hostileOnPlayerSide(Entity* attacker, Entity* target)
+	{
+		if ( attacker->behavior != &actMonster || attacker->monsterAllyGetPlayerLeader() ) { return false; }
+		return target->behavior == &actPlayer || (target->behavior == &actMonster && target->monsterAllyGetPlayerLeader());
+	}
+
+	static int poiseKnob()
+	{
+		static int k = -1;
+		if ( k < 0 )
+		{
+			const char* v = getenv("APX_TIER_POISE");
+			k = (v && *v) ? (atoi(v) != 0 ? 1 : 0) : 1;
+		}
+		return k;
+	}
+
+	bool poiseEnabled() { return enabled() && poiseKnob() != 0; }
+
+	static void floorHeader(int level, const char* mapName)
+	{
+		const apx::tierrules::DepthRow& r = apx::tierrules::depthRow(level);
+		printlog("[apx-tierdmg] floor %d (%s): APX_TIER_DAMAGE=%d APX_TIER_POISE=%d override %d -> damage rule %s, poise rule %s; fodder %d%% of"
+			" vanilla, cap %d (reference player hit %d), poise %d%%; regular, elite and above vanilla", level, mapName ? mapName : "",
+			knob(), poiseKnob(), overrideV, enabled() ? "on" : "off", poiseEnabled() ? "on" : "off", r.fodderPct, r.fodderCap,
+			r.refPlayerHit, apx::tierrules::kFodderPoisePct);
+	}
+
+	int poiseForHit(Entity* attacker, Entity* target, int poise)
+	{
+		if ( !attacker || !target || poise <= 0 || multiplayer == CLIENT || !hostileOnPlayerSide(attacker, target) ) { return poise; }
+		const Tier t = tiers::tierOf(attacker);
+		const bool on = poiseEnabled();
+		const int out = on ? apx::tierrules::poiseForTier(t, poise) : poise;
+		++C.poiseHits[(int)t]; C.poiseVanilla[(int)t] += poise; C.poiseOut[(int)t] += out;
+		if ( last.attacker == attacker->getUID() && last.tick == ticks ) { last.poiseVanilla = poise; last.poiseTiered = out; }
+		return out;
+	}
+
 	int onCreatureHit(Entity* attacker, Entity* target, int damage, Path path)
 	{
 		if ( !attacker || !target || damage <= 0 || multiplayer == CLIENT ) { return damage; }
-		if ( attacker->behavior != &actMonster || attacker->monsterAllyGetPlayerLeader() ) { return damage; } // hostile creatures only
-		const bool playerSide = target->behavior == &actPlayer
-			|| (target->behavior == &actMonster && target->monsterAllyGetPlayerLeader());
-		if ( !playerSide ) { return damage; }
+		if ( !hostileOnPlayerSide(attacker, target) ) { return damage; } // hostile creatures on players and followers only
 		tiers::Source why = tiers::Source::NotMonster;
 		const Tier t = tiers::tierOf(attacker, &why);
 		const bool on = enabled();
@@ -210,6 +241,7 @@ namespace tierdmg
 		++F.hits[ti][pi]; F.vanilla[ti][pi] += damage; F.out[ti][pi] += out;
 		last.attacker = attacker->getUID(); last.tick = ticks; last.tier = t;
 		last.vanilla = damage; last.tiered = out; last.path = pi; last.on = on;
+		last.poiseVanilla = last.poiseTiered = -1; // filled by poiseForHit when F4c takes the blow's poise
 		if ( logHits )
 		{
 			Stat* s = attacker->getStats();

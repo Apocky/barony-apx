@@ -224,6 +224,10 @@ def d74_summary(arms):
                             "survive_s_max": max(surv) if surv else None,
                             "survive_s_rate_mean": round(mean([x.get("survive_s_rate", -1) for x in v]), 2),
                             "player_staggers_mean": round(mean([x.get("player_staggers", 0) for x in v]), 1),
+                            "poise_vanilla_per_hit": round(sum(x.get("poise_vanilla_per_hit", 0) * x.get("poise_hits", 0) for x in v)
+                                                           / max(1, sum(x.get("poise_hits", 0) for x in v)), 2),
+                            "poise_tiered_per_hit": round(sum(x.get("poise_tiered_per_hit", 0) * x.get("poise_hits", 0) for x in v)
+                                                          / max(1, sum(x.get("poise_hits", 0) for x in v)), 2),
                             "tier_hits": th, "tier_unmatched": sum(x.get("tier_unmatched", 0) for x in v),
                             "rule_on_hits": sum(x.get("tier_rule_on_hits", 0) for x in v),
                             "regular_changed": sum(x.get("regular_changed", 0) for x in v),
@@ -261,6 +265,14 @@ def d74_gates(base, args):
     reg = {k: v["regular"] for k, v in d.items() if "regular" in v}
     g["d74_regular_is_vanilla"] = {"pass": all(s["regular_changed"] == 0 and s["tier_hits"] > 0 for s in reg.values()) if reg else None,
                                    **{k: {"changed": s["regular_changed"], "hits": s["tier_hits"], "per_hit": s["tiered_per_hit"]} for k, s in reg.items()}}
+    # the poise channel: fodder breaks the character's poise (F4c stagger: paralysed, 1.5x) with a third of the
+    # weapon's poise hit, so a fodder crowd staggers it at most half as often as the same crowd at vanilla poise
+    lock = {k: (v["fodder"], v["fodder0"]) for k, v in d.items() if "fodder" in v and "fodder0" in v}
+    g["d74_fodder_no_stagger_lock"] = {"pass": all(f["player_staggers_mean"] <= 0.5 * c["player_staggers_mean"]
+                                                   and f["poise_tiered_per_hit"] <= 0.45 * f["poise_vanilla_per_hit"] for f, c in lock.values())
+                                       if lock else None,
+                                       **{k: {"staggers_fodder": f["player_staggers_mean"], "staggers_vanilla": c["player_staggers_mean"],
+                                              "poise_per_hit": [f["poise_vanilla_per_hit"], f["poise_tiered_per_hit"]]} for k, (f, c) in lock.items()}}
     wild = {k: v["wild"]["tier_info"] for k, v in d.items() if "wild" in v}
     if wild:
         g["d74_wild_tier_report"] = {"tier_info": wild, "per_hit": {k: d[k]["wild"]["tiered_per_hit"] for k in wild}}

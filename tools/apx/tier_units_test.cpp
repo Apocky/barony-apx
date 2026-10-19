@@ -81,6 +81,28 @@ int main()
 		}
 	}
 
+	// poise damage by tier (the second channel): fodder a third of the weapon's F4c poise hit, at least 1
+	{
+		using apx::combat::WeaponClass;
+		using apx::combat::poiseHit;
+		auto fp = [](int p) { return poiseForTier(control ? Tier::Regular : Tier::Fodder, p); };
+		CHECK(fp(poiseHit(WeaponClass::Sword)) == 3, "fodder sword poise 10 -> 3, got %d", fp(poiseHit(WeaponClass::Sword)));
+		CHECK(fp(poiseHit(WeaponClass::Unarmed)) == 2, "fodder bite poise 6 -> 2, got %d", fp(poiseHit(WeaponClass::Unarmed)));
+		CHECK(fp(poiseHit(WeaponClass::Mace)) == 5, "fodder mace poise 16 -> 5, got %d", fp(poiseHit(WeaponClass::Mace)));
+		CHECK(fp(poiseHit(WeaponClass::Ranged)) == 1, "fodder ranged poise 4 -> 1, got %d", fp(poiseHit(WeaponClass::Ranged)));
+		CHECK(fp(0) == 0, "no poise hit stays 0");
+		// a player's poise (F4c 40) takes over three times the fodder hits to break: no stagger lock from a crowd
+		const int playerPoise = apx::combat::poiseMax(Tier::Player);
+		const int swordHits = (playerPoise + fp(poiseHit(WeaponClass::Sword)) - 1) / std::max(1, fp(poiseHit(WeaponClass::Sword)));
+		CHECK(swordHits >= 3 * ((playerPoise + 9) / 10), "fodder swords need %d hits to break a player's poise (vanilla 4)", swordHits);
+		for ( int p = 1; p <= 40; ++p )
+		{
+			CHECK(poiseForTier(Tier::Regular, p) == p && poiseForTier(Tier::Elite, p) == p && poiseForTier(Tier::Boss, p) == p, "poise %d changed above fodder", p);
+			const int f = fp(p);
+			CHECK(f >= 1 && f <= p && std::fabs(f - p / 3.0) <= 1.0, "fodder poise %d -> %d not a third", p, f);
+		}
+	}
+
 	// band rank (spec 04 section 2.1, F2): commonest third fodder, rarest third elite, ties by type id
 	{
 		std::vector<int> t[3];

@@ -31,7 +31,8 @@ D74_ARMS = ",".join(["on:12:skeleton:fodder", "on:12:skeleton:fodder0", "on:12:r
                     + ["on:12:skeleton:regular", "on:12:rat:regular", "on:12:skeleton:wild", "on:12:rat:wild"])
 # the knob control: a second launch with APX_TIER_DAMAGE=0, the same fodder-tagged arms (must land above the band)
 D74_ENV0_ARMS = ",".join(["on:12:skeleton:fodder", "on:12:rat:fodder"] * 2)
-D74_GATES = ("d74_fodder_per_hit_1_to_2", "d74_skeleton_fodder_in_band", "d74_controls_above_band", "d74_regular_is_vanilla")
+D74_GATES = ("d74_fodder_per_hit_1_to_2", "d74_skeleton_fodder_in_band", "d74_controls_above_band", "d74_regular_is_vanilla",
+             "d74_fodder_no_stagger_lock")
 # the F2 generator's own gate (C:/Apocrypha/diagnostics/barony-f2, build a90e21c3, 2026-10-19 08:40-09:00): apx-gen
 # floors for these seeds must hash the same after the band rank moved into tier_rules.hpp (placement unchanged)
 F2_RECORD = Path(r"C:\Apocrypha\diagnostics\barony-f2\f2.jsonl")
@@ -102,11 +103,41 @@ def d74_chain(args, bh, py, out, save):
     out["steps"].append({"step": "f2-hashes", "exit": code, "wall_s": wall, "floors": cmp_,
                          "pass": bool(cmp_) and len(cmp_) == F2_SEEDS[1] and all(v["same"] for v in cmp_.values())})
     save()
-    # vanilla floors unchanged: golden parity against the F0 lines recorded from Steam vanilla
+    golden_step(args, out, save)
+
+
+def golden_step(args, out, save):
+    """Vanilla floors unchanged: golden parity against the F0 lines recorded from Steam vanilla (its own slot)."""
     code, wall = run(["pwsh", "-NoProfile", "-File", "tools/apx/golden_parity.ps1", "-Exe", str(Path(args.exe).resolve()), "-Tag", f"bf3-{args.tag}"],
                      RUNS / f"bf3-{args.tag}-golden.out.txt")
     txt = (RUNS / f"bf3-{args.tag}-golden.out.txt").read_text(encoding="utf-8", errors="replace")
     out["steps"].append({"step": "golden-parity", "exit": code, "wall_s": wall, "tail": txt.strip().splitlines()[-3:] if txt.strip() else []})
+    save()
+
+
+def f4c_step(args, py, out, save):
+    """F4c's own in-game gate (tools/apx/f4c_selftest.py: gate + control launch) on this build. It needs the whole
+    machine and waits for it without a .WANT, so the D70 exclusive lock is taken first under its own lock name
+    (barony/barony-f4c.LOCK: the .WANT drains the slots; f4c_selftest.py sees its own lock, runs, and removes it)."""
+    sys.path.insert(0, str(REPO / "tools" / "apx"))
+    import apx_locks
+    t0 = time.time()
+    lock = apx_locks.take_exclusive("barony-f4c.LOCK", 4 * 3600, 3.0, lambda t: print(t, flush=True))
+    waited = round(time.time() - t0, 1)
+    try:
+        code, wall = run([py, "-u", "tools/apx/f4c_selftest.py", "--exe", str(Path(args.exe).resolve())], RUNS / f"bf3-{args.tag}-f4c.out.txt")
+    finally:
+        lock.unlink(missing_ok=True)
+    txt = (RUNS / f"bf3-{args.tag}-f4c.out.txt").read_text(encoding="utf-8", errors="replace")
+    verdict = None
+    for line in txt.splitlines():
+        if line.startswith("{") and "f4c_gate" in line:
+            try:
+                verdict = json.loads(line)
+            except ValueError:
+                pass
+    out["steps"].append({"step": "f4c-gate", "exit": code, "wall_s": wall, "waited_s": waited, "verdict": verdict,
+                         "pass": bool(verdict) and verdict.get("f4c_gate") == "PASS" and code == 0})
     save()
 
 
@@ -141,6 +172,9 @@ def main():
     ap.add_argument("--skip-parity", action="store_true")
     ap.add_argument("--exe", default="build/vs2022/Release/barony.exe", help="the build under test (build.ps1 -Cache ccache: build/ninja-ccache/barony.exe)")
     ap.add_argument("--d74", action="store_true", help="D74 tier damage: fodder vs both vanilla controls, F2 hashes, golden parity")
+    ap.add_argument("--skip-golden", action="store_true", help="with --merge-gates: golden parity already ran on this build")
+    ap.add_argument("--merge-gates", action="store_true",
+                    help="after the slot run: F4c's in-game gate (f4c_selftest.py) and golden parity on this build (F4c merged in)")
     args = ap.parse_args()
     bh = args.build_hash or args.tag
     py = sys.executable
@@ -172,6 +206,10 @@ def main():
     out["steps"].append({"step": "slot", "exit": code, "wall_s": wall, "movement_gates": move, "flow_selftest_ok": fok,
                          "gates": g, "proceed": go_on})
     save()
+    if args.merge_gates:
+        f4c_step(args, py, out, save)
+        if not args.skip_golden:
+            golden_step(args, out, save)
     if go_on and not args.skip_exclusive:
         tag2 = args.tag + "-excl"
         code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--exe", args.exe, "--runs", "1", "--tag", tag2, "--mode", "exclusive", "--arms", EXCL_ARMS,
