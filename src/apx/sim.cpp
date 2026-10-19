@@ -485,6 +485,7 @@ namespace apx
 	static Uint32 botTargetUid[MAXPLAYERS] = {};
 	static Uint32 botSwingAt[MAXPLAYERS] = {};
 	static int botHold[MAXPLAYERS] = {};
+	static double botDist[MAXPLAYERS] = {};
 
 	static Entity* nearestHostile(Entity* me, double& dTiles)
 	{
@@ -515,7 +516,7 @@ namespace apx
 		pendSel[p] = nullptr;
 	}
 
-	static void walkStep(Entity* my, Input& in, int p)
+	static void walkStep(Entity* my, Input& in, int p, Entity* dest = nullptr)
 	{
 		static std::vector<std::pair<int, int>> wpA[MAXPLAYERS];
 		static Uint32 nextPathA[MAXPLAYERS] = {}, lastMoveTickA[MAXPLAYERS] = {};
@@ -524,15 +525,15 @@ namespace apx
 		Uint32& nextPath = nextPathA[p];
 		Uint32& lastMoveTick = lastMoveTickA[p];
 		in.apxSet("Attack", false);
-		Entity* lad = walkLadderUid ? uidToEntity(walkLadderUid) : nullptr;
+		const bool isLadder = dest == nullptr;
+		Entity* lad = dest ? dest : (walkLadderUid ? uidToEntity(walkLadderUid) : nullptr);
 		if ( !lad ) { in.apxSet("Move Forward", false); return; }
 		double ld = sqrt((lad->x - my->x) * (lad->x - my->x) + (lad->y - my->y) * (lad->y - my->y)) / 16.0;
-		if ( ld < 1.9 ) // actLadder needs the player within TOUCHRANGE (32 units = 2 tiles) of it
+		if ( isLadder && ld < 1.9 ) // actLadder needs EVERY player within TOUCHRANGE (32 units = 2 tiles): keep closing in after selecting it
 		{
 			pendSel[p] = lad;
 			in.apxSet("Use", false);
-			in.apxSet("Move Forward", false);
-			return;
+			if ( ld < 0.9 ) { in.apxSet("Move Forward", false); return; }
 		}
 		if ( ticks >= nextPath )
 		{
@@ -623,6 +624,7 @@ namespace apx
 			botNextThink[p] = ticks + (Uint32)((1.0 - skill) * 15.0);
 			double d;
 			botTarget[p] = nearestHostile(my, d);
+			botDist[p] = d;
 			if ( S.walk && botTarget[p] )
 			{
 				// walking: only fight what is on us (close, or hunting us from within 12 tiles)
@@ -657,6 +659,7 @@ namespace apx
 		}
 		double dx = t->x - my->x, dy = t->y - my->y;
 		double dist = sqrt(dx * dx + dy * dy) / 16.0;
+		if ( dist > 3.0 && S.skill > 0.0 ) { walkStep(my, in, p, t); return; } // far: follow the game's own path to it, not a straight line into a wall
 		double want = atan2(dy, dx);
 		double err = (1.0 - skill) * 12.0 * PI / 180.0 * (((int)(botRng() % 2001) - 1000) / 1000.0);
 		double diff = want + err - my->yaw;
