@@ -278,10 +278,19 @@ def mp_session(exe, seed, size, args):
         row["same_hash"] = row["host"].get("hash") is not None and row["host"].get("hash") == row["client"].get("hash")
         row["same_counts"] = row["host"].get("generated") == row["client"].get("generated")
         time.sleep(3)
-        pf.chat_command(hwnd, "/apxnet")                       # reset the window
+        for attempt in range(4):                               # reset the window, confirmed in the log
+            pf.chat_command(hwnd, "/apxnet")
+            try:
+                _, off = pf.wait_for(logs["host"], re.compile(r"apxnet: window"), min(deadline, time.monotonic() + 5),
+                                     procs["host"], off)
+                break
+            except TimeoutError:
+                row["flags"].append(f"apxnet_reset_retry_{attempt + 1}")
         time.sleep(args.net_seconds)
         pf.chat_command(hwnd, "/apxnet")
         time.sleep(1.5)
+        if re.search(r"disconnected from server|UI_Disconnect_Window", pf.read_log(logs["client"])[coff:]):
+            row["flags"].append("client_disconnected")   # the bytes/s window is not a two-player window
         nets = [x.groups() for x in RE_NET.finditer(pf.read_log(logs["host"])[off:])]
         if nets:
             g = nets[-1] if len(nets) == 1 else nets[-1]

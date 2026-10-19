@@ -97,7 +97,7 @@ def main():
 
     # W1
     w1 = [r for r in rows if r["kind"] == "w1" and r["finish"] == "ok" and args.w1_exe in r.get("exe", "")]
-    mp = [r for r in rows if r["kind"] == "mp" and r["finish"] == "ok"]
+    mp = [r for r in rows if r["kind"] == "mp" and r["finish"] == "ok" and r.get("net", {}).get("seconds", 99) < 30 and "client_disconnected" not in r.get("flags", [])]
     w1_by = {}
     for r in w1:
         size = r["env"].get("APXGEN_SIZE", "vanilla")
