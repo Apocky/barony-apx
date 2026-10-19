@@ -887,7 +887,9 @@ void actMinotaurCeilingBuster(Entity* my)
 						{
 							// easy hack to stop the minotaur while he breaks stuff
 							myStats->setEffectActive(EFF_PARALYZED, 1);
-							myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 10;
+							// apx: at least 10 ticks, never cutting a longer paralysis already running (F4c's stagger forces
+							// one on this boss; the plain = 10 ended a 30-tick stagger 10 ticks early when a wall broke mid-stagger)
+							myStats->EFFECTS_TIMERS[EFF_PARALYZED] = std::max(myStats->EFFECTS_TIMERS[EFF_PARALYZED], 10);
 						}
 					}
 
