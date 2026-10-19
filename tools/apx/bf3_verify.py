@@ -18,7 +18,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 DIAG = Path(r"C:\Apocrypha\diagnostics")
 RUNS = Path(r"C:\Apocrypha\runs")
-SLOT_ARMS = "on,off,on,slots5,noring,on,off,vanilla,on,slots5,noring,off,on,vanilla,on,on,nodiag,nodiag"
+SLOT_ARMS = ("on,off,on,slots5,noring,on,off,vanilla,on,slots5,noring,off,on,vanilla,on,on,nodiag,nodiag"
+             ",on:12:rat,off:12:rat,on:12:rat,off:12:rat,on:12:rat,vanilla:12:rat,vanilla:12:rat")  # D72 fodder crowd
 EXCL_ARMS = "on,noring,noring,on,flow:150,noflow:150,noflow:150,flow:150,probe:150,off"
 # the gates that decide whether the build is final enough to spend exclusive and parity minutes on; damage and the
 # jam control wait for Apocky's reference decision and do not block
@@ -70,7 +71,9 @@ def main():
     g = base.get("gates", {})
     move = {k: (g.get(k) or {}).get("pass") for k in MOVEMENT_GATES}
     fok = flow_ok(base)
-    go_on = code == 0 and all(v is True for v in move.values()) and fok is True
+    # the runner exits 1 whenever any gate fails, the damage and jam gates included (they wait for Apocky's reference
+    # decision): a completed run is exit 0 or 1 with a baseline row (s11: every movement gate passed, exit 1)
+    go_on = code in (0, 1) and bool(base) and all(v is True for v in move.values()) and fok is True
     out["steps"].append({"step": "slot", "exit": code, "wall_s": wall, "movement_gates": move, "flow_selftest_ok": fok,
                          "gates": g, "proceed": go_on})
     save()
@@ -92,6 +95,9 @@ def main():
             save()
     out["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
     save()
+    if out["steps"] and out["steps"][0].get("step") == "slot":
+        out["by_monster"] = baseline(args.tag).get("by_monster")
+        save()
     for s in out["steps"]:
         print(s["step"], "exit", s["exit"], "wall_s", s["wall_s"], json.dumps({k: v for k, v in s.items() if k in ("movement_gates", "flow_selftest_ok", "proceed")}))
     print("report", report)

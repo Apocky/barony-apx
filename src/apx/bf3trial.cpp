@@ -302,6 +302,22 @@ namespace bf3
 
 	// arm spec "kind[:N]": kind sets the knobs, N the creature count (default APX_BF3_N)
 	static std::string armKind(const std::string& a) { size_t c = a.find(':'); return c == std::string::npos ? a : a.substr(0, c); }
+	// the arm's monster: a third field (monstertypename, e.g. "on:12:rat"), else the run's APX_BF3_KIND
+	static Monster armKindMon = SKELETON;
+	static std::string armKindName = "skeleton";
+	static bool armedKind(Monster m) { return m == SKELETON || m == GOBLIN || m == HUMAN; } // these get the bronze sword
+	static void setArmMonster(const std::string& a)
+	{
+		armKindMon = kind; armKindName = kindName;
+		size_t c1 = a.find(':'), c2 = c1 == std::string::npos ? c1 : a.find(':', c1 + 1);
+		if ( c2 == std::string::npos ) { return; }
+		std::string m = a.substr(c2 + 1);
+		for ( int i = 1; i < NUMMONSTERS; ++i )
+		{
+			if ( !_stricmp(monstertypename[i], m.c_str()) ) { armKindMon = (Monster)i; armKindName = monstertypename[i]; return; }
+		}
+		printlog("[apx] bf3 arm spec %s: unknown monster '%s', using %s", a.c_str(), m.c_str(), kindName.c_str());
+	}
 	static int armN(const std::string& a) { size_t c = a.find(':'); return c == std::string::npos ? nCreatures : std::max(1, atoi(a.c_str() + c + 1)); }
 
 	static void setArmKnobs(const std::string& spec)
@@ -325,11 +341,11 @@ namespace bf3
 
 	static Entity* spawnOne(int tx, int ty, Uint32 packId, uint8_t role, double hx, double hy, Entity* pe)
 	{
-		Entity* m = summonMonster(kind, tx * 16 + 8, ty * 16 + 8, true);
+		Entity* m = summonMonster(armKindMon, tx * 16 + 8, ty * 16 + 8, true);
 		if ( !m ) { return nullptr; }
 		if ( Stat* st = m->getStats() )
 		{
-			if ( kind == SKELETON || kind == GOBLIN || kind == HUMAN )
+			if ( armedKind(armKindMon) )
 			{
 				st->weapon = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
 			}
@@ -613,7 +629,8 @@ namespace bf3
 		commonFields(r);
 		r.str("trial", "bf3-limits").str("arm_kind", armSpec).str("arm_base", armKind(armSpec)).i("arm", (long long)armI).str("knobs", knobString())
 			.d("population_x", armN(armSpec) / (double)packSize).d("probe_us", armKind(armSpec) == "probe" ? 1000.0 : 0.0)
-			.str("kind", kindName).str("weapon", "bronze_sword").i("creatures", A.spawned).i("pack_size", packSize)
+			.str("kind", armKindName).str("weapon", armedKind(armKindMon) ? "bronze_sword" : "natural").str("group_kind", "emergent")
+			.i("creatures", A.spawned).i("pack_size", packSize)
 			.str("pack_template", "trial-3x4").i("arena_x", pTX).i("arena_y", pTY).d("window_s", secs)
 			.i("dmg", A.dmg).d("dmg_pm", A.dmg / (secs / 60.0)).d("dmg_in_per_player_per_min", A.dmg / (secs / 60.0))
 			.i("dmg_foreign", A.foreignDmg).i("hits", A.hits).d("burst_share", shareNear(A.hitTicks, 5, true))
@@ -688,7 +705,7 @@ namespace bf3
 		ApxRow r;
 		commonFields(r);
 		r.str("trial", "bf3-morale").str("arm_kind", moraleArm == 0 ? "morale_on" : "morale_off_control").str("knobs", knobString())
-			.str("kind", kindName).i("members_at_kill", membersAtKill).i("retreating_at_3s", retreatAt3s)
+			.str("kind", kindName).str("group_kind", "spawned").i("members_at_kill", membersAtKill).i("retreating_at_3s", retreatAt3s)
 			.i("should_retreat_at_3s", shouldRetreatAt3s).d("dist_at_kill", distAtKill).d("dist_at_3s", distAt3s).i("home_at_5s", homeAt5s)
 			.i("retreats", C.retreats).i("morale_breaks", C.morale_breaks).i("regroups", C.regroups)
 			.d("first_regroup_s", firstRegroup ? (firstRegroup - killTick) / (double)TICKS_PER_SECOND : -1)
@@ -862,7 +879,7 @@ namespace bf3
 		ApxRow r;
 		commonFields(r);
 		r.str("trial", "bf3-help").str("arm_kind", helpArm == 0 ? "help_on" : "help_off_nopacks").str("knobs", knobString())
-			.str("reason", reason).i("spot_x", hsX).i("spot_y", hsY).i("spot_steps", hsBfs).i("helpers", (long long)helpUids.size())
+			.str("reason", reason).str("kind", kindName).str("group_kind", "spawned").i("spot_x", hsX).i("spot_y", hsY).i("spot_steps", hsBfs).i("helpers", (long long)helpUids.size())
 			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("helpers_sent", C.helpers_sent)
 			.i("helpers_arrived", C.helpers_arrived).i("b_within4_end", within4).i("b_targeting_player_end", targeting)
 			.d("window_s", helpWindowS).i("b_within4_window", within4Window).i("b_acquired", (long long)helpAcquired.size())
@@ -930,6 +947,7 @@ namespace bf3
 				break;
 			case P_SPAWN:
 				setArmKnobs(arms[armI]);
+				setArmMonster(arms[armI]);
 				tactics::onLevelChange();
 				A = Arm();
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
@@ -1007,6 +1025,7 @@ namespace bf3
 				break;
 			case P_M_SPAWN:
 				setArmKnobs(moraleArm == 0 ? "on" : "nomorale");
+				setArmMonster("");
 				tactics::onLevelChange();
 				tactics::resetCounters();
 				A = Arm();
@@ -1099,6 +1118,7 @@ namespace bf3
 				break;
 			case P_H_SPAWN:
 				setArmKnobs(helpArm == 0 ? "on" : "nopacks");
+				setArmMonster("");
 				tactics::onLevelChange();
 				tactics::resetCounters();
 				A = Arm();

@@ -114,11 +114,12 @@ def summarise(results, args):
         rows = r["arms"]
         for i in range(0, len(rows) - 1, 2):
             a, b = rows[i], rows[i + 1]
-            if a.get("creatures") != b.get("creatures"):
+            if a.get("creatures") != b.get("creatures") or a.get("kind") != b.get("kind"):
                 continue
             kinds = {a.get("arm_base", a["arm_kind"]): a, b.get("arm_base", b["arm_kind"]): b}
             if args.control in kinds and "on" in kinds:
-                pairs_by_n.setdefault(a["creatures"], []).append((kinds[args.control]["dmg"], kinds["on"]["dmg"]))
+                key = a["creatures"] if a.get("kind", "skeleton") == "skeleton" else f'{a["creatures"]}:{a.get("kind")}'
+                pairs_by_n.setdefault(key, []).append((kinds[args.control]["dmg"], kinds["on"]["dmg"]))
     main_n = max(pairs_by_n, key=lambda n: len(pairs_by_n[n])) if pairs_by_n else None
     pairs = pairs_by_n.get(main_n, [])
     flagged = [a for a in arms if any(f.startswith("CONTAMINATED") or f == "SPAWN_SHORT" for f in a.get("flags", "").split(";"))]
@@ -159,6 +160,17 @@ def summarise(results, args):
         base["dmg_control_mean"] = round(mc, 1)
         base["dmg_on_mean"] = round(mo, 1)
         base["ratio_control_over_on"] = round(mc / mo, 3) if mo else None
+    # D72: per monster kind (fodder beside the sword skeletons), per arm base; the skeleton gates read only plain arm kinds
+    by_monster = {}
+    for a in arms:
+        by_monster.setdefault(a.get("kind", "?"), {}).setdefault(a.get("arm_base", a["arm_kind"]), []).append(a)
+    base["by_monster"] = {k: {b: {"n": len(v), "dmg_mean": round(mean([x["dmg"] for x in v]), 1),
+                                  "attackers_mean": round(mean([x["attackers_mean"] for x in v]), 2),
+                                  "attackers_max": max(x["attackers_max_per_target"] for x in v), "reach_slots": v[0].get("reach_slots"),
+                                  "friendly_fire_mean": round(mean([x.get("friendly_fire_dmg", 0) for x in v]), 1),
+                                  "hits_mean": round(mean([x.get("hits", 0) for x in v]), 1),
+                                  "reach_overflow": sum(x.get("reach_overflow", 0) for x in v), "group_kind": v[0].get("group_kind")}
+                              for b, v in sorted(kinds.items())} for k, kinds in sorted(by_monster.items())}
     base["flagged_rows"] = len(flagged)
     base["morale"] = [m for r in results for m in r["morale"]]
     base["help"] = [h for r in results for h in r.get("help", [])]
