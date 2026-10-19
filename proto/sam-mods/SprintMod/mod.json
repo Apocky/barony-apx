@@ -1,0 +1,9 @@
+{
+  "$schema": "https://spider12223.github.io/SAM-Framework/schemas/mod.schema.json",
+  "namespace": "sprint",
+  "name": "Sprint",
+  "author": "Apocky",
+  "version": "1.0.0",
+  "framework_min_version": "3.1.0",
+  "description": "Hold Left Shift to sprint at 150% move speed. Sprinting drains mana (4 MP per second); mana regenerates slightly while not sprinting (+1 MP per second)."
+}

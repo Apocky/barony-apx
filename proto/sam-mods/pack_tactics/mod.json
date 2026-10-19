@@ -1,0 +1,9 @@
+{
+  "$schema": "https://spider12223.github.io/SAM-Framework/schemas/mod.schema.json",
+  "namespace": "pack_tactics",
+  "name": "Pack Tactics (PROTOTYPE)",
+  "author": "Apocky",
+  "version": "0.1.0",
+  "framework_min_version": "3.4.0",
+  "description": "PROTOTYPE, never ships. S-track of Apockalypsis specs/barony-fork/09 section 3: hostile packs that hold ring slots, flank and retreat on broken morale; at most 3 melee attackers per player (attack tokens, approximated by clearing targets); sweeps, shoves and a stamina bar; extra packs per room up to a population multiple (Settings > General); one telemetry line per encounter in sam_log.txt."
+}

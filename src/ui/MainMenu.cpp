@@ -26474,6 +26474,18 @@ failed:
         }
 	}
 
+	// APX identity (D60): the game is "Apocky's Barony". title.png is upstream's BARONY logo,
+	// so the word "Apocky's" sits just above it, and the version field names the game too.
+	static const char* const apxGameTitle = "Apocky's Barony";
+	static void addApxTitle(Frame* frame, const SDL_Rect& logo) {
+		auto apx = frame->addField("apx_title", 32);
+		apx->setFont(bigfont_outline);
+		apx->setText("Apocky's");
+		apx->setJustify(Field::justify_t::CENTER);
+		apx->setSize(SDL_Rect{logo.x, std::max(0, logo.y - 22), logo.w, 40});
+		apx->setColor(makeColor(255, 160, 48, 255));
+	}
+
 	static std::string getVersionString() {
         char date[64];
 		strcpy(date, __DATE__ + 7);
@@ -26533,6 +26545,7 @@ failed:
 			title_img->getName(),
 			"title"
 		);
+		addApxTitle(main_menu_frame, title->pos);
 
 		char buf[64];
 		const char date[] = __DATE__;
@@ -26554,13 +26567,13 @@ failed:
         auto version_str = getVersionString();
 		auto version = main_menu_frame->addField("version", 32);
 		version->setFont(smallfont_outline);
-		version->setText(version_str.c_str());
+		version->setText((std::string(apxGameTitle) + " " + version_str).c_str());
 		version->setHJustify(Field::justify_t::RIGHT);
 		version->setVJustify(Field::justify_t::BOTTOM);
 		version->setSize(SDL_Rect{
-			Frame::virtualScreenX - 204,
+			Frame::virtualScreenX - 404,
 			Frame::virtualScreenY - 54,
-			200,
+			400,
 			50
 			});
 		version->setColor(0xffffffff);
@@ -26884,6 +26897,7 @@ failed:
 			title_img->getName(),
 			"title"
 		);
+		addApxTitle(main_menu_frame, title->pos);
 		y += title->pos.h;
 
 		Frame* pauseMenuAudioSliders = nullptr;
@@ -27469,13 +27483,13 @@ failed:
 			auto version_str = getVersionString();
 			auto version = main_menu_frame->addField("version", 32);
 			version->setFont(smallfont_outline);
-			version->setText(version_str.c_str());
+			version->setText((std::string(apxGameTitle) + " " + version_str).c_str());
 			version->setHJustify(Field::justify_t::RIGHT);
 			version->setVJustify(Field::justify_t::BOTTOM);
 			version->setSize(SDL_Rect{
-				Frame::virtualScreenX - 204,
+				Frame::virtualScreenX - 404,
 				Frame::virtualScreenY - 54,
-				200,
+				400,
 				50
 				});
 			version->setColor(0xffffffff);

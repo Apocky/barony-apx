@@ -1,0 +1,9 @@
+{
+  "$schema": "https://spider12223.github.io/SAM-Framework/schemas/mod.schema.json",
+  "namespace": "study_assist_repair",
+  "name": "Study Assist Repair",
+  "author": "Apocky",
+  "version": "1.0.0",
+  "framework_min_version": "3.1.0",
+  "description": "One-shot repair: undoes the INT +88 and the extra charm spellbook that an earlier Study Assist self-test wrote into a live character. Does nothing on a healthy character. Disable or delete after one successful run."
+}

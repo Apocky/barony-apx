@@ -1,0 +1,9 @@
+{
+  "$schema": "https://spider12223.github.io/SAM-Framework/schemas/mod.schema.json",
+  "namespace": "smart_followers",
+  "name": "Smart Followers",
+  "author": "Apocky",
+  "version": "1.0.0",
+  "framework_min_version": "3.1.0",
+  "description": "Followers keep formation behind you, engage threats before they reach you, focus fire, protect you when you are hurt, fall back when badly wounded, drop chases that lead them away from the party, and rejoin you when stuck or left behind."
+}

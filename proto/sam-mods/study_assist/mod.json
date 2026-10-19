@@ -1,0 +1,9 @@
+{
+  "$schema": "https://spider12223.github.io/SAM-Framework/schemas/mod.schema.json",
+  "namespace": "study_assist",
+  "name": "Study Assist",
+  "author": "Apocky",
+  "version": "1.0.0",
+  "framework_min_version": "3.1.0",
+  "description": "Learns the Charm Monster spell from a carried spellbook once your Mysticism and INT qualify, and logs the exact numbers (race, class, Mysticism, INT) the game used, so a refused read can be explained from sam_log.txt."
+}

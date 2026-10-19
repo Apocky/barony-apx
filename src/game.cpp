@@ -7356,7 +7356,7 @@ int main(int argc, char** argv)
 		map.worldUI->last = nullptr;
 
 		// initialize engine
-		if ( (c = initApp("Barony", fullscreen)) )
+		if ( (c = initApp("Apocky's Barony", fullscreen)) )
 		{
 			printlog("Critical error: %d\n", c);
 #ifdef STEAMWORKS
