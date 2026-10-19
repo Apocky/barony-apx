@@ -37,6 +37,7 @@ See LICENSE for details.
 #endif
 #include "ui/MainMenu.hpp"
 #include "ui/GameUI.hpp"
+#include "apx_stamina.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -10478,6 +10479,14 @@ void Entity::attack(int pose, int charge, Entity* target)
 
 			playSoundEntity(this, 770 + local_rng.rand() % 4, 108); // whoosh noise
 		}
+		else if ( player >= 0 && !shapeshifted && target == nullptr && pose != MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE
+			&& apx::moveFor(player) == apx::SWORD_SLASH )
+		{
+			// apx: the sword's horizontal slash reuses the vanilla sweep timer (arc and extra-target cap in actmagic.cpp)
+			sweepAttackTimer = createParticleTimer(this, 3, -1);
+			sweepAttackTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SWEEP_ATTACK;
+			playSoundEntity(this, 770 + local_rng.rand() % 4, 108); // whoosh noise
+		}
 
 		bool magicstaffStrike = false;
 
@@ -11290,6 +11299,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 		bool miss = false;
 		bool guard = false;
 		int strikeRange = STRIKERANGE;
+		if ( player >= 0 && target == nullptr )
+		{
+			strikeRange = static_cast<int>(STRIKERANGE * apx::reachMult(player)); // apx: sword thrust / lunge reach
+		}
 		// normal attacks
 		if ( target == nullptr )
 		{
@@ -12770,11 +12783,19 @@ void Entity::attack(int pose, int charge, Entity* target)
 					}
 
 					int myAttack = std::max(0, (Entity::getAttack(this, myStats, behavior == &actPlayer, charge) * damagePreMultiplier) + getBonusAttackOnTarget(*hitstats));
+					if ( player >= 0 )
+					{
+						myAttack = apx::adjustDamage(player, myAttack, pose); // apx: vertical slash weight, slash falloff
+					}
 					if ( myStats->type == BUGBEAR && pose == MONSTER_POSE_BUGBEAR_SHIELD )
 					{
 						myAttack += 2 + local_rng.rand() % 3;
 					}
 					int enemyAC = AC(hitstats);
+					if ( player >= 0 && apx::moveFor(player) == apx::SWORD_LUNGE )
+					{
+						enemyAC = static_cast<int>(enemyAC * (1.0 - apx::kLungeArmourIgnore)); // apx: lunge ignores part of the armour
+					}
 					if ( weaponskill == PRO_POLEARM && myStats->weapon && myStats->weapon->type == ARTIFACT_SPEAR && !shapeshifted )
 					{
 						real_t amount = 0.f;
@@ -13136,6 +13157,11 @@ void Entity::attack(int pose, int charge, Entity* target)
 					}
 
 					Sint32 oldHP = hitstats->HP;
+					if ( player >= 0 && apx::selftestOn() )
+					{
+						printlog("[apx-hit] move=%d pose=%d target=%u damage=%d extra=%d dist=%.1f", apx::moveFor(player), pose, hit.entity->getUID(),
+							damage, pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ? 1 : 0, entityDist(this, hit.entity));
+					}
 					hit.entity->modHP(-damage); // do the damage
 
 					if ( hitstats )
@@ -16899,9 +16925,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 		net_packet->data[6] = charge;
 		SDLNet_Write32((Sint32)(myStats->weapon ? myStats->weapon->type : 0), &net_packet->data[7]);
 		SDLNet_Write32((Uint32)(myStats->weapon ? myStats->weapon->appearance : 0), &net_packet->data[11]);
+		net_packet->data[15] = static_cast<Uint8>(apx::moveFor(player)); // apx: sword move for the host's damage code
 		net_packet->address.host = net_server.host;
 		net_packet->address.port = net_server.port;
-		net_packet->len = 15;
+		net_packet->len = 16;
 		sendPacketSafe(net_sock, -1, net_packet, 0);
 	}
 }
@@ -17026,7 +17053,12 @@ int AC(Stat* stat)
 		if ( stat->defending )
 		{
 			//messagePlayer(0, "shield up! +%d", 5 + stat->PROFICIENCIES[PRO_SHIELD] / 5);
-			armor += stat->getActiveShieldBonus(true, false);
+			int apxActiveBonus = stat->getActiveShieldBonus(true, false);
+			if ( player >= 0 && apx::blockSwingEnabled() && apx::get(player).swingWhileBlock )
+			{
+				apxActiveBonus = static_cast<int>(apxActiveBonus * apx::kSwingWhileBlockYield); // apx D64: 60 percent while the swing is out
+			}
+			armor += apxActiveBonus;
 			/*if ( stat->getEffectActive(EFF_FORCE_SHIELD) > 0 )
 			{
 				armor += stat->getEffectActive(EFF_FORCE_SHIELD);

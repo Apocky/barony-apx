@@ -20,6 +20,7 @@
 #include "charclass.hpp"
 #include "player.hpp"
 #include "mod_tools.hpp"
+#include "apx_stamina.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -692,6 +693,7 @@ void initClassStats(const int classnum, void* myStats)
 
 void initClass(const int player)
 {
+	apx::reset(player); // apx: new character, new stamina and Endurance
 	Item* item = nullptr;
 	Item* item2 = nullptr;
 	auto& hotbar_t = players[player]->hotbar;
