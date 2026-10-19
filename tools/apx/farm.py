@@ -127,6 +127,14 @@ def schedule(pending, running, cond, caps=CAPS, mem_gb=MEM_GB):
     return start, None
 
 
+def memory_budget(free_gb, min_free_gb, running, mem_gb=MEM_GB):
+    """Commit memory new launches may take now. A game commits its memory over its first seconds, so
+    each running game's not-yet-committed part (its budget minus what it holds now) is reserved:
+    running = [(mode, current private GB or None), ...]."""
+    reserved = sum(max(0.0, mem_gb.get(m, 0.0) - (cur or 0.0)) for m, cur in running)
+    return max(0.0, free_gb - min_free_gb - reserved)
+
+
 def done_record(job, exit_code, started, finished, how, cwd, stdout_path, until_line=None):
     """The done/<id>.json content for a finished job."""
     rec = dict(job)
@@ -292,7 +300,8 @@ class Runner:
         slots = [n for n in apx_locks._names(apx_locks.SLOTS, "*.LOCK") if n not in our_locks]
         barony = [pid for pid, _ in apx_locks.barony_processes() if pid not in ours]
         free = free_commit_gb()
-        budget = max(0.0, free - self.args.min_free_gb)
+        budget = memory_budget(free, self.args.min_free_gb,
+                               [(j.job["mode"], private_gb(j.proc._handle)) for j in self.jobs.values()])
         return {"apocky_playing": bool(apx_locks.apocky_playing()), "low_memory": budget < min(MEM_GB.values()),
                 "mem_budget_gb": budget, "foreign_wants": len(wants), "foreign_excl": len(excl),
                 "foreign_slots": len(slots), "foreign_barony": len(barony), "free_commit_gb": round(free, 1)}

@@ -96,6 +96,15 @@ class SchedulerTests(unittest.TestCase):
         start, _ = farm.schedule(jobs("windowed", "headless"), [], dict(CLEAR, mem_budget_gb=3.0))
         self.assertEqual(ids(start), ["001"])        # a windowed game (3.2 GB) does not fit; the headless one does
 
+    def test_sched_memory_reserve(self):
+        # two headless games just launched (0.3 GB each so far) still reserve the rest of their 2.3 GB
+        self.assertAlmostEqual(farm.memory_budget(12.0, 3.0, [("headless", 0.3), ("headless", 0.3)]), 5.0)
+        self.assertAlmostEqual(farm.memory_budget(12.0, 3.0, [("headless", 2.5)]), 9.0)   # over budget: no reserve
+        self.assertEqual(farm.memory_budget(4.0, 3.0, [("windowed", None)]), 0.0)
+        # control: without the reserve, the snapshot would allow 4 more games where 2 fit
+        naive, real = 12.0 - 3.0, farm.memory_budget(12.0, 3.0, [("headless", 0.3), ("headless", 0.3)])
+        self.assertNotEqual(int(naive // 2.3), int(real // 2.3))
+
     def test_sched_validate(self):
         self.assertEqual(farm.validate({"exe": "x", "mode": "headless", "timeout_s": 5}), [])
         self.assertTrue(farm.validate({"exe": "x", "mode": "fast", "timeout_s": 5}))

@@ -90,3 +90,39 @@ From-scratch check (2026-10-18 22:50, MEASURED): `build.ps1 -BuildDir build\vs20
 (clean tree) built barony.exe in 227 s with 2 compiler processes; with that exe a 4-run matrix
 (ours and vanilla, both seeds) gave the same two lines, gate PASS, 0 install files changed
 (`C:\Apocrypha\diagnostics\barony-f0\clean-build`).
+
+## Test farm: -apxheadless and farm.py
+
+`-apxheadless` (or `APX_HEADLESS=1`) runs the game with a hidden window (never focused, so no key
+press reaches it), no audio device, no vsync, no frame limiter, no drawing, and a fixed batch of
+logic ticks per main-loop pass (`APX_HEADLESS_BATCH`, default 50). Logic that lives inside draw paths
+(the crosshair pick) does not run headless; scenario bots that need it stay windowed.
+
+`farm.py` is the one runner for Barony jobs on this PC. A job is a JSON file (exe, args, mode
+headless | windowed | exclusive, timeout_s, lane, optional until regex, env, datadir, cwd); the
+runner starts jobs first in, first out per mode under capacity (headless 6, windowed 3, exclusive 1)
+and a commit-memory budget (headless 2.3 GB, windowed 3.2 GB per game, MEASURED peaks 2.23 and 3.13),
+and follows the run protocol (11-MASTER-PLAN section 5 rule 1): nothing new starts while Apocky
+plays, while any `.WANT` exists or another lane holds `barony\*.LOCK`; windowed jobs hold a D70 slot
+file; an exclusive job writes `barony-want\farm-<id>.WANT` when it is first in line and runs alone.
+Each job gets `C:\Apocrypha\barony-jobs\runs\<id>` as working folder; `done\<id>.json` holds exit
+code, wall time, how it ended (exit, until, timeout, launch_error, orphaned), peak memory, log paths.
+
+```
+python tools\apx\farm.py run --exe build\vs2022\Release\barony.exe --mode headless --timeout 120 ^
+    --lane mylane --until "successfully generated a dungeon with[^.]*\." -- ^
+    -quickstart=barbarian -apxfloor=1 -apxmapseed=1234567 -apxheadless
+python tools\apx\farm.py submit job.json      # returns at once; done\<id>.json appears later
+python tools\apx\farm.py status
+python tools\apx\test_farm.py                 # offline: 13 tests, about 18 s, no Barony
+python tools\apx\headless_gate.py --exe <exe with -apxheadless and F1's floor hash>
+python tools\apx\farm_bench.py --exe <exe> --n 24
+```
+
+`farm.py run` is the one-line submit-and-wait: put it in a lane's single background job; it starts
+the runner (hidden) when none runs and exits with the job's exit code.
+
+Headless gate (2026-10-19, MEASURED, local merge of apx/farm and apx/f1-instruments 5fa55c3a, 22
+jobs in 222 s): 10/10 seeds give the same F1 floor-1 hash and F0 line windowed and headless; seed + 1
+and APX_HASH_POKE=1 change the hash; the headless window was never visible; audio devices opened:
+headless 0, windowed at least 5. Rows: `C:\Apocrypha\diagnostics\barony-farm\gate.jsonl`.
