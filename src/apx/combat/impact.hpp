@@ -33,4 +33,10 @@ int materialIndex(const char* name);   // -1 if unknown
 float multiplierFor(int monsterType, int baronyClass, float fallback);
 int monsterMaterial(int monsterType);  // -1 if out of range
 
+// Engine switch (-apximpact) and a use counter, so a silent fallback to the old table is visible.
+void setEnabled(bool on);
+bool enabled();
+unsigned long long uses();
+void countUse();
+
 }} // namespace apx::combat

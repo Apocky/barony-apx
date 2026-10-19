@@ -69,4 +69,10 @@ float multiplierFor(int t, int c, float fallback)
 	return mm.level * materialMultiplier(m, material(mm.material));
 }
 
+namespace { bool gEnabled = false; unsigned long long gUses = 0; }
+void setEnabled(bool on) { gEnabled = on; }
+bool enabled() { return gEnabled; }
+unsigned long long uses() { return gUses; }
+void countUse() { ++gUses; }
+
 }} // namespace apx::combat

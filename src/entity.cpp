@@ -31047,9 +31047,24 @@ real_t Entity::getDamageTableEquipmentMod(Stat& myStats, Item& item, real_t base
 	return bonus;
 }
 
+#include "apx/combat/impact.hpp" // apx F4b (D66): damage kinds against materials
+
 real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableType damageType, int* magicResistance, int* outNumSources)
 {
 	real_t damageMultiplier = damagetables[myStats.type][damageType];
+	if ( apx::combat::enabled() && damageType != DAMAGE_TABLE_MAGIC )
+	{
+		// apx F4b: physical hits use the impact rule (kind of the class vs the monster's material);
+		// magic and every bonus below stay as upstream. Off unless -apximpact.
+		const real_t upstream = damageMultiplier;
+		damageMultiplier = apx::combat::multiplierFor(myStats.type, damageType, (float)upstream);
+		apx::combat::countUse();
+		if ( apx::combat::uses() <= 16 )
+		{
+			printlog("[apx impact] use %llu: monster %d class %d material %s: %.3f -> %.3f", apx::combat::uses(),
+				(int)myStats.type, (int)damageType, apx::combat::materialName(apx::combat::monsterMaterial(myStats.type)), upstream, damageMultiplier);
+		}
+	}
 	if ( myStats.getEffectActive(EFF_SHADOW_TAGGED) )
 	{
 		if ( myStats.type == LICH || myStats.type == LICH_FIRE || myStats.type == LICH_ICE
