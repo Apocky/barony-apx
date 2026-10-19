@@ -280,11 +280,15 @@ namespace tactics
 				dist2 = clipMove(&my->x, &my->y, vx, vy, my);
 				if ( hypot(my->x - x0, my->y - y0) >= 0.5 * v ) { MONSTER_VELX = vx; MONSTER_VELY = vy; ++C.body_sidesteps; break; }
 			}
-			if ( hypot(my->x - ox, my->y - oy) < 0.05 && hypot(blocker->x - gx, blocker->y - gy) < bodyR(blocker) + bodyR(my) )
+			if ( hypot(my->x - ox, my->y - oy) < 0.05 )
 			{
+				// no room to slide (a corridor, a doorway, a full ring): wait behind the body instead of pushing into it
+				// every tick; it moves on as soon as the body does. d80-s1: the 1-tile corridor logged 893 stuck ticks
+				// per 20 s from queued creatures pushing; holds are counted (goal under the body, or a queue)
 				MONSTER_VELX = 0; MONSTER_VELY = 0;
 				s.stillSince = 0; s.stuckCounted = false;
-				++C.body_goal_holds;
+				if ( hypot(blocker->x - gx, blocker->y - gy) < bodyR(blocker) + bodyR(my) ) { ++C.body_goal_holds; }
+				else { ++C.body_queue_holds; }
 				return false;
 			}
 		}
