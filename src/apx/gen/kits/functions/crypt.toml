@@ -3,6 +3,8 @@
 id = "crypt"
 clutter = ["urn", "bones", "rubble", "candle", "skull", "sack", "crate", "lantern"]
 never = ["bed", "anvil", "bedroll"]
+light = ["sconce", "brazier"]
+lit_permille = 900
 
 [[activity]]
 id = "mourning"

@@ -3,6 +3,8 @@
 id = "stronghold"
 clutter = ["crate", "barrel", "sack", "bench", "weapon_pile", "lantern", "bucket", "chest_small"]
 never = ["creature_den", "rat_nest"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "court"

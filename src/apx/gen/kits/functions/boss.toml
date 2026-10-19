@@ -3,6 +3,8 @@
 id = "boss"
 clutter = ["rubble", "bones", "skull", "pillar", "brazier", "rusty_sword", "weapon_pile"]
 never = ["keeper", "pilgrim", "bed"]
+light = ["sconce", "brazier"]
+lit_permille = 900
 
 [[activity]]
 id = "lair"

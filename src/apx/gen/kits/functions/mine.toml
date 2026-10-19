@@ -3,6 +3,8 @@
 id = "mine"
 clutter = ["crate", "barrel", "rubble", "ore_pile", "sack", "pickaxe", "bucket", "lantern"]
 never = ["altar", "bed", "statue"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "hauling"

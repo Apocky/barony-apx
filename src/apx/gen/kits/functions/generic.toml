@@ -3,6 +3,8 @@
 id = "generic"
 clutter = ["crate", "barrel", "sack", "bench", "shelf", "bucket", "rubble", "lantern"]
 never = ["altar"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "storage"

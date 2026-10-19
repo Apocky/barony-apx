@@ -512,7 +512,7 @@ void dress_floor(Floor& f, const std::vector<Program>& progs, const DressLib& li
                     long long acc = 0;
                     // the face's pick by share; a pick at the Clone Army cap passes to the next entry
                     for (size_t wi = 0; wi < walls.size(); ++wi) {
-                        acc += (long long)(toml_num(walls[wi], "share", 0) * 1000);
+                        acc += (long long)(toml_num(walls[wi], "share", 0) * lib.wall_scale * 1000);
                         if ((long long)hv >= acc) continue;
                         for (size_t j = 0; j < walls.size(); ++j) {
                             const PropDef* p = lib.prop(toml_str(walls[(wi + j) % walls.size()], "id"));
@@ -523,6 +523,31 @@ void dress_floor(Floor& f, const std::vector<Program>& progs, const DressLib& li
                         }
                         break;
                     }
+                }
+            }
+        }
+        // LIGHT: a room with no emissive gets one by lit_permille: a wall light on a free wall face
+        // (any wall_scale), else a floor light; the rest stay dark on purpose (Lit, gameplay/20)
+        {
+            bool lit = false;
+            for (auto& d : f.dress) lit |= d.room == ro.node && d.content == "light";
+            for (int t : R.tiles) lit |= f.feat[t] == F_SKY;
+            auto lights = toml_strs(toml_get(fn->doc, "meta"), "light");
+            long long pm = toml_int(toml_get(fn->doc, "meta"), "lit_permille", 0);
+            if (!lit && !lights.empty() && (long long)R.rng.next(1000) < pm) {
+                bool done = false;
+                for (auto& id : lights) {
+                    const PropDef* p = lib.prop(id);
+                    if (done || !p) continue;
+                    if (p->place == "wall") {
+                        if (lib.wall_scale <= 0) continue;
+                        for (int t : R.tiles) {
+                            int x = t % W, z = t / W;
+                            for (int k = 0; k < 4 && !done; ++k)
+                                if (R.wall(x + FX[k], z + FZ[k]) && !R.room(x + FX[k], z + FZ[k])) { R.emit("wall", p->id, x, z, (k + 2) % 4, "light", p->content, p->variants); done = true; }
+                            if (done) break;
+                        }
+                    } else done = R.place_any(id, Z_NONE, 3, -1, "light", true) >= 0;
                 }
             }
         }

@@ -89,6 +89,14 @@ struct Params {
     bool hard_walls = true;      // spec 02 section 8: walls of a lock's far side are undiggable
     int max_attempts = 8;        // sub-seeds tried before the floor is declared failed
     std::string theme;           // "" = by seed from the six themes
+    bool special_cells = true;   // false = control: special nodes keep whatever cell BFS gave them
+    bool band_order_x = false;   // true = the F2 band order (cells by x then z): thin column bands
+    int boss_min = 12;
+    bool boss_largest = false;   // true = F3.1 rule: the boss takes the largest cell of its band (far moves)
+    bool band_steal = true;
+    int corridor_feat_cost = 24; // extra A* cost per lava/chasm/deep tile in a room (0 = the F3 paving behaviour)
+    bool vent = false;           // the cave layer: one room takes a special "vent" program (lava vent)
+    int edge_reorders = 4;       // corridor-pass restarts with the failed edge first (0 = control)      // false = control: a special that fits no cell of its band dead-ends           // the boss cell holds at least this many tiles a side inside its margin
     // macro structure grammar (kits/districts.toml): theme -> districts; one district per lock region
     std::vector<std::pair<std::string, std::vector<std::string>>> districts;
 };
@@ -136,6 +144,9 @@ struct Floor {
     std::vector<std::string> region_district; // district per lock region
     std::vector<uint8_t> feat;   // Feat per tile
     int special_rooms = 0, themed_rooms = 0, district_rooms = 0;
+    int vent_rooms = 0, special_swaps = 0, special_merges = 0, band_steals = 0, edge_reorders = 0, special_missed = 0; // missed: a special node on a non-special program
+    unsigned special_kinds = 0;  // bit per special kind placed: haven boss vault nexus stronghold
+    int boss_w = 0, boss_d = 0;
     std::vector<uint8_t> zone;   // Zone per tile (room floor only)
     std::vector<DressRow> dress;
     std::vector<RoomDress> room_dress;
@@ -174,6 +185,7 @@ struct DressLib {
     std::vector<PropDef> props;
     std::vector<FunctionProgram> functions;
     double m2_per_tile = 1.0;   // ASSUMED: one tile = 1 m^2 for the density rule
+    double wall_scale = 1.0;    // wall-trim shares are scaled by this (0 = the H1a thinned control)
     bool clone_cap = true;      // false = the control trial: Clone Army must come back
     const FixtureDef* fixture(const std::string& id) const;
     const PropDef* prop(const std::string& id) const;
@@ -207,5 +219,45 @@ struct Vox {
 bool build_vox(const FixtureDef& fx, int variant, Vox& out, std::string& err);
 bool write_vox(const std::string& path, const Vox& v);
 bool read_vox(const std::string& path, Vox& v, std::string& err);
+
+// ---------------------------------------------------------------- H1a: the Hollow site (gameplay/20 sections 2-3)
+// A surface pocket (64 x 64: ruin, stream, copse, camp), four floors (fortress, temple, crypt or
+// sewer, mine) of 24-40 rooms on grammar/hollow.grammar, and the cave layer with a lava vent;
+// linked by stairs, a shaft, a flooded sump and a collapsed level (dug through). Each floor has a
+// faction with dens and patrol routes; writings carry a text kind.
+struct SiteLink { std::string kind; int from = 0, to = 0, fx = 0, fz = 0, tx = 0, tz = 0; int dig_tiles = 0, room = -1; };
+struct Den { int room = -1, x = 0, z = 0; };
+struct Patrol { int room_a = -1, room_b = -1; std::vector<int> tiles; };
+struct Writing { int room = -1, x = 0, z = 0; std::string id, kind; uint64_t text = 0; };
+struct Level {
+    std::string name, faction;
+    Result r;
+    std::vector<Den> dens;
+    std::vector<Patrol> patrols;
+    std::vector<Writing> writings;
+    std::vector<char> room_alive, room_lit;  // per room row
+    int alive = 0, lit = 0, rooms = 0, readable_candidates = 0;
+};
+struct SiteParams {
+    bool thin = false;         // the control: 1 den, no patrols, no wall dressing -> must fail
+    int writings_lo = 12, writings_hi = 16; // texts given per floor (seeded in the band)
+    int gate_writings_lo = 10, gate_writings_hi = 20; // the Readable gate band
+    bool all_legible = false;  // the control: every readable candidate gets a text -> over the band
+    int alive_m = 16;          // "within 16 m" at 1 tile = 1 m (ASSUMED, as DressLib::m2_per_tile)
+};
+struct Site {
+    uint64_t seed = 0;
+    Floor surface;
+    std::vector<std::string> surface_parts; // ruin, stream, copse, camp (present)
+    std::vector<Level> levels;  // floors 1-4, then the cave layer
+    std::vector<SiteLink> links;
+    uint64_t hash = 0;
+    std::vector<std::string> log;
+};
+struct SiteVerdict { std::vector<std::string> fails; bool pass() const { return fails.empty(); } };
+// grammars: [0] the Hollow floor grammar, [1] the cave-layer grammar
+bool build_site(uint64_t seed, const std::vector<Grammar>& g, const std::vector<Program>& progs, const DressLib& lib,
+                const Params& P, const SiteParams& SP, Site& s, std::string& err);
+SiteVerdict site_critic(const Site& s, const SiteParams& SP);
 
 } // namespace apx

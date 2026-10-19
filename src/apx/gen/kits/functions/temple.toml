@@ -3,6 +3,8 @@
 id = "temple"
 clutter = ["bench", "urn", "candle", "brazier", "statue", "pillar", "offering", "chest_small"]
 never = ["anvil", "ore_pile", "rat_nest"]
+light = ["sconce", "brazier"]
+lit_permille = 900
 
 [[activity]]
 id = "worship"

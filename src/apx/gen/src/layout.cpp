@@ -8,6 +8,8 @@
 #include <deque>
 #include <queue>
 #include <tuple>
+#include <cstdio>
+#include <cstdlib>
 
 namespace apx {
 
@@ -66,6 +68,8 @@ struct Digger {
     std::vector<uint8_t> occ;       // FREE, ROOMBOX, else corridor tag (lock region)
     std::vector<uint32_t> cmask;    // corridor behind mask per tile
     std::vector<int> carve_in_box;  // footprint tiles inside room boxes (door openings)
+    std::vector<uint8_t> featg;     // room programs' features on the grid: crossing a blocker costs feat_cost
+    uint32_t feat_cost = 24;
     int corridor_tiles = 0, narrowed = 0;
     int width_hist[4] = {0, 0, 0, 0};
     std::vector<uint32_t> g;
@@ -130,7 +134,16 @@ struct Digger {
                 if (nx < 1 || nz < 1 || nx >= S - 1 || nz >= S - 1) continue;
                 int n = (int)id(nx, nz);
                 if (n != goal && !foot_ok(nx, nz, w, a, b, tag, pass)) continue;
-                uint32_t ng = gc + 1;
+                uint32_t pen = 0; // go round lava, chasms, deep water where a way exists: every footprint tile counts
+                if (feat_cost) {
+                    int lo = -(w - 1) / 2, hi = w / 2;
+                    for (int dz = lo; dz <= hi; ++dz)
+                        for (int dx = lo; dx <= hi; ++dx) {
+                            int px = nx + dx, pz = nz + dz;
+                            if (px >= 0 && pz >= 0 && px < S && pz < S && feat_blocks(featg[id(px, pz)])) pen += feat_cost;
+                        }
+                }
+                uint32_t ng = gc + 1 + pen;
                 if (ng < g[n]) { g[n] = ng; from[n] = c; open.push({ng + h(nx, nz), ng, n}); }
             }
         }
@@ -188,7 +201,22 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     int nreg = (int)*std::max_element(f.reg.begin(), f.reg.end()) + 1;
     std::vector<int> order(cells.size());
     for (size_t i = 0; i < order.size(); ++i) order[i] = (int)i;
-    std::sort(order.begin(), order.end(), [&](int a, int b) { return std::make_tuple(centre(a).first, centre(a).second, a) < std::make_tuple(centre(b).first, centre(b).second, b); });
+    // cells in Hilbert-curve order of their centres, so a run of cells (a lock region's band) is a
+    // compact blob, not a one-cell-wide column (P.band_order_x = the old x-then-z order, the control)
+    auto hilbert = [](int x, int z) {
+        long long d = 0;
+        for (int s = 128; s > 0; s /= 2) {
+            int rx = (x & s) > 0, rz = (z & s) > 0;
+            d += (long long)s * s * ((3 * rx) ^ rz);
+            if (rz == 0) { if (rx == 1) { x = 255 - x; z = 255 - z; } std::swap(x, z); }
+        }
+        return d;
+    };
+    if (P.band_order_x)
+        std::sort(order.begin(), order.end(), [&](int a, int b) { return std::make_tuple(centre(a).first, centre(a).second, a) < std::make_tuple(centre(b).first, centre(b).second, b); });
+    else
+        std::sort(order.begin(), order.end(), [&](int a, int b) {
+            return std::make_tuple(hilbert(centre(a).first, centre(a).second), a) < std::make_tuple(hilbert(centre(b).first, centre(b).second), b); });
     std::vector<int> counts(nreg, 0);
     for (auto x : f.reg) counts[x]++;
     int spare = (int)cells.size() - N;
@@ -225,6 +253,167 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     }
     for (int v = 0; v < N; ++v) if (cell_of[v] < 0) return "mission node " + m.nodes[v].name + " not connected";
 
+    // special nodes (HAVEN, BOSS, VAULT, NEXUS, STRONGHOLD) get a cell their special program fits:
+    // a swap inside the node's band (its lock region, so the region rules hold); the boss takes the
+    // largest cell of its band and needs at least P.boss_min tiles a side inside the cell margin
+    if (P.special_cells) {
+        auto inner = [&](int c) { return std::pair<int, int>{cells[c][2] - cells[c][0] - 4, cells[c][3] - cells[c][1] - 4}; };
+        std::vector<int> node_at(cells.size(), -1);
+        for (int v = 0; v < N; ++v) node_at[cell_of[v]] = v;
+        std::vector<char> fixed(N, 0);
+        // the boss first (it wants the largest), then the rest in node order
+        std::vector<int> order_sp;
+        for (int v = 0; v < N; ++v) if (m.nodes[v].kind == Kind::Boss) order_sp.push_back(v);
+        for (int v = 0; v < N; ++v) if (*special_of(m.nodes[v].kind) && m.nodes[v].kind != Kind::Boss) order_sp.push_back(v);
+        for (int v : order_sp) {
+            const std::string sp = special_of(m.nodes[v].kind);
+            int nw = 1 << 30, nd = 1 << 30;
+            for (auto& p : progs) if (p.special == sp) { nw = std::min(nw, p.min[0]); nd = std::min(nd, p.min[2]); }
+            if (nw == (1 << 30)) continue; // no special program of this kind in the kits
+            bool boss = m.nodes[v].kind == Kind::Boss;
+            if (boss) { nw = std::max(nw, P.boss_min); nd = std::max(nd, P.boss_min); }
+            int best = -1;
+            long long ba = -1;
+            for (int c = 0; c < (int)cells.size(); ++c) {
+                if (band_of_cell[c] != f.reg[v]) continue;
+                int u = node_at[c];
+                if (u >= 0 && u != v && (fixed[u] || *special_of(m.nodes[u].kind))) continue;
+                auto [cw, cd] = inner(c);
+                if (cw < nw || cd < nd) continue;
+                long long area = (long long)cw * cd;
+                // the current cell if it fits; else the nearest fitting cell (a corridor from the
+                // node's neighbours, embedded near the old cell, can still reach it); ties by area,
+                // the boss preferring the larger, the rest the smaller. P.boss_largest = the old rule.
+                long long dx = (cells[c][0] + cells[c][2]) / 2 - (cells[cell_of[v]][0] + cells[cell_of[v]][2]) / 2;
+                long long dz = (cells[c][1] + cells[c][3]) / 2 - (cells[cell_of[v]][1] + cells[cell_of[v]][3]) / 2;
+                long long near = -(dx * dx + dz * dz) * 4096 + (boss ? area : -area);
+                long long score = (boss && P.boss_largest) ? area : (c == cell_of[v] ? (1LL << 50) : near);
+                if (best < 0 || score > ba) { best = c; ba = score; }
+            }
+            if (best < 0) {
+                // no single cell fits: grow a rectangle of up to 4 cells of the band, each step
+                // adding a cell that shares a whole edge with the rectangle so far (the union stays
+                // a rectangle, no other cell inside it). Non-special occupants move to spare cells
+                // of the band (v's old cell counts as spare). The union goes to v; the others retire.
+                auto shares = [](const Rect& R, const Rect& B) {
+                    return (R[1] == B[1] && R[3] == B[3] && (R[2] == B[0] || B[2] == R[0])) ||
+                           (R[0] == B[0] && R[2] == B[2] && (R[3] == B[1] || B[3] == R[1]));
+                };
+                auto movable = [&](int c) { int u = node_at[c]; return u < 0 || u == v || (!fixed[u] && !*special_of(m.nodes[u].kind)); };
+                long long bestA = -1;
+                std::vector<int> bestS;
+                for (int a = 0; a < (int)cells.size(); ++a) {
+                    if (band_of_cell[a] != f.reg[v] || !movable(a)) continue;
+                    std::vector<int> S{a};
+                    Rect R = cells[a];
+                    for (int step = 0; step < 3; ++step) {
+                        if (R[2] - R[0] - 4 >= nw && R[3] - R[1] - 4 >= nd) break;
+                        int pick = -1;
+                        long long ps = -1;
+                        for (int b = 0; b < (int)cells.size(); ++b) {
+                            if (band_of_cell[b] != f.reg[v] || std::find(S.begin(), S.end(), b) != S.end() || !movable(b) || !shares(R, cells[b])) continue;
+                            Rect U{std::min(R[0], cells[b][0]), std::min(R[1], cells[b][1]), std::max(R[2], cells[b][2]), std::max(R[3], cells[b][3])};
+                            long long s = std::min(U[2] - U[0], U[3] - U[1]); // grow the short side first
+                            if (s > ps) { ps = s; pick = b; }
+                        }
+                        if (pick < 0) break;
+                        Rect B = cells[pick];
+                        R = {std::min(R[0], B[0]), std::min(R[1], B[1]), std::max(R[2], B[2]), std::max(R[3], B[3])};
+                        S.push_back(pick);
+                    }
+                    int cw = R[2] - R[0] - 4, cd = R[3] - R[1] - 4;
+                    if (cw < nw || cd < nd) continue;
+                    int movers = 0, spares = 0;
+                    for (int c : S) movers += node_at[c] >= 0 && node_at[c] != v;
+                    for (int c = 0; c < (int)cells.size(); ++c)
+                        if (band_of_cell[c] == f.reg[v] && std::find(S.begin(), S.end(), c) == S.end() && (node_at[c] < 0 || c == cell_of[v])) ++spares;
+                    if (spares < movers) continue;
+                    long long score = (long long)cw * cd - 1000LL * (long long)S.size(); // fewest cells, then largest
+                    if (bestS.empty() || score > bestA) { bestA = score; bestS = S; }
+                }
+                if (bestS.empty() && P.band_steal) {
+                    // the band has no room for this special even merged: take the nearest fitting
+                    // cell of another band into this one (its occupant, if any, moves to a spare cell
+                    // of its own band). Bands only steer corridors; the critic still checks locks.
+                    long long cx = 0, cz = 0, n = 0;
+                    for (int c = 0; c < (int)cells.size(); ++c)
+                        if (band_of_cell[c] == f.reg[v]) { cx += (cells[c][0] + cells[c][2]) / 2; cz += (cells[c][1] + cells[c][3]) / 2; ++n; }
+                    if (n) { cx /= n; cz /= n; }
+                    int pick = -1, home = -1;
+                    long long pd = 0;
+                    for (int c = 0; c < (int)cells.size(); ++c) {
+                        uint32_t bc = band_of_cell[c];
+                        if (bc == f.reg[v] || bc == UINT32_MAX) continue;
+                        auto [cw, cd] = inner(c);
+                        if (cw < nw || cd < nd) continue;
+                        int u = node_at[c], h = -1;
+                        if (u >= 0) {
+                            if (fixed[u] || *special_of(m.nodes[u].kind)) continue;
+                            for (int c2 = 0; c2 < (int)cells.size(); ++c2) if (c2 != c && band_of_cell[c2] == bc && node_at[c2] < 0) { h = c2; break; }
+                            if (h < 0) continue;
+                        }
+                        long long dx = (cells[c][0] + cells[c][2]) / 2 - cx, dz = (cells[c][1] + cells[c][3]) / 2 - cz;
+                        long long d2 = dx * dx + dz * dz;
+                        // a cell touching the band (a shared boundary run) first: a corridor can reach it
+                        bool touch = false;
+                        for (int c2 = 0; c2 < (int)cells.size() && !touch; ++c2) {
+                            if (band_of_cell[c2] != f.reg[v]) continue;
+                            const Rect &A = cells[c], &B = cells[c2];
+                            bool xs = (A[2] == B[0] || B[2] == A[0]) && std::min(A[3], B[3]) - std::max(A[1], B[1]) >= 4;
+                            bool zs = (A[3] == B[1] || B[3] == A[1]) && std::min(A[2], B[2]) - std::max(A[0], B[0]) >= 4;
+                            touch = xs || zs;
+                        }
+                        if (!touch) d2 += 1LL << 40;
+                        if (pick < 0 || d2 < pd) { pick = c; pd = d2; home = h; }
+                    }
+                    if (pick >= 0) {
+                        int u = node_at[pick];
+                        if (u >= 0) { cell_of[u] = home; node_at[home] = u; }
+                        node_at[cell_of[v]] = -1;
+                        band_of_cell[pick] = f.reg[v];
+                        cell_of[v] = pick; node_at[pick] = v;
+                        for (int c = 0; c < (int)cells.size(); ++c) used[c] = node_at[c] >= 0 || band_of_cell[c] == UINT32_MAX;
+                        ++f.band_steals;
+                        fixed[v] = 1;
+                        continue;
+                    }
+                }
+                if (bestS.empty()) return "no cell in band " + std::to_string(f.reg[v]) + " fits special " + sp;
+                std::vector<int> movers;
+                node_at[cell_of[v]] = -1;
+                Rect R = cells[bestS[0]];
+                for (int c : bestS) {
+                    int u = node_at[c];
+                    if (u >= 0 && u != v) movers.push_back(u);
+                    node_at[c] = -1;
+                    R = {std::min(R[0], cells[c][0]), std::min(R[1], cells[c][1]), std::max(R[2], cells[c][2]), std::max(R[3], cells[c][3])};
+                }
+                int ma = bestS[0];
+                cells[ma] = R;
+                for (size_t k = 1; k < bestS.size(); ++k) { cells[bestS[k]] = {0, 0, 0, 0}; band_of_cell[bestS[k]] = UINT32_MAX; } // retired
+                cell_of[v] = ma; node_at[ma] = v;
+                for (int u : movers) {
+                    int home = -1;
+                    for (int c = 0; c < (int)cells.size(); ++c)
+                        if (band_of_cell[c] == f.reg[v] && node_at[c] < 0) { home = c; break; }
+                    if (home < 0) return "merge left node " + m.nodes[u].name + " without a cell";
+                    cell_of[u] = home; node_at[home] = u;
+                }
+                for (int c = 0; c < (int)cells.size(); ++c) used[c] = node_at[c] >= 0 || band_of_cell[c] == UINT32_MAX;
+                f.special_merges += (int)bestS.size() - 1;
+                fixed[v] = 1;
+                continue;
+            }
+            int old = cell_of[v], u = node_at[best];
+            if (best != old) {
+                cell_of[v] = best; node_at[best] = v; node_at[old] = u;
+                if (u >= 0) cell_of[u] = old; else used[old] = 0, used[best] = 1;
+                ++f.special_swaps;
+            }
+            fixed[v] = 1;
+        }
+    }
+
     // theme of the floor (by seed, not by attempt) and a district per lock region from the
     // structure grammar (kits/districts.toml): region 0 is the approach, deeper regions the buildings
     f.theme = P.theme.empty() ? THEMES[hash_words({seed, 0x7E3E}) % 6] : P.theme;
@@ -241,7 +430,10 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     for (int node = 0; node < N; ++node) {
         Rect cell = cells[cell_of[node]];
         int cw = cell[2] - cell[0] - 4, cd = cell[3] - cell[1] - 4;
-        const std::string sp = special_of(m.nodes[node].kind);
+        const std::string sp0 = special_of(m.nodes[node].kind);
+        // the cave layer's lava vent (gameplay/20 section 2): the first plain room a vent program fits
+        const bool vent = sp0.empty() && P.vent && f.vent_rooms == 0 && m.nodes[node].kind == Kind::Room;
+        const std::string sp = vent ? "vent" : sp0;
         const std::string& dist = f.region_district[f.reg[node]];
         std::vector<const Program*> fits, special, themed, district;
         for (auto& p : progs) {
@@ -252,7 +444,15 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         }
         if (fits.empty() && special.empty()) return "no program fits cell " + std::to_string(cw) + "x" + std::to_string(cd);
         const std::vector<const Program*>& pool = !special.empty() ? special : !district.empty() ? district : !themed.empty() ? themed : fits;
-        f.special_rooms += !special.empty();
+        if (vent) f.vent_rooms += !special.empty();
+        else f.special_rooms += !special.empty();
+        if (!sp0.empty()) {
+            if (special.empty()) ++f.special_missed;
+            else {
+                static const char* SK[] = {"haven", "boss", "vault", "nexus", "stronghold"};
+                for (int k = 0; k < 5; ++k) if (sp == SK[k]) f.special_kinds |= 1u << k;
+            }
+        }
         f.district_rooms += special.empty() && !district.empty();
         f.themed_rooms += special.empty() && !themed.empty();
         const Program* p = pool[0];
@@ -263,6 +463,7 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         int d = std::max(p->min[2], std::min(cd, p->max[2]));
         int h = std::max(p->min[1], std::min(p->max[1], 6));
         int x0 = cell[0] + 2 + (cw - w) / 2, z0 = cell[1] + 2 + (cd - d) / 2;
+        if (m.nodes[node].kind == Kind::Boss) { f.boss_w = w; f.boss_d = d; }
         RoomRow row{node, p->id, x0, z0, x0 + w, z0 + d, 0, 0, dist};
         std::string e = run_program(*p, w, h, d, hash_words({seed, 0xC4A7, (uint64_t)node}), room_floor[node], nullptr, &room_feat[node]);
         if (!e.empty()) {
@@ -291,6 +492,11 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     D.cmask.assign((size_t)S * S, 0);
     D.g.assign((size_t)S * S, 0);
     D.from.assign((size_t)S * S, -1);
+    D.featg.assign((size_t)S * S, F_NONE);
+    D.feat_cost = P.corridor_feat_cost;
+    for (auto& ro : f.rooms)
+        for (int z = ro.z0; z < ro.z1; ++z)
+            for (int x = ro.x0; x < ro.x1; ++x) D.featg[D.id(x, z)] = room_feat[ro.node][(size_t)(z - ro.z0) * (ro.x1 - ro.x0) + (x - ro.x0)];
     for (size_t c = 0; c < cells.size(); ++c)
         for (int z = cells[c][1]; z < cells[c][3]; ++z)
             for (int x = cells[c][0]; x < cells[c][2]; ++x) D.tile_band[D.id(x, z)] = band_of_cell[c];
@@ -313,10 +519,38 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         int ex = m.find(Kind::Exit);
         for (int v = ex; v >= 0; v = par[v]) on_path[v] = 1;
     }
-    for (auto& e : m.edges) {
-        int a = e.first, b = e.second;
-        int w = (on_path[a] && on_path[b] && (par[a] == b || par[b] == a)) ? 3 : (deg[a] == 1 || deg[b] == 1) ? 1 : 2;
-        if (!D.dig(a, b, std::min(f.reg[a], f.reg[b]), w)) return "no corridor for edge " + m.nodes[a].name + "-" + m.nodes[b].name;
+    // edges in mission order; a failed edge restarts the corridor pass with that edge first
+    // (earlier corridors of other regions can wall a room in: a corridor may not touch another
+    // region's corridor). P.edge_reorders restarts at most, counted in f.edge_reorders.
+    std::vector<int> eorder(m.edges.size());
+    for (size_t k = 0; k < eorder.size(); ++k) eorder[k] = (int)k;
+    const std::vector<uint8_t> occ0 = D.occ;
+    std::string efail;
+    for (int round = 0;; ++round) {
+        efail.clear();
+        int failed = -1;
+        for (int k : eorder) {
+            int a = m.edges[k].first, b = m.edges[k].second;
+            int w = (on_path[a] && on_path[b] && (par[a] == b || par[b] == a)) ? 3 : (deg[a] == 1 || deg[b] == 1) ? 1 : 2;
+            if (!D.dig(a, b, std::min(f.reg[a], f.reg[b]), w)) {
+                failed = k;
+                efail = "no corridor for edge " + m.nodes[a].name + "-" + m.nodes[b].name + " (" + std::to_string(f.rooms[a].door_x) + "," + std::to_string(f.rooms[a].door_z) +
+                        " r" + std::to_string(f.reg[a]) + " -> " + std::to_string(f.rooms[b].door_x) + "," + std::to_string(f.rooms[b].door_z) + " r" + std::to_string(f.reg[b]) +
+                        ", after " + std::to_string(round) + " reorders)";
+                break;
+            }
+        }
+        if (failed < 0) break;
+        if (round >= P.edge_reorders) return efail;
+        // restart: the failed edge moves to the front
+        eorder.erase(std::find(eorder.begin(), eorder.end(), failed));
+        eorder.insert(eorder.begin(), failed);
+        D.occ = occ0;
+        std::fill(D.cmask.begin(), D.cmask.end(), 0u);
+        D.carve_in_box.clear();
+        D.corridor_tiles = 0; D.narrowed = 0;
+        for (int& x : D.width_hist) x = 0;
+        ++f.edge_reorders;
     }
     // loop quota: the closest same-region pairs that are not graph neighbours (no lock rooms)
     std::vector<std::tuple<long long, int, int>> pairs;
@@ -398,7 +632,8 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
             std::vector<int> lab((size_t)S * S, -1);
             std::deque<int> qq{(int)f.idx(ro.door_x, ro.door_z)};
             lab[qq[0]] = 0;
-            auto inside = [&](int x, int z) { return x > ro.x0 && z > ro.z0 && x < ro.x1 - 1 && z < ro.z1 - 1; };
+            // the whole box: a corridor opening carved into a box corner has no interior neighbour
+            auto inside = [&](int x, int z) { return x >= ro.x0 && z >= ro.z0 && x < ro.x1 && z < ro.z1; };
             while (!qq.empty()) {
                 int c = qq.front(); qq.pop_front();
                 int x = c % S, z = c / S;
@@ -415,25 +650,30 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                 for (int x = ro.x0; x < ro.x1; ++x) if (f.tile[f.idx(x, z)] == FLOOR && lab[f.idx(x, z)] < 0) { island = (int)f.idx(x, z); break; }
             if (island < 0) break;
             // BFS through the box interior from the island to the door piece, carve the path
-            std::vector<int> prev((size_t)S * S, -2);
-            std::deque<int> q2{island};
-            prev[island] = -1;
+            // pass 0 keeps off lava, chasms and deep water; pass 1 may cross them (they become bridge)
+            std::vector<int> prev;
             int hit = -1;
-            while (!q2.empty() && hit < 0) {
-                int c = q2.front(); q2.pop_front();
-                int x = c % S, z = c / S;
-                const int DD[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-                for (auto& d2 : DD) {
-                    int nx = x + d2[0], nz = z + d2[1];
-                    if (!inside(nx, nz)) continue;
-                    int n = nz * S + nx;
-                    if (prev[n] != -2) continue;
-                    prev[n] = c;
-                    if (lab[n] == 0) { hit = n; break; }
-                    q2.push_back(n);
+            for (int pass = P.corridor_feat_cost ? 0 : 1; pass < 2 && hit < 0; ++pass) {
+                prev.assign((size_t)S * S, -2);
+                std::deque<int> q2{island};
+                prev[island] = -1;
+                while (!q2.empty() && hit < 0) {
+                    int c = q2.front(); q2.pop_front();
+                    int x = c % S, z = c / S;
+                    const int DD[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                    for (auto& d2 : DD) {
+                        int nx = x + d2[0], nz = z + d2[1];
+                        if (!inside(nx, nz)) continue;
+                        int n = nz * S + nx;
+                        if (prev[n] != -2) continue;
+                        if (pass == 0 && feat_blocks(f.feat[n])) continue;
+                        prev[n] = c;
+                        if (lab[n] == 0) { hit = n; break; }
+                        q2.push_back(n);
+                    }
                 }
             }
-            if (hit < 0) return "room " + std::to_string(ro.node) + " island cannot join its door";
+            if (hit < 0) return "room " + std::to_string(ro.node) + " (" + ro.program + " " + std::to_string(ro.x1 - ro.x0) + "x" + std::to_string(ro.z1 - ro.z0) + ") island cannot join its door";
             for (int c = hit; c >= 0; c = prev[c]) { f.tile[c] = FLOOR; if (feat_blocks(f.feat[c])) f.feat[c] = F_BRIDGE; }
             ++f.island_repairs;
         }

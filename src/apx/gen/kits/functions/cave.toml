@@ -3,6 +3,8 @@
 id = "cave"
 clutter = ["rubble", "mushrooms", "bones", "crystal", "puddle", "nest", "skull", "pack"]
 never = ["altar", "table", "bed", "shelf", "rack"]
+light = ["glowworms", "crystal"]
+lit_permille = 900
 
 [[activity]]
 id = "denning"

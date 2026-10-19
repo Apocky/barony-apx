@@ -156,6 +156,7 @@ set(APXGEN_SOURCES
 	"${APXGEN_DIR}/src/critic.cpp"
 	"${APXGEN_DIR}/src/dress.cpp"
 	"${APXGEN_DIR}/src/vox.cpp"
+	"${APXGEN_DIR}/src/site.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/apx_gen_bridge.cpp"
 )
 list(APPEND GAME_SOURCES ${APXGEN_SOURCES})
