@@ -178,6 +178,8 @@ def main():
         r = results["save"] = run_save("save", args.exe, args.out, {}, args)
         emit(r)
         p = r["probe"] or {}
+        if not gate("data loaded (parts on without APX_PARTS)", p.get("parts_on") == 1, f"parts_on {p.get('parts_on')} ({r.get('data_line')})"):  # a build without data/apx must not pass
+            return 1
         if not gate("S5 save round trip (parts on)", r["exit"] == 0 and p.get("pass") and p.get("parts_kept") == p.get("parts_items") and p.get("parts_items", 0) > 0 and r["sidecars"],
                     f"exit {r['exit']}, items {p.get('items_equal')}/{p.get('inventory_before')} equal, parts {p.get('parts_kept')}/{p.get('parts_items')}, "
                     f"six-part items {p.get('six_parts')}, max parts {p.get('max_parts')}, save_blob_dropped {p.get('save_blob_dropped')}, sidecars {len(r['sidecars'])}"):

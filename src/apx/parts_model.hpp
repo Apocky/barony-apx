@@ -61,7 +61,7 @@ struct DB
 // Loads data/apx/{materials,forms,form_map,affixes,salvage}.json. "" = ok, else the error.
 std::string loadDB(const std::string& dataDir, DB& db);
 
-struct Counters { long long rolls = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, forbidden = 0; };
+struct Counters { long long rolls = 0, rolls_rerolled = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, forbidden = 0; };
 
 uint64_t fnv1a64(const void* data, size_t n, uint64_t h = 1469598103934665603ULL);
 uint64_t rollKey(uint32_t realm, uint8_t depth, uint8_t source, uint32_t index);
