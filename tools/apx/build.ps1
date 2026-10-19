@@ -53,7 +53,7 @@ $cacheTool = $null
 if ($ninja) {
     if (-not (Test-Path $VcVars)) { throw "vcvars64.bat not found: $VcVars" }
     Step "loading the MSVC x64 environment from $VcVars"
-    foreach ($line in (& cmd /c ""$VcVars" >nul && set")) {
+    foreach ($line in (& cmd /c "`"$VcVars`" >nul && set")) {
         if ($line -match '^([^=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2]) }
     }
     $launcherArgs += "-DCMAKE_MAKE_PROGRAM=$(Find-Tool 'ninja')"
