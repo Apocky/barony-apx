@@ -236,10 +236,13 @@ struct Level {
     std::vector<Patrol> patrols;
     std::vector<Writing> writings;
     std::vector<char> room_alive, room_lit;  // per room row
-    int alive = 0, lit = 0, rooms = 0;
+    int alive = 0, lit = 0, rooms = 0, readable_candidates = 0;
 };
 struct SiteParams {
     bool thin = false;         // the control: 1 den, no patrols, no wall dressing -> must fail
+    int writings_lo = 12, writings_hi = 16; // texts given per floor (seeded in the band)
+    int gate_writings_lo = 10, gate_writings_hi = 20; // the Readable gate band
+    bool all_legible = false;  // the control: every readable candidate gets a text -> over the band
     int alive_m = 16;          // "within 16 m" at 1 tile = 1 m (ASSUMED, as DressLib::m2_per_tile)
 };
 struct Site {

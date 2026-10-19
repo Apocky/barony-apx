@@ -107,7 +107,7 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
                      const DressLib& lib, const Params& P, const SiteParams& SP) {
     long long pass = 0, nondet = 0;
     std::map<std::string, long long> why;
-    double alive_min = 1e9, lit_min = 1e9, wr_min = 1e9, ms_sum = 0, ms_max = 0;
+    double wr_max = 0, cand_sum = 0, alive_min = 1e9, lit_min = 1e9, wr_min = 1e9, ms_sum = 0, ms_max = 0;
     long long dens = 0, patrols = 0, writings = 0, floors = 0;
     for (long long s = first; s < first + n; ++s) {
         auto t0 = std::chrono::steady_clock::now();
@@ -130,12 +130,14 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
                     alive_min = std::min(alive_min, 100.0 * L.alive / std::max(1, L.rooms));
                     lit_min = std::min(lit_min, 100.0 * L.lit / std::max(1, L.rooms));
                     wr_min = std::min(wr_min, (double)L.writings.size());
+                    wr_max = std::max(wr_max, (double)L.writings.size());
+                    cand_sum += L.readable_candidates;
                     dens += L.dens.size(); patrols += L.patrols.size(); writings += L.writings.size();
                 }
                 char buf[400];
-                std::snprintf(buf, sizeof buf, "%s{\"level\":\"%s\",\"theme\":\"%s\",\"faction\":\"%s\",\"rooms\":%d,\"dens\":%zu,\"patrols\":%zu,\"alive_pct\":%.1f,\"lit_pct\":%.1f,\"writings\":%zu,\"loops\":%d,\"vent\":%d,\"attempt\":%d}",
+                std::snprintf(buf, sizeof buf, "%s{\"level\":\"%s\",\"theme\":\"%s\",\"faction\":\"%s\",\"rooms\":%d,\"dens\":%zu,\"patrols\":%zu,\"alive_pct\":%.1f,\"lit_pct\":%.1f,\"writings\":%zu,\"readable_candidates\":%d,\"loops\":%d,\"vent\":%d,\"attempt\":%d}",
                               i ? "," : "", L.name.c_str(), L.r.floor.theme.c_str(), L.faction.c_str(), L.rooms, L.dens.size(), L.patrols.size(),
-                              100.0 * L.alive / std::max(1, L.rooms), 100.0 * L.lit / std::max(1, L.rooms), L.writings.size(), L.r.floor.loops, L.r.floor.vent_rooms, L.r.floor.attempt);
+                              100.0 * L.alive / std::max(1, L.rooms), 100.0 * L.lit / std::max(1, L.rooms), L.writings.size(), L.readable_candidates, L.r.floor.loops, L.r.floor.vent_rooms, L.r.floor.attempt);
                 lv += buf;
             }
         std::string fl;
@@ -168,9 +170,9 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
     std::string ws;
     for (auto& [k, c] : why) ws += (ws.empty() ? "\"" : ",\"") + esc(k) + "\":" + std::to_string(c);
     bool gate = pass == n && nondet == 0;
-    std::printf("{\"site_summary\":true,\"thin\":%s,\"sites\":%lld,\"pass\":%lld,\"nondeterministic\":%lld,\"alive_min_pct\":%.1f,\"lit_min_pct\":%.1f,\"writings_min\":%.0f,"
+    std::printf("{\"site_summary\":true,\"thin\":%s,\"sites\":%lld,\"pass\":%lld,\"nondeterministic\":%lld,\"alive_min_pct\":%.1f,\"lit_min_pct\":%.1f,\"writings_min\":%.0f,\"writings_max\":%.0f,\"readable_candidates_per_floor\":%.1f,"
                 "\"dens_per_floor\":%.2f,\"patrols_per_floor\":%.2f,\"writings_per_floor\":%.2f,\"ms_mean\":%.1f,\"ms_max\":%.1f,\"fail_kinds\":{%s},\"gate\":\"%s\"}\n",
-                SP.thin ? "true" : "false", n, pass, nondet, alive_min > 1e8 ? 0 : alive_min, lit_min > 1e8 ? 0 : lit_min, wr_min > 1e8 ? 0 : wr_min,
+                SP.thin ? "true" : "false", n, pass, nondet, alive_min > 1e8 ? 0 : alive_min, lit_min > 1e8 ? 0 : lit_min, wr_min > 1e8 ? 0 : wr_min, wr_max, floors ? cand_sum / floors : 0,
                 floors ? (double)dens / floors : 0, floors ? (double)patrols / floors : 0, floors ? (double)writings / floors : 0, ms_sum / std::max(1LL, n), ms_max,
                 ws.c_str(), gate ? "PASS" : "FAIL");
     return gate ? 0 : 1;
@@ -207,6 +209,7 @@ int main(int argc, char** argv) {
         else if (a == "--site") site_n = std::stoll(nxt());
         else if (a == "--site-dump") site_dump = nxt();
         else if (a == "--thin") SP.thin = true;
+        else if (a == "--all-legible") SP.all_legible = true;
         else if (a == "--corridor-feat-cost") P.corridor_feat_cost = std::stoi(nxt());
         else if (a == "--max-retried") max_retried = std::stoll(nxt());
         else if (a == "--presence") presence_path = nxt();

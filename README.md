@@ -283,10 +283,29 @@ GUARANTEED misses 0, presence out of band 0, density mean 6.77 / min 5.36. ctest
 Dumps: `out/site/site-1.txt` .. `site-3.txt` (links, every level's map with dens D and patrol
 tiles -, rooms, dark rooms, writings); per-site rows `out/h1a-1000.jsonl`.
 
+## H1a.1 -- Readable as a band (review fix)
+
+Started 2026-10-19 02:12:47 -0700, measured 02:14:30-02:19:16. The review found 229.8 writings per
+floor (min 102) against "at least 12" in gameplay/20 section 3: every wall plaque, graffiti, mosaic
+and chalk circle counted. Now:
+
+- Readable kinds (the spec's "books, plaques, graffiti"): book, scroll, note, map_scroll, plaque,
+  map_plaque, graffiti. Mosaics, chalk circles and other inscribed trim are decoration.
+- A text pass gives a text (history, map_region, quest_hint or form) to 12-16 of the readable
+  candidates per floor (seeded), the map plaque first, one per room before any room gets a second;
+  the other candidates stay as worn, illegible trim (content "worn").
+- Gate: 10-20 legible writings per floor (`SiteParams::gate_writings_lo/hi`). Control
+  `--all-legible` (every candidate gets a text, the old count): 0 / 50 sites pass, 186 per floor;
+  ctest h1a_control_all_legible (WILL_FAIL).
+
+Sites 1-1000: 1000 / 1000 pass; writings per floor min 12, max 16, mean 13.99; readable candidates
+184.9 per floor (worn trim). Floor gates 1000, retried 1; ctest 12 / 12.
+Caveat: the per-room content-kind measure of DRESS (rooms with 3 kinds, 99.9 percent) was taken
+before the text pass and counts a worn plaque as writing.
+
 Not done / not checked (H1a):
 - "16 m" is 16 walking steps at 1 tile = 1 m (ASSUMED, as the density rule).
-- Writings are counted from dressing (wall plaques, graffiti, mosaics count): 91-534 per floor, far
-  above 12; the text itself is a seeded id with a kind, not written text.
+- A writing's text is a seeded id with a kind, not written text (see H1a.1 for the count).
 - The link endpoints are not aligned between levels (an x, z on each side, no shared geometry).
 - Not in Barony yet; the vendored copy in barony-apx (F2-integration) has not taken these commits.
 - Spec rows not built here: Vertical (30 percent with a second level, pit, shaft or balcony),

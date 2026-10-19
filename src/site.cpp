@@ -262,15 +262,39 @@ void populate(Level& L, uint64_t seed, const SiteParams& SP) {
         }
     }
     L.lit = (int)std::count(L.room_lit.begin(), L.room_lit.end(), 1);
-    // READABLE: writings, each with a text kind (a HISTORY row, a map region, a quest hint, a Form)
+    // READABLE (gameplay/20: "writings (books, plaques, graffiti) per floor, at least 12, each a
+    // HISTORY row or a Form, reaction, map region or quest hint"). Readable kinds: book, scroll,
+    // note, map_scroll (books), plaque, map_plaque (plaques), graffiti. Mosaics, chalk circles and
+    // other inscribed trim are decoration, not counted. The text pass gives a text to 12-16 of the
+    // candidates, spread one per room before any room gets a second (the map plaque first); the
+    // other candidates are worn illegible (content "worn", no text). SP.all_legible = the control.
     static const char* TK[] = {"history", "map_region", "quest_hint", "form"};
-    for (auto& d : f.dress)
-        if (d.content == "writing") {
+    static const std::set<std::string> READABLE = {"book", "scroll", "note", "map_scroll", "plaque", "graffiti"};
+    struct Cand { uint64_t order; int dress; int room; };
+    std::vector<Cand> cands;
+    for (size_t k = 0; k < f.dress.size(); ++k)
+        if (f.dress[k].content == "writing" && READABLE.count(f.dress[k].id))
+            cands.push_back({hash_words({seed, 0x7E47, (uint64_t)k}), (int)k, f.dress[k].room});
+    std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.order < b.order; });
+    size_t text_want = SP.all_legible ? cands.size() + 1 : (size_t)(SP.writings_lo + hash_words({seed, 0x12}) % (SP.writings_hi - SP.writings_lo + 1));
+    for (auto& e : f.entities)
+        if (e.kind == "map_plaque" && L.writings.size() < text_want) L.writings.push_back({-1, e.x, e.z, "map_plaque", "map_region", hash_words({seed, 0x9A9, (uint64_t)e.x})});
+    std::vector<char> chosen(cands.size(), 0);
+    for (int round = 0; L.writings.size() < text_want && round < 64; ++round) {
+        std::set<int> used_rooms;
+        bool any = false;
+        for (size_t c = 0; c < cands.size() && L.writings.size() < text_want; ++c) {
+            if (chosen[c] || used_rooms.count(cands[c].room)) continue;
+            chosen[c] = 1; any = true;
+            used_rooms.insert(cands[c].room);
+            const DressRow& d = f.dress[cands[c].dress];
             uint64_t h = hash_words({seed, hash_str(d.id), (uint64_t)d.x, (uint64_t)d.z});
             L.writings.push_back({d.room, d.x, d.z, d.id, TK[h % 4], h});
         }
-    for (auto& e : f.entities)
-        if (e.kind == "map_plaque") L.writings.push_back({-1, e.x, e.z, "map_plaque", "map_region", hash_words({seed, 0x9A9, (uint64_t)e.x})});
+        if (!any) break;
+    }
+    for (size_t c = 0; c < cands.size(); ++c) if (!chosen[c]) f.dress[cands[c].dress].content = "worn";
+    L.readable_candidates = (int)cands.size();
 }
 } // namespace
 
@@ -380,7 +404,6 @@ bool build_site(uint64_t seed, const std::vector<Grammar>& g, const std::vector<
 }
 
 SiteVerdict site_critic(const Site& s, const SiteParams& SP) {
-    (void)SP;
     SiteVerdict v;
     auto fail = [&](const std::string& m) { v.fails.push_back(m); };
     // surface: four parts, one walkable piece, the way down on it
@@ -428,7 +451,8 @@ SiteVerdict site_critic(const Site& s, const SiteParams& SP) {
         if (L.patrols.size() < 2) fail(n + std::to_string(L.patrols.size()) + " patrols");
         if (L.alive * 10 < L.rooms * 6) fail(n + "alive " + std::to_string(L.alive) + "/" + std::to_string(L.rooms));
         if (L.lit * 10 < L.rooms * 8) fail(n + "lit " + std::to_string(L.lit) + "/" + std::to_string(L.rooms));
-        if (L.writings.size() < 12) fail(n + std::to_string(L.writings.size()) + " writings");
+        if ((int)L.writings.size() < SP.gate_writings_lo || (int)L.writings.size() > SP.gate_writings_hi)
+            fail(n + std::to_string(L.writings.size()) + " writings (band " + std::to_string(SP.gate_writings_lo) + "-" + std::to_string(SP.gate_writings_hi) + ")");
         for (auto& w : L.writings) if (w.kind.empty()) { fail(n + "a writing without a text kind"); break; }
     }
     if (factions.size() != 4) fail("factions on the floors: " + std::to_string(factions.size()));

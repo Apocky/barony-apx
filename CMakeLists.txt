@@ -37,3 +37,6 @@ set_tests_properties(f3_control_no_band_steal PROPERTIES WILL_FAIL TRUE)
 add_test(NAME h1a_site_gate COMMAND apxgen_cli --site 200 --quiet)
 add_test(NAME h1a_control_thin COMMAND apxgen_cli --site 30 --quiet --thin)
 set_tests_properties(h1a_control_thin PROPERTIES WILL_FAIL TRUE)
+# Readable band: 10-20 legible writings per floor; every candidate legible must fail
+add_test(NAME h1a_control_all_legible COMMAND apxgen_cli --site 20 --quiet --all-legible)
+set_tests_properties(h1a_control_all_legible PROPERTIES WILL_FAIL TRUE)
