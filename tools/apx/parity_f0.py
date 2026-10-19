@@ -347,12 +347,16 @@ def barony_running():
 
 
 LOCK_NAME = "barony-f0-parity.LOCK"
+SHARED_LOCK_DIR = Path(r"C:\Apocrypha\locks\barony")   # this machine's shared Barony lock (all lanes)
 
 
-def foreign_locks(lock_dir):
-    if not lock_dir:
-        return []
-    return sorted(p.name for p in Path(lock_dir).glob("*.LOCK") if p.name != LOCK_NAME)
+def foreign_locks(lock_dirs):
+    """Other sessions' *.LOCK files in any of the given folders (ours excluded)."""
+    found = []
+    for d in lock_dirs or []:
+        if Path(d).is_dir():
+            found += [f"{Path(d).name}/{p.name}" for p in Path(d).glob("*.LOCK") if p.name != LOCK_NAME]
+    return sorted(found)
 
 
 def wait_until_no_barony(limit_s, lock_dir=None):
@@ -375,13 +379,15 @@ def wait_until_no_barony(limit_s, lock_dir=None):
         time.sleep(10)
 
 
-def hold_lock(lock_dir, on):
-    if not lock_dir:
+def hold_lock(lock_dirs, on):
+    """Our lock lives in the first lock folder (the shared one by default)."""
+    if not lock_dirs:
         return
-    p = Path(lock_dir) / LOCK_NAME
+    Path(lock_dirs[0]).mkdir(parents=True, exist_ok=True)
+    p = Path(lock_dirs[0]) / LOCK_NAME
     if on:
-        p.write_text(datetime.datetime.now().astimezone().isoformat(timespec="seconds") + " barony-apx F0 parity runs\n",
-                     encoding="ascii")
+        p.write_text(datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+                     + f" {LOCK_NAME[:-5]}: barony-apx tools/apx/parity_f0.py\n", encoding="ascii")
     elif p.exists():
         p.unlink()
 
@@ -511,6 +517,7 @@ def run_once(build, mode, exe, seed, rep, out_root, datadir, shared, args):
 
 
 def main():
+    global LOCK_NAME
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--ours", required=True, type=Path)
     ap.add_argument("--vanilla", type=Path, default=STEAM_DIR / "barony_vanilla.exe")
@@ -528,12 +535,19 @@ def main():
     ap.add_argument("--wait-foreign", type=float, default=1200.0,
                     help="seconds to wait for someone else's Barony to close before a run")
     ap.add_argument("--keep-mirror", action="store_true", help="keep the private asset copy afterwards")
-    ap.add_argument("--lock-dir", type=Path, default=None,
-                    help="folder shared with other sessions: wait while their *.LOCK files exist, hold "
-                         f"{LOCK_NAME} while the matrix runs")
+    ap.add_argument("--lock-dir", type=Path, action="append", default=None,
+                    help="folder shared with other sessions (repeatable): wait while any *.LOCK file in any of "
+                         f"them exists; hold {LOCK_NAME} in the first while the matrix runs. Default: {SHARED_LOCK_DIR}")
+    ap.add_argument("--lock-name", default=LOCK_NAME,
+                    help="name of our lock file; give each lane its own, ending in .LOCK")
     ap.add_argument("--input", choices=("post", "send"), default="post",
                     help="post: messages straight to the game window (no focus); send: SendInput with focus checks")
     args = ap.parse_args()
+    if not args.lock_name.endswith(".LOCK"):
+        sys.exit("--lock-name must end in .LOCK")
+    LOCK_NAME = args.lock_name
+    if not args.lock_dir:
+        args.lock_dir = [SHARED_LOCK_DIR]
 
     seeds = [int(s) for s in args.seeds.split(",")]
     if any(not (0 < s < 2**31) for s in seeds):

@@ -52,9 +52,14 @@ that, so a stock Barony run this way silently misses its base language file whil
 ## F0 parity gate
 
 ```
-python tools\apx\parity_f0.py --ours build\vs2022\Release\barony.exe [--lock-dir <shared folder>]
+python tools\apx\parity_f0.py --ours build\vs2022\Release\barony.exe [--lock-name barony-<lane>.LOCK]
 python tools\apx\f0_sheet.py --commit <sha>
 ```
+
+Barony runs one instance per machine, and several sessions launch it. Before every run the driver
+waits until no Barony process is running and no other `*.LOCK` file exists in the shared lock folder
+`C:\Apocrypha\locks\barony` (the machine convention; `--lock-dir` is repeatable for more folders),
+then holds its own lock file there. Give each lane its own `--lock-name`.
 
 Same seed, same dungeon: each run starts a quickstart game, types `/enablecheats`,
 `/setmapseed <seed>`, `/nextlevel` into the window (posted messages; no focus needed, each step
