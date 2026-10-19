@@ -43,6 +43,13 @@
 #include "mod_tools.hpp"
 
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
+static int apxFloor = 0; // apx: -apxfloor=<n>: test path, quickstart straight to floor n (no splash, no menu)
+static Uint32 apxMapSeed = 0; // apx: -apxmapseed=<n>: map seed for that floor (as /setmapseed)
+static bool apxSkipSplash() // the control BARONY_APX_KEEPSPLASH=1 keeps the logo splash on the test path
+{
+	static const bool keep = getenv("BARONY_APX_KEEPSPLASH") && getenv("BARONY_APX_KEEPSPLASH")[0] == '1';
+	return apxFloor > 0 && !keep;
+}
 #include "lobbies.hpp"
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
@@ -7270,6 +7277,14 @@ int main(int argc, char** argv)
 						datadir[datadirsz] = '\0';
 						datadirFromCommandLine = true;
 					}
+					else if ( !strncmp(argv[c], "-apxfloor=", 10) )
+					{
+						apxFloor = std::max(0, atoi(argv[c] + 10));
+					}
+					else if ( !strncmp(argv[c], "-apxmapseed=", 12) )
+					{
+						apxMapSeed = (Uint32)strtoul(argv[c] + 12, nullptr, 10);
+					}
 					else if ( !strncmp(argv[c], "-apxloadmod=", 12) )
 					{
 						// apx: mount this mod folder and run Mods::loadMods() once at startup, without the menu
@@ -7611,7 +7626,7 @@ int main(int argc, char** argv)
 						skipButtonPressed = true;
 					}
 
-					if ( fadefinished || skipButtonPressed )
+					if ( fadefinished || skipButtonPressed || apxSkipSplash() )
 					{
 						fadealpha = 255;
 						int menuMapType = 0;
@@ -7676,6 +7691,14 @@ int main(int argc, char** argv)
 						uniqueLobbyKey = local_rng.getU32();
 						net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 						doNewGame(false);
+						if ( apxFloor > 0 )
+						{
+							// apx test path: leave the start map for floor apxFloor at once, as /setmapseed + /nextlevel would
+							if ( apxMapSeed ) { forceMapSeed = apxMapSeed; }
+							currentlevel = apxFloor - 1;
+							loadnextlevel = true;
+							printlog("[apx] test path: to floor %d (map seed %u) at %u ms since SDL init, splash %s", apxFloor, apxMapSeed, SDL_GetTicks(), apxSkipSplash() ? "skipped" : "kept");
+						}
 					}
 					else
 					{
