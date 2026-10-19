@@ -50,6 +50,8 @@ namespace apx
 	static const real_t kYawThreshold = 0.06;           // rad of mouse yaw between press and release that picks the slash
 	static const real_t kPitchThreshold = 0.04;         // rad of pitch change that picks the vertical slash
 
+	inline bool selftestOn(); // defined with the selftest below
+
 	enum Move : int { MOVE_NONE = 0, SWORD_THRUST = 1, SWORD_SLASH = 2, SWORD_VERTICAL = 3, SWORD_LUNGE = 4 };
 
 	inline bool envOn(const char* name)
