@@ -47,6 +47,7 @@ namespace tactics
 	}
 
 	void refresh() { active = K.tactics; }
+	void setProbeUs(double us) { gProbeUs = us; }
 
 	std::string knobString()
 	{

@@ -42,6 +42,7 @@ namespace tactics
 
 	void init();                                  // read env knobs (after argv parsing)
 	void refresh();                               // recompute `active` after a knob change
+	void setProbeUs(double us);                   // CONTROL for the timing probe: busy-wait per decide (0 = off)
 	void onLevelChange();                         // clears all per-creature state
 
 	// hooks (each called from ONE guarded line in the engine)

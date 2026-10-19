@@ -243,9 +243,15 @@ namespace bf3
 		}
 	}
 
-	static void setArmKnobs(const std::string& a)
+	// arm spec "kind[:N]": kind sets the knobs, N the creature count (default APX_BF3_N)
+	static std::string armKind(const std::string& a) { size_t c = a.find(':'); return c == std::string::npos ? a : a.substr(0, c); }
+	static int armN(const std::string& a) { size_t c = a.find(':'); return c == std::string::npos ? nCreatures : std::max(1, atoi(a.c_str() + c + 1)); }
+
+	static void setArmKnobs(const std::string& spec)
 	{
+		std::string a = armKind(spec);
 		tactics::K = tactics::Knobs();
+		tactics::setProbeUs(a == "probe" ? 1000.0 : 0.0); // probe: every knob on plus a 1 ms busy-wait per decide (control)
 		if ( a == "off" ) { tactics::K.reach = tactics::K.interleave = tactics::K.allyavoid = tactics::K.ring = false; }
 		else if ( a == "vanilla" ) { tactics::K.tactics = false; }
 		else if ( a == "nomorale" ) { tactics::K.morale = false; }
@@ -383,7 +389,7 @@ namespace bf3
 		return (double)n / v.size();
 	}
 
-	static void writeArmRow(const std::string& armKind)
+	static void writeArmRow(const std::string& armSpec)
 	{
 		using namespace tactics;
 		double secs = measureTicks / (double)TICKS_PER_SECOND;
@@ -395,10 +401,11 @@ namespace bf3
 		if ( A.creatureDmg > 0 ) { flags += "CONTAMINATED_CREATURE_DAMAGE;"; }
 		if ( A.foreignDmg > 0 ) { flags += "FOREIGN_DAMAGE;"; }
 		if ( A.lost > 0 ) { flags += "CREATURES_LOST;"; }
-		if ( A.spawned < nCreatures ) { flags += "SPAWN_SHORT;"; }
+		if ( A.spawned < armN(arms[armI]) ) { flags += "SPAWN_SHORT;"; }
 		ApxRow r;
 		commonFields(r);
-		r.str("trial", "bf3-limits").str("arm_kind", armKind).i("arm", (long long)armI).str("knobs", knobString())
+		r.str("trial", "bf3-limits").str("arm_kind", armSpec).str("arm_base", armKind(armSpec)).i("arm", (long long)armI).str("knobs", knobString())
+			.d("population_x", armN(armSpec) / (double)packSize).d("probe_us", armKind(armSpec) == "probe" ? 1000.0 : 0.0)
 			.str("kind", kindName).str("weapon", "bronze_sword").i("creatures", A.spawned).i("pack_size", packSize)
 			.str("pack_template", "trial-3x4").i("arena_x", pTX).i("arena_y", pTY).d("window_s", secs)
 			.i("dmg", A.dmg).d("dmg_pm", A.dmg / (secs / 60.0)).d("dmg_in_per_player_per_min", A.dmg / (secs / 60.0))
@@ -429,7 +436,7 @@ namespace bf3
 			.i("player_moved", A.playerMoved).i("creature_dmg", A.creatureDmg).i("creatures_lost_ticks", A.lost).str("flags", flags);
 		write("bf3-arms.jsonl", r);
 		printlog("[apx] bf3 arm %d %s: dmg %lld (%.1f/min) hits %lld attackers mean %.2f max %lld slots %d input %lld/%lld/%lld",
-			(int)armI, armKind.c_str(), A.dmg, A.dmg / (secs / 60.0), A.hits, A.ticks ? (double)A.attackersSum / A.ticks : 0,
+			(int)armI, armSpec.c_str(), A.dmg, A.dmg / (secs / 60.0), A.hits, A.ticks ? (double)A.attackersSum / A.ticks : 0,
 			A.attackersMax, A.slots, keys, buttons, motion);
 	}
 
@@ -518,7 +525,7 @@ namespace bf3
 				tactics::onLevelChange();
 				A = Arm();
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
-				spawnPacks(pe, nCreatures, packSize, true);
+				spawnPacks(pe, armN(arms[armI]), packSize, true);
 				A.spawned = (int)trialUids.size();
 				A.slots = trialUids.empty() ? 0 : tactics::reachSlotsFor(pe, uidToEntity(trialUids[0]));
 				go(P_SETTLE);

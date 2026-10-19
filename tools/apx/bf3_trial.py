@@ -129,14 +129,20 @@ def summarise(results, args):
     by = {}
     for a in arms:
         by.setdefault(a["arm_kind"], []).append(a)
-    pairs = []
+    # pairs: consecutive arms (0,1), (2,3), ... of the same creature count, one the control, one "on";
+    # keyed by creature count so 3x (12) and 5x (20) pairs are reported apart
+    pairs_by_n = {}
     for r in results:
         rows = r["arms"]
         for i in range(0, len(rows) - 1, 2):
             a, b = rows[i], rows[i + 1]
-            kinds = {a["arm_kind"]: a, b["arm_kind"]: b}
+            if a.get("creatures") != b.get("creatures"):
+                continue
+            kinds = {a.get("arm_base", a["arm_kind"]): a, b.get("arm_base", b["arm_kind"]): b}
             if args.control in kinds and "on" in kinds:
-                pairs.append((kinds[args.control]["dmg"], kinds["on"]["dmg"]))
+                pairs_by_n.setdefault(a["creatures"], []).append((kinds[args.control]["dmg"], kinds["on"]["dmg"]))
+    main_n = max(pairs_by_n, key=lambda n: len(pairs_by_n[n])) if pairs_by_n else None
+    pairs = pairs_by_n.get(main_n, [])
     flagged = [a for a in arms if a.get("flags")]
     base = {"tag": args.tag, "kind": "baseline", "control": args.control, "runs": len(results),
             "codes": [r["code"] for r in results], "wall_s": [r["wall_s"] for r in results]}
@@ -146,12 +152,19 @@ def summarise(results, args):
               "stuck", "steer_ticks", "waiters_pair_dist_mean", "flank_started", "flank_arrived", "flank_failed",
               "swing_phase_spread_ticks", "attempt_lockstep_share", "decide_us_p50", "decide_us_p99", "move_us_p99",
               "tick_us_p99", "target_lost_ticks", "promoted", "keep_engaged", "input_keys", "input_buttons", "input_motion",
-              "creature_dmg", "dmg_foreign"]
+              "creature_dmg", "dmg_foreign", "tactics_calls", "population_x", "stuck_episodes", "reach_slots_mean",
+              "jitter_mean", "swing_resets_jittered", "feints", "player_moved", "reach_assign", "ring_assign"]
     for kind, rows in sorted(by.items()):
         base[kind] = {"n": len(rows)}
         for f in fields:
             v = [x.get(f, 0) for x in rows]
             base[kind][f] = {"mean": round(mean(v), 3), "sd": round(sd(v), 3), "max": max(v) if v else 0}
+    base["pairs_by_creatures"] = {
+        str(n): {"pairs": len(p), "on_lower": sum(1 for c, o in p if o < c),
+                 "dmg_control_mean": round(mean([c for c, _ in p]), 1), "dmg_on_mean": round(mean([o for _, o in p]), 1),
+                 "ratio": round(mean([c for c, _ in p]) / mean([o for _, o in p]), 3) if mean([o for _, o in p]) else None}
+        for n, p in pairs_by_n.items()}
+    base["main_creatures"] = main_n
     if pairs:
         ratios = [c / o if o else float("inf") for c, o in pairs]
         base["pairs"] = len(pairs)
