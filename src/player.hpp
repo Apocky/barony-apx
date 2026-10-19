@@ -1502,6 +1502,7 @@ public:
 		Frame* skillupFrame = nullptr;
 		Frame* hpFrame = nullptr;
 		Frame* mpFrame = nullptr;
+		Frame* staminaFrame = nullptr; // apx BF4: yellow stamina bar under the MP bar
 		Frame* minimapFrame = nullptr;
 		Frame* gameTimerFrame = nullptr;
 		Frame* allyStatusFrame = nullptr;
@@ -1730,6 +1731,7 @@ public:
 		int HPMP_FRAME_HEIGHT = 34;
 		void updateHPBar();
 		void updateMPBar();
+		void updateStaminaBar();
 		const int ENEMYBAR_FRAME_WIDTH = 564;
 		const int ENEMYBAR_BAR_WIDTH = 556;
 		const int ENEMYBAR_FRAME_START_Y = 182;

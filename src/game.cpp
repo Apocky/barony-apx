@@ -95,6 +95,7 @@ static void apxRunImpactSelfTest()
 #include "UnicodeDecoder.h"
 #include "apx/lua_layer.hpp"
 static bool apxLuaTestMode = false;
+#include "apx_stamina.hpp"
 
 #include <atomic>
 #include <future>
@@ -8274,7 +8275,7 @@ int main(int argc, char** argv)
 			GO_SwapBuffers(screen);
 
 			// screenshots
-			if (Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||
+			if (apx::consumeShot() || Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||
 			    (inputs.hasController(clientnum) && Input::inputs[clientnum].consumeBinaryToggle("GamepadScreenshot")))
 			{
                 if (!hdrEnabled) {

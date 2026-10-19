@@ -23,6 +23,7 @@
 #include "ui/MainMenu.hpp"
 #include "prng.hpp"
 #include "mod_tools.hpp"
+#include "apx_stamina.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -808,15 +809,25 @@ void actHudWeapon(Entity* my)
 
 	bool shootmode = players[HUDWEAPON_PLAYERNUM]->shootmode;
 
+	// apx BF4: stamina tick (swing cost, block drain, regen) for this local player
+	{
+		Item* apxWeapon = stats[HUDWEAPON_PLAYERNUM]->weapon;
+		const bool apxMelee = !apxWeapon
+			|| (itemCategory(apxWeapon) == WEAPON && !isRangedWeapon(*apxWeapon)
+				&& apxWeapon->type != TOOL_WHIP && apxWeapon->type != TOOL_BEARTRAP);
+		apx::tick(HUDWEAPON_PLAYERNUM, HUDWEAPON_CHOP, apxMelee, stats[HUDWEAPON_PLAYERNUM]->defending);
+	}
+
 	bool swingweapon = false;
 	if ( players[HUDWEAPON_PLAYERNUM]->entity
-		&& (input.binaryToggle("Attack") 
+		&& (input.binaryToggle("Attack") || apx::forceSwing() 
 			|| (cast_animation[HUDWEAPON_PLAYERNUM].spellWaitingAttackInput() 
 				&& inputs.hasController(HUDWEAPON_PLAYERNUM) && input.binaryToggle("Cast Spell")) )
 		&& shootmode 
 		&& !gamePaused
 		&& players[HUDWEAPON_PLAYERNUM]->entity->isMobile()
-		&& (!(input.binaryToggle("Defend") && stats[HUDWEAPON_PLAYERNUM]->defending) || cast_animation[HUDWEAPON_PLAYERNUM].spellWaitingAttackInput() )
+		&& (apx::blockSwingEnabled() || !(input.binaryToggle("Defend") && stats[HUDWEAPON_PLAYERNUM]->defending) || cast_animation[HUDWEAPON_PLAYERNUM].spellWaitingAttackInput() )
+			&& apx::canSwing(HUDWEAPON_PLAYERNUM)
 		&& HUDWEAPON_OVERCHARGE < Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) )
 	{
 		swingweapon = true;
@@ -834,6 +845,13 @@ void actHudWeapon(Entity* my)
 				return;
 			}
 		}
+	}
+
+	if ( swingweapon && apx::blockSwingEnabled() && stats[HUDWEAPON_PLAYERNUM]->defending )
+	{
+		// apx D64: raise the swing-while-blocking flag in the same tick the swing is accepted, so actHudShield
+		// (which otherwise drops the shield while the weapon animates) never sees a one-tick gap
+		apx::get(HUDWEAPON_PLAYERNUM).swingWhileBlock = true;
 	}
 
 	bool thrownWeapon = stats[HUDWEAPON_PLAYERNUM]->weapon
@@ -4364,9 +4382,10 @@ void actHudShield(Entity* my)
 		{
 			if ( stats[HUDSHIELD_PLAYERNUM]->shield )
 			{
-				if ( (players[HUDSHIELD_PLAYERNUM]->hud.weapon->skill[0] % 3 == 0) )
+				if ( (players[HUDSHIELD_PLAYERNUM]->hud.weapon->skill[0] % 3 == 0)
+					|| (apx::blockSwingEnabled() && apx::get(HUDSHIELD_PLAYERNUM).swingWhileBlock) ) // apx D64: block stays up through a swing begun under block
 				{
-					if (input.binaryToggle("Defend"))
+					if (input.binaryToggle("Defend") || apx::forceDefend())
 					{
 						defending = true;
 					}

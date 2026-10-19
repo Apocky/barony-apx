@@ -37,6 +37,7 @@ See LICENSE for details.
 #endif
 #include "ui/MainMenu.hpp"
 #include "ui/GameUI.hpp"
+#include "apx_stamina.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -17026,7 +17027,12 @@ int AC(Stat* stat)
 		if ( stat->defending )
 		{
 			//messagePlayer(0, "shield up! +%d", 5 + stat->PROFICIENCIES[PRO_SHIELD] / 5);
-			armor += stat->getActiveShieldBonus(true, false);
+			int apxActiveBonus = stat->getActiveShieldBonus(true, false);
+			if ( player >= 0 && apx::blockSwingEnabled() && apx::get(player).swingWhileBlock )
+			{
+				apxActiveBonus = static_cast<int>(apxActiveBonus * apx::kSwingWhileBlockYield); // apx D64: 60 percent while the swing is out
+			}
+			armor += apxActiveBonus;
 			/*if ( stat->getEffectActive(EFF_FORCE_SHIELD) > 0 )
 			{
 				armor += stat->getEffectActive(EFF_FORCE_SHIELD);
