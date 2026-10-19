@@ -42,14 +42,44 @@
 #include "player.hpp"
 #include "mod_tools.hpp"
 
+#include "apx/combat/impact.hpp" // apx F4b
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
 static int apxFloor = 0; // apx: -apxfloor=<n>: test path, quickstart straight to floor n (no splash, no menu)
+static bool apxImpactTest = false; // apx F4b: -apximpacttest: log old vs new damage multipliers for every monster, then quit
 static Uint32 apxMapSeed = 0; // apx: -apxmapseed=<n>: map seed for that floor (as /setmapseed)
 static bool apxSkipSplash() // the control BARONY_APX_KEEPSPLASH=1 keeps the logo splash on the test path
 {
 	static const bool keep = getenv("BARONY_APX_KEEPSPLASH") && getenv("BARONY_APX_KEEPSPLASH")[0] == '1';
 	return apxFloor > 0 && !keep;
 }
+
+// apx F4b: one batched integration check through the real Entity::getDamageTableMultiplier.
+// For every monster type and every class: upstream value (switch off) and impact value (switch on).
+static void apxRunImpactSelfTest()
+{
+	const bool was = apx::combat::enabled();
+	int rows = 0, changed = 0, magicChanged = 0;
+	for ( int t = 1; t < NUMMONSTERS; ++t )
+	{
+		Stat st(t + 1000);
+		for ( int c = 0; c < numDamageTableTypes; ++c )
+		{
+			apx::combat::setEnabled(false);
+			const real_t off = Entity::getDamageTableMultiplier(nullptr, st, (DamageTableType)c);
+			apx::combat::setEnabled(true);
+			const real_t on = Entity::getDamageTableMultiplier(nullptr, st, (DamageTableType)c);
+			++rows;
+			if ( fabs(on - off) > 1e-4 ) { ++changed; if ( c == DAMAGE_TABLE_MAGIC ) { ++magicChanged; } }
+			printlog("[apx impacttest] monster %d %s class %d: upstream %.3f impact %.3f", t,
+				apx::combat::materialName(apx::combat::monsterMaterial(t)), c, off, on);
+		}
+	}
+	apx::combat::setEnabled(was);
+	printlog("[apx impacttest] rows %d changed %d magic_changed %d uses %llu gate %s", rows, changed, magicChanged,
+		apx::combat::uses(), (changed > rows / 4 && magicChanged == 0) ? "PASS" : "FAIL");
+	mainloop = 0;
+}
+
 #include "lobbies.hpp"
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
@@ -7284,6 +7314,14 @@ int main(int argc, char** argv)
 					{
 						apxFloor = std::max(0, atoi(argv[c] + 10));
 					}
+					else if ( !strcmp(argv[c], "-apximpact") )
+					{
+						apx::combat::setEnabled(true); // apx F4b (D66)
+					}
+					else if ( !strcmp(argv[c], "-apximpacttest") )
+					{
+						apxImpactTest = true;
+					}
 					else if ( !strncmp(argv[c], "-apxmapseed=", 12) )
 					{
 						apxMapSeed = (Uint32)strtoul(argv[c] + 12, nullptr, 10);
@@ -7709,6 +7747,7 @@ int main(int argc, char** argv)
 							currentlevel = apxFloor - 1;
 							loadnextlevel = true;
 							printlog("[apx] test path: to floor %d (map seed %u) at %u ms since SDL init, splash %s", apxFloor, apxMapSeed, SDL_GetTicks(), apxSkipSplash() ? "skipped" : "kept");
+							if ( apxImpactTest ) { apxRunImpactSelfTest(); }
 						}
 					}
 					else

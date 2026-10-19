@@ -30,6 +30,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/input.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/item_usage_funcs.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/entity.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/impact.cpp" # apx F4b
 	"${CMAKE_CURRENT_SOURCE_DIR}/messages.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actflame.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actcampfire.cpp"
