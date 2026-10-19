@@ -26,6 +26,7 @@
 #include "colors.hpp"
 #include "ui/Text.hpp"
 #include "ui/GameUI.hpp"
+#include "apx/headless.hpp"
 
 #include <cassert>
 
@@ -2058,7 +2059,7 @@ void drawEntities3D(view_t* camera, int mode)
 {
 #ifndef EDITOR
     static ConsoleVariable<bool> cvar_drawEnts("/draw_entities", true);
-	if (!*cvar_drawEnts) {
+	if (!*cvar_drawEnts || apx::headlessOn) { // apx headless: no drawing
 	    return;
 	}
 #endif

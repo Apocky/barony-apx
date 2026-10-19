@@ -115,6 +115,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_summons.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_moth.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_duck.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/headless.cpp"
 )
 
 list(APPEND EDITOR_SOURCES

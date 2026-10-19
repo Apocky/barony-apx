@@ -1,6 +1,7 @@
 // GameUI.cpp
 
 #include "GameUI.hpp"
+#include "../apx/headless.hpp"
 #include "MainMenu.hpp"
 #include "Frame.hpp"
 #include "Image.hpp"
@@ -35170,7 +35171,7 @@ Frame::result_t doFrames() {
 	    }
 
         static ConsoleVariable<bool> gui_draw("/gui_draw", true);
-        if (*gui_draw) {
+        if (*gui_draw && !apx::headlessOn) { // apx headless: UI logic runs, nothing is drawn
 		    gui->predraw();
 		    gui->draw();
             if (!movie) {

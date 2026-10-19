@@ -81,6 +81,8 @@ static void apxRunImpactSelfTest()
 }
 
 #include "lobbies.hpp"
+#include "apx/headless.hpp"
+static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
 #include "ui/MainMenu.hpp"
@@ -4179,6 +4181,7 @@ bool handleEvents(void)
 		//printlog("dropped %d frames", numframes - max_frames);
 		numframes = max_frames;
 	}
+	if ( apx::headlessOn ) { numframes = apx::headlessBatch(); } // apx headless: fixed tick batch per pass, no real-time pacing
 
 	// calculate fps
 	if ( timesync != 0 )
@@ -5503,7 +5506,7 @@ void pauseGame(int mode /* 0 == toggle, 1 == force unpause, 2 == force pause */,
                     SDL_WarpMouseInWindow(screen, w/2, h/2);
                 }
             }
-			SDL_SetRelativeMouseMode(EnableMouseCapture);
+			SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
 		}
 		if (keystatus[SDLK_ESCAPE]) {
 			keystatus[SDLK_ESCAPE] = 0;
@@ -6172,7 +6175,7 @@ void ingameHud()
                             SDL_WarpMouseInWindow(screen, w/2, h/2);
                         }
                     }
-				    SDL_SetRelativeMouseMode(EnableMouseCapture);
+				    SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
 				}
 			}
 
@@ -7342,6 +7345,10 @@ int main(int argc, char** argv)
 					{
 						no_sound = true;
 					}
+					else if ( !strcmp(argv[c], "-apxheadless") )
+					{
+						apxHeadlessFlag = true;
+					}
 					else
 					{
 #ifdef USE_EOS
@@ -7368,7 +7375,9 @@ int main(int argc, char** argv)
 #endif
 		printlog("Data path is %s", datadir);
 		printlog("Output path is %s", outputdir);
-        
+		apx::headlessInit(apxHeadlessFlag);
+		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
+
         // init sdl
         Uint32 init_flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS;
         init_flags |= SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC;
@@ -8286,8 +8295,8 @@ int main(int argc, char** argv)
                 }
 			}
 
-			// frame rate limiter
-			while ( frameRateLimit(fpsLimit, true, true) )
+			// frame rate limiter (apx headless: none)
+			while ( !apx::headlessOn && frameRateLimit(fpsLimit, true, true) )
 			{
 				if ( !intro )
 				{
