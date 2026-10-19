@@ -355,6 +355,60 @@ static void probe(const char* tag)
 	fclose(f);
 }
 
+// D81: columns sort, category tabs, icons, the rich tooltip with compare-to-equipped. Run once.
+static void runD81(int dt)
+{
+	auto& pl = *players[0];
+	static int sortOk = -1, tabOk = -1, rowsAll = 0, rowsTab = 0;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	if ( dt == 331 )
+	{
+		emptyInventory(0);
+		const ItemType t[] = { BRONZE_SWORD, IRON_SWORD, STEEL_SWORD, IRON_AXE, LEATHER_HELM, IRON_HELM, WOODEN_SHIELD, FOOD_APPLE, GEM_RUBY };
+		for ( ItemType it : t ) { newItem(it, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); }
+		// wear the bronze sword, so the other blades compare against it
+		for ( node_t* n = stats[0]->inventory.first; n; n = n->next ) { Item* i = (Item*)n->element; if ( i->type == BRONZE_SWORD ) { stats[0]->weapon = i; } }
+		inspectOpen(0, nullptr);
+		shotWhen("tip", "apx-u1c-list.png");
+	}
+	else if ( dt == 333 ) { setSort(0, apx_logic::COL_WEIGHT, true); }
+	else if ( dt == 335 )
+	{
+		// within each kind group the weights must not rise (descending)
+		auto e = ownRowsForTest(0);
+		rowsAll = 0; sortOk = 1;
+		for ( size_t i = 1; i < e.size(); ++i )
+		{
+			if ( !e[i].header ) { ++rowsAll; }
+			if ( !e[i].header && !e[i - 1].header && e[i].row.kind == e[i - 1].row.kind && e[i].row.mass > e[i - 1].row.mass ) { sortOk = 0; }
+		}
+		setTab(0, 1 + apx_logic::WEAPONS);
+	}
+	else if ( dt == 337 )
+	{
+		auto e = ownRowsForTest(0);
+		rowsTab = 0; tabOk = 1;
+		for ( auto& x : e ) { if ( !x.header ) { ++rowsTab; if ( x.row.kind != apx_logic::WEAPONS ) { tabOk = 0; } } }
+		// select the first unworn blade: its tooltip compares against the bronze sword
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && !e[i].row.equipped ) { setFocus(0, 0, (int)i); break; } }
+	}
+	else if ( dt == 339 )
+	{
+		const auto& vs = viewState(0);
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"d81\",\"mode\":\"%s\",\"headless\":%d,\"sort_weight_desc_ok\":%d,\"rows_all\":%d,\"tab_weapons_only\":%d,\"rows_weapons\":%d,"
+				"\"icons_drawn\":%d,\"tip_shown\":%d,\"tip_lines\":%d,\"tip_delta\":\"%s\",\"tip_vs_worn\":%d,\"sort_col\":%d,\"tab\":%d}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, sortOk, rowsAll, tabOk, rowsTab, vs.iconsDrawn, (int)vs.tipShown, vs.tipLines,
+				vs.tipDelta.c_str(), (int)vs.tipVsWorn, vs.sortCol, vs.tab);
+			fclose(f);
+		}
+		setTab(0, 0);
+		setSort(0, apx_logic::COL_NAME, false);
+	}
+}
+
 static void runBench(int dt)
 {
 	// step 5 first, before the chest and follower phases: a decoration beside the player that is not
@@ -497,7 +551,15 @@ static void runSteps345(int dtIn)
 		if ( g_testFollower ) { forceFollower(*me, *g_testFollower); }
 	}
 	else if ( dt == 212 ) { probe("follower"); }
-	else if ( dt == 240 && g_testFollower ) { R.followerView = R.followerTicks > 0; g_testFollower->x = pl.entity->x + 2000; } // away, so the bench column is free
+	else if ( dt == 240 && g_testFollower )
+	{
+		R.followerView = R.followerTicks > 0;
+		// remove the test follower: its uid from our followers, then the entity
+		Uint32 uid = g_testFollower->getUID();
+		for ( node_t* n = stats[0]->FOLLOWERS.first; n; n = n->next ) { if ( n->element && *(Uint32*)n->element == uid ) { list_RemoveNode(n); break; } }
+		list_RemoveNode(g_testFollower->mynode);
+		g_testFollower = nullptr;
+	}
 	else if ( dt == 290 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
@@ -533,7 +595,8 @@ static void runUiPhases()
 	else if ( dt == 100 ) { B = listState(0); }
 	else if ( dt >= 104 && dt <= 134 && (dt - 104) % 6 == 0 ) { keystatus[SDLK_DOWN] = ((dt - 104) / 6) % 2 == 0; } // 3 presses held 6 ticks (~120 ms, a human tap)
 	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); itemsAfter = (int)list_Size(&stats[0]->inventory); }
-	else if ( dt >= 141 && dt < 340 ) { runSteps345(dt); }
+	else if ( dt >= 141 && dt < 331 ) { runSteps345(dt); }
+	else if ( dt >= 331 && dt < 340 ) { runD81(dt); }
 	else if ( dt == 340 )
 	{
 		splitscreen = true;

@@ -28,11 +28,22 @@ namespace apx_logic
 		char powerKind = ' ';    // 'D' damage, 'A' armour, ' ' none
 		int slot = -1;           // equipment slot for compare-to-equipped (engine's own numbering)
 		std::string material, kinds;
+		std::string icon;        // sprite path at runtime (Barony art, never committed)
 	};
 	struct Entry { bool header = false; Row row; };
 
 	// ---------------------------------------------------------------- D81: columns, tabs, compare
 	enum Column : int { COL_NAME, COL_WEIGHT, COL_VALUE, COL_POWER, COL_CONDITION, COL_MAX };
+	inline const char* conditionShort(int status)
+	{
+		static const char* w[] = { "Broken", "Decrepit", "Worn", "Fine", "Excellent" };
+		return status >= 0 && status <= 4 ? w[status] : "";
+	}
+	inline const char* tabShort(int t)
+	{
+		static const char* n[] = { "All", "Weap", "Armr", "Tools", "Cons", "Mats", "Books", "Gold" };
+		return t >= 0 && t <= KIND_MAX ? n[t] : "?";
+	}
 	inline const char* columnName(int c)
 	{
 		static const char* n[COL_MAX] = { "Name", "Wt", "Val", "Dmg/AC", "Cond" };

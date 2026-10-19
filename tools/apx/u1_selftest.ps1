@@ -64,6 +64,9 @@ try {
             if ($mode -eq 'vanilla') { $env:APX_GRID = '1' } else { Remove-Item Env:APX_GRID -ErrorAction SilentlyContinue }
             # gates run headless (no window while Apocky uses the PC); only the screenshot run opens one
             $view = if ($mode -eq 'apx-shots') { @('-windowed', '-size=1280x720') } else { @('-apxheadless') }
+            # one logic tick per pass: the UI phases step per frame, so 50 ticks per pass would stretch the
+            # test over minutes of game time (monsters reached the test character at 16:32)
+            $env:APX_HEADLESS_BATCH = '1'
             $t0 = Get-Date
             $p = Start-Process -FilePath $Exe -ArgumentList (@('-quickstart=barbarian', '-apxfloor=1', '-apxmapseed=1234567', '-apxselftest=inventory') + $view) -WorkingDirectory $run -PassThru
             if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; "run $mode TIMEOUT" }
