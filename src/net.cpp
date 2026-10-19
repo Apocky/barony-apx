@@ -8190,6 +8190,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 26); // apx F6
 		useItem(item, client, nullptr, false, true);
 	}},
 

@@ -2676,8 +2676,10 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 		Uint32 appearance = 0;
 		bool identified = false;
 		bool sendToServer = false;
+		ApxItemData apx{}; // apx F6: the used item's parts ride with USEI
 		void setItem(Item& item)
 		{
+			apx = item.apx;
 			type = item.type;
 			status = item.status;
 			beatitude = item.beatitude;
@@ -2699,7 +2701,11 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 			net_packet->data[25] = clientnum;
 			net_packet->address.host = net_server.host;
 			net_packet->address.port = net_server.port;
-			net_packet->len = 26;
+			Item apxTmp; // apx F6
+			memset(&apxTmp, 0, sizeof(apxTmp));
+			apxTmp.type = type;
+			apxTmp.apx = apx;
+			net_packet->len = apxPartsNetAppend(&apxTmp, net_packet->data, 26);
 			sendPacketSafe(net_sock, -1, net_packet, 0);
 		}
 	};
@@ -7522,6 +7528,10 @@ void playerTryEquipItemAndUpdateServer(const int player, Item* const item, bool 
 		const int count = item->count;
 		const Uint32 appearance = item->appearance;
 		const bool identified = item->identified;
+		Item apxSnap; // apx F6: the parts too, before equipItem (it may free or move the item)
+		memset(&apxSnap, 0, sizeof(apxSnap));
+		apxSnap.type = item->type;
+		apxSnap.apx = item->apx;
 
 		const Category cat = itemCategory(item);
 
@@ -7544,13 +7554,13 @@ void playerTryEquipItemAndUpdateServer(const int player, Item* const item, bool 
 				if ( !cast_animation[player].active_spellbook )
 				{
 					clientSendEquipUpdateToServer(EQUIP_ITEM_SLOT_SHIELD, equipResult, player,
-						type, status, beatitude, count, appearance, identified, item);
+						type, status, beatitude, count, appearance, identified, &apxSnap);
 				}
 			}
 			else
 			{
 				clientSendEquipUpdateToServer(EQUIP_ITEM_SLOT_WEAPON, equipResult, player,
-					type, status, beatitude, count, appearance, identified, item);
+					type, status, beatitude, count, appearance, identified, &apxSnap);
 			}
 		}
 	}
