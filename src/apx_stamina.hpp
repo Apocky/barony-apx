@@ -551,7 +551,7 @@ namespace apx
 		if ( std::fabs(dyaw) > kYawThreshold && std::fabs(dyaw) >= std::fabs(dpitch) ) { move = SWORD_SLASH; }
 		else if ( std::fabs(dpitch) > kPitchThreshold ) { move = SWORD_VERTICAL; }
 		if ( charged ) { move = SWORD_LUNGE; }
-		if ( selftestMoves() ) { move = forcedMove(); }
+		if ( selftestMoves() || (selftestOn() && netRole() == 2) ) { move = forcedMove(); }
 		s.move = move;
 		s.sweepExtras = 0;
 		real_t extra = 0.0;
