@@ -35,7 +35,11 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex);
 // give (GEM_ROCK stand-in). v1 has no keep-one-part choice (that needs the BU1 bench UI): every part
 // returns. False = a vanilla item, the caller keeps its vanilla numbers.
 bool apxPartsSalvageValue(const Item* item, int* metal, int* magic, int* auraCrystals);
+// Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
+// material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
+void apxPartsApplyTint(Entity* entity, const Item* item);
 void apxPartsBenchRegister();                            // F6 provider into the BU1 bench shell (parts_bench.cpp)
+const char* apxPartsShotRequest();                       // the probe's framebuffer shot path, once (game.cpp frame end)
 void apxPartsProbeTick();                                // APX_BF6_PROBE, once floor 1 is up (game loop)
 
 // Formbook (card BF6-6; 05 section 5): per player, Form id (= apx.form, the family) -> successes 0-5;

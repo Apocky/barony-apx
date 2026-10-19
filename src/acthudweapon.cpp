@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/parts_engine.hpp"
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -679,6 +680,7 @@ void actHudWeapon(Entity* my)
 				}
 			}
 			my->sprite = itemModelFirstperson(stats[HUDWEAPON_PLAYERNUM]->weapon);
+			apxPartsApplyTint(my, stats[HUDWEAPON_PLAYERNUM]->weapon); // apx F6 palette tint
 
 			if ( bowIsBeingDrawn && !(stats[HUDWEAPON_PLAYERNUM]->weapon && stats[HUDWEAPON_PLAYERNUM]->weapon->type == HEAVY_CROSSBOW) )
 			{

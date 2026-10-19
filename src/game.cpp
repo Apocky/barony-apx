@@ -8405,6 +8405,12 @@ int main(int argc, char** argv)
 			GO_SwapBuffers(screen);
 
 			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
+			if ( const char* f6Shot = apxPartsShotRequest() ) // apx F6 visual probe: the back buffer, as the Screenshot key
+			{
+				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }
+				takeScreenshot(f6Shot);
+				if (!hdrEnabled) { main_framebuffer.bindForWriting(); }
+			}
 			if ( const char* apxShot = apx_inv::takeShotRequest() )
 			{
 				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }

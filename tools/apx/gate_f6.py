@@ -113,6 +113,42 @@ def run_save(name, exe, out, env_extra, args):
             "data_line": (re.findall(r"apxparts: data [^\n]*", text) or [None])[-1]}
 
 
+def crop_mean(png):
+    """Mean RGB of the first-person weapon region (lower right of the view; ASSUMED box)."""
+    from PIL import Image
+    im = Image.open(png).convert("RGB")
+    w, h = im.size
+    box = im.crop((int(w * 0.55), int(h * 0.45), int(w * 0.98), int(h * 0.92)))
+    px = list(box.getdata())
+    n = len(px) or 1
+    return [sum(c[i] for c in px) / n for i in range(3)]
+
+
+def run_visual(name, exe, out, env_extra, args):
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    d = out / "runs" / f"{stamp}-{name}"
+    d.mkdir(parents=True)
+    env = {"APX_BF6_PROBE": "visual", "APX_BF6_OUT": str(d / "probe.jsonl")}
+    env.update(env_extra)
+    lock = acquire(False, args.wait)
+    try:
+        p = launch(exe, d, ["-windowed", "-quickstart=barbarian", "-apxfloor=1", f"-apxmapseed={args.mapseed}"], env, args.datadir)
+        try:
+            code = p.wait(args.timeout)
+        except subprocess.TimeoutExpired:
+            pf.stop(p, pf.find_game_window(p.pid))
+            code = "timeout"
+    finally:
+        lock.unlink(missing_ok=True)
+    a, b = d / "visual-a.png", d / "visual-b.png"
+    row = {"name": name, "env": env_extra, "exit": code, "run_dir": str(d), "shots": [str(a), str(b)]}
+    if a.exists() and b.exists():
+        ma, mb = crop_mean(a), crop_mean(b)
+        row.update(mean_iron=[round(x, 1) for x in ma], mean_gold=[round(x, 1) for x in mb],
+                   distance_pct=round(100 * max(abs(x - y) for x, y in zip(ma, mb)) / 255, 2))
+    return row
+
+
 def run_net(name, exe, out, host_env, args):
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     dirs = {r: out / "runs" / f"{stamp}-{name}-{r}" for r in ("host", "client")}
@@ -174,7 +210,7 @@ def main():
     ap.add_argument("--mapseed", type=int, default=101)
     ap.add_argument("--timeout", type=float, default=150.0)
     ap.add_argument("--wait", type=float, default=7200.0)
-    ap.add_argument("--only", default="save,save-strip,save-vanilla,net,net-strip,net-vanilla")
+    ap.add_argument("--only", default="save,save-strip,save-vanilla,visual,visual-off,net,net-strip,net-vanilla")
     ap.add_argument("--all", action="store_true", help="do not stop at the first failing gate")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -227,6 +263,18 @@ def main():
         same_floor = results.get("save", {}).get("generated") == r["generated"] and r["generated"]
         if not gate("P vanilla APX_PARTS=0 (no parts, no sidecar, same floor)", r["exit"] == 0 and p.get("with_parts") == 0 and not r["sidecars"] and same_floor,
                     f"exit {r['exit']}, with_parts {p.get('with_parts')}, sidecars {len(r['sidecars'])}, floor line equal {bool(same_floor)}: {r['generated']}"):
+            return 1
+    if "visual" in only:
+        r = results["visual"] = run_visual("visual", args.exe, args.out, {}, args)
+        emit(r)
+        if not gate("V palette tint: iron vs gold sword differ (> 8 % of a channel)", (r.get("distance_pct") or 0) > 8,
+                    f"exit {r['exit']}, iron {r.get('mean_iron')}, gold {r.get('mean_gold')}, distance {r.get('distance_pct')} %"):
+            return 1
+    if "visual-off" in only:
+        r = results["visual-off"] = run_visual("visual-off", args.exe, args.out, {"APX_PARTS_VIS": "0"}, args)
+        emit(r)
+        if not gate("V control APX_PARTS_VIS=0: no tint (< 2 %)", r.get("distance_pct") is not None and r["distance_pct"] < 2,
+                    f"exit {r['exit']}, distance {r.get('distance_pct')} %"):
             return 1
     if "net" in only:
         r = results["net"] = run_net("net", args.exe, args.out, {}, args)

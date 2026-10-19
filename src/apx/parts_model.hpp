@@ -33,7 +33,7 @@ enum Source : uint8_t { SRC_CHEST = 0, SRC_MONSTER = 1, SRC_FLOOR = 2, SRC_SHOP 
 enum Role : uint8_t { ROLE_STRIKE = 0, ROLE_STRUCTURAL, ROLE_BALANCE, ROLE_GRIP, ROLE_OTHER };
 constexpr uint8_t FLAG_CRAFTED = 1 << 6, FLAG_LOOTED = 1 << 7;
 
-struct Material { std::string id; int density = 0, hardness = 0, tier = 1, valuePerKg = 0, meltC = 0, flammable = 0, element = 0; std::string salvageClass; };
+struct Material { std::string id; int density = 0, hardness = 0, tier = 1, valuePerKg = 0, meltC = 0, flammable = 0, element = 0; std::string salvageClass; float tint[3] = { 0, 0, 0 }; };
 struct Slot { std::string id; Role role = ROLE_OTHER; int volume = 0; };
 struct OptSlot { int slot = 0, q = 0; };
 struct Family { std::string id; std::vector<int> required; std::vector<OptSlot> optional; };

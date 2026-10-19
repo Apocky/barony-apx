@@ -152,6 +152,7 @@ std::string loadDB(const std::string& dir, DB& db)
 		x.id = r.str("id"); x.density = r.num("density"); x.hardness = r.num("hardness"); x.tier = r.num("tier", 1);
 		x.valuePerKg = r.num("value_per_kg"); x.meltC = r.num("melt_c"); x.flammable = r.num("flammable"); x.element = r.num("element");
 		x.salvageClass = r.str("salvage", "none");
+		{ const auto& t = r.arr("tint"); for ( size_t k = 0; k < 3 && k < t.size(); ++k ) { x.tint[k] = (float)t[k].n; } }
 		if ( x.id.empty() || db.material(x.id) >= 0 ) { return "materials.json: missing or duplicate id " + x.id; }
 		db.materials.push_back(x);
 	}

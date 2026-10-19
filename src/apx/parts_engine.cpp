@@ -239,6 +239,23 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex)
 	return it == sidecar.end() ? none : it->second;
 }
 
+// ---------------------------------------------------------------- palette tint (D79 stand-in)
+void apxPartsApplyTint(Entity* entity, const Item* item)
+{
+	static std::unordered_map<Uint32, bool> tinted; // entities whose lightBonus F6 set
+	if ( !entity ) { return; }
+	const bool vis = !(getenv("APX_PARTS_VIS") && *getenv("APX_PARTS_VIS") == '0');
+	if ( vis && item && item->apx.nParts > 0 && apxPartsEnabled() && item->apx.parts[0].material < db().materials.size() )
+	{
+		const float* t = db().materials[item->apx.parts[0].material].tint;
+		entity->lightBonus = vec4(t[0], t[1], t[2], 0.f);
+		tinted[entity->getUID()] = true;
+		return;
+	}
+	auto it = tinted.find(entity->getUID());
+	if ( it != tinted.end() ) { entity->lightBonus = vec4(0.f, 0.f, 0.f, 0.f); tinted.erase(it); } // back to the vanilla look
+}
+
 // ---------------------------------------------------------------- Formbook
 namespace {
 void sendFormbook(int player)
@@ -408,6 +425,16 @@ int countType(int p, ItemType t)
 }
 } // namespace
 
+namespace { std::string shotRequest; }
+const char* apxPartsShotRequest()
+{
+	static std::string handed;
+	if ( shotRequest.empty() ) { return nullptr; }
+	handed = shotRequest;
+	shotRequest.clear();
+	return handed.c_str();
+}
+
 void apxPartsProbeTick()
 {
 	static int state = -1;
@@ -425,6 +452,34 @@ void apxPartsProbeTick()
 	if ( ticks - start < TICKS_PER_SECOND * 3 ) { return; } // let the floor settle
 	const bool on = apxPartsEnabled();
 	char buf[1024];
+	// visual: the same sword with an iron main part, then gold; a framebuffer shot of each (palette tint)
+	if ( probes.find("visual") != std::string::npos && multiplayer != CLIENT )
+	{
+		static Uint32 t0 = 0;
+		static int step = 0;
+		static std::string outDir;
+		if ( outDir.empty() ) { const char* o = getenv("APX_BF6_OUT"); outDir = o ? std::string(o) : std::string("probe.jsonl"); outDir = outDir.substr(0, outDir.find_last_of("/\\") + 1); }
+		auto equipMaterial = [&](const char* mat) {
+			Item* it = newItem(IRON_SWORD, SERVICABLE, 0, 1, 7, true, &stats[0]->inventory);
+			apxPartsBind(it, apxparts::SRC_CHEST);
+			const int m = db().material(mat);
+			if ( it->apx.nParts > 0 && m >= 0 ) { it->apx.parts[0].material = (uint8_t)m; }
+			useItem(it, 0);
+			return it->apx.nParts;
+		};
+		if ( step == 0 ) { equipMaterial("iron"); t0 = ticks; step = 1; return; }
+		if ( step == 1 && ticks - t0 > TICKS_PER_SECOND * 2 ) { shotRequest = outDir + "visual-a.png"; t0 = ticks; step = 2; return; }
+		if ( step == 2 && ticks - t0 > TICKS_PER_SECOND ) { equipMaterial("gold"); t0 = ticks; step = 3; return; }
+		if ( step == 3 && ticks - t0 > TICKS_PER_SECOND * 2 ) { shotRequest = outDir + "visual-b.png"; t0 = ticks; step = 4; return; }
+		if ( step == 4 && ticks - t0 > TICKS_PER_SECOND )
+		{
+			const bool vis = !(getenv("APX_PARTS_VIS") && *getenv("APX_PARTS_VIS") == '0');
+			snprintf(buf, sizeof(buf), "{\"probe\":\"visual\",\"parts_on\":%d,\"vis\":%d,\"a\":\"iron\",\"b\":\"gold\",\"shots\":[\"visual-a.png\",\"visual-b.png\"]}", on ? 1 : 0, vis ? 1 : 0);
+			probeRow(buf);
+			exit(0);
+		}
+		return;
+	}
 	if ( state == 1 && probes.find("save") != std::string::npos && multiplayer != CLIENT )
 	{
 		state = 2;
