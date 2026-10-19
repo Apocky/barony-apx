@@ -37,27 +37,26 @@ end
 poll = apx.every(10, function()
   if started or not apx.player_uid(0) then return end
   started = true; apx.cancel(poll)
-  local u = apx.player_uid(0)
   after_decisions(6, function()
     local base = D.tension.ewma
     check("run identity equals identity(run_seed)", D.me and D.identity(apx.run_seed()).name == D.me.name)
     check("quiet baseline ewma < 0.35", base < 0.35, string.format("%.3f", base))
-    hurt_burst(u)
+    hurt_burst(apx.player_uid(0))
     after_decisions(2, function()
       local up = D.tension.ewma
       check("tension rises within 2 decisions of a damage burst", up >= base + 0.04, string.format("%.3f -> %.3f", base, up))
-      apx.set_stat(u, "hp", apx.get_stat(u, "maxhp"))
+      apx.set_stat(apx.player_uid(0), "hp", apx.get_stat(apx.player_uid(0), "maxhp"))
       after_decisions(12, function()
         local down = D.tension.ewma
         check("tension falls back within 12 decisions", down < up * 0.6 or down < 0.2, string.format("%.3f -> %.3f", up, down))
         -- CONTROL: a blind director (damage ignored) must NOT rise; the same rise check would fail against it
         D.blind = true
         local b0 = D.tension.ewma
-        hurt_burst(u)
+        hurt_burst(apx.player_uid(0))
         after_decisions(2, function()
           local b1 = D.tension.ewma
           check("control: blind director does not rise (the rise check would fail)", not (b1 >= b0 + 0.04), string.format("%.3f -> %.3f", b0, b1))
-          D.blind = false; apx.set_stat(u, "hp", apx.get_stat(u, "maxhp"))
+          D.blind = false; apx.set_stat(apx.player_uid(0), "hp", apx.get_stat(apx.player_uid(0), "maxhp"))
           local ok = #D.ticks >= 20
           for i = 2, #D.ticks do if D.ticks[i] - D.ticks[i - 1] ~= 50 then ok = false end end
           check("decisions are exactly 50 ticks apart (>= 20 of them)", ok, #D.ticks .. " decisions")

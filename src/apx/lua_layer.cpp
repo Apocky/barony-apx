@@ -231,6 +231,20 @@ int api_path_to(lua_State* L) {
 	if ( ok ) { m->monsterState = MONSTER_STATE_PATH; }
 	lua_pushboolean(L, ok); return 1;
 }
+// Line of sight between two map points (tile units) with no entity involved: marches the segment in quarter-tile steps and
+// stops at a wall (non-zero obstacle layer). Used to reject ambush spawn points BEFORE a body exists. true = clear.
+int api_tile_los(lua_State* L) {
+	lua_Number x1 = luaL_checknumber(L, 1), y1 = luaL_checknumber(L, 2), x2 = luaL_checknumber(L, 3), y2 = luaL_checknumber(L, 4);
+	if ( !map.tiles ) { lua_pushnil(L); return 1; }
+	double dx = x2 - x1, dy = y2 - y1, len = sqrt(dx * dx + dy * dy);
+	int steps = (int)(len * 4) + 1;
+	for ( int i = 1; i < steps; i++ ) {
+		double t = (double)i / steps, x = x1 + dx * t, y = y1 + dy * t;
+		if ( x < 0 || y < 0 || x >= (double)map.width || y >= (double)map.height ) { lua_pushboolean(L, 0); return 1; }
+		if ( map.tiles[OBSTACLELAYER + (int)y * MAPLAYERS + (int)x * MAPLAYERS * map.height] ) { lua_pushboolean(L, 0); return 1; }
+	}
+	lua_pushboolean(L, 1); return 1;
+}
 int api_monster_state(lua_State* L) {
 	Entity* m = entityByUid(luaL_checkinteger(L, 1));
 	if ( !m || m->behavior != &actMonster ) { lua_pushnil(L); return 1; }
@@ -334,12 +348,17 @@ void jsonValue(lua_State* L, int idx, std::string& out, int depth) {
 	}
 }
 int g_rowsWritten = 0, g_rowsRefused = 0;
+// One open handle per file (a per-row open cost 1.4 ms p99, measured). Flushed every 10 rows and at shutdown / test quit:
+// a flush per row cost about 100 us of the 200 us decision budget (measured on a floor with 38 monsters).
+std::map<std::string, std::ofstream> g_rowFiles;
+std::map<std::string, size_t> g_rowSizes;
+bool g_rowsDirty = false;
+void flushRows() { g_rowsDirty = false; for ( auto& f : g_rowFiles ) { f.second.flush(); } }
 int api_row(lua_State* L) {
 	const char* name = luaL_checkstring(L, 1); luaL_checktype(L, 2, LUA_TTABLE);
 	for ( const char* c = name; *c; c++ ) { if ( !(isalnum((unsigned char)*c) || *c == '_' || *c == '-') ) { return luaL_error(L, "bad row file name"); } }
 	std::string line; jsonValue(L, 2, line, 0); line += '\n';
-	static std::map<std::string, std::ofstream> files; // opened once per file: a per-row open cost 1.4 ms p99 (measured)
-	static std::map<std::string, size_t> sizes;
+	auto& files = g_rowFiles; auto& sizes = g_rowSizes;
 	std::string key = name;
 	auto it = files.find(key);
 	if ( it == files.end() ) {
@@ -351,7 +370,8 @@ int api_row(lua_State* L) {
 		it = files.emplace(key, std::ofstream(f, std::ios::app | std::ios::binary)).first;
 	}
 	if ( sizes[key] > 8u * 1024 * 1024 || !it->second ) { g_rowsRefused++; lua_pushboolean(L, 0); return 1; }
-	it->second << line; it->second.flush(); sizes[key] += line.size();
+	it->second << line; sizes[key] += line.size();
+	g_rowsDirty = true;   // flushed from apxLuaTick (off the decision path) and at shutdown
 	bool good = it->second.good();
 	g_rowsWritten++; lua_pushboolean(L, good); return 1;
 }
@@ -371,13 +391,14 @@ int api_player_uid(lua_State* L) {
 }
 int api_monster_count(lua_State* L) {
 	int n = 0;
-	if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster ) { n++; } } }
+	if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster && e->getStats() && e->getStats()->HP > 0 ) { n++; }   /* a dying body is not a monster */ } }
 	lua_pushinteger(L, n); return 1;
 }
 int api_is_test(lua_State* L) { lua_pushboolean(L, G.test); return 1; }
 int api_test_quit(lua_State* L) {
 	if ( !G.test ) { return luaL_error(L, "test_quit is only available with -apx-luatest"); }
 	logf("test_quit(%d) after %d errors caught, %d events", (int)luaL_optinteger(L, 1, 0), G.nErrors, G.nEvents);
+	flushRows();
 	mainloop = 0;
 	return 0;
 }
@@ -394,7 +415,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };
@@ -555,6 +576,7 @@ void apxLuaShutdown() {
 	if ( !G.on ) { return; }
 	logf("shutdown: events=%d errors=%d handlers_disabled=%d dropped=%d scripts_loaded=%d scripts_failed=%d mem=%zu",
 		G.nEvents, G.nErrors, G.nDisabled, G.nDropped, G.nLoaded, G.nScriptFail, G.used);
+	flushRows();
 	closeState(); G.on = false;
 }
 
@@ -578,12 +600,13 @@ void apxLuaTick() {
 	}
 	if ( ticks % 25 == 0 && G.hadMonsters ) {
 		int alive = 0;
-		if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster ) { alive++; } } }
+		if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster && e->getStats() && e->getStats()->HP > 0 ) { alive++; } } }
 		if ( alive == 0 ) {
 			G.hadMonsters = false;
 			dispatch("floor_cleared", [&](lua_State* L) { lua_newtable(L); lua_pushinteger(L, currentlevel); lua_setfield(L, -2, "floor"); });
 		}
 	}
+	if ( g_rowsDirty && ticks % 250 == 0 ) { flushRows(); }
 	if ( G.timers.empty() ) { return; }
 	lua_State* L = G.L;
 	for ( size_t i = 0; i < G.timers.size(); i++ ) { // handlers may add timers: index loop, copy before call
