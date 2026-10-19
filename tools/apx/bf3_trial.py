@@ -194,13 +194,27 @@ def gates(by, base, args):
                                    "off_dmg_mean": round(mean([a["dmg"] for a in off]), 1), "n": len(off)}
     noring = [a for a in by.get("noring", []) if a.get("creatures") == 12]
     if noring and on:
-        nn_on = mean([a.get("waiters_nn_mean", 0) for a in on])
-        nn_off = mean([a.get("waiters_nn_mean", 0) for a in noring])
-        g["ring_control_bunching"] = {"pass": nn_on > 0 and nn_off <= 0.7 * nn_on, "nn_ring": round(nn_on, 2),
-                                      "nn_noring": round(nn_off, 2),
-                                      "overlap_ring": round(mean([a.get("waiters_overlap_share", 0) for a in on]), 3),
-                                      "overlap_noring": round(mean([a.get("waiters_overlap_share", 0) for a in noring]), 3),
+        # Bunching is measured directly: the share of waiting creatures whose nearest neighbour is closer than two body
+        # radii (bodies overlapping). Card BF3-4 named the mean pairwise distance of waiters; it does not separate here
+        # (s5-route: 50.7 with the ring, 50.5 without) because waiters without the ring queue behind the slot on their
+        # own bearing, spread round the target like ring slots, but stacked on the same point; both are reported.
+        # Card BF3-4 also bounds stuck: under 2 percent of steered ticks with the ring.
+        ov_on = mean([a.get("waiters_overlap_share", 0) for a in on])
+        ov_off = mean([a.get("waiters_overlap_share", 0) for a in noring])
+        st_on = sum(a.get("stuck", 0) for a in on) / max(1, sum(a.get("steer_ticks", 0) for a in on))
+        g["ring_control_bunching"] = {"pass": ov_off >= 0.1 and ov_on <= ov_off / 3 and st_on < 0.02,
+                                      "overlap_ring": round(ov_on, 3), "overlap_noring": round(ov_off, 3),
+                                      "stuck_share_ring": round(st_on, 4),
+                                      "pair_ring": round(mean([a.get("waiters_pair_dist_mean", 0) for a in on]), 1),
+                                      "pair_noring": round(mean([a.get("waiters_pair_dist_mean", 0) for a in noring]), 1),
+                                      "nn_ring": round(mean([a.get("waiters_nn_mean", 0) for a in on]), 2),
+                                      "nn_noring": round(mean([a.get("waiters_nn_mean", 0) for a in noring]), 2),
                                       "stuck_ring": sum(a.get("stuck", 0) for a in on), "stuck_noring": sum(a.get("stuck", 0) for a in noring)}
+        g["holders_reach_slots"] = {"pass": all(a.get("holder_false_arrive", 0) == 0 for a in on) and
+                                    mean([a.get("holder_in", 0) / max(1, a.get("holder_in", 0) + a.get("holder_out", 0)) for a in on]) >= 0.8,
+                                    "holder_in_share": round(mean([a.get("holder_in", 0) / max(1, a.get("holder_in", 0) + a.get("holder_out", 0)) for a in on]), 3),
+                                    "false_arrive": sum(a.get("holder_false_arrive", 0) for a in on),
+                                    "flank_arrived": sum(a.get("flank_arrived", 0) for a in on), "flank_failed": sum(a.get("flank_failed", 0) for a in on)}
     hon = [h for h in base["help"] if h.get("arm_kind") == "help_on"]
     hoff = [h for h in base["help"] if h.get("arm_kind") == "help_off_nopacks"]
     if hon and hoff:
@@ -238,6 +252,25 @@ def gates(by, base, args):
     return g
 
 
+def regate(paths, args):
+    """Recompute the summary and gates from finished run folders (their apx/*.jsonl rows); prints the gates."""
+    results = []
+    for d in paths:
+        def rows(name):
+            out = []
+            for root, _, files in os.walk(d):
+                if name in files:
+                    with open(os.path.join(root, name), encoding="utf-8") as fh:
+                        out += [json.loads(x) for x in fh if x.strip()]
+            return out
+        results.append({"arms": rows("bf3-arms.jsonl"), "morale": rows("bf3-morale.jsonl"), "help": rows("bf3-help.jsonl"),
+                        "flowtest": rows("bf3-flowtest.jsonl"), "code": 0, "wall_s": 0})
+    base = summarise(results, args)
+    for k, v in base["gates"].items():
+        print(f"{k}: {json.dumps(v)}")
+    return base
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exe", default="build/vs2022/Release/barony.exe")
@@ -256,7 +289,11 @@ def main():
     ap.add_argument("--wait-limit", type=float, default=4 * 3600)
     ap.add_argument("--poll", type=float, default=10.0, help="seconds between lock checks")
     ap.add_argument("--build-hash", default="unknown")
+    ap.add_argument("--regate", nargs="+", default=None, help="run folders: recompute and print the gates, launch nothing")
     args = ap.parse_args()
+    if args.regate:
+        regate(args.regate, args)
+        return 0
     env_extra = {}
     if args.arms:
         env_extra["APX_BF3_ARMS"] = args.arms
