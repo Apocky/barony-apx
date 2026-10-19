@@ -45,6 +45,13 @@ extern Uint32 numsounds;
 bool initSoundEngine(); //If it fails to initialize the sound engine, it'll just disable audio.
 void exitSoundEngine();
 int loadSoundResources(real_t base_load_percent, real_t top_load_percent);
+#ifdef USE_FMOD
+// apx: ensemble music decoded on worker threads (init_audio.cpp)
+bool apxEnsembleParallel();
+void apxQueueEnsembleSound(const std::string& path, FMOD_MODE flags, FMOD::Sound** out, int index);
+void apxStartEnsembleLoads();
+void apxJoinEnsembleLoads();
+#endif
 void freeSoundResources();
 // all parameters should be in ranges of [0.0 - 1.0]
 void setGlobalVolume(real_t master, real_t music, real_t gameplay, real_t ambient, real_t environment, real_t notification);

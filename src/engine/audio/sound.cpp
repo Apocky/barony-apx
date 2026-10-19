@@ -1777,31 +1777,31 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 							{
 								fmod_result = ensembleSounds.exploreChannel[c] ? ensembleSounds.exploreChannel[c]->stop() : FMOD_OK;
 								fmod_result = ensembleSounds.exploreSound[c] ? ensembleSounds.exploreSound[c]->release() : FMOD_OK;
-								fmod_result = fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.exploreSound[c]);
+								fmod_result = apxEnsembleParallel() ? (apxQueueEnsembleSound(musicDir, flags, &ensembleSounds.exploreSound[c], index), FMOD_OK) : fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.exploreSound[c]);
 							}
 							else if ( index >= 21 + NUMENSEMBLEMUSIC * 1 && index < 21 + NUMENSEMBLEMUSIC * 2 )
 							{
 								fmod_result = ensembleSounds.combatChannel[c] ? ensembleSounds.combatChannel[c]->stop() : FMOD_OK;
 								fmod_result = ensembleSounds.combatSound[c] ? ensembleSounds.combatSound[c]->release() : FMOD_OK;
-								fmod_result = fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.combatSound[c]);
+								fmod_result = apxEnsembleParallel() ? (apxQueueEnsembleSound(musicDir, flags, &ensembleSounds.combatSound[c], index), FMOD_OK) : fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.combatSound[c]);
 							}
 							else if ( index >= 21 + NUMENSEMBLEMUSIC * 2 && index < 21 + NUMENSEMBLEMUSIC * 3 )
 							{
 								fmod_result = ensembleSounds.combatTransChannel[0][c] ? ensembleSounds.combatTransChannel[0][c]->stop() : FMOD_OK;
 								fmod_result = ensembleSounds.combatTransSound[0][c] ? ensembleSounds.combatTransSound[0][c]->release() : FMOD_OK;
-								fmod_result = fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.combatTransSound[0][c]);
+								fmod_result = apxEnsembleParallel() ? (apxQueueEnsembleSound(musicDir, flags, &ensembleSounds.combatTransSound[0][c], index), FMOD_OK) : fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.combatTransSound[0][c]);
 							}
 							else if ( index >= 21 + NUMENSEMBLEMUSIC * 3 && index < 21 + NUMENSEMBLEMUSIC * 4 )
 							{
 								fmod_result = ensembleSounds.combatTransChannel[1][c] ? ensembleSounds.combatTransChannel[1][c]->stop() : FMOD_OK;
 								fmod_result = ensembleSounds.combatTransSound[1][c] ? ensembleSounds.combatTransSound[1][c]->release() : FMOD_OK;
-								fmod_result = fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.combatTransSound[1][c]);
+								fmod_result = apxEnsembleParallel() ? (apxQueueEnsembleSound(musicDir, flags, &ensembleSounds.combatTransSound[1][c], index), FMOD_OK) : fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.combatTransSound[1][c]);
 							}
 							else if ( index >= 21 + NUMENSEMBLEMUSIC * 4 && index < 21 + NUMENSEMBLEMUSIC * 5 )
 							{
 								fmod_result = ensembleSounds.exploreTransChannel[3][c] ? ensembleSounds.exploreTransChannel[3][c]->stop() : FMOD_OK;
 								fmod_result = ensembleSounds.exploreTransSound[3][c] ? ensembleSounds.exploreTransSound[3][c]->release() : FMOD_OK;
-								fmod_result = fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.exploreTransSound[3][c]);
+								fmod_result = apxEnsembleParallel() ? (apxQueueEnsembleSound(musicDir, flags, &ensembleSounds.exploreTransSound[3][c], index), FMOD_OK) : fmod_system->createSound(musicDir.c_str(), flags, nullptr, &ensembleSounds.exploreTransSound[3][c]);
 							}
 							/*else if ( index >= 21 + NUMENSEMBLEMUSIC * 2 && index < 21 + NUMENSEMBLEMUSIC * 3 )
 							{
@@ -1955,6 +1955,7 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 
 #ifdef USE_FMOD
 #ifndef EDITOR
+	apxStartEnsembleLoads(); // apx: decode the queued ensemble music on worker threads; joined in EnsembleSounds_t::setup
 	if ( ensembleNeedsUpdate && !ensembleSounds.firstTimeSetup ) // only setup here on modded reloads
 	{
 		ensembleSounds.setup();
