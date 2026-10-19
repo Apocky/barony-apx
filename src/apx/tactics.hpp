@@ -86,6 +86,7 @@ namespace tactics
 		long long doors_opened = 0, door_bumps_locked = 0, routed_engaged = 0, routed_promoted = 0;
 		long long flank_fail_target = 0, flank_fail_progress = 0, flank_fail_time = 0, flank_fail_nogoal = 0, flank_fail_noroute = 0;
 		long long route_blocked_replans = 0;  // a planned walk stuck 1 s on a step: that tile avoided 5 s, route replanned
+		long long breakables_hit = 0;         // steered creatures bashing a breakable collider in their way (engine rule)
 	};
 	extern Counters C;
 	void resetCounters();

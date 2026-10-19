@@ -59,8 +59,8 @@ namespace bf3
 	static std::vector<Uint32> helpUids;
 	static Uint32 callTick = 0, firstHelpArrival = 0;
 	static double helpMinDist = 1e9;
-	// help is judged inside the time help needs: twice pack B's walk from its spot (BFS steps at its own speed) plus
-	// 2 s; monsters also wander and find a fight on their own later (s5-route control: 2 of 4 by 26.3 s of 30)
+	// help is judged inside the time help needs: pack B's walk from its spot (BFS steps at its own speed) plus 5 s;
+	// monsters also wander and find a fight on their own later (s5-route control: 2 of 4 by 26.3 s of 30)
 	static double helpWindowS = 0;
 	static int within4Window = -1;
 	static std::vector<Uint32> helpAcquired;
@@ -339,13 +339,17 @@ namespace bf3
 		return m;
 	}
 
-	static void spawnPacks(Entity* pe, int n, int pack, bool flankers)
+	// spreadN: spawn tiles are taken as if spreadN creatures were spread round the arena (default n). A pack's home is
+	// the centroid of its spawn tiles, so a lone pack spread all round had its home on the character (s9-1 morale:
+	// members "home" within 2 tiles, regrouping in the fight); one pack takes the arc it would hold among three.
+	static void spawnPacks(Entity* pe, int n, int pack, bool flankers, int spreadN = 0)
 	{
 		trialUids.clear();
 		int got = (int)spawnTiles.size();
 		if ( got == 0 ) { return; }
+		const int sn = spreadN > 0 ? spreadN : n;
 		std::vector<std::pair<int, int>> pick;
-		for ( int i = 0; i < n; ++i ) { pick.push_back(spawnTiles[(size_t)((long long)i * got / n)]); }
+		for ( int i = 0; i < n; ++i ) { pick.push_back(spawnTiles[(size_t)((long long)i * got / sn)]); }
 		for ( int p0 = 0; p0 < n; p0 += pack )
 		{
 			int p1 = std::min(n, p0 + pack);
@@ -636,7 +640,7 @@ namespace bf3
 			.i("holder_false_arrive", A.holderFalseArrive)
 			.i("flank_fail_target", C.flank_fail_target).i("flank_fail_progress", C.flank_fail_progress).i("flank_fail_time", C.flank_fail_time)
 			.i("flank_fail_nogoal", C.flank_fail_nogoal).i("flank_fail_noroute", C.flank_fail_noroute)
-			.i("route_blocked_replans", C.route_blocked_replans)
+			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit)
 			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
 			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
 			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)
@@ -1006,7 +1010,7 @@ namespace bf3
 				tactics::resetCounters();
 				A = Arm();
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
-				spawnPacks(pe, packSize, packSize, false);
+				spawnPacks(pe, packSize, packSize, false, 3 * packSize);
 				firstRegroup = 0;
 				go(P_M_SETTLE);
 				break;
@@ -1115,7 +1119,7 @@ namespace bf3
 						Entity* h = uidToEntity(u);
 						if ( !h ) { continue; }
 						double v = .045 * (h->monsterGetDexterityForMovement() + 10) * TICKS_PER_SECOND; // units per second
-						helpWindowS = 2.0 * hsBfs * 16.0 / std::max(v, 1.0) + 2.0;
+						helpWindowS = std::min(hsBfs * 16.0 / std::max(v, 1.0) + 5.0, 28.0); // one walk + 5 s, inside the 30 s observation
 						break;
 					}
 					go(P_H_OBSERVE);

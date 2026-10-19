@@ -2651,6 +2651,198 @@ void monsterAnimate(Entity* my, Stat* myStats, double dist)
 	}
 }
 
+// apx BF3: the chase move's bump handling, moved here verbatim from the ATTACK state of actMonster (where it ran
+// after clipMove) and shared with tactics-steered movement (apx/tactics.cpp moveTo), which replaces that move and
+// so skipped it: doors stayed shut and breakable colliders stood in planned routes for good (s9-1: two flankers
+// pushed against one at tile 17,13). fellBack: the three branches that send a blocked monster to PATH or WAIT
+// run only for the engine's own move (true there, behaviour unchanged); steered movement handles a blocked step
+// itself (route replanning) and passes false.
+void monsterChaseBump(Entity* my, Stat* myStats, bool hasrangedweapon, real_t dist2, bool fellBack)
+{
+	if ( hit.entity != NULL )
+	{
+		if ( hit.entity->behavior == &actDoor || hit.entity->behavior == &actIronDoor )
+		{
+			// opens the door if unlocked and monster can do it
+			if ( !hit.entity->doorLocked && my->getINT() > -2 )
+			{
+				if ( !hit.entity->doorDir && !hit.entity->doorStatus )
+				{
+					hit.entity->doorStatus = 1 + (my->x > hit.entity->x);
+					playSoundEntity(hit.entity, 21, 96);
+				}
+				else if ( hit.entity->doorDir && !hit.entity->doorStatus )
+				{
+					hit.entity->doorStatus = 1 + (my->y < hit.entity->y);
+					playSoundEntity(hit.entity, 21, 96);
+				}
+			}
+			else if ( hit.entity->behavior == &actIronDoor )
+			{
+				if ( myStats->type == MINOTAUR )
+				{
+					hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
+					my->monsterAttack = my->getAttackPose(); // random attack motion
+					my->monsterAttackTime = 0;
+					my->monsterHitTime = 0;
+
+					playSoundEntity(hit.entity, 28, 64);
+					if ( hit.entity->doorHealth <= 0 )
+					{
+						// set direction of splinters
+						if ( !hit.entity->doorDir )
+						{
+							hit.entity->doorSmacked = (my->x > hit.entity->x);
+						}
+						else
+						{
+							hit.entity->doorSmacked = (my->y < hit.entity->y);
+						}
+					}
+				}
+				else if ( fellBack )
+				{
+					if ( my->shouldRetreat(*myStats) && !myStats->getEffectActive(EFF_FEAR) )
+					{
+						my->monsterMoveTime = 0;
+						my->monsterState = MONSTER_STATE_WAIT; // wait state
+					}
+					else
+					{
+						my->monsterState = MONSTER_STATE_PATH; // path state
+					}
+				}
+			}
+			else
+			{
+				// can't open door, so break it down
+				my->monsterHitTime++;
+				if ( my->monsterHitTime >= HITRATE )
+				{
+					my->monsterAttack = my->getAttackPose(); // random attack motion
+					my->monsterHitTime = 0;
+					my->monsterAttackTime = 0;
+					hit.entity->doorHealth--; // decrease door health
+					if ( myStats->STR > 20 )
+					{
+						hit.entity->doorHealth -= static_cast<int>(std::max((myStats->STR - 20), 0) / 3); // decrease door health
+						hit.entity->doorHealth = std::max(hit.entity->doorHealth, 0);
+					}
+					if ( myStats->type == MINOTAUR )
+					{
+						hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
+					}
+					updateEnemyBar(my, hit.entity, hit.entity->behavior == &actIronDoor ? Language::get(6414) : Language::get(674), 
+						hit.entity->doorHealth, hit.entity->doorMaxHealth, false, DamageGib::DMG_DEFAULT);
+					playSoundEntity(hit.entity, 28, 64);
+					if ( hit.entity->doorHealth <= 0 )
+					{
+						// set direction of splinters
+						if ( !hit.entity->doorDir )
+						{
+							hit.entity->doorSmacked = (my->x > hit.entity->x);
+						}
+						else
+						{
+							hit.entity->doorSmacked = (my->y < hit.entity->y);
+						}
+					}
+				}
+			}
+		}
+		else if ( hit.entity->behavior == &actFurniture && myStats->type == MINOTAUR )
+		{
+			hit.entity->furnitureHealth = 0;
+			playSoundEntity(hit.entity, 28, 64);
+		}
+		else if ( hit.entity->behavior == &actChest && myStats->type == MINOTAUR )
+		{
+			hit.entity->skill[3] = 0; // chestHealth
+			playSoundEntity(hit.entity, 28, 64);
+		}
+		else if ( hit.entity->isDamageableCollider() && myStats->type == MINOTAUR )
+		{
+			hit.entity->colliderCurrentHP = 0;
+			hit.entity->colliderKillerUid = 0;
+			playSoundEntity(hit.entity, 28, 64);
+		}
+		else if ( hit.entity->behavior == &actFurniture )
+		{
+			// break it down!
+			my->monsterHitTime++;
+			if ( my->monsterHitTime >= HITRATE )
+			{
+				my->monsterAttack = my->getAttackPose(); // random attack motion
+				my->monsterHitTime = HITRATE / 4;
+				my->monsterAttackTime = 0;
+				hit.entity->furnitureHealth--; // decrease door health
+				if ( myStats->STR > 20 )
+				{
+					hit.entity->furnitureHealth -= static_cast<int>(std::max((myStats->STR - 20), 0) / 3); // decrease door health
+					hit.entity->furnitureHealth = std::max(hit.entity->furnitureHealth, 0);
+				}
+				playSoundEntity(hit.entity, 28, 64);
+			}
+		}
+		else if ( hit.entity->isDamageableCollider() && myStats->type != GYROBOT && myStats->type != BAT_SMALL )
+		{
+			// break it down!
+			my->monsterHitTime++;
+			if ( my->monsterHitTime >= HITRATE )
+			{
+				if ( !hasrangedweapon )
+				{
+					my->monsterAttack = my->getAttackPose(); // random attack motion
+				}
+				my->monsterHitTime = HITRATE / 4;
+				my->monsterAttackTime = 0;
+				int damage = 2 + local_rng.rand() % 3;
+				damage += std::max(0, myStats->STR / 8);
+
+				hit.entity->colliderCurrentHP -= damage;
+				hit.entity->colliderKillerUid = 0;
+
+				int sound = 28;
+				if ( hit.entity->getColliderSfxOnHit() > 0 )
+				{
+					sound = hit.entity->getColliderSfxOnHit();
+				}
+				playSoundEntity(hit.entity, sound, 64);
+			}
+		}
+		else if ( (hit.entity->behavior == &actBoulder || hit.entity->behavior == &::actDaedalusShrine) && !hit.entity->flags[PASSABLE] && myStats->type == MINOTAUR )
+		{
+			// asplode the rock
+			magicDig(nullptr, nullptr, 0, 1);
+			hit.entity = nullptr;
+		}
+		else if ( fellBack )
+		{
+			if ( my->shouldRetreat(*myStats) && !myStats->getEffectActive(EFF_FEAR) )
+			{
+				my->monsterMoveTime = 0;
+				my->monsterState = MONSTER_STATE_WAIT; // wait state
+			}
+			else
+			{
+				my->monsterState = MONSTER_STATE_PATH; // path state
+			}
+		}
+	}
+	else if ( fellBack )
+	{
+		if ( my->shouldRetreat(*myStats) && !myStats->getEffectActive(EFF_FEAR) )
+		{
+			my->monsterMoveTime = 0;
+			my->monsterState = MONSTER_STATE_WAIT; // wait state
+		}
+		else if ( dist2 <= 0.1 && myStats->HP > myStats->MAXHP / 3 )
+		{
+			my->monsterState = MONSTER_STATE_PATH; // path state
+		}
+	}
+}
+
 void actMonster(Entity* my)
 {
 	if (!my)
@@ -6430,188 +6622,7 @@ timeToGoAgain:
 
 									dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
 								}
-								if ( hit.entity != NULL )
-								{
-									if ( hit.entity->behavior == &actDoor || hit.entity->behavior == &actIronDoor )
-									{
-										// opens the door if unlocked and monster can do it
-										if ( !hit.entity->doorLocked && my->getINT() > -2 )
-										{
-											if ( !hit.entity->doorDir && !hit.entity->doorStatus )
-											{
-												hit.entity->doorStatus = 1 + (my->x > hit.entity->x);
-												playSoundEntity(hit.entity, 21, 96);
-											}
-											else if ( hit.entity->doorDir && !hit.entity->doorStatus )
-											{
-												hit.entity->doorStatus = 1 + (my->y < hit.entity->y);
-												playSoundEntity(hit.entity, 21, 96);
-											}
-										}
-										else if ( hit.entity->behavior == &actIronDoor )
-										{
-											if ( myStats->type == MINOTAUR )
-											{
-												hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
-												my->monsterAttack = my->getAttackPose(); // random attack motion
-												my->monsterAttackTime = 0;
-												my->monsterHitTime = 0;
-
-												playSoundEntity(hit.entity, 28, 64);
-												if ( hit.entity->doorHealth <= 0 )
-												{
-													// set direction of splinters
-													if ( !hit.entity->doorDir )
-													{
-														hit.entity->doorSmacked = (my->x > hit.entity->x);
-													}
-													else
-													{
-														hit.entity->doorSmacked = (my->y < hit.entity->y);
-													}
-												}
-											}
-											else
-											{
-												if ( my->shouldRetreat(*myStats) && !myStats->getEffectActive(EFF_FEAR) )
-												{
-													my->monsterMoveTime = 0;
-													my->monsterState = MONSTER_STATE_WAIT; // wait state
-												}
-												else
-												{
-													my->monsterState = MONSTER_STATE_PATH; // path state
-												}
-											}
-										}
-										else
-										{
-											// can't open door, so break it down
-											my->monsterHitTime++;
-											if ( my->monsterHitTime >= HITRATE )
-											{
-												my->monsterAttack = my->getAttackPose(); // random attack motion
-												my->monsterHitTime = 0;
-												my->monsterAttackTime = 0;
-												hit.entity->doorHealth--; // decrease door health
-												if ( myStats->STR > 20 )
-												{
-													hit.entity->doorHealth -= static_cast<int>(std::max((myStats->STR - 20), 0) / 3); // decrease door health
-													hit.entity->doorHealth = std::max(hit.entity->doorHealth, 0);
-												}
-												if ( myStats->type == MINOTAUR )
-												{
-													hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
-												}
-												updateEnemyBar(my, hit.entity, hit.entity->behavior == &actIronDoor ? Language::get(6414) : Language::get(674), 
-													hit.entity->doorHealth, hit.entity->doorMaxHealth, false, DamageGib::DMG_DEFAULT);
-												playSoundEntity(hit.entity, 28, 64);
-												if ( hit.entity->doorHealth <= 0 )
-												{
-													// set direction of splinters
-													if ( !hit.entity->doorDir )
-													{
-														hit.entity->doorSmacked = (my->x > hit.entity->x);
-													}
-													else
-													{
-														hit.entity->doorSmacked = (my->y < hit.entity->y);
-													}
-												}
-											}
-										}
-									}
-									else if ( hit.entity->behavior == &actFurniture && myStats->type == MINOTAUR )
-									{
-										hit.entity->furnitureHealth = 0;
-										playSoundEntity(hit.entity, 28, 64);
-									}
-									else if ( hit.entity->behavior == &actChest && myStats->type == MINOTAUR )
-									{
-										hit.entity->skill[3] = 0; // chestHealth
-										playSoundEntity(hit.entity, 28, 64);
-									}
-									else if ( hit.entity->isDamageableCollider() && myStats->type == MINOTAUR )
-									{
-										hit.entity->colliderCurrentHP = 0;
-										hit.entity->colliderKillerUid = 0;
-										playSoundEntity(hit.entity, 28, 64);
-									}
-									else if ( hit.entity->behavior == &actFurniture )
-									{
-										// break it down!
-										my->monsterHitTime++;
-										if ( my->monsterHitTime >= HITRATE )
-										{
-											my->monsterAttack = my->getAttackPose(); // random attack motion
-											my->monsterHitTime = HITRATE / 4;
-											my->monsterAttackTime = 0;
-											hit.entity->furnitureHealth--; // decrease door health
-											if ( myStats->STR > 20 )
-											{
-												hit.entity->furnitureHealth -= static_cast<int>(std::max((myStats->STR - 20), 0) / 3); // decrease door health
-												hit.entity->furnitureHealth = std::max(hit.entity->furnitureHealth, 0);
-											}
-											playSoundEntity(hit.entity, 28, 64);
-										}
-									}
-									else if ( hit.entity->isDamageableCollider() && myStats->type != GYROBOT && myStats->type != BAT_SMALL )
-									{
-										// break it down!
-										my->monsterHitTime++;
-										if ( my->monsterHitTime >= HITRATE )
-										{
-											if ( !hasrangedweapon )
-											{
-												my->monsterAttack = my->getAttackPose(); // random attack motion
-											}
-											my->monsterHitTime = HITRATE / 4;
-											my->monsterAttackTime = 0;
-											int damage = 2 + local_rng.rand() % 3;
-											damage += std::max(0, myStats->STR / 8);
-
-											hit.entity->colliderCurrentHP -= damage;
-											hit.entity->colliderKillerUid = 0;
-
-											int sound = 28;
-											if ( hit.entity->getColliderSfxOnHit() > 0 )
-											{
-												sound = hit.entity->getColliderSfxOnHit();
-											}
-											playSoundEntity(hit.entity, sound, 64);
-										}
-									}
-									else if ( (hit.entity->behavior == &actBoulder || hit.entity->behavior == &::actDaedalusShrine) && !hit.entity->flags[PASSABLE] && myStats->type == MINOTAUR )
-									{
-										// asplode the rock
-										magicDig(nullptr, nullptr, 0, 1);
-										hit.entity = nullptr;
-									}
-									else
-									{
-										if ( my->shouldRetreat(*myStats) && !myStats->getEffectActive(EFF_FEAR) )
-										{
-											my->monsterMoveTime = 0;
-											my->monsterState = MONSTER_STATE_WAIT; // wait state
-										}
-										else
-										{
-											my->monsterState = MONSTER_STATE_PATH; // path state
-										}
-									}
-								}
-								else
-								{
-									if ( my->shouldRetreat(*myStats) && !myStats->getEffectActive(EFF_FEAR) )
-									{
-										my->monsterMoveTime = 0;
-										my->monsterState = MONSTER_STATE_WAIT; // wait state
-									}
-									else if ( dist2 <= 0.1 && myStats->HP > myStats->MAXHP / 3 )
-									{
-										my->monsterState = MONSTER_STATE_PATH; // path state
-									}
-								}
+								monsterChaseBump(my, myStats, hasrangedweapon, dist2, true); // apx BF3: the bump block, moved (above actMonster)
 							}
 							else
 							{

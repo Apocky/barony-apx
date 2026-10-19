@@ -2,7 +2,6 @@
 // avoidance, steering in the ATTACK state and the timing probe. Design and knobs: tactics.hpp.
 #include "tactics_int.hpp"
 #include "flow.hpp"
-#include "../engine/audio/sound.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -185,25 +184,6 @@ namespace tactics
 		MONSTER_VELY = sin(tg) * .02 * speed;
 	}
 
-	// The engine opens a door that a chasing creature bumps (actmonster.cpp ATTACK state, same rule: unlocked and
-	// INT > -2). Steered movement skips that branch, so the bump is handled here. A locked door (the engine bashes it
-	// down) is kept out of this creature's routes for 5 s and its route is replanned round it.
-	static void bumpDoor(Entity* my, TacticsState& s)
-	{
-		Entity* e = hit.entity;
-		if ( !e || (e->behavior != &actDoor && e->behavior != &actIronDoor) ) { return; }
-		if ( !e->doorLocked && my->getINT() > -2 )
-		{
-			if ( !e->doorDir && !e->doorStatus ) { e->doorStatus = 1 + (my->x > e->x); playSoundEntity(e, 21, 96); ++C.doors_opened; }
-			else if ( e->doorDir && !e->doorStatus ) { e->doorStatus = 1 + (my->y < e->y); playSoundEntity(e, 21, 96); ++C.doors_opened; }
-			return;
-		}
-		++C.door_bumps_locked;
-		s.avoidTile = (int)floor(e->x / 16) + (int)floor(e->y / 16) * (int)map.width;
-		s.avoidUntil = ticks + 5 * TICKS_PER_SECOND;
-		s.routeBuilt = 0; // replan now
-	}
-
 	static int gStuckLogs = 0;
 	static void logStuck(Entity* my, TacticsState& s, double gx, double gy)
 	{
@@ -255,11 +235,27 @@ namespace tactics
 		double ox = my->x, oy = my->y;
 		dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
 		s.lastBump = hit.entity ? (int)hit.entity->sprite : -1; // clipMove clears hit first: this move's own contact
-		bumpDoor(my, s);
+		// the engine's own bump rules (actmonster.cpp monsterChaseBump: doors open, locked wooden doors, furniture and
+		// breakable colliders are bashed); working on a breakable is not being stuck
+		bool working = false;
+		if ( Entity* e = hit.entity )
+		{
+			bool door = e->behavior == &actDoor || e->behavior == &actIronDoor;
+			bool locked = door && e->doorLocked;
+			int ds = door ? (int)e->doorStatus : -1;
+			bool coll = e->isDamageableCollider();
+			int chp = coll ? (int)e->colliderCurrentHP : 0;
+			if ( Stat* myst = my->getStats() ) { monsterChaseBump(my, myst, false, dist2, false); }
+			if ( door && ds == 0 && e->doorStatus != 0 ) { ++C.doors_opened; }
+			if ( locked ) { ++C.door_bumps_locked; }
+			if ( coll && (int)e->colliderCurrentHP < chp ) { ++C.breakables_hit; }
+			working = (door && !(e->behavior == &actIronDoor && locked)) || e->behavior == &actFurniture || coll;
+			if ( working ) { s.workingTick = ticks; }
+		}
 		++C.steer_moves;
 		++C.steer_ticks;
 		s.lastMoved = hypot(my->x - ox, my->y - oy);
-		if ( s.lastMoved < 0.05 )
+		if ( s.lastMoved < 0.05 && !working )
 		{
 			if ( !s.stillSince ) { s.stillSince = ticks; }
 			else if ( ticks - s.stillSince >= (Uint32)TICKS_PER_SECOND )

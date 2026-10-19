@@ -235,8 +235,10 @@ def gates(by, base, args):
         # judged at window_s: twice pack B's walk from its spot plus 2 s (the game logs it); later arrivals in the
         # control are monsters wandering into the fight on their own (s5-route: 2 of 4 at 26.3 s), kept as *_end
         w = lambda h: h.get("b_within4_window", h["b_within4_end"])
+        # the pack comes (3 or 4 of 4) only when called; a control may see one wanderer (s9-1: one helper wandered into
+        # sight at 8.1 s and arrived at 11.4 s with no call; the called pack: 4 of 4)
         g["calls_for_help"] = {"pass": all(h["calls_answered"] >= 1 and w(h) >= 3 for h in hon)
-                               and all(w(h) == 0 for h in hoff),
+                               and all(0 <= w(h) <= 1 for h in hoff),
                                "window_s": [h.get("window_s") for h in hon + hoff],
                                "on_within4": [w(h) for h in hon], "off_within4": [w(h) for h in hoff],
                                "on_within4_end": [h["b_within4_end"] for h in hon], "off_within4_end": [h["b_within4_end"] for h in hoff],

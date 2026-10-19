@@ -249,6 +249,16 @@ namespace tactics
 	static void flankFail(TacticsState& s, long long& why)
 	{
 		++why;
+		Entity* my = s.self;
+		Entity* t = s.flankTarget ? uidToEntity(s.flankTarget) : nullptr;
+		if ( my )
+		{
+			printlog("[apx] tactics flank fail uid %u why %s at %.1f,%.1f d %.1f backarc %d route %d/%d progress %.1f,%.1f %u ticks ago, %u ticks into the flank",
+				my->getUID(), &why == &C.flank_fail_progress ? "progress" : &why == &C.flank_fail_time ? "time" : &why == &C.flank_fail_target ? "target"
+				: &why == &C.flank_fail_nogoal ? "nogoal" : "noroute", my->x, my->y, t ? hypot(t->x - my->x, t->y - my->y) : -1.0,
+				t ? (angDiff(atan2(my->y - t->y, my->x - t->x), t->yaw + PI) <= PI / 3 ? 1 : 0) : -1, (int)s.routeAt, (int)s.route.size(),
+				s.progressX, s.progressY, ticks - s.progressTick, s.flankStart ? ticks - s.flankStart : 0u);
+		}
 		s.flank = 3;
 		++C.flank_failed;
 		s.route.clear();
@@ -309,7 +319,7 @@ namespace tactics
 				s.reachIdx = -1; // the next assignment gives it the free slot nearest its bearing: a rear slot
 				return;
 			}
-			if ( hypot(my->x - s.progressX, my->y - s.progressY) > 8 ) { s.progressX = my->x; s.progressY = my->y; s.progressTick = ticks; }
+			if ( hypot(my->x - s.progressX, my->y - s.progressY) > 8 || ticks - s.workingTick < (Uint32)(2 * DECIDE) ) { s.progressX = my->x; s.progressY = my->y; s.progressTick = ticks; } // bashing a breakable in the way is progress
 			else if ( ticks - s.progressTick > 75 ) { flankFail(s, C.flank_fail_progress); return; }
 			if ( ticks - s.flankStart > 10 * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
 			return;
