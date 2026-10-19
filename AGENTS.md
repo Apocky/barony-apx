@@ -9,7 +9,7 @@ screenshots; runs read assets from the Steam install and write evidence to C:\Ap
 
 - Task: slice F2 integrate (apx-gen inside barony-apx behind -apxgen). Side session, 2026-10-18/19.
 - Branch apx/f2-integrate (worktree ..\barony-apx-f2, build dir build\vs2022-f2), NOT merged to apx-main.
-- State: gates on db9ca6c8 (rebased on apx-main 801cf254, apx-gen 7057f3d9): W2 50/50, control 4/4 fail, W5 12x2 0 differ, host=client hash at 128/96, lit (luma 52-69). Goldens: C:\Apocrypha\diagnostics\barony-f2\goldens-db9ca6c8.json.
+- State: MERGE-READY 76477d6d on apx-main 73d03aeb, apx-gen fc30a151, D72 packs. Gates (build a90e21c3): W2 150/150 at 80/96/128, controls fail, W5 0 differ, host=client, D72 162/162, fallbacks 0. Goldens C:\Apocrypha\diagnostics\barony-f2\goldens-a90e21c3.json.
   in-engine, control 4/4 fail, W5 12 seeds x 2 launches 0 differ, W1 measured (noisy machine).
   Host+client on f50ee3b4: same hash at 128 and 96. Sheet: C:\Apocrypha\diagnostics\barony-f2\sheet.
 - Next: host+client on 36d9cf06 with a switchless client (adopts the host's switches via STRT bytes
