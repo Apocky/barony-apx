@@ -1217,7 +1217,7 @@ bool physfsSearchMusicToUpdate_helper_findModifiedMusic(uint32_t numMusic, const
 		if ( PHYSFS_getRealDir(tempstr) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(tempstr);
-			if ( musicDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(musicDir) )
 			{
 				printlog("[PhysFS]: Found modified music in music/ directory, reloading music files...");
 				return true;
@@ -1346,7 +1346,7 @@ bool physfsSearchMusicToUpdate()
 		if ( PHYSFS_getRealDir(filename.c_str()) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(filename.c_str());
-			if ( musicDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(musicDir) )
 			{
 				printlog("[PhysFS]: Found modified music in music/ directory, reloading music files...");
 				return true;
@@ -1383,7 +1383,7 @@ bool physfsSearchMusicToUpdate()
 		if ( PHYSFS_getRealDir(tempstr) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(tempstr);
-			if ( musicDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(musicDir) )
 			{
 				printlog("[PhysFS]: Found modified music in music/ directory, reloading music files...");
 				return true;
@@ -1403,7 +1403,7 @@ FMOD_RESULT physfsReloadMusic_helper_reloadMusicArray(uint32_t numMusic, const c
 		if ( PHYSFS_getRealDir(tempstr) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(tempstr);
-			if ( musicDir.compare("./") != 0 || reloadAll )
+			if ( !physfsIsBaseDataDir(musicDir) || reloadAll )
 			{
 				musicDir.append(PHYSFS_getDirSeparator()).append(tempstr);
 				printlog("[PhysFS]: Loading music file %s...", tempstr);
@@ -1455,7 +1455,7 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 		if ( PHYSFS_getRealDir(filename.c_str()) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(filename.c_str());
-			if ( musicDir.compare("./") != 0 || reloadAll )
+			if ( !physfsIsBaseDataDir(musicDir) || reloadAll )
 			{
 				musicDir += PHYSFS_getDirSeparator() + filename;
 				printlog("[PhysFS]: Loading music file %s...", filename.c_str());
@@ -1926,7 +1926,7 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 		if ( PHYSFS_getRealDir(tempstr) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(tempstr);
-			if ( musicDir.compare("./") != 0 || reloadAll )
+			if ( !physfsIsBaseDataDir(musicDir) || reloadAll )
 			{
 				musicDir.append(PHYSFS_getDirSeparator()).append(tempstr);
 				printlog("[PhysFS]: Loading music file %s...", tempstr);

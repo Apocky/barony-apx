@@ -82,6 +82,41 @@ bool isCurrentHoliday(bool force) {
     return getCurrentHoliday(force) != HolidayTheme::THEME_NONE;
 }
 
+// apx: true when a PhysFS real dir is one of the base data mounts (mountBaseDataFolders): "./", the data
+// folder, the output folder or the mounted holiday theme folder. The mod reload checks used to compare
+// against "./" only, so in a holiday month (or with -datadir / BARONY_DATADIR) every base asset counted as
+// modded and mounting any mod re-voxelised all models with the cache off (~17 s). BARONY_LEGACY_BASEDIR=1
+// restores the old "./"-only test as a control.
+bool physfsIsBaseDataDir(const char* realDir) {
+    if (!realDir) {
+        return false;
+    }
+    static const bool legacy = [] {
+        const char* env = getenv("BARONY_LEGACY_BASEDIR");
+        return env && env[0] == '1';
+    }();
+    if (!strcmp(realDir, "./")) {
+        return true;
+    }
+    if (legacy) {
+        return false;
+    }
+    if (!strcmp(realDir, datadir) || !strcmp(realDir, outputdir)) {
+        return true;
+    }
+    if (isCurrentHoliday()) {
+        const std::string holidayDir = (std::string(datadir) + "/") + holidayThemeDirs[getCurrentHoliday()];
+        if (holidayDir == realDir) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool physfsIsBaseDataDir(const std::string& realDir) {
+    return physfsIsBaseDataDir(realDir.c_str());
+}
+
 std::unordered_map<std::string, int> mapHashes = {
 	{ "baphoexit.lmp", 4309647 },
 	{ "boss.lmp", 2376307 },
@@ -3940,7 +3975,7 @@ bool physfsSearchModelsToUpdate()
 		if ( PHYSFS_getRealDir(name) != NULL )
 		{
 			std::string modelRealDir = PHYSFS_getRealDir(name);
-			if ( modelRealDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(modelRealDir) )
 			{
 				FileIO::close(fp);
 				return true;
@@ -3970,6 +4005,7 @@ bool physfsModelIndexUpdate(int &start, int &end)
 	char modelName[PATH_MAX];
 	int startnum = 0;
 	int endnum = nummodels;
+	int numReloaded = 0; // apx: observable count of models treated as modded
 	for ( int c = 0; !fp->eof(); c++ )
 	{
 		fp->gets2(modelName, PATH_MAX);
@@ -3992,7 +4028,7 @@ bool physfsModelIndexUpdate(int &start, int &end)
 			continue;
 		}
 		std::string modelPath = PHYSFS_getRealDir(modelName);
-		if ( modelHasBeenModified || modelPath.compare("./") != 0 )
+		if ( modelHasBeenModified || !physfsIsBaseDataDir(modelPath) )
 		{
 			if ( !modelHasBeenModified )
 			{
@@ -4001,7 +4037,7 @@ bool physfsModelIndexUpdate(int &start, int &end)
 			}
 			else
 			{
-				if ( modelPath.compare("./") == 0 )
+				if ( physfsIsBaseDataDir(modelPath) )
 				{
 					// model returned to base directory, remove from the modified index list.
 					Mods::modelsListModifiedIndexes.erase(it);
@@ -4024,6 +4060,7 @@ bool physfsModelIndexUpdate(int &start, int &end)
 				printlog("[PhysFS]: WARNING: Loading a new model: %d outside normal nummodels: %d range - Need special handling case to free model after use", c, nummodels);
 			}
 			models[c] = loadVoxel(modelName);
+			++numReloaded;
 
 			// this index is not found in the normal models folder.
 			// store the lowest found model number inside startnum.
@@ -4047,7 +4084,7 @@ bool physfsModelIndexUpdate(int &start, int &end)
 	{
 		endnum = std::min(static_cast<int>(nummodels), endnum + 1); // if both indices are the same, then models won't load.
 	}
-	printlog("[PhysFS]: Models file not in default directory... reloading models from index %d to %d\n", startnum, endnum);
+	printlog("[PhysFS]: Models file not in default directory... reloading models from index %d to %d (%d models from non-base folders)\n", startnum, endnum, numReloaded);
 	start = startnum;
 	end = endnum;
 
@@ -5336,7 +5373,7 @@ bool physfsSearchSoundsToUpdate()
 		return false;
 	}
 	std::string soundsDirectory = PHYSFS_getRealDir("sound/sounds.txt");
-	if ( soundsDirectory.compare("./") != 0 )
+	if ( !physfsIsBaseDataDir(soundsDirectory) )
 	{
 		return true;
 	}
@@ -5350,7 +5387,7 @@ bool physfsSearchSoundsToUpdate()
 		if ( PHYSFS_getRealDir(name) != NULL )
 		{
 			std::string soundRealDir = PHYSFS_getRealDir(name);
-			if ( soundRealDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(soundRealDir) )
 			{
 				FileIO::close(fp);
 				return true;
@@ -5419,7 +5456,7 @@ void physfsReloadSounds(bool reloadAll)
 		if ( PHYSFS_getRealDir(name) != NULL )
 		{
 			std::string soundRealDir = PHYSFS_getRealDir(name);
-			if ( soundHasBeenModified || reloadAll || soundRealDir.compare("./") != 0 )
+			if ( soundHasBeenModified || reloadAll || !physfsIsBaseDataDir(soundRealDir) )
 			{
 				std::string soundFile = soundRealDir;
 				soundFile.append(PHYSFS_getDirSeparator()).append(name);
@@ -5431,7 +5468,7 @@ void physfsReloadSounds(bool reloadAll)
 				}
 				else
 				{
-					if ( soundRealDir.compare("./") == 0 )
+					if ( physfsIsBaseDataDir(soundRealDir) )
 					{
 						// model returned to base directory, remove from the modified index list.
 						Mods::soundsListModifiedIndexes.erase(it);
@@ -5489,7 +5526,7 @@ bool physfsSearchSpritesToUpdate() //TODO: NX PORT: Any changes needed here?
 		if ( PHYSFS_getRealDir(name) != nullptr )
 		{
 			std::string spritesRealDir = PHYSFS_getRealDir(name);
-			if ( spritesRealDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(spritesRealDir) )
 			{
 				FileIO::close(fp);
 				printlog("[PhysFS]: Found modified sprite in sprites/ directory, reloading all sprites...");
@@ -5529,7 +5566,7 @@ void physfsReloadSprites(bool reloadAll) //TODO: NX PORT: Any changes needed her
 		if ( PHYSFS_getRealDir(name) != nullptr )
 		{
 			std::string spritesRealDir = PHYSFS_getRealDir(name);
-			if ( reloadAll || spritesRealDir.compare("./") != 0 )
+			if ( reloadAll || !physfsIsBaseDataDir(spritesRealDir) )
 			{
 				std::string spriteFile = spritesRealDir;
 				spriteFile.append(PHYSFS_getDirSeparator()).append(name);
@@ -5581,7 +5618,7 @@ bool physfsSearchTilesToUpdate()
 		if ( PHYSFS_getRealDir(name) != NULL )
 		{
 			std::string tileRealDir = PHYSFS_getRealDir(name);
-			if ( tileRealDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(tileRealDir) )
 			{
 				FileIO::close(fp);
 				printlog("[PhysFS]: Found modified tile in tiles/ directory, reloading all tiles...");
@@ -5616,7 +5653,7 @@ void physfsReloadTiles(bool reloadAll)
                 if ( PHYSFS_getRealDir(name) != NULL )
                 {
                     std::string tileRealDir = PHYSFS_getRealDir(name);
-                    if ( reloadAll || tileRealDir.compare("./") != 0 )
+                    if ( reloadAll || !physfsIsBaseDataDir(tileRealDir) )
                     {
                         std::string tileFile = tileRealDir;
                         tileFile.append(PHYSFS_getDirSeparator()).append(name);
@@ -5707,7 +5744,7 @@ void physfsReloadTiles(bool reloadAll)
 bool physfsIsMapLevelListModded()
 {
 	std::string mapsDirectory = PHYSFS_getRealDir(LEVELSFILE);
-	if ( mapsDirectory.compare("./") != 0 )
+	if ( !physfsIsBaseDataDir(mapsDirectory) )
 	{
 		//return true;
 	}
@@ -5753,7 +5790,7 @@ bool physfsIsMapLevelListModded()
 			/*if ( PHYSFS_getRealDir(mapName.c_str()) != NULL )
 			{
 				mapsDirectory = PHYSFS_getRealDir(mapName.c_str());
-				if ( mapsDirectory.compare("./") != 0 )
+				if ( !physfsIsBaseDataDir(mapsDirectory) )
 				{
 					return true;
 				}
@@ -5763,7 +5800,7 @@ bool physfsIsMapLevelListModded()
 	}
 
 	mapsDirectory = PHYSFS_getRealDir(SECRETLEVELSFILE);
-	if ( mapsDirectory.compare("./") != 0 )
+	if ( !physfsIsBaseDataDir(mapsDirectory) )
 	{
 		//return true;
 	}
@@ -5809,7 +5846,7 @@ bool physfsIsMapLevelListModded()
 			/*if ( PHYSFS_getRealDir(mapName.c_str()) != NULL )
 			{
 				mapsDirectory = PHYSFS_getRealDir(mapName.c_str());
-				if ( mapsDirectory.compare("./") != 0 )
+				if ( !physfsIsBaseDataDir(mapsDirectory) )
 				{
 					return true;
 				}
@@ -5832,7 +5869,7 @@ bool physfsSearchItemSpritesToUpdate()
 			if ( PHYSFS_getRealDir(string->data) != NULL )
 			{
 				itemImgDir = PHYSFS_getRealDir(string->data);
-				if ( itemImgDir.compare("./") != 0 )
+				if ( !physfsIsBaseDataDir(itemImgDir) )
 				{
 					printlog("[PhysFS]: Found modified item sprite in items/items.txt file, reloading all item sprites...");
 					return true;
@@ -5858,7 +5895,7 @@ void physfsReloadItemSprites(bool reloadAll)
 				if ( PHYSFS_getRealDir(string->data) != NULL )
 				{
 					itemImgDir = PHYSFS_getRealDir(string->data);
-					if ( itemImgDir.compare("./") != 0 )
+					if ( !physfsIsBaseDataDir(itemImgDir) )
 					{
 						reloadImg = true;
 					}
@@ -5927,7 +5964,7 @@ bool physfsSearchMonsterLimbFilesToUpdate()
 			continue;
 		}
 		std::string limbsDir = PHYSFS_getRealDir(filename);
-		if ( limbsDir.compare("./") != 0 )
+		if ( !physfsIsBaseDataDir(limbsDir) )
 		{
 			printlog("[PhysFS]: Found modified limbs.txt file for monster %s, reloading all limb information...", monstertypename[c]);
 			requiresUpdate = true;
@@ -6020,7 +6057,7 @@ bool physfsSearchSystemImagesToUpdate()
 		if ( PHYSFS_getRealDir(imgFile.c_str()) != NULL)
 		{
 			std::string imgDir = PHYSFS_getRealDir(imgFile.c_str());
-			if ( imgDir.compare("./") != 0 )
+			if ( !physfsIsBaseDataDir(imgDir) )
 			{
 				printlog("[PhysFS]: Found modified %s file, reloading system image...", imgFile.c_str());
 				requireReload = true;

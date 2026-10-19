@@ -278,6 +278,8 @@ enum HolidayTheme {
 extern const char* holidayThemeDirs[HolidayTheme::THEME_MAX];
 HolidayTheme getCurrentHoliday(bool force = false);
 bool isCurrentHoliday(bool force = false);
+bool physfsIsBaseDataDir(const char* realDir);
+bool physfsIsBaseDataDir(const std::string& realDir);
 
 #ifndef EDITOR
 #include "interface/consolecommand.hpp"

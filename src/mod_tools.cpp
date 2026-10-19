@@ -11493,7 +11493,7 @@ bool Mods::clearAllMountedPaths()
             line.compare(datadir) != 0 &&
             line.compare(halloween) != 0 &&
             line.compare(xmas) != 0 &&
-            line.compare("./") != 0) // don't unmount the base directories
+            !physfsIsBaseDataDir(line)) // don't unmount the base directories
 		{
 			if ( PHYSFS_unmount(*i) == 0 )
 			{
@@ -11937,7 +11937,7 @@ void Mods::loadMods()
 	doLoadingScreen();
 
 	std::string langDirectory = PHYSFS_getRealDir("lang/en.txt");
-	if ( langDirectory.compare("./") != 0 )
+	if ( !physfsIsBaseDataDir(langDirectory) )
 	{
 		if ( Language::reloadLanguage() != 0 )
 		{
