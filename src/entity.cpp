@@ -36,6 +36,7 @@ See LICENSE for details.
 #endif
 #include "ui/MainMenu.hpp"
 #include "ui/GameUI.hpp"
+#include "apx_combat.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -3265,6 +3266,7 @@ void Entity::modHP(int amount)
 		}
 	}
 
+	amount = apx::combat_glue::interceptPlayerDamage(this, entitystats, amount); // apx F4c: downed instead of a lethal blow
 	if ( entitystats && entitystats->getEffectActive(EFF_STASIS) )
 	{
 		amount = 0;
@@ -10109,6 +10111,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 	{
 		return;
 	}
+	if ( !apx::combat_glue::canAttack(this) ) // apx F4c: arms disabled or downed
+	{
+		return;
+	}
 
 	// get the player number, if applicable
 	if ( behavior == &actPlayer )
@@ -13134,6 +13140,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 					}
 
 					Sint32 oldHP = hitstats->HP;
+					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 
 					if ( hitstats )

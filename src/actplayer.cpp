@@ -33,6 +33,7 @@
 #ifdef USE_PLAYFAB
 #include "playfab.hpp"
 #endif
+#include "apx_combat.hpp"
 
 bool settings_smoothmouse = false;
 bool usecamerasmoothing = false;
@@ -4474,6 +4475,7 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 			}
 		}
 	}
+	speedFactor *= apx::combat_glue::speedScale(player.playernum); // apx F4c: legs disabled 0.5, downed 0.3
 	return speedFactor;
 }
 
@@ -6147,6 +6149,7 @@ void actPlayer(Entity* my)
 	{
 		return;
 	}
+	apx::combat_glue::tick(my); // apx F4c: poise, downed timer and revive, self-test
 	if ( logCheckObstacle )
 	{
 		if ( ticks % 50 == 0 )
