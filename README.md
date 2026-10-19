@@ -1,3 +1,15 @@
+# Apocky's Labyrinth
+
+An unofficial fan fork of [Barony](https://github.com/TurningWheel/Barony) by Turning Wheel: bigger generated dungeons, pack tactics and crowd combat, stamina and weapon moves, damage kinds against materials, poise and stagger, parts-based gear with salvage and crafting benches, and a list inventory.
+
+**Play it (Windows):** download the latest zip from [Releases](https://github.com/Apocky/barony-apx/releases/latest), extract it, and double-click `Play Apocky's Labyrinth.cmd`. You need your own copy of Barony on Steam: the game uses Barony's art, sounds and music from your install, which belong to Turning Wheel and are not in this repository.
+
+Source code is under Barony's BSD 2-Clause licence ([LICENSE.txt](LICENSE.txt)). Not made or endorsed by Turning Wheel. Devlog: [apocky.com](https://apocky.com).
+
+---
+
+The upstream README follows.
+
 ![Linux-CI_fmod_steam](https://github.com/TurningWheel/Barony/workflows/Linux-CI_fmod_steam/badge.svg) ![Linux-CI_fmod_steam_eos](https://github.com/TurningWheel/Barony/workflows/Linux-CI_fmod_steam_eos/badge.svg)
 
 # Update - 3rd October 2023
