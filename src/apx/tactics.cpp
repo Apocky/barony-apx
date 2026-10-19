@@ -2,6 +2,7 @@
 // avoidance, steering in the ATTACK state and the timing probe. Design and knobs: tactics.hpp.
 #include "tactics_int.hpp"
 #include "flow.hpp"
+#include "../engine/audio/sound.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -182,6 +183,25 @@ namespace tactics
 		MONSTER_VELY = sin(tg) * .02 * speed;
 	}
 
+	// The engine opens a door that a chasing creature bumps (actmonster.cpp ATTACK state, same rule: unlocked and
+	// INT > -2). Steered movement skips that branch, so the bump is handled here. A locked door (the engine bashes it
+	// down) is kept out of this creature's routes for 5 s and its route is replanned round it.
+	static void bumpDoor(Entity* my, TacticsState& s)
+	{
+		Entity* e = hit.entity;
+		if ( !e || (e->behavior != &actDoor && e->behavior != &actIronDoor) ) { return; }
+		if ( !e->doorLocked && my->getINT() > -2 )
+		{
+			if ( !e->doorDir && !e->doorStatus ) { e->doorStatus = 1 + (my->x > e->x); playSoundEntity(e, 21, 96); ++C.doors_opened; }
+			else if ( e->doorDir && !e->doorStatus ) { e->doorStatus = 1 + (my->y < e->y); playSoundEntity(e, 21, 96); ++C.doors_opened; }
+			return;
+		}
+		++C.door_bumps_locked;
+		s.avoidTile = (int)floor(e->x / 16) + (int)floor(e->y / 16) * (int)map.width;
+		s.avoidUntil = ticks + 5 * TICKS_PER_SECOND;
+		s.routeBuilt = 0; // replan now
+	}
+
 	bool moveTo(Entity* my, TacticsState& s, double gx, double gy, double speed, double& dist2)
 	{
 		double dx = gx - my->x, dy = gy - my->y, len = hypot(dx, dy);
@@ -191,6 +211,7 @@ namespace tactics
 		MONSTER_VELY = dy / len * v;
 		double ox = my->x, oy = my->y;
 		dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+		bumpDoor(my, s);
 		++C.steer_moves;
 		++C.steer_ticks;
 		if ( hypot(my->x - ox, my->y - oy) < 0.05 )
@@ -240,6 +261,21 @@ namespace tactics
 		double r = std::max(dMe, keepR);
 		gx = target->x + cos(aMe + step) * r; gy = target->y + sin(aMe + step) * r;
 		++C.route_around;
+	}
+
+	// The straight way to a goal crosses a wall, or the reach zone: a slot holder off its slot's bearing (it enters
+	// radially), anyone else whose segment passes within keepOut of the target. Such a walk is routed (planGoalRoute).
+	bool needsRoute(Entity* target, Entity* my, double gx, double gy, bool ownSlot)
+	{
+		if ( !wallClear(my, my->x, my->y, gx, gy) ) { return true; }
+		if ( ownSlot )
+		{
+			double dA = remainder(atan2(gy - target->y, gx - target->x) - atan2(my->y - target->y, my->x - target->x), 2 * PI);
+			return fabs(dA) > 0.35;
+		}
+		double sx = gx - my->x, sy = gy - my->y, L2 = sx * sx + sy * sy;
+		double t = L2 > 0 ? std::max(0.0, std::min(1.0, ((target->x - my->x) * sx + (target->y - my->y) * sy) / L2)) : 0;
+		return hypot(my->x + t * sx - target->x, my->y + t * sy - target->y) < keepOut(bodyR(target));
 	}
 
 	// ---------------------------------------------------------------- reach slots and ring
@@ -398,6 +434,48 @@ namespace tactics
 		}
 	}
 
+	// The point a managed creature walks to: its reach slot, its ring slot (feints aside), or with neither the queue point
+	// just outside reach behind the reach slot nearest its bearing (card BF3-3: "keeps pathing toward a free slot or
+	// waits behind"; creatures from one side queue together). False when the creature is not placed on this target.
+	bool goalFor(Entity* my, TacticsState& s, Entity* target, double& gx, double& gy, bool& ownSlot)
+	{
+		ownSlot = false;
+		auto it = T.find(target->getUID());
+		if ( it == T.end() || !it->second.assigned || s.slotTarget != (Uint32)target->getUID() ) { return false; }
+		TargetSlots& ts = it->second;
+		if ( s.reachIdx >= 0 && s.reachIdx < ts.n )
+		{
+			double a = ts.base + s.reachIdx * 2 * PI / ts.n;
+			gx = target->x + ts.R * cos(a); gy = target->y + ts.R * sin(a);
+			ownSlot = true;
+			return true;
+		}
+		if ( K.ring && s.ringIdx >= 0 && s.ringIdx < ts.k )
+		{
+			double a = ts.base + s.ringIdx * 2 * PI / ts.k;
+			gx = target->x + ts.ringR * cos(a); gy = target->y + ts.ringR * sin(a);
+			return true;
+		}
+		double waitR = keepOut(bodyR(target)) + 2;
+		double bear = atan2(my->y - target->y, my->x - target->x), bestA = 1e9, a = bear;
+		for ( int i = 0; i < ts.n; ++i )
+		{
+			double ai = ts.base + i * 2 * PI / ts.n;
+			if ( ts.valid[i] && angDiff(ai, bear) < bestA ) { bestA = angDiff(ai, bear); a = ai; }
+		}
+		gx = target->x + cos(a) * waitR; gy = target->y + sin(a) * waitR;
+		return true;
+	}
+
+	// a placed creature cut off from its target by a wall: it still has a way to its goal (a clear line or a route)
+	static bool routedToGoal(Entity* my, TacticsState& s, Entity* target)
+	{
+		double gx, gy;
+		bool own;
+		if ( !goalFor(my, s, target, gx, gy, own) ) { return false; }
+		return wallClear(my, my->x, my->y, gx, gy) || planGoalRoute(my, s, target, gx, gy);
+	}
+
 	// Every tick, not only at decide: the engine's ATTACK state sends a creature to PATH whenever its own packmates
 	// block its line (and to WAIT, which drops the target, when a HUNT path ends). Between decides that walked managed
 	// creatures back into the crowd. A creature that holds a reach slot, a ring slot or a flank stays in its fight.
@@ -420,11 +498,16 @@ namespace tactics
 		if ( my->monsterState == MONSTER_STATE_PATH || my->monsterState == MONSTER_STATE_HUNT || my->monsterState == MONSTER_STATE_WAIT )
 		{
 			double d = hypot(t->x - my->x, t->y - my->y);
-			if ( flanking || (d <= ENGAGE_R + TILE && wallClear(my, my->x, my->y, t->x, t->y)) )
+			bool clear = d <= ENGAGE_R + TILE && wallClear(my, my->x, my->y, t->x, t->y);
+			// behind a wall: a slot or ring holder with a way to its slot walks it (steer), not the engine's path into
+			// the crowd (and a failed chase path no longer leaves it standing out of the fight)
+			bool routed = !flanking && !clear && d <= ENGAGE_R + TILE && routedToGoal(my, s, t);
+			if ( flanking || clear || routed )
 			{
 				my->monsterState = MONSTER_STATE_ATTACK;
 				serverUpdateEntitySkill(my, 0);
 				++C.promoted;
+				if ( routed ) { ++C.routed_promoted; }
 			}
 		}
 	}
@@ -506,7 +589,20 @@ namespace tactics
 		double d = hypot(target->x - my->x, target->y - my->y);
 		if ( d > ENGAGE_R + TILE && !flanking ) { return false; }
 		Entity* blocker = hit.entity;
-		if ( !flanking && !(blocker && blocker->behavior == &actMonster) ) { return false; } // a wall: vanilla re-paths
+		if ( !flanking && !(blocker && blocker->behavior == &actMonster) )
+		{
+			// a wall or door between: a slot or ring holder with a way to its slot keeps walking it (steer); the engine
+			// gets a distance it cannot swing at (a whip reaches 1.5 x STRIKERANGE), so no blow lands on the wall
+			bool placed = K.reach && (s->reachIdx >= 0 || s->ringIdx >= 0);
+			if ( placed && routedToGoal(my, *s, target) )
+			{
+				dist = std::max(d - bodyR(target), 2.0 * STRIKERANGE);
+				hit.entity = target;
+				++C.routed_engaged;
+				return true;
+			}
+			return false; // vanilla re-paths
+		}
 		hit_t saved = hit;
 		double td = lineTraceTarget(my, my->x, my->y, atan2(target->y - my->y, target->x - my->x), d + 2 * TILE, 0, false, target);
 		if ( hit.entity != target )
@@ -534,6 +630,7 @@ namespace tactics
 		double speed = .045 * (my->monsterGetDexterityForMovement() + 10) * weightratio;
 		s.faceTarget = false;
 		s.faceMove = false;
+		s.lastSteer = STEER_PACK;
 		if ( !packSteer(my, st, s, target, d, speed, dist2) )
 		{
 			if ( !K.reach || my->shouldRetreat(st) || d > ENGAGE_R + TILE || s.slotTarget != (Uint32)target->getUID() ) { return false; }
@@ -543,6 +640,7 @@ namespace tactics
 			if ( my->monsterAttack != 0 )
 			{
 				// mid-swing (wind-up 9 ticks, then the blow): stand and face the target, or the blow lands on a packmate
+				s.lastSteer = STEER_SWING;
 				stand(my, target, speed);
 				++C.steer_holds;
 				s.steeredTick = ticks;
@@ -550,48 +648,57 @@ namespace tactics
 				return true;
 			}
 			double gx = my->x, gy = my->y;
-			bool hold = false;
-			if ( s.reachIdx >= 0 && s.reachIdx < ts.n )
+			bool ownSlot = false;
+			goalFor(my, s, target, gx, gy, ownSlot);
+			bool ring = !ownSlot && K.ring && s.ringIdx >= 0 && s.ringIdx < ts.k;
+			if ( ring && ticks >= s.nextFeint )
 			{
-				double a = ts.base + s.reachIdx * 2 * PI / ts.n;
-				gx = target->x + ts.R * cos(a); gy = target->y + ts.R * sin(a);
-				routeAround(target, my, gx, gy, true);
-				s.faceTarget = d < 2 * TILE;
+				if ( s.nextFeint ) { s.feintUntil = ticks + FEINT_TICKS; ++C.feints; }
+				s.nextFeint = ticks + FEINT_PERIOD + (my->getUID() % 25);
 			}
-			else if ( K.ring && s.ringIdx >= 0 && s.ringIdx < ts.k )
+			s.goalX = gx; s.goalY = gy;
+			s.faceTarget = ownSlot ? d < 2 * TILE : true;
+			bool moved = false;
+			if ( needsRoute(target, my, gx, gy, ownSlot) )
 			{
-				double a = ts.base + s.ringIdx * 2 * PI / ts.k, r = ts.ringR;
-				if ( ticks >= s.nextFeint )
+				if ( d < keepOut(bodyR(target)) - 1 && wallClear(my, my->x, my->y, target->x, target->y) )
 				{
-					if ( s.nextFeint ) { s.feintUntil = ticks + FEINT_TICKS; ++C.feints; }
-					s.nextFeint = ticks + FEINT_PERIOD + (my->getUID() % 25);
+					routeAround(target, my, gx, gy, ownSlot); // inside the zone, off its slot's bearing: step out radially first
+					s.lastSteer = STEER_OUT;
+					++C.step_out;
+					moved = moveTo(my, s, gx, gy, speed, dist2);
 				}
-				if ( ticks < s.feintUntil ) { r -= FEINT_HOP; } // feint: a hop in and back
-				gx = target->x + r * cos(a); gy = target->y + r * sin(a);
-				routeAround(target, my, gx, gy, false);
-				s.faceTarget = true;
+				else if ( planGoalRoute(my, s, target, gx, gy) )
+				{
+					// round the zone and any wall by the engine's A* (zone tiles penalised), entering the slot radially
+					s.lastSteer = STEER_ROUTE;
+					++C.goal_route_steps;
+					moved = followRoute(my, s, speed, dist2, gx, gy, nullptr);
+				}
+				else
+				{
+					routeAround(target, my, gx, gy, ownSlot); // no path to the goal tile (counted): the arc round the zone
+					s.lastSteer = STEER_ARC;
+					++C.arc_fallback;
+					moved = moveTo(my, s, gx, gy, speed, dist2);
+				}
 			}
 			else
 			{
-				// no room and no ring: wait behind the reach slot nearest its own bearing, just outside reach (card
-				// BF3-3: "keeps pathing toward a free slot or waits behind"); creatures from one side queue together
-				double waitR = keepOut(bodyR(target)) + 2;
-				double bear = atan2(my->y - target->y, my->x - target->x), bestA = 1e9, a = bear;
-				for ( int i = 0; i < ts.n; ++i )
+				if ( ring && ticks < s.feintUntil ) // feint: a hop in and back
 				{
-					double ai = ts.base + i * 2 * PI / ts.n;
-					if ( ts.valid[i] && angDiff(ai, bear) < bestA ) { bestA = angDiff(ai, bear); a = ai; }
+					double a = atan2(gy - target->y, gx - target->x), r = ts.ringR - FEINT_HOP;
+					gx = target->x + r * cos(a); gy = target->y + r * sin(a);
 				}
-				gx = target->x + cos(a) * waitR;
-				gy = target->y + sin(a) * waitR;
-				routeAround(target, my, gx, gy, false);
-				s.faceTarget = true;
+				s.lastSteer = STEER_STRAIGHT;
+				moved = moveTo(my, s, gx, gy, speed, dist2);
 			}
-			if ( hold || !moveTo(my, s, gx, gy, speed, dist2) )
+			if ( !moved )
 			{
 				stand(my, target, speed);
 				++C.steer_holds;
 				s.faceTarget = false;
+				s.lastSteer = STEER_AT_GOAL;
 			}
 		}
 		s.steeredTick = ticks;

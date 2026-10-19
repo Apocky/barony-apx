@@ -9,7 +9,7 @@ namespace apx
 namespace tactics
 {
 	static Uint32 gPackSeq = 1000;      // level packs; the BF3 trial uses ids below 1000
-	static std::vector<char> gPenalty;  // route-A tiles of the flank being planned (index x + y * map.width)
+	static std::vector<uint8_t> gPenalty; // extra A* cost per tile for the route being planned (index x + y * map.width)
 	static bool gPenaltyOn = false;
 
 	void packsReset() { gPackSeq = 1000; gPenalty.clear(); gPenaltyOn = false; }
@@ -18,7 +18,7 @@ namespace tactics
 	{
 		if ( !gPenaltyOn ) { return 0; }
 		if ( x < 0 || y < 0 || x >= (int)map.width || y >= (int)map.height ) { return 0; }
-		return gPenalty[x + y * map.width] ? FLANK_PENALTY : 0;
+		return gPenalty[x + (size_t)y * map.width];
 	}
 
 	// F5 fills this (parley). It must never hold or harm anyone (A4, PRIME_DIRECTIVE).
@@ -269,6 +269,24 @@ namespace tactics
 		if ( p ) { list_FreeAll(p); free(p); }
 	}
 
+	// The tiles whose centre lies inside a target's reach zone cost ZONE_PENALTY more in A*: a route past a fight goes
+	// round it, and a walk to a reach slot enters the zone at the slot. Tiles a route must cross stay passable.
+	static void penaliseZone(Entity* target)
+	{
+		double keepR = keepOut(bodyR(target));
+		int r = (int)ceil(keepR / 16) + 1, tx0 = (int)floor(target->x / 16), ty0 = (int)floor(target->y / 16);
+		for ( int y = ty0 - r; y <= ty0 + r; ++y )
+		{
+			for ( int x = tx0 - r; x <= tx0 + r; ++x )
+			{
+				if ( x < 0 || y < 0 || x >= (int)map.width || y >= (int)map.height ) { continue; }
+				if ( hypot(x * 16.0 + 8 - target->x, y * 16.0 + 8 - target->y) >= keepR ) { continue; }
+				uint8_t& p = gPenalty[x + (size_t)y * map.width];
+				p = (uint8_t)std::min(255, p + ZONE_PENALTY);
+			}
+		}
+	}
+
 	static void flankDecide(Entity* my, TacticsState& s, Entity* target)
 	{
 		Uint32 tuid = target->getUID();
@@ -330,7 +348,8 @@ namespace tactics
 		std::vector<int> routeA;
 		copyPath(a, routeA);
 		freePath(a);
-		for ( int t : routeA ) { gPenalty[t] = 1; }
+		for ( int t : routeA ) { gPenalty[t] = FLANK_PENALTY; }
+		penaliseZone(target); // and round the reach zone: a flank never walks through the fight
 		gPenaltyOn = true;
 		list_t* b = generatePath(mx, my_, gx, gy, my, nullptr, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
 		gPenaltyOn = false;
@@ -423,7 +442,7 @@ namespace tactics
 		if ( K.packs && target && s.role == ROLE_FLANKER && s.stance == STANCE_NORMAL ) { flankDecide(my, s, target); }
 	}
 
-	static bool followRoute(Entity* my, TacticsState& s, double speed, double& dist2, double fx, double fy, Entity* keepOutOf)
+	bool followRoute(Entity* my, TacticsState& s, double speed, double& dist2, double fx, double fy, Entity* keepOutOf)
 	{
 		// re-sync to the nearest waypoint ahead (the creature may have been pushed, or walked by the engine)
 		size_t best = s.routeAt;
@@ -440,11 +459,52 @@ namespace tactics
 			int t = s.route[s.routeAt];
 			double wx = (t % (int)map.width) * 16.0 + 8, wy = (t / (int)map.width) * 16.0 + 8;
 			if ( hypot(wx - my->x, wy - my->y) <= 6.0 ) { ++s.routeAt; continue; }
-			if ( keepOutOf ) { routeAround(keepOutOf, my, wx, wy, false); } // a route past the fight goes round its reach zone
+			if ( keepOutOf )
+			{
+				// routes are planned round the reach zone (penaliseZone); a waypoint still inside it (a narrow way) is
+				// never walked into from outside: the creature takes the next one. From inside (a retreat starts in the
+				// fight) the planned way out is followed as it is.
+				double keepR = keepOut(bodyR(keepOutOf));
+				bool meIn = hypot(my->x - keepOutOf->x, my->y - keepOutOf->y) < keepR - 1;
+				if ( !meIn && hypot(wx - keepOutOf->x, wy - keepOutOf->y) < keepR - 1 && s.routeAt + 1 < s.route.size() ) { ++s.routeAt; continue; }
+				if ( !meIn ) { routeAround(keepOutOf, my, wx, wy, false); }
+			}
 			return moveTo(my, s, wx, wy, speed, dist2);
 		}
-		if ( keepOutOf ) { routeAround(keepOutOf, my, fx, fy, false); }
+		if ( keepOutOf && hypot(my->x - keepOutOf->x, my->y - keepOutOf->y) >= keepOut(bodyR(keepOutOf)) - 1 ) { routeAround(keepOutOf, my, fx, fy, false); }
 		return moveTo(my, s, fx, fy, speed, dist2);
+	}
+
+	// A route to a reach slot, ring slot or queue point that must get round the fight or a wall: the engine's A* to the
+	// goal tile with the reach zone penalised (and a locked door it bumped kept out). Replanned when the goal tile
+	// changes or every 2 s. The goal tile itself is dropped: the last leg goes straight to the goal point.
+	bool planGoalRoute(Entity* my, TacticsState& s, Entity* target, double gx, double gy)
+	{
+		int W = (int)map.width, gtx = (int)floor(gx / 16), gty = (int)floor(gy / 16);
+		int mtx = (int)floor(my->x / 16), mty = (int)floor(my->y / 16);
+		if ( gtx < 0 || gty < 0 || gtx >= W || gty >= (int)map.height ) { return false; }
+		int goal = gtx + gty * W;
+		if ( s.routeKind == ROUTE_GOAL && s.routeGoal == goal && ticks - s.routeBuilt < (Uint32)(2 * TICKS_PER_SECOND) ) { return s.routeOk; }
+		s.route.clear();
+		s.routeAt = 0;
+		s.routeKind = ROUTE_GOAL;
+		s.routeGoal = goal;
+		s.routeBuilt = ticks;
+		if ( mtx == gtx && mty == gty ) { s.routeOk = wallClear(my, my->x, my->y, gx, gy); return s.routeOk; } // one tile
+		HitSave hs;
+		gPenalty.assign((size_t)W * map.height, 0);
+		penaliseZone(target);
+		if ( s.avoidTile >= 0 && s.avoidTile < W * (int)map.height && ticks < s.avoidUntil ) { gPenalty[s.avoidTile] = 255; }
+		gPenaltyOn = true;
+		list_t* p = generatePath(mtx, mty, gtx, gty, my, nullptr, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
+		gPenaltyOn = false;
+		s.routeOk = p != nullptr;
+		copyPath(p, s.route);
+		freePath(p);
+		if ( !s.route.empty() && s.route.back() == goal ) { s.route.pop_back(); }
+		++C.goal_routes;
+		if ( !s.routeOk ) { ++C.goal_route_fail; }
+		return s.routeOk;
 	}
 
 	bool packSteer(Entity* my, Stat& st, TacticsState& s, Entity* target, double d, double speed, double& dist2)
@@ -455,8 +515,12 @@ namespace tactics
 			if ( s.routeKind != ROUTE_HOME )
 			{
 				HitSave hs;
+				gPenalty.assign((size_t)map.width * map.height, 0);
+				penaliseZone(target); // the way home leaves the fight directly, never back through it
+				gPenaltyOn = true;
 				list_t* p = generatePath((int)floor(my->x / 16), (int)floor(my->y / 16), (int)floor(s.homeX / 16), (int)floor(s.homeY / 16),
 					my, nullptr, GeneratePathTypes::GENERATE_PATH_DEFAULT);
+				gPenaltyOn = false;
 				copyPath(p, s.route);
 				freePath(p);
 				s.routeAt = 0;

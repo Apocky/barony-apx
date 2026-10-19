@@ -80,6 +80,8 @@ namespace tactics
 		long long packs_formed = 0, pack_reacquire = 0;
 		long long calls_for_help = 0, calls_answered = 0, helpers_sent = 0, helpers_arrived = 0;
 		long long route_around = 0, reach_full = 0;
+		long long goal_routes = 0, goal_route_fail = 0, goal_route_steps = 0, arc_fallback = 0, step_out = 0;
+		long long doors_opened = 0, door_bumps_locked = 0, routed_engaged = 0, routed_promoted = 0;
 	};
 	extern Counters C;
 	void resetCounters();

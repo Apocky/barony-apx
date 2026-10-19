@@ -81,6 +81,8 @@ namespace bf3
 		long long contactSum = 0, contactSamples = 0, contactMax = 0;
 		long long traceAlly = 0, traceNone = 0, traceOther = 0, traceOtherPlayerOwned = 0;
 		long long pinCorrections = 0, foreignSeen = 0, foreignRemoved = 0;
+		// reach-slot holders per sampled tick: in reach, or out of it by engine state, and out of it standing still 1 s+
+		long long holderIn = 0, holderOut = 0, holderOutAttack = 0, holderOutHunt = 0, holderOutPath = 0, holderOutWait = 0, holderOutStill = 0;
 		int slots = 0, spawned = 0;
 	};
 	static Arm A;
@@ -261,6 +263,13 @@ namespace bf3
 			return aa < ab || (aa == ab && hypot(a.first - pTX, a.second - pTY) < hypot(b.first - pTX, b.second - pTY));
 		});
 		printlog("[apx] bf3 arena: tile %d,%d open %d (radius 5), %d spawn tiles 4-7 tiles out", pTX, pTY, best, (int)spawnTiles.size());
+		// the arena's walls, to read routes and stuck creatures against: '#' not walkable, '.' floor, 'P' the character
+		for ( int y = pTY - 8; y <= pTY + 8; ++y )
+		{
+			std::string row;
+			for ( int x = pTX - 8; x <= pTX + 8; ++x ) { row += (x == pTX && y == pTY) ? 'P' : (tactics::walkable(x, y) ? '.' : '#'); }
+			printlog("[apx] bf3 arena row %+d %s", y - pTY, row.c_str());
+		}
 	}
 
 	static void removeQuietly(Entity* m)
@@ -467,6 +476,22 @@ namespace bf3
 				default: ++A.stOther; break;
 			}
 			A.distSum += d; ++A.distN;
+			if ( tactics::TacticsState* ts = tactics::find(c) )
+			{
+				if ( ts->reachIdx >= 0 && ts->slotTarget == pe->getUID() )
+				{
+					if ( d < STRIKERANGE + tactics::bodyR(pe) ) { ++A.holderIn; }
+					else
+					{
+						++A.holderOut;
+						if ( c->monsterState == MONSTER_STATE_ATTACK ) { ++A.holderOutAttack; }
+						else if ( c->monsterState == MONSTER_STATE_HUNT ) { ++A.holderOutHunt; }
+						else if ( c->monsterState == MONSTER_STATE_PATH ) { ++A.holderOutPath; }
+						else { ++A.holderOutWait; }
+						if ( ts->stillSince && ticks - ts->stillSince >= (Uint32)TICKS_PER_SECOND ) { ++A.holderOutStill; }
+					}
+				}
+			}
 			if ( d < tactics::bodyR(pe) + tactics::bodyR(c) - 0.5 ) { ++A.overlapTicks; }
 			if ( d < 6 * 16.0 ) { ++near6; }
 			if ( d < STRIKERANGE + tactics::bodyR(pe) )
@@ -597,6 +622,11 @@ namespace bf3
 			.d("contact_mean", A.contactSamples ? (double)A.contactSum / A.contactSamples : 0).i("contact_max", A.contactMax)
 			.i("trace_ally", A.traceAlly).i("trace_none", A.traceNone).i("trace_other", A.traceOther).i("trace_other_player_owned", A.traceOtherPlayerOwned)
 			.i("pin_corrections", A.pinCorrections).i("foreign_seen", A.foreignSeen).i("foreign_removed", A.foreignRemoved)
+			.i("holder_in", A.holderIn).i("holder_out", A.holderOut).i("holder_out_attack", A.holderOutAttack).i("holder_out_hunt", A.holderOutHunt)
+			.i("holder_out_path", A.holderOutPath).i("holder_out_wait", A.holderOutWait).i("holder_out_still", A.holderOutStill)
+			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
+			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
+			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)
 			.i("flank_started", C.flank_started).i("flank_arrived", C.flank_arrived).i("flank_failed", C.flank_failed)
 			.i("retreats", C.retreats).i("regroups", C.regroups).i("morale_breaks", C.morale_breaks).i("morale_events", C.morale_events)
 			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("route_around", C.route_around).i("reach_full", C.reach_full).i("surrenders", C.surrenders_offered).i("packs_formed", C.packs_formed)
@@ -889,7 +919,7 @@ namespace bf3
 				break;
 			case P_MEASURE:
 				sample(pe);
-				if ( dumpCreatures && ticks - phT == (Uint32)(measureTicks / 2) )
+				if ( dumpCreatures && ticks != phT && (ticks - phT) % (Uint32)(measureTicks / 4) == 0 && ticks - phT < (Uint32)measureTicks )
 				{
 					for ( Uint32 u : trialUids )
 					{
@@ -897,10 +927,14 @@ namespace bf3
 						Stat* cs = c ? c->getStats() : nullptr;
 						if ( !c || !cs ) { printlog("[apx] bf3 dump arm %d uid %u gone", (int)armI, u); continue; }
 						tactics::TacticsState* s = tactics::find(c);
-						printlog("[apx] bf3 dump arm %d uid %u hp %d d %.1f ang %.2f st %d tgt %d elig %d reach %d ring %d stance %d flank %d atk %d spec %d ally %d leader %u",
-							(int)armI, u, cs->HP, hypot(c->x - pe->x, c->y - pe->y), atan2(c->y - pe->y, c->x - pe->x), (int)c->monsterState,
+						printlog("[apx] bf3 dump arm %d t %u uid %u hp %d d %.1f ang %.2f st %d tgt %d elig %d reach %d ring %d stance %d flank %d atk %d spec %d ally %d leader %u"
+							" steer %d goal_d %.1f goal_ang %.2f goal_gap %.1f goal_clear %d still %u route %d/%d kind %d ok %d",
+							(int)armI, ticks - phT, u, cs->HP, hypot(c->x - pe->x, c->y - pe->y), atan2(c->y - pe->y, c->x - pe->x), (int)c->monsterState,
 							(Uint32)c->monsterTarget == pe->getUID() ? 1 : 0, tactics::eligible(c, *cs) ? 1 : 0, s ? s->reachIdx : -9, s ? s->ringIdx : -9,
-							s ? (int)s->stance : -9, s ? (int)s->flank : -9, (int)c->monsterAttack, (int)c->monsterSpecialState, (int)c->monsterAllyIndex, cs->leader_uid);
+							s ? (int)s->stance : -9, s ? (int)s->flank : -9, (int)c->monsterAttack, (int)c->monsterSpecialState, (int)c->monsterAllyIndex, cs->leader_uid,
+							s ? (int)s->lastSteer : -9, s ? hypot(s->goalX - pe->x, s->goalY - pe->y) : -1.0, s ? atan2(s->goalY - pe->y, s->goalX - pe->x) : 0.0,
+							s ? hypot(s->goalX - c->x, s->goalY - c->y) : -1.0, s ? (tactics::wallClear(c, c->x, c->y, s->goalX, s->goalY) ? 1 : 0) : -9,
+							s && s->stillSince ? ticks - s->stillSince : 0u, s ? (int)s->routeAt : -9, s ? (int)s->route.size() : -9, s ? (int)s->routeKind : -9, s ? (int)s->routeOk : -9);
 					}
 				}
 				if ( ticks - phT == (Uint32)(measureTicks / 2) )
