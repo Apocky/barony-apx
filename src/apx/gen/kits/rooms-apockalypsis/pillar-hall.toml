@@ -1,0 +1,45 @@
+# kits/rooms/pillar-hall.toml (card L42): a square hall with a ring of four pillars.
+[meta]
+id = "pillar-hall"
+level = "MICRO"
+fits = { min = [8, 4, 8], max = [20, 6, 20] }
+tags = ["dungeon", "hall"]
+
+[[op]]
+kind = "stamp"
+shape = "box"
+mask = "void"
+from = [1, 1, 1]
+to = ["w-1", "h-1", "d-1"]
+[[op]]
+kind = "stamp"
+shape = "box"
+mask = "pillar"
+from = [3, 1, 3]
+to = [4, "h-1", 4]
+[[op]]
+kind = "stamp"
+shape = "box"
+mask = "pillar"
+from = ["w-4", 1, 3]
+to = ["w-3", "h-1", 4]
+[[op]]
+kind = "stamp"
+shape = "box"
+mask = "pillar"
+from = [3, 1, "d-4"]
+to = [4, "h-1", "d-3"]
+[[op]]
+kind = "stamp"
+shape = "box"
+mask = "pillar"
+from = ["w-4", 1, "d-4"]
+to = ["w-3", "h-1", "d-3"]
+[[op]]
+kind = "subtract"
+dst = "void"
+src = "pillar"
+[[op]]
+kind = "assign"
+material = "crypt_stone"
+mask = "!void"

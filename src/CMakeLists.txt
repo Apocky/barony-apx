@@ -147,6 +147,20 @@ list(APPEND EDITOR_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/shader.cpp"
 )
 
+# apx-gen (vendored, src/apx/gen) and its Barony bridge; game only, never the editor
+set(APXGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/apx/gen")
+set(APXGEN_SOURCES
+	"${APXGEN_DIR}/src/mission.cpp"
+	"${APXGEN_DIR}/src/program.cpp"
+	"${APXGEN_DIR}/src/layout.cpp"
+	"${APXGEN_DIR}/src/critic.cpp"
+	"${APXGEN_DIR}/src/dress.cpp"
+	"${APXGEN_DIR}/src/vox.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/apx_gen_bridge.cpp"
+)
+list(APPEND GAME_SOURCES ${APXGEN_SOURCES})
+set(APXGEN_DIR ${APXGEN_DIR} PARENT_SCOPE) # the barony target (root CMakeLists) adds its include dir and root define
+
 add_subdirectory(magic)
 add_subdirectory(interface)
 add_subdirectory(ui)

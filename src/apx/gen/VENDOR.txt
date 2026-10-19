@@ -1,0 +1,3 @@
+apx-gen vendored from C:\Users\Apocky\source\repos\apx-gen branch f3-architecture-dress commit 527a535bda85985243a7e65d5dec9da7efce6c8b (local repo, no remote).
+kits/rooms-apockalypsis = Apockalypsis kits/rooms at 25423a5.
+Update: re-copy include/ src/ kits/ grammar/ and bump these lines; never edit the vendored files here without upstreaming to apx-gen.

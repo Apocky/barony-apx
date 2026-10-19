@@ -12,6 +12,7 @@
 #include "main.hpp"
 #include "draw.hpp"
 #include "game.hpp"
+#include "apx/apx_gen_bridge.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
 #include "entity.hpp"
@@ -4203,6 +4204,7 @@ bool handleEvents(void)
 		d += frameval[j];
 	}
 	fps = (d / AVERAGEFRAMES) * 1000;
+	apxgenFrameTick();
 
 	if (initialized) {
 		inputs.updateAllMouse();
@@ -7270,6 +7272,7 @@ int main(int argc, char** argv)
 		strcpy(outputdir, "save:");
  #endif // NINTENDO
 #endif
+		apxgenReadEnvironment(); // APXGEN* variables; the command line below wins
 		// read command line arguments
 		if ( argc > 1 )
 		{
@@ -7281,7 +7284,11 @@ int main(int argc, char** argv)
 #endif
 				if ( argv[c] != NULL )
 				{
-					if ( !strcmp(argv[c], "-windowed") )
+					if ( apxgenParseArgument(argv[c]) )
+					{
+						// -apxgen, -apxgen-size=, -apxgen-pop=, -apxgen-root=
+					}
+					else if ( !strcmp(argv[c], "-windowed") )
 					{
 						fullscreen = 0;
 					}

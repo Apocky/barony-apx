@@ -571,6 +571,8 @@ if (GAME_ENABLED)
 	target_link_libraries(barony ${GLEW_LIBRARIES}) # apx: see find_package(GLEW) above
 	target_link_libraries(barony apx_lua)
 	add_custom_command(TARGET barony POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/scripts" "$<TARGET_FILE_DIR:barony>/scripts") # apx: Lua scripts
+target_include_directories(barony PRIVATE "${APXGEN_DIR}/include") # apx-gen (src/apx/gen)
+target_compile_definitions(barony PRIVATE "APXGEN_VENDOR_ROOT=\"${APXGEN_DIR}\"")
 	if (STEAMWORKS_ENABLED)
 		target_link_libraries(barony ${STEAMWORKS_LIBRARY})
 		target_link_libraries(barony ${NFD_LIBRARY})

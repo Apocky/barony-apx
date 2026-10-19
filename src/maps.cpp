@@ -29,6 +29,9 @@
 #include "menu.hpp"
 #include "ui/MainMenu.hpp"
 #include "apx/lua_layer.hpp"
+#ifndef EDITOR
+#include "apx/apx_gen_bridge.hpp"
+#endif
 
 int startfloor = 0;
 BaronyRNG map_rng;
@@ -1300,6 +1303,26 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 	// generate a custom monster curve if file exists
 	monsterCurveCustomManager.readFromFile(mapseed);
+
+#ifndef EDITOR
+	// apx-gen (spec 02): -apxgen / APXGEN=1. Off = this vanilla generator, the CONTROL.
+	if ( apxgen.enabled )
+	{
+		const int apxResult = apxgenGenerateDungeon(levelset, seed);
+		if ( apxResult >= 0 )
+		{
+			return apxResult;
+		}
+		printlog("apxgen: FALLBACK to the vanilla generator for this floor (seed %u)\n", seed);
+		std::string fullMapPath = physfsFormatMapName(levelset);
+		if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), &map, map.entities, map.creatures, &checkMapHash) == -1 )
+		{
+			return -1;
+		}
+		map_rng.seedBytes(&mapseed, sizeof(mapseed));
+		map_server_rng.seedBytes(&mapseed, sizeof(mapseed));
+	}
+#endif
 
 	// determine whether shop level or not
 	if ( gameplayCustomManager.processedShopFloor(currentlevel, secretlevel, map.name, shoplevel) )
@@ -6854,6 +6877,19 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	list_FreeAll(&mapList);
 	list_FreeAll(&doorList);
 
+	{
+		// apx calibration: walkable tiles of the vanilla floor (density reference for apx-gen's 1x)
+		int apxWalk = 0;
+		for ( Uint32 ax = 0; ax < map.width; ++ax )
+		{
+			for ( Uint32 ay = 0; ay < map.height; ++ay )
+			{
+				const Sint32* t = &map.tiles[ay * MAPLAYERS + ax * MAPLAYERS * map.height];
+				apxWalk += (!t[1] && t[0] && !lavatiles[t[0]]) ? 1 : 0;
+			}
+		}
+		printlog("apx: vanilla floor %ux%u walk tiles %d\n", map.width, map.height, apxWalk);
+	}
 	printlog("successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.\n", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	//messagePlayer(0, "successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	return secretlevelexit;

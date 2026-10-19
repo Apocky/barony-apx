@@ -14,6 +14,7 @@
 #include "game.hpp"
 #include "stat.hpp"
 #include "net.hpp"
+#include "apx/apx_gen_bridge.hpp"
 #include "messages.hpp"
 #include "entity.hpp"
 #include "files.hpp"
@@ -119,6 +120,7 @@ void pollNetworkForShutdown() {
 
 int sendPacket(UDPsocket sock, int channel, UDPpacket* packet, int hostnum, bool tryReliable)
 {
+	if ( packet ) { apxgenNetSent(hostnum, packet->len); }
 	if ( directConnect )
 	{
 		return SDLNet_UDP_Send(sock, channel, packet);
