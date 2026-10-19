@@ -87,3 +87,6 @@ xcode/Barony/Barony.xcodeproj/xcuserdata/*
 *.sqlite-journal
 
 build-tests/
+
+# apx release packages (tools/apx/package.ps1)
+/dist/
