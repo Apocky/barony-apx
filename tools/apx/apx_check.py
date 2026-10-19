@@ -30,6 +30,8 @@ P.LOCK_NAME = "barony-f1-instruments.LOCK"
 LOCK_ROOT = Path(r"C:\Apocrypha\locks")             # f2 keeps barony-f2-gate.LOCK here: honour and hold both folders
 
 
+DIAG = Path(r"C:\Apocrypha\diagnostics\barony-f1")
+VOLATILE = {"run_id", "wall_ms", "gen_ms", "load_ms", "path_maps_ms", "tick", "sim_seconds", "build_hash", "uid_at_gen"}
 import apx_locks  # noqa: E402  (shared D70 rules: slots for correctness runs, exclusive lock for timing, .WANT fairness)
 _held = []
 
