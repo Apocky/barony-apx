@@ -1,6 +1,6 @@
 # proto/ -- prototypes, never shipped
 
-Nothing under proto/ is built, packaged or loaded by Apocky's Barony. It is reference material
+Nothing under proto/ is built, packaged or loaded by Apocky's Labyrinth. It is reference material
 for the native ports (S-track and F-track cards in Apockalypsis specs/barony-fork).
 
 ## sam-mods/

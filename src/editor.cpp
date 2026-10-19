@@ -1640,7 +1640,7 @@ int main(int argc, char** argv)
 
 	// initialize
 	verticalSync = true;
-	if ( (x = initApp("Apocky's Barony Editor", fullscreen)) )
+	if ( (x = initApp("Apocky's Labyrinth Editor", fullscreen)) )
 	{
 		printlog("Critical error: %d\n", x);
 #ifdef STEAMWORKS

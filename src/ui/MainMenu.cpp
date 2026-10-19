@@ -26541,9 +26541,9 @@ failed:
         }
 	}
 
-	// APX identity (D60): the game is "Apocky's Barony". title.png is upstream's BARONY logo,
+	// APX identity (D82, was D60): the game is "Apocky's Labyrinth". title.png is upstream's BARONY logo,
 	// so the word "Apocky's" sits just above it, and the version field names the game too.
-	static const char* const apxGameTitle = "Apocky's Barony";
+	static const char* const apxGameTitle = "Apocky's Labyrinth";
 	static void addApxTitle(Frame* frame, const SDL_Rect& logo) {
 		auto apx = frame->addField("apx_title", 32);
 		apx->setFont(bigfont_outline);
