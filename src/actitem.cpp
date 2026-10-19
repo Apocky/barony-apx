@@ -13,6 +13,7 @@
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
+#include "apx_inventory.hpp"
 #include "engine/audio/sound.hpp"
 #include "net.hpp"
 #include "collision.hpp"
@@ -810,6 +811,15 @@ void actItem(Entity* my)
 						}
 						else
 						{
+							if ( !apx_inv::canCarry(i, *item2) )
+							{
+								// apx: capacity is carried mass against the limit, never free slots (U1)
+								messagePlayer(i, MESSAGE_INVENTORY, "%s is too heavy to carry (%s of %s).", item2->getName(),
+									apx_inv::massText(apx_inv::carriedMass(i) + item2->getWeight()).c_str(), apx_inv::massText(apx_inv::massLimit(i)).c_str());
+								playSoundPlayer(i, 90, 64);
+								free(item2);
+								return;
+							}
 							int pickedUpCount = item2->count;
 							item = itemPickup(i, item2);
 							if (item)

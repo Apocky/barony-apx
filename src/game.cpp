@@ -41,6 +41,7 @@
 #include "paths.hpp"
 #include "player.hpp"
 #include "mod_tools.hpp"
+#include "apx_inventory.hpp"
 
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
 static int apxFloor = 0; // apx: -apxfloor=<n>: test path, quickstart straight to floor n (no splash, no menu)
@@ -947,6 +948,7 @@ static real_t drunkextend[MAXPLAYERS] = { (real_t)0.0 };
 
 void gameLogic(void)
 {
+	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -7277,6 +7279,10 @@ int main(int argc, char** argv)
 						datadir[datadirsz] = '\0';
 						datadirFromCommandLine = true;
 					}
+					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
+					{
+						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
+					}
 					else if ( !strncmp(argv[c], "-apxfloor=", 10) )
 					{
 						apxFloor = std::max(0, atoi(argv[c] + 10));
@@ -8222,6 +8228,14 @@ int main(int argc, char** argv)
 
 			// update screen
 			GO_SwapBuffers(screen);
+
+			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
+			if ( const char* apxShot = apx_inv::takeShotRequest() )
+			{
+				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }
+				takeScreenshot(apxShot);
+				if (!hdrEnabled) { main_framebuffer.bindForWriting(); }
+			}
 
 			// screenshots
 			if (Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||

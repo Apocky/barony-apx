@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "player.hpp"
+#include "apx_inventory.hpp"
 #include "game.hpp"
 #include "main.hpp"
 #include "interface/interface.hpp"
@@ -2145,6 +2146,11 @@ bool Player::GUI_t::handleInventoryMovement()
 	if ( !bActiveModuleUsesInventory() )
 	{
 		return false;
+	}
+
+	if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY && apx_inv::listHandleMove(player) )
+	{
+		return true; // apx: the list frame takes Up/Down from the grid (U1)
 	}
 
 	bool rightStickMovement = 
@@ -5555,6 +5561,10 @@ const int Player::Inventory_t::getPlayerItemInventoryX() const
 
 const int Player::Inventory_t::getPlayerItemInventoryY() const
 {
+	if ( !apx_inv::vanillaGrid() )
+	{
+		return apx_inv::virtualRows(sizex); // apx: the virtual grid never fills; mass is the capacity (U1)
+	}
 	int y = DEFAULT_INVENTORY_SIZEY;
 	if ( !stats[player.playernum] || !player.isLocalPlayer() )
 	{
@@ -5744,8 +5754,9 @@ Frame* Player::Inventory_t::getInventorySlotFrame(int x, int y) const
 	{
 		if ( (x >= 0 && y >= 0 && x < getSizeX() && y < getSizeY()) )
 		{
-			//assert(slotFrames.find(x + y * 100) != slotFrames.end());
-			return slotFrames.at(x + y * 100);
+			// apx: the virtual grid's rows have no slot frames; the list frame shows those items (U1)
+			auto found = slotFrames.find(x + y * 100);
+			return found != slotFrames.end() ? found->second : nullptr;
 		}
 		else if ( x >= PaperDollColumns::DOLL_COLUMN_LEFT && x <= PaperDollColumns::DOLL_COLUMN_RIGHT
 			&& y >= PaperDollRows::DOLL_ROW_1 && y <= PaperDollRows::DOLL_ROW_5 )
