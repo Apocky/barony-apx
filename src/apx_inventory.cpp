@@ -11,6 +11,8 @@
 #include "prng.hpp"
 #include "input.hpp"
 #include "menu.hpp"
+#include "monster.hpp"
+#include "interface/interface.hpp"
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -281,12 +283,172 @@ static void runGates()
 
 // Step 2 phases: the list on screen full size, gamepad and keyboard navigation, then the
 // split-screen quarter layout (player 0's view set to a quadrant the way setupSplitscreen does).
+// Steps 3-5, deterministic checks run once (D76), full screen, between the nav checks and the quarter.
+static Item* firstLoose(int p, bool single)
+{
+	for ( node_t* n = stats[p]->inventory.first; n; n = n->next )
+	{
+		Item* it = static_cast<Item*>(n->element);
+		if ( it && itemCategory(it) != SPELL_CAT && !(players[p]->paperDoll.enabled && players[p]->paperDoll.isItemOnDoll(*it))
+			&& (!single || it->count == 1) ) { return it; }
+	}
+	return nullptr;
+}
+static Entity* g_testChest = nullptr;
+static Entity* g_testFollower = nullptr;
+static Entity* g_testDeco = nullptr;
+static struct S345 {
+	int menuOpen = 0, menuItemRight = 0, inspectShown = 0, breakGone = 0;
+	int chestFound = 0, chestView = 0, chestRows = 0, takeOk = 0, storeOk = 0, heavyRefused = 0;
+	int followerFound = 0, followerView = 0, giveOk = 0, followerTakeOk = 0;
+	int benchControl = -1, benchShown = 0, benchStation = 0, benchOps = 0;
+} R;
+
+static void runSteps345(int dt)
+{
+	auto& pl = *players[0];
+	auto* ui = inputs.getUIInteraction(0);
+	static Uint32 menuUid = 0, breakUid = 0;
+	static int transfersBefore = 0;
+	if ( dt == 141 )
+	{
+		emptyInventory(0);
+		for ( int k = 0; k < 4; ++k ) { newItem(static_cast<ItemType>(GEM_RUBY + k), SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); }
+		stats[0]->GOLD = 10;
+	}
+	else if ( dt == 146 )
+	{
+		// step 3a: Enter / confirm on our row opens Barony's context menu for that item
+		setFocus(0, 0, 1);
+		activateSelected(0);
+		menuUid = listState(0).selectedUid;
+	}
+	else if ( dt == 150 ) { R.menuOpen = ui->itemMenuOpen; R.menuItemRight = ui->itemMenuItem == menuUid && menuUid != 0; g_shot = "apx-u1b-menu.png"; }
+	else if ( dt == 154 )
+	{
+		ui->itemMenuOpen = false;
+		// step 3b: Inspect, through the activation the menu entry calls
+		pl.inventoryUI.activateItemContextMenuOption(uidToItem(menuUid), PROMPT_APX_INSPECT);
+	}
+	else if ( dt == 160 ) { R.inspectShown = viewState(0).inspectShown; g_shot = "apx-u1b-inspect.png"; }
+	else if ( dt == 164 )
+	{
+		inspectOpen(0, nullptr);
+		// step 3c: Break through the menu activation
+		Item* it = firstLoose(0, true);
+		breakUid = it ? it->uid : 0;
+		pl.inventoryUI.activateItemContextMenuOption(it, PROMPT_APX_BREAK);
+	}
+	else if ( dt == 168 ) { R.breakGone = breakUid != 0 && uidToItem(breakUid) == nullptr; }
+	else if ( dt == 170 )
+	{
+		// step 4a: a chest on this floor, opened the way actChest opens it, holding 3 test items
+		for ( node_t* n = map.entities ? map.entities->first : nullptr; n && !g_testChest; n = n->next )
+		{
+			Entity* e = static_cast<Entity*>(n->element);
+			if ( e && e->behavior == &actChest && e->getChestInventoryList() ) { g_testChest = e; }
+		}
+		R.chestFound = g_testChest != nullptr;
+		if ( g_testChest )
+		{
+			list_t* cl = g_testChest->getChestInventoryList();
+			list_FreeAll(cl);
+			for ( int k = 0; k < 3; ++k ) { newItem(static_cast<ItemType>(GEM_EMERALD + k), SERVICABLE, 0, 1, 0, true, cl); }
+			openedChest[0] = g_testChest;
+			pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
+			pl.inventoryUI.chestGUI.openChest(false);
+		}
+	}
+	else if ( dt == 180 && g_testChest )
+	{
+		R.chestView = viewState(0).other == OTHER_CHEST;
+		R.chestRows = viewState(0).otherRows;
+		transfersBefore = viewState(0).transfers;
+		setFocus(0, 1, 1);           // the first item row on the chest side
+		activateSelected(0);         // take
+		g_shot = "apx-u1b-chest.png";
+	}
+	else if ( dt == 186 && g_testChest )
+	{
+		R.takeOk = viewState(0).transfers == transfersBefore + 1;
+		setFocus(0, 0, 1);           // our first item row
+		activateSelected(0);         // store
+	}
+	else if ( dt == 192 && g_testChest )
+	{
+		R.storeOk = viewState(0).transfers == transfersBefore + 2;
+		// over the limit: a heavy load, then taking must be refused
+		newItem(STEEL_BREASTPIECE, SERVICABLE, 0, 99, 0, true, &stats[0]->inventory);
+		int refused = viewState(0).refusedHeavy;
+		setFocus(0, 1, 1);
+		activateSelected(0);
+		R.heavyRefused = viewState(0).refusedHeavy == refused + 1;
+	}
+	else if ( dt == 200 )
+	{
+		if ( g_testChest ) { g_testChest->closeChest(); openedChest[0] = nullptr; }
+		emptyInventory(0);
+		for ( int k = 0; k < 3; ++k ) { newItem(static_cast<ItemType>(GEM_RUBY + k), SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); }
+		// step 4b: a follower beside us
+		Entity* me = pl.entity;
+		g_testFollower = summonMonster(HUMAN, (long)me->x + 16, (long)me->y, true);
+		R.followerFound = g_testFollower != nullptr;
+		if ( g_testFollower ) { forceFollower(*me, *g_testFollower); }
+		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
+	}
+	else if ( dt == 215 && g_testFollower )
+	{
+		g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y; // keep it beside us
+		R.followerView = viewState(0).other == OTHER_FOLLOWER;
+		transfersBefore = viewState(0).transfers;
+		setFocus(0, 0, 1);
+		activateSelected(0);         // give
+		g_shot = "apx-u1b-follower.png";
+	}
+	else if ( dt == 222 && g_testFollower )
+	{
+		g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y;
+		R.giveOk = viewState(0).transfers == transfersBefore + 1;
+		setFocus(0, 1, 1);
+		activateSelected(0);         // take back
+	}
+	else if ( dt == 228 && g_testFollower )
+	{
+		R.followerTakeOk = viewState(0).transfers == transfersBefore + 2;
+		g_testFollower->x = pl.entity->x + 2000; // away, so the bench column is free
+	}
+	else if ( dt == 232 )
+	{
+		// step 5 control: a decoration that is not a station -> no bench
+		Entity* me = pl.entity;
+		g_testDeco = newEntity(1618, 1, map.entities, nullptr);
+		g_testDeco->x = me->x + 16; g_testDeco->y = me->y; g_testDeco->z = 0;
+		g_testDeco->flags[PASSABLE] = true; g_testDeco->flags[NOUPDATE] = true;
+	}
+	else if ( dt == 250 ) { R.benchControl = viewState(0).benchShown; g_testDeco->sprite = 1617; } // now a workbench
+	else if ( dt == 268 ) { R.benchShown = viewState(0).benchShown; R.benchStation = viewState(0).station; R.benchOps = viewState(0).stationOps; g_shot = "apx-u1b-bench.png"; }
+	else if ( dt == 290 )
+	{
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"steps345\",\"mode\":\"%s\",\"menu_open\":%d,\"menu_item_right\":%d,\"inspect_shown\":%d,\"break_gone\":%d,"
+				"\"chest_found\":%d,\"chest_view\":%d,\"chest_rows\":%d,\"take_ok\":%d,\"store_ok\":%d,\"heavy_refused\":%d,"
+				"\"follower_found\":%d,\"follower_view\":%d,\"give_ok\":%d,\"follower_take_ok\":%d,\"bench_control_shown\":%d,\"bench_shown\":%d,\"bench_station\":\"%s\",\"bench_ops\":%d}\n",
+				vanillaGrid() ? "vanilla" : "apx", R.menuOpen, R.menuItemRight, R.inspectShown, R.breakGone, R.chestFound, R.chestView, R.chestRows,
+				R.takeOk, R.storeOk, R.heavyRefused, R.followerFound, R.followerView, R.giveOk, R.followerTakeOk, R.benchControl, R.benchShown,
+				apx_logic::stationName(R.benchStation), R.benchOps);
+			fclose(f);
+		}
+	}
+}
+
 static void runUiPhases()
 {
 	const int dt = g_ticks - g_mark;
 	auto& pl = *players[0];
 	static ListState A, B, C, D;
-	static int itemsAtStart = 0;
+	static int itemsAtStart = 0, itemsAfter = 0;
 	if ( dt == 1 )
 	{
 		itemsAtStart = g_loadedItems; // counted in the same tick as the load
@@ -298,8 +460,9 @@ static void runUiPhases()
 	else if ( dt >= 70 && dt <= 86 && (dt - 70) % 4 == 0 ) { listTestPadPress(); }
 	else if ( dt == 100 ) { B = listState(0); }
 	else if ( dt >= 104 && dt <= 124 && (dt - 104) % 4 == 0 ) { keystatus[SDLK_DOWN] = ((dt - 104) / 4) % 2 == 0; }
-	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); }
-	else if ( dt == 150 )
+	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); itemsAfter = (int)list_Size(&stats[0]->inventory); }
+	else if ( dt >= 141 && dt < 300 ) { runSteps345(dt); }
+	else if ( dt == 300 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -311,8 +474,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 220 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 260 )
+	else if ( dt == 370 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 410 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
@@ -322,8 +485,8 @@ static void runUiPhases()
 					k, s.rowsDrawn > 0, s.rowCount, s.visibleRows, s.rowsDrawn, s.selected, s.scroll, s.moves); };
 			fprintf(f, "{\"test\":\"list_ui\",\"mode\":\"%s\",", vanillaGrid() ? "vanilla" : "apx");
 			st("full", A); st("after_gamepad5", B); st("after_keyboard3", C); st("quarter", D);
-			int itemsNow = (int)list_Size(&stats[0]->inventory);
-			fprintf(f, "\"items_at_start\":%d,\"items_after_260_ticks\":%d,\"items_kept\":%s,", itemsAtStart, itemsNow, itemsNow == itemsAtStart ? "true" : "false");
+			int itemsNow = itemsAfter;
+			fprintf(f, "\"items_at_start\":%d,\"items_after_140_ticks\":%d,\"items_kept\":%s,", itemsAtStart, itemsNow, itemsNow == itemsAtStart ? "true" : "false");
 			fprintf(f, "\"gamepad_moved\":%d,\"keyboard_moved\":%d,\"quarter_fewer_rows\":%s,\"res\":[%d,%d]}\n",
 				B.selected - A.selected, C.selected - B.selected, D.visibleRows > 0 && D.visibleRows < A.visibleRows ? "true" : "false", xres, yres);
 			fclose(f);
