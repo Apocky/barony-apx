@@ -13,7 +13,8 @@ param(
     [string]$Generator = 'Visual Studio 17 2022',
     [string]$BuildDir,
     [switch]$NoFmod,
-    [switch]$Editor
+    [switch]$Editor,
+    [int]$Jobs = 0     # compiler processes for /MP; 0 = derive from free memory at build time
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,9 +56,19 @@ if ($LASTEXITCODE -ne 0) { throw 'configure failed' }
 $targets = @('barony')
 if ($Editor) { $targets += 'editor' }
 foreach ($t in $targets) {
-    Step "build $t ($Config)"
+    # CMakeLists.txt passes /MP (MultiProcessorCompilation): one cl.exe per core, and Barony's largest
+    # files take gigabytes each. A cold build on a machine whose commit charge is nearly used up (the
+    # local model server alone holds ~19 GB) died with C1060 "compiler is out of heap space". Cap the
+    # compiler processes by the free commit memory, about 2 GB each, and say what was chosen.
+    $jobsNow = $Jobs
+    $os = Get-CimInstance Win32_OperatingSystem
+    $freeGB = [math]::Round($os.FreeVirtualMemory / 1MB, 1)
+    if ($jobsNow -le 0) {
+        $jobsNow = [math]::Max(1, [math]::Min([Environment]::ProcessorCount, [math]::Floor(($freeGB - 1) / 2)))
+    }
+    Step "build $t ($Config), $jobsNow compiler processes (free commit $freeGB GB)"
     $t0 = Get-Date
-    & cmake --build $BuildDir --config $Config --target $t -- /m /nologo /verbosity:minimal
+    & cmake --build $BuildDir --config $Config --target $t -- /m /nologo /verbosity:minimal "/p:CL_MPCount=$jobsNow"
     if ($LASTEXITCODE -ne 0) { throw "build failed: $t" }
     Step ("built {0} in {1:n0} s" -f $t, ((Get-Date) - $t0).TotalSeconds)
 }
