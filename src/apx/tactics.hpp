@@ -120,6 +120,15 @@ namespace bf3
 	void onGameTick();                             // after ++ticks
 	void onSwingAttempt(Entity* my, Entity* target, double dist); // swing timer reset (both arms)
 	const char* screenshotWanted();                // after the buffer swap: a file name once, else nullptr
+	// Entity::attack sets this for its duration (entity.cpp): the trial tells a blow from damage over time. No effect
+	// on play: a pointer saved and restored.
+	extern Entity* attackInFlight;
+	struct AttackScope
+	{
+		Entity* prev;
+		explicit AttackScope(Entity* e) : prev(attackInFlight) { attackInFlight = e; }
+		~AttackScope() { attackInFlight = prev; }
+	};
 	extern int exitCode;
 }
 }

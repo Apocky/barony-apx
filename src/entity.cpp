@@ -10102,6 +10102,7 @@ Causes an entity to attack using whatever weapon it's holding
 
 void Entity::attack(int pose, int charge, Entity* target)
 {
+	apx::bf3::AttackScope apxAttackScope(this); // apx BF3: who strikes, for the trial's damage attribution (no play effect)
 	Stat* hitstats = nullptr;
 	Stat* myStats = nullptr;
 	int player, playerhit = -1;

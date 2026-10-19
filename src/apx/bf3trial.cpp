@@ -76,6 +76,7 @@ namespace bf3
 	{
 		long long dmg = 0, foreignDmg = 0, hits = 0, attempts = 0, thin = 0, wide = 0, playerMoved = 0, creatureDmg = 0;
 		long long dmgHits = 0, dmgOther = 0, otherEvents = 0;    // damage from swings vs damage over time (bleeding etc.)
+		int overflowLogs = 0;                                   // overflow ticks logged in this arm (first 6)
 		int acStart = -1, acEnd = -1, gearFixes = 0;            // the character's armour class; gear repaired at the arm's start
 		long long targetLostTicks = 0, ticks = 0, overflowTicks = 0, inReachSum = 0, attackersSum = 0, near6Sum = 0;
 		long long attackersMax = 0, inReachMax = 0, lost = 0, standoffN = 0, spreadN = 0, waitPairN = 0;
@@ -243,8 +244,7 @@ namespace bf3
 		A.gearFixes = restoreCharacter(st);
 	}
 
-	// a swing by a trial creature at the character is in flight from its timer reset to its damage (same tick)
-	static Uint32 swingUid = 0, swingTick = 0;
+	Entity* attackInFlight = nullptr; // set by Entity::attack (apx::bf3::AttackScope)
 
 	bool absorbPlayerDamage(Entity* player, int amount)
 	{
@@ -254,8 +254,9 @@ namespace bf3
 			// a hit with no trial creature within melee distance (a trap, a stray) is counted apart
 			double nearest = 1e9;
 			for ( Uint32 u : trialUids ) { if ( Entity* c = uidToEntity(u) ) { nearest = std::min(nearest, hypot(c->x - player->x, c->y - player->y)); } }
-			bool swing = swingUid != 0 && swingTick == ticks;
-			swingUid = 0;
+			// a blow: the damage comes inside a trial creature's Entity::attack (the strike lands about 9 ticks after the
+			// swing starts, in a later attack() call; s14 tagged swings by their start tick and missed nearly all)
+			bool swing = attackInFlight && isTrial(attackInFlight);
 			if ( nearest > STRIKERANGE + 16 ) { A.foreignDmg += -amount; }
 			else if ( swing ) { A.dmg += -amount; A.dmgHits += -amount; ++A.hits; A.hitTicks.push_back(ticks); }
 			else { A.dmg += -amount; A.dmgOther += -amount; ++A.otherEvents; } // bleeding and other damage over time
@@ -272,7 +273,6 @@ namespace bf3
 	{
 		(void)dist;
 		if ( !measuring || !players[0] || target != players[0]->entity || !isTrial(my) ) { return; }
-		swingUid = my->getUID(); swingTick = ticks;
 		++A.attempts;
 		++A.swing[my->getUID()].first;
 		A.attemptTicks.push_back(ticks);
@@ -625,6 +625,22 @@ namespace bf3
 		A.attackersMax = std::max<long long>(A.attackersMax, attackers);
 		A.hist[std::min(attackers, 12)]++;
 		if ( attackers > A.slots ) { ++A.overflowTicks; }
+		if ( attackers > A.slots && A.slots > 0 && A.overflowLogs < 6 )
+		{
+			++A.overflowLogs;
+			for ( Uint32 u : trialUids )
+			{
+				Entity* c = uidToEntity(u);
+				Stat* cs = c ? c->getStats() : nullptr;
+				if ( !c || !cs || cs->HP <= 0 ) { continue; }
+				double d = hypot(c->x - pe->x, c->y - pe->y);
+				if ( d >= STRIKERANGE + tactics::bodyR(pe) || c->monsterState != MONSTER_STATE_ATTACK || (Uint32)c->monsterTarget != pe->getUID() ) { continue; }
+				tactics::TacticsState* s = tactics::find(c);
+				printlog("[apx] bf3 overflow arm %d t %u uid %u d %.1f reach %d ring %d placed_here %d stance %d flank %d steer %d atk %d decided_ago %d",
+					(int)armI, ticks - phT, u, d, s ? s->reachIdx : -9, s ? s->ringIdx : -9, s ? (s->slotTarget == pe->getUID() ? 1 : 0) : -9,
+					s ? (int)s->stance : -9, s ? (int)s->flank : -9, s ? (int)s->lastSteer : -9, (int)c->monsterAttack, s ? (int)(ticks - s->decideTick) : -9);
+			}
+		}
 		if ( ticks % 5 == 0 )
 		{
 			// in contact: in reach and the engine's own swing line (thin ray, packmates block) reaches the target
