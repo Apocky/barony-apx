@@ -15,7 +15,7 @@ $t0 = Get-Date
 $build = pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache 2>&1
 $exe = 'build\ninja-ccache\barony.exe'
 $fresh = (Test-Path $exe) -and ((Get-Item $exe).LastWriteTime -ge $t0.AddSeconds(-5)) -or ($build -match 'no work to do')
-$buildErr = $build | Select-String -Pattern 'error|FAILED' | Select-Object -First 3
+$buildErr = $build | Select-String -Pattern ': (fatal )?error [A-Z]+[0-9]+|^FAILED:|ninja: build stopped' | Select-Object -First 3
 "build: fresh=$fresh $(if ($buildErr) { 'ERRORS: ' + ($buildErr -join ' | ') })"
 if (-not $fresh -or $buildErr) { 'NOT PUSHED: build did not produce a fresh exe'; exit 3 }
 $exe = (Resolve-Path $exe).Path
