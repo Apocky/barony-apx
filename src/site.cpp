@@ -295,6 +295,71 @@ void populate(Level& L, uint64_t seed, const SiteParams& SP) {
     }
     for (size_t c = 0; c < cands.size(); ++c) if (!chosen[c]) f.dress[cands[c].dress].content = "worn";
     L.readable_candidates = (int)cands.size();
+
+    // POPULATION (D72). The tier draw follows spec 04 section 2's shares (fodder 60, regular 30,
+    // elite 8, champion 2 percent). SPAWNED packs go to dens, then patrols, while the floor's spawned
+    // budget lasts; a pack's composition is drawn under the D72 caps. Everything else is EMERGENT:
+    // groups of 1-3 in rooms, in room order from a seeded shuffle.
+    {
+        Rng pr(hash_words({seed, 0xD72}));
+        auto draw = [&]() { int r = (int)pr.next(100); return r < 60 ? 0 : r < 90 ? 1 : r < 98 ? 2 : 3; };
+        int total = (int)f.rooms.size() * SP.creatures_per_room_x10 / 10;
+        int budget = total * (SP.break_packs ? 50 : SP.spawned_share_pct) / 100;
+        std::vector<std::pair<std::string, int>> sites; // (source, room)
+        for (auto& d : L.dens) sites.push_back({"den", d.room});
+        for (auto& p : L.patrols) sites.push_back({"patrol", p.room_a});
+        for (auto& [src, room] : sites) {
+            if (budget < 2) break;
+            Group g;
+            g.spawned = true; g.source = src; g.room = room;
+            if (SP.break_packs) {
+                int n = 2 + (int)pr.next(7);
+                for (int k = 0; k < n; ++k) g.tiers.push_back((int)pr.next(4));
+            } else {
+                // one draw decides the pack's kind: an elite-led pack (2-4, 1-2 elites, the rest
+                // fodder or regular) 15 percent; a fodder swarm (4-6, fodder, at most one regular)
+                // 35 percent; a small mixed pack (2-3, fodder and regular) the rest
+                int kind = (int)pr.next(100);
+                if (kind < 15) {
+                    int n = 2 + (int)pr.next(SP.elite_pack_max - 1);
+                    int e = 1 + (int)pr.next(std::min(SP.elites_per_pack_max, n - 1));
+                    for (int k = 0; k < e; ++k) g.tiers.push_back(pr.next(10) == 0 ? 3 : 2);
+                    while ((int)g.tiers.size() < n) g.tiers.push_back((int)pr.next(2));
+                } else if (kind < 50) {
+                    int n = 4 + (int)pr.next(3);
+                    for (int k = 0; k < n; ++k) g.tiers.push_back(0);
+                    if (pr.next(2)) g.tiers.back() = 1;
+                } else {
+                    int n = 2 + (int)pr.next(2);
+                    for (int k = 0; k < n; ++k) g.tiers.push_back((int)pr.next(2));
+                }
+            }
+            if ((int)g.tiers.size() > budget) g.tiers.resize(budget);
+            budget -= (int)g.tiers.size();
+            L.spawned_creatures += (int)g.tiers.size();
+            L.groups.push_back(std::move(g));
+        }
+        int left = total - L.spawned_creatures;
+        std::vector<int> order;
+        for (auto& ro : f.rooms) if (m.nodes[ro.node].kind == Kind::Room) order.push_back(ro.node);
+        for (size_t k = order.size(); k > 1; --k) std::swap(order[k - 1], order[pr.next(k)]);
+        for (size_t k = 0; left > 0 && !order.empty(); ++k) {
+            Group g;
+            g.room = order[k % order.size()];
+            g.source = "room";
+            int n = std::min(left, 1 + (int)pr.next(SP.emergent_group_max));
+            int elites = 0;
+            for (int j = 0; j < n; ++j) {
+                int t = draw();
+                if (t >= 2 && elites >= SP.elites_per_pack_max && !SP.break_packs) t = 0; // D72: 1-2 elites in any group
+                elites += t >= 2;
+                g.tiers.push_back(t);
+            }
+            left -= n;
+            L.groups.push_back(std::move(g));
+        }
+        L.creatures = total;
+    }
 }
 } // namespace
 
@@ -456,6 +521,22 @@ SiteVerdict site_critic(const Site& s, const SiteParams& SP) {
         for (auto& w : L.writings) if (w.kind.empty()) { fail(n + "a writing without a text kind"); break; }
     }
     if (factions.size() != 4) fail("factions on the floors: " + std::to_string(factions.size()));
+    // D72 pack rules on every level (floors and caves)
+    for (const Level& L : s.levels) {
+        const std::string n = L.name + ": ";
+        int counted = 0;
+        for (const Group& g : L.groups) {
+            int elites = 0, fodder = 0, size = (int)g.tiers.size();
+            for (int t : g.tiers) { elites += t >= 2; fodder += t == 0; }
+            counted += size;
+            if (elites > 0 && size > SP.elite_pack_max) { fail(n + "elite pack of " + std::to_string(size)); break; }
+            if (elites > SP.elites_per_pack_max) { fail(n + std::to_string(elites) + " elites in one pack"); break; }
+            if (size >= SP.large_pack && (elites > 0 || fodder * 4 < size * 3)) { fail(n + "large pack not mostly fodder (" + std::to_string(fodder) + "/" + std::to_string(size) + ")"); break; }
+            if (!g.spawned && size > SP.emergent_group_max) { fail(n + "emergent group of " + std::to_string(size)); break; }
+        }
+        if (L.creatures && L.spawned_creatures * 100 > L.creatures * SP.spawned_share_pct) fail(n + "spawned share " + std::to_string(L.spawned_creatures) + "/" + std::to_string(L.creatures));
+        if (counted != L.creatures) fail(n + "creature count " + std::to_string(counted) + " != " + std::to_string(L.creatures));
+    }
     {
         const Level& C = s.levels[4];
         if (!C.r.verdict.pass()) fail("caves: hard gate " + C.r.verdict.why);

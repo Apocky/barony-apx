@@ -107,6 +107,7 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
                      const DressLib& lib, const Params& P, const SiteParams& SP) {
     long long pass = 0, nondet = 0;
     std::map<std::string, long long> why;
+    int pk_elite_max = 0, pk_elites_max = 0, pk_large_fodder_min = 100, pk_max = 0, emergent_max = 0; double share_max = 0, share_sum = 0; long long share_n = 0, packs = 0, elite_packs = 0;
     double wr_max = 0, cand_sum = 0, alive_min = 1e9, lit_min = 1e9, wr_min = 1e9, ms_sum = 0, ms_max = 0;
     long long dens = 0, patrols = 0, writings = 0, floors = 0;
     for (long long s = first; s < first + n; ++s) {
@@ -134,6 +135,17 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
                     cand_sum += L.readable_candidates;
                     dens += L.dens.size(); patrols += L.patrols.size(); writings += L.writings.size();
                 }
+                for (auto& g : L.groups) {
+                    int e = 0, fo = 0, sz = (int)g.tiers.size();
+                    for (int t : g.tiers) { e += t >= 2; fo += t == 0; }
+                    if (g.spawned) {
+                        ++packs; elite_packs += e > 0;
+                        pk_max = std::max(pk_max, sz);
+                        if (e) { pk_elite_max = std::max(pk_elite_max, sz); pk_elites_max = std::max(pk_elites_max, e); }
+                        if (sz >= SP.large_pack) pk_large_fodder_min = std::min(pk_large_fodder_min, 100 * fo / sz);
+                    } else emergent_max = std::max(emergent_max, sz);
+                }
+                if (L.creatures) { double sh = 100.0 * L.spawned_creatures / L.creatures; share_max = std::max(share_max, sh); share_sum += sh; ++share_n; }
                 char buf[400];
                 std::snprintf(buf, sizeof buf, "%s{\"level\":\"%s\",\"theme\":\"%s\",\"faction\":\"%s\",\"rooms\":%d,\"dens\":%zu,\"patrols\":%zu,\"alive_pct\":%.1f,\"lit_pct\":%.1f,\"writings\":%zu,\"readable_candidates\":%d,\"loops\":%d,\"vent\":%d,\"attempt\":%d}",
                               i ? "," : "", L.name.c_str(), L.r.floor.theme.c_str(), L.faction.c_str(), L.rooms, L.dens.size(), L.patrols.size(),
@@ -171,8 +183,9 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
     for (auto& [k, c] : why) ws += (ws.empty() ? "\"" : ",\"") + esc(k) + "\":" + std::to_string(c);
     bool gate = pass == n && nondet == 0;
     std::printf("{\"site_summary\":true,\"thin\":%s,\"sites\":%lld,\"pass\":%lld,\"nondeterministic\":%lld,\"alive_min_pct\":%.1f,\"lit_min_pct\":%.1f,\"writings_min\":%.0f,\"writings_max\":%.0f,\"readable_candidates_per_floor\":%.1f,"
-                "\"dens_per_floor\":%.2f,\"patrols_per_floor\":%.2f,\"writings_per_floor\":%.2f,\"ms_mean\":%.1f,\"ms_max\":%.1f,\"fail_kinds\":{%s},\"gate\":\"%s\"}\n",
+                "\"packs\":%lld,\"elite_packs\":%lld,\"pack_max\":%d,\"elite_pack_size_max\":%d,\"elites_per_pack_max\":%d,\"large_pack_fodder_min_pct\":%d,\"emergent_group_max\":%d,\"spawned_share_max_pct\":%.1f,\"spawned_share_mean_pct\":%.1f,\"break_packs\":%s,\"dens_per_floor\":%.2f,\"patrols_per_floor\":%.2f,\"writings_per_floor\":%.2f,\"ms_mean\":%.1f,\"ms_max\":%.1f,\"fail_kinds\":{%s},\"gate\":\"%s\"}\n",
                 SP.thin ? "true" : "false", n, pass, nondet, alive_min > 1e8 ? 0 : alive_min, lit_min > 1e8 ? 0 : lit_min, wr_min > 1e8 ? 0 : wr_min, wr_max, floors ? cand_sum / floors : 0,
+                packs, elite_packs, pk_max, pk_elite_max, pk_elites_max, pk_large_fodder_min, emergent_max, share_max, share_n ? share_sum / share_n : 0, SP.break_packs ? "true" : "false",
                 floors ? (double)dens / floors : 0, floors ? (double)patrols / floors : 0, floors ? (double)writings / floors : 0, ms_sum / std::max(1LL, n), ms_max,
                 ws.c_str(), gate ? "PASS" : "FAIL");
     return gate ? 0 : 1;
@@ -210,6 +223,7 @@ int main(int argc, char** argv) {
         else if (a == "--site-dump") site_dump = nxt();
         else if (a == "--thin") SP.thin = true;
         else if (a == "--all-legible") SP.all_legible = true;
+        else if (a == "--break-packs") SP.break_packs = true;
         else if (a == "--no-adaptive-leaf") P.adaptive_leaf = false;
         else if (a == "--no-room-cap") P.cap_rooms_to_cells = false;
         else if (a == "--min-size") P.min_size = std::stoi(nxt());

@@ -45,3 +45,7 @@ set_tests_properties(h1a_control_all_legible PROPERTIES WILL_FAIL TRUE)
 add_test(NAME size80_gate COMMAND apxgen_cli --seeds 300 --quiet --size 80 --max-retried 90)
 add_test(NAME size80_control_no_room_cap COMMAND apxgen_cli --seeds 300 --quiet --no-dress --size 80 --no-room-cap)
 set_tests_properties(size80_control_no_room_cap PROPERTIES WILL_FAIL TRUE)
+# D72 group composition: packs with an elite at most 4 and 1-2 elites, large packs mostly fodder,
+# spawned share at most 20 percent; the control breaks them and must fail
+add_test(NAME d72_control_break_packs COMMAND apxgen_cli --site 20 --quiet --break-packs)
+set_tests_properties(d72_control_break_packs PROPERTIES WILL_FAIL TRUE)

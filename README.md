@@ -311,6 +311,35 @@ Not done / not checked (H1a):
 - Spec rows not built here: Vertical (30 percent with a second level, pit, shaft or balcony),
   interactive materials, the director's three-candidate pick, decay stages, crafting depth.
 
+## D72 -- group composition (spec 04 section 2.1)
+
+Measured 2026-10-19 06:25-06:28 -0700. Every level of a site gets 2.0 creatures per plain room
+(bosses apart). SPAWNED packs go to dens, then patrol starts, while the floor's spawned budget lasts
+(20 percent of its creatures). A pack is an elite-led pack (2-4 members, 1-2 elites or champions,
+the rest fodder or regular; 15 percent of draws), a fodder swarm (4-6, fodder, at most one
+regular; 35 percent) or a small mixed pack (2-3, fodder and regular). The rest are EMERGENT: groups
+of 1-3 in plain rooms, tiers drawn from spec 04 section 2's shares (fodder 60, regular 30, elite 8,
+champion 2 percent), at most 2 elites in a group. Every count here is ASSUMED.
+
+Gates per level (`site_critic`): a group with an elite has at most 4 members and 1-2 elites; a
+group of 5 or more has no elite and at least 75 percent fodder; emergent groups at most 3; the
+spawned share at most 20 percent; every creature is counted once.
+
+| measure, sites 1-1000 (5000 levels) | value |
+|---|---|
+| sites passing every gate | 1000 / 1000 |
+| spawned packs / with an elite | 18,894 / 2,853 |
+| largest pack / largest pack with an elite | 6 / 4 |
+| most elites in a pack | 2 |
+| fodder share in large packs (5 or more), minimum | 80 percent |
+| largest emergent group | 3 |
+| spawned share per level, max / mean | 20.0 / 18.8 percent |
+
+Control `--break-packs` (packs of 2-8 of any tiers, half the floor spawned): 0 / 100 sites pass
+(largest elite pack 8, 8 elites in a pack, large-pack fodder minimum 0 percent, spawned share 50
+percent); ctest d72_control_break_packs (WILL_FAIL). Not done: creatures are counts per group and
+room, not placed entities; the emergent convergence itself is AI work (spec 03).
+
 ## Small floor sizes (F2-integration report)
 
 MEASURED 2026-10-19, seeds 3001-3050, `--size N`: every failure below 128 was "N BSP cells for N

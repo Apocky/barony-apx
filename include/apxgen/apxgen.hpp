@@ -234,6 +234,10 @@ struct SiteLink { std::string kind; int from = 0, to = 0, fx = 0, fz = 0, tx = 0
 struct Den { int room = -1, x = 0, z = 0; };
 struct Patrol { int room_a = -1, room_b = -1; std::vector<int> tiles; };
 struct Writing { int room = -1, x = 0, z = 0; std::string id, kind; uint64_t text = 0; };
+// D72 (spec 04 section 2.1): creatures by tier, in SPAWNED packs (placed as a pack at a den or on a
+// patrol, a budgeted share of the floor) or EMERGENT groups (individuals and small groups placed in
+// rooms, which may converge later through AI). Tiers 0 fodder, 1 regular, 2 elite, 3 champion.
+struct Group { bool spawned = false; std::string source; int room = -1; std::vector<int> tiers; };
 struct Level {
     std::string name, faction;
     Result r;
@@ -242,9 +246,19 @@ struct Level {
     std::vector<Writing> writings;
     std::vector<char> room_alive, room_lit;  // per room row
     int alive = 0, lit = 0, rooms = 0, readable_candidates = 0;
+    std::vector<Group> groups;
+    int creatures = 0, spawned_creatures = 0;
 };
 struct SiteParams {
     bool thin = false;         // the control: 1 den, no patrols, no wall dressing -> must fail
+    // D72 population (ASSUMED values, spec 04 sections 2 and 2.1)
+    int creatures_per_room_x10 = 20;   // a floor holds 2.0 creatures per room (bosses apart)
+    int spawned_share_pct = 20;        // spawned packs take at most this share of a floor's creatures
+    int elite_pack_max = 4;            // a pack with an elite or champion has at most 4 members
+    int elites_per_pack_max = 2;       // and 1-2 of them
+    int large_pack = 5;                // a pack of 5 or more is "large": fodder at least 75 percent, no elite
+    int emergent_group_max = 3;        // individuals and small groups
+    bool break_packs = false;          // the control: packs 2-8 of any tiers, half the floor spawned
     int writings_lo = 12, writings_hi = 16; // texts given per floor (seeded in the band)
     int gate_writings_lo = 10, gate_writings_hi = 20; // the Readable gate band
     bool all_legible = false;  // the control: every readable candidate gets a text -> over the band
