@@ -86,19 +86,31 @@ end
 local function do_ambush(core, rng, cost, depth, pos)
   local pack = core.build_pack(cost, rng, depth)
   local centre = pos[1 + rng:int(#pos)]
+  local rmin, rmax = 14, 22
+  if D.ambush_radius then rmin, rmax = D.ambush_radius[1], D.ambush_radius[2] end   -- test hook only
   local spawned, dists, visible = {}, {}, 0
   local ax, ay
-  for try = 1, 6 do
+  -- Line of sight is checked BEFORE a body exists: the point must be hidden from every player by a wall
+  -- (apx.tile_los marches the tile grid). Up to 12 candidate points; none hidden -> the event declines (counted).
+  for try = 1, 12 do
     local ang = rng:float() * 2 * math.pi
-    local r = 14 + rng:float() * 8
-    ax, ay = centre[1] + math.cos(ang) * r, centre[2] + math.sin(ang) * r
-    local u = pack[1] and apx.spawn(pack[1], ax, ay)
-    if u then
-      spawned[1] = u
-      break
-    else D.declines.event_blocked_no_tile = D.declines.event_blocked_no_tile + (try == 6 and 1 or 0) end
+    local r = rmin + rng:float() * (rmax - rmin)
+    local cx, cy = centre[1] + math.cos(ang) * r, centre[2] + math.sin(ang) * r
+    local hidden = true
+    if not D.no_los_check then
+      for _, p in ipairs(pos) do if apx.tile_los(p[1], p[2], cx, cy) ~= false then hidden = false; break end end
+    end
+    if not hidden then
+      D.declines.ambush_candidate_visible = (D.declines.ambush_candidate_visible or 0) + 1
+    else
+      local u = pack[1] and apx.spawn(pack[1], cx, cy)
+      if u then spawned[1] = u; ax, ay = cx, cy; break end
+    end
   end
-  if #spawned == 0 then return { kind = "ambush", spawned = 0, pack = pack } end
+  if #spawned == 0 then
+    D.declines.event_blocked_no_tile = D.declines.event_blocked_no_tile + 1
+    return { kind = "ambush", spawned = 0, pack = pack, visible = 0 }
+  end
   for i = 2, #pack do
     local u = apx.spawn(pack[i], ax + (rng:float() - 0.5) * 3, ay + (rng:float() - 0.5) * 3)
     if u then spawned[#spawned + 1] = u else D.declines.spawn_refused = D.declines.spawn_refused + 1 end

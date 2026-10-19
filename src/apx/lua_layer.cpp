@@ -231,6 +231,20 @@ int api_path_to(lua_State* L) {
 	if ( ok ) { m->monsterState = MONSTER_STATE_PATH; }
 	lua_pushboolean(L, ok); return 1;
 }
+// Line of sight between two map points (tile units) with no entity involved: marches the segment in quarter-tile steps and
+// stops at a wall (non-zero obstacle layer). Used to reject ambush spawn points BEFORE a body exists. true = clear.
+int api_tile_los(lua_State* L) {
+	lua_Number x1 = luaL_checknumber(L, 1), y1 = luaL_checknumber(L, 2), x2 = luaL_checknumber(L, 3), y2 = luaL_checknumber(L, 4);
+	if ( !map.tiles ) { lua_pushnil(L); return 1; }
+	double dx = x2 - x1, dy = y2 - y1, len = sqrt(dx * dx + dy * dy);
+	int steps = (int)(len * 4) + 1;
+	for ( int i = 1; i < steps; i++ ) {
+		double t = (double)i / steps, x = x1 + dx * t, y = y1 + dy * t;
+		if ( x < 0 || y < 0 || x >= (double)map.width || y >= (double)map.height ) { lua_pushboolean(L, 0); return 1; }
+		if ( map.tiles[OBSTACLELAYER + (int)y * MAPLAYERS + (int)x * MAPLAYERS * map.height] ) { lua_pushboolean(L, 0); return 1; }
+	}
+	lua_pushboolean(L, 1); return 1;
+}
 int api_monster_state(lua_State* L) {
 	Entity* m = entityByUid(luaL_checkinteger(L, 1));
 	if ( !m || m->behavior != &actMonster ) { lua_pushnil(L); return 1; }
@@ -394,7 +408,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };

@@ -42,7 +42,7 @@ poll = apx.every(10, function()
       local lo, hi = 1e9, 0
       for _, d in ipairs(r.dists) do lo = math.min(lo, d); hi = math.max(hi, d); if d < 9 or d > 28 then ok = false end end
       check("pack spawned 9..28 tiles from the party (target 14..22, nearest free tile)", ok, string.format("%.1f..%.1f", lo, hi))
-      apx.log(string.format("ATEST info: ambush spawned in line of sight: %d of %d (measured, not prevented)", r.visible, r.spawned))
+      check("default ambush (14..22 tiles): none of the pack spawned in line of sight", r.visible == 0, string.format("%d of %d visible", r.visible, r.spawned))
       apx.after(200, function()
         local hunting = 0
         for _, u in ipairs(r.uids) do local st = apx.monster_state(u); if st and st ~= 0 then hunting = hunting + 1 end end
@@ -70,7 +70,26 @@ poll = apx.every(10, function()
               check("stubs are counted as declines, never silent", D.declines.event_unavailable > 0, tostring(D.declines.event_unavailable))
               local rows_ok = apx.stats().errors == 0
               check("no script errors in the whole acting run", rows_ok, "errors=" .. apx.stats().errors)
-              finish()
+              -- PHASE A2: line of sight. At 3..5 tiles almost no point is hidden: the check must decline or hide, never spawn in sight.
+              apx.set_stat(pu, "hp", apx.get_stat(pu, "maxhp"))
+              D.ambush_radius = { 3, 5 }; D.events_off = false; D.force = "ambush"
+              after_decisions(1, function()
+                D.events_off = true
+                local n = D.info.ambush
+                check("LOS check on, ambush at 3..5 tiles: nothing spawns in sight", n ~= nil and n.visible == 0,
+                  string.format("spawned %d, visible %d, candidates rejected %d", n and n.spawned or -1, n and n.visible or -1, D.declines.ambush_candidate_visible or 0))
+                check("rejected candidates are counted (never silent)", (D.declines.ambush_candidate_visible or 0) > 0, tostring(D.declines.ambush_candidate_visible))
+                apx.set_stat(pu, "hp", apx.get_stat(pu, "maxhp"))
+                D.no_los_check = true; D.events_off = false; D.force = "ambush"
+                after_decisions(1, function()
+                  D.events_off = true
+                  local c = D.info.ambush
+                  check("CONTROL: LOS check off at 3..5 tiles spawns in sight (the gate has teeth)", c ~= nil and c.visible > 0,
+                    string.format("spawned %d, visible %d", c and c.spawned or -1, c and c.visible or -1))
+                  D.no_los_check = false; D.ambush_radius = nil
+                  finish()
+                end)
+              end)
             end)
           end)
         end)
