@@ -17,9 +17,10 @@ namespace apx {
 
 // ---------------------------------------------------------------- minimal TOML (the subset the kits use)
 struct Val {
-    enum T { Str, Int, Bool, Arr, Tab } t = Tab;
+    enum T { Str, Int, Bool, Arr, Tab, Flt } t = Tab;
     std::string s;
     long long i = 0;
+    double f = 0;
     std::vector<Val> a;
     std::vector<std::pair<std::string, Val>> kv;
     const Val* get(const std::string& k) const {
@@ -107,10 +108,11 @@ struct TomlParser {
         if (c == '-' || c == '+' || std::isdigit((unsigned char)c)) {
             size_t b = p;
             ++p;
-            while (p < s.size() && (std::isdigit((unsigned char)s[p]) || s[p] == '_')) ++p;
+            while (p < s.size() && (std::isdigit((unsigned char)s[p]) || s[p] == '_' || s[p] == '.')) ++p;
             std::string n;
             for (size_t q = b; q < p; ++q) if (s[q] != '_') n += s[q];
-            v.t = Val::Int; v.i = std::stoll(n);
+            if (n.find('.') != std::string::npos) { v.t = Val::Flt; v.f = std::stod(n); v.i = (long long)v.f; return true; }
+            v.t = Val::Int; v.i = std::stoll(n); v.f = (double)v.i;
             return true;
         }
         return fail("bad value");
@@ -195,6 +197,51 @@ static bool num(const Val* v, const std::map<std::string, long long>& vars, long
 // ---------------------------------------------------------------- loading
 static std::vector<std::unique_ptr<Val>> g_docs; // owned parsed programs
 
+bool parse_toml(const std::string& src, Val*& out, std::string& err) {
+    auto doc = std::make_unique<Val>();
+    TomlParser tp(src);
+    if (!tp.doc(*doc)) { err = tp.err; return false; }
+    out = doc.get();
+    g_docs.push_back(std::move(doc));
+    return true;
+}
+bool parse_toml_file(const std::string& path, Val*& out, std::string& err) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) { err = "cannot open " + path; return false; }
+    std::stringstream ss;
+    ss << in.rdbuf();
+    if (!parse_toml(ss.str(), out, err)) { err = path + ": " + err; return false; }
+    return true;
+}
+const Val* toml_get(const Val* v, const std::string& k) { return v ? v->get(k) : nullptr; }
+std::string toml_str(const Val* v, const std::string& k, const std::string& dflt) {
+    const Val* x = toml_get(v, k);
+    return x && x->t == Val::Str ? x->s : dflt;
+}
+long long toml_int(const Val* v, const std::string& k, long long dflt) {
+    const Val* x = toml_get(v, k);
+    return x && (x->t == Val::Int || x->t == Val::Bool || x->t == Val::Flt) ? x->i : dflt;
+}
+double toml_num(const Val* v, const std::string& k, double dflt) {
+    const Val* x = toml_get(v, k);
+    return x && (x->t == Val::Int || x->t == Val::Flt) ? x->f : dflt;
+}
+std::vector<const Val*> toml_arr(const Val* v, const std::string& k) {
+    std::vector<const Val*> o;
+    const Val* x = k.empty() ? v : toml_get(v, k);
+    if (x && x->t == Val::Arr) for (auto& e : x->a) o.push_back(&e);
+    return o;
+}
+std::vector<std::string> toml_strs(const Val* v, const std::string& k) {
+    std::vector<std::string> o;
+    for (auto* e : toml_arr(v, k)) if (e->t == Val::Str) o.push_back(e->s);
+    return o;
+}
+const char* feat_name(uint8_t f) {
+    static const char* N[] = {"none", "water", "deep", "lava", "chasm", "sky", "bridge", "hazard"};
+    return f < 8 ? N[f] : "?";
+}
+
 bool load_programs(const std::vector<std::string>& dirs, std::vector<Program>& out, std::string& err) {
     namespace fs = std::filesystem;
     std::vector<fs::path> files;
@@ -221,6 +268,15 @@ bool load_programs(const std::vector<std::string>& dirs, std::vector<Program>& o
         p.path = f.string();
         for (int k = 0; k < 3; ++k) { p.min[k] = (int)mn->a[k].i; p.max[k] = (int)mx->a[k].i; }
         if (auto t = meta->get("tags")) for (auto& x : t->a) p.tags.push_back(x.s);
+        static const char* THEMES[] = {"crypt", "mine", "sewer", "temple", "fortress", "cave"};
+        p.theme = toml_str(meta, "theme", "");
+        if (p.theme.empty()) {
+            p.theme = "any";
+            for (auto& t : p.tags) for (auto* th : THEMES) if (t == th) p.theme = th;
+        }
+        p.district = toml_str(meta, "district");
+        p.special = toml_str(meta, "special");
+        p.function = toml_str(meta, "function");
         Val* ops = doc->getm("op");
         if (!ops || ops->t != Val::Arr || ops->a.empty()) { err = f.string() + ": no [[op]] rows"; return false; }
         p.ops = ops;
@@ -401,7 +457,12 @@ bool run_ops(Ctx& c, const Val& ops, std::map<std::string, long long>& vars) {
 }
 } // namespace
 
-std::string run_program(const Program& p, int w, int h, int d, uint64_t seed, std::vector<uint8_t>& floor, int* ops_run) {
+bool toml_expr(const Val* v, const std::vector<std::pair<std::string, long long>>& vars, long long& out) {
+    std::map<std::string, long long> m(vars.begin(), vars.end());
+    return num(v, m, out);
+}
+
+std::string run_program(const Program& p, int w, int h, int d, uint64_t seed, std::vector<uint8_t>& floor, int* ops_run, std::vector<uint8_t>* feat) {
     Ctx c{w, d, h, seed, {}, {}, false, 0, ""};
     std::map<std::string, long long> vars{{"w", w}, {"h", h}, {"d", d}, {"i", 0}};
     if (!run_ops(c, *p.ops, vars)) return p.id + ": " + c.err;
@@ -415,6 +476,24 @@ std::string run_program(const Program& p, int w, int h, int d, uint64_t seed, st
             floor[i] = c.assigned ? !c.solid[i] : (*fl)[i];
             n += floor[i];
         }
+    if (feat) {
+        feat->assign((size_t)w * d, F_NONE);
+        struct FM { const char* name; uint8_t f; };
+        // order matters: floor tags, then blockers out of the floor, then bridges back in
+        static const FM ORDER[] = {{"hazard", F_HAZARD}, {"water", F_WATER}, {"sky", F_SKY}, {"deep", F_DEEP}, {"lava", F_LAVA}, {"chasm", F_CHASM}, {"bridge", F_BRIDGE}};
+        for (auto& fm : ORDER) {
+            if (!c.m.count(fm.name)) continue;
+            const Mask& mk = c.m[fm.name];
+            for (int z = 1; z < d - 1; ++z)
+                for (int x = 1; x < w - 1; ++x) {
+                    size_t i = (size_t)z * w + x;
+                    if (!mk[i]) continue;
+                    if (feat_blocks(fm.f)) { if (floor[i]) --n; floor[i] = 0; (*feat)[i] = fm.f; }
+                    else if (fm.f == F_BRIDGE) { if (feat_blocks((*feat)[i])) { ++n; floor[i] = 1; (*feat)[i] = F_BRIDGE; } }
+                    else if (floor[i]) (*feat)[i] = fm.f;
+                }
+        }
+    }
     if (n == 0) return p.id + ": no floor tile at " + std::to_string(w) + "x" + std::to_string(d);
     return "";
 }

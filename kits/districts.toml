@@ -1,0 +1,28 @@
+# kits/districts.toml (apx-gen F3): the macro structure grammar. A floor has a theme; each lock
+# region of the floor is one district; region 0 takes the first district (the approach), deeper
+# regions a seeded pick. Room programs declare meta.theme and meta.district; LAYOUT prefers a
+# program of the region's district, then of the theme, then any that fits.
+
+[[theme]]
+id = "crypt"
+districts = ["catacomb", "tomb"]
+
+[[theme]]
+id = "mine"
+districts = ["gallery", "deepworks"]
+
+[[theme]]
+id = "sewer"
+districts = ["channels", "cisterns"]
+
+[[theme]]
+id = "temple"
+districts = ["cloister", "sanctum"]
+
+[[theme]]
+id = "fortress"
+districts = ["bailey", "keep"]
+
+[[theme]]
+id = "cave"
+districts = ["caverns", "rift"]

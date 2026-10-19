@@ -11,6 +11,31 @@
 
 namespace apx {
 
+const char* const THEMES[6] = {"crypt", "mine", "sewer", "temple", "fortress", "cave"};
+
+bool load_districts(const std::string& path, Params& P, std::string& err) {
+    Val* doc = nullptr;
+    if (!parse_toml_file(path, doc, err)) return false;
+    for (auto* t : toml_arr(doc, "theme")) {
+        std::string id = toml_str(t, "id");
+        auto ds = toml_strs(t, "districts");
+        if (id.empty() || ds.empty()) { err = path + ": [[theme]] needs id and districts"; return false; }
+        P.districts.push_back({id, ds});
+    }
+    return true;
+}
+
+static const char* special_of(Kind k) {
+    switch (k) {
+        case Kind::Haven: return "haven";
+        case Kind::Boss: return "boss";
+        case Kind::Treasure: return "vault";
+        case Kind::Nexus: return "nexus";
+        case Kind::Stronghold: return "stronghold";
+        default: return "";
+    }
+}
+
 namespace {
 using Rect = std::array<int, 4>; // x0 z0 x1 z1, half-open
 
@@ -200,29 +225,52 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     }
     for (int v = 0; v < N; ++v) if (cell_of[v] < 0) return "mission node " + m.nodes[v].name + " not connected";
 
-    // rooms: a program whose fits accepts the cell (bosses take the largest), sized inside the cell
-    std::vector<std::vector<uint8_t>> room_floor(N);
+    // theme of the floor (by seed, not by attempt) and a district per lock region from the
+    // structure grammar (kits/districts.toml): region 0 is the approach, deeper regions the buildings
+    f.theme = P.theme.empty() ? THEMES[hash_words({seed, 0x7E3E}) % 6] : P.theme;
+    {
+        const std::vector<std::string>* ds = nullptr;
+        for (auto& t : P.districts) if (t.first == f.theme) ds = &t.second;
+        for (int k = 0; k < nreg; ++k)
+            f.region_district.push_back(ds ? (*ds)[(k == 0 ? 0 : hash_words({seed, 0xD157, (uint64_t)k}) % ds->size())] : std::string());
+    }
+    // rooms: a special program for a special node (HAVEN, BOSS, VAULT, NEXUS, STRONGHOLD) when one
+    // fits; else a program of the floor's theme and the region's district, else of the theme, else
+    // any that fits (bosses take the largest); sized inside the cell
+    std::vector<std::vector<uint8_t>> room_floor(N), room_feat(N);
     for (int node = 0; node < N; ++node) {
         Rect cell = cells[cell_of[node]];
         int cw = cell[2] - cell[0] - 4, cd = cell[3] - cell[1] - 4;
-        std::vector<const Program*> fits;
-        for (auto& p : progs) if (p.min[0] <= cw && p.min[2] <= cd) fits.push_back(&p);
-        if (fits.empty()) return "no program fits cell " + std::to_string(cw) + "x" + std::to_string(cd);
-        const Program* p = fits[0];
+        const std::string sp = special_of(m.nodes[node].kind);
+        const std::string& dist = f.region_district[f.reg[node]];
+        std::vector<const Program*> fits, special, themed, district;
+        for (auto& p : progs) {
+            if (p.min[0] > cw || p.min[2] > cd) continue;
+            if (!p.special.empty()) { if (p.special == sp) special.push_back(&p); continue; }
+            fits.push_back(&p);
+            if (p.theme == f.theme) { themed.push_back(&p); if (!dist.empty() && p.district == dist) district.push_back(&p); }
+        }
+        if (fits.empty() && special.empty()) return "no program fits cell " + std::to_string(cw) + "x" + std::to_string(cd);
+        const std::vector<const Program*>& pool = !special.empty() ? special : !district.empty() ? district : !themed.empty() ? themed : fits;
+        f.special_rooms += !special.empty();
+        f.district_rooms += special.empty() && !district.empty();
+        f.themed_rooms += special.empty() && !themed.empty();
+        const Program* p = pool[0];
         if (m.nodes[node].kind == Kind::Boss) {
-            for (auto* q2 : fits) if (q2->max[0] * q2->max[2] > p->max[0] * p->max[2]) p = q2;
-        } else p = fits[r.next(fits.size())];
+            for (auto* q2 : pool) if (q2->max[0] * q2->max[2] > p->max[0] * p->max[2]) p = q2;
+        } else p = pool[r.next(pool.size())];
         int w = std::max(p->min[0], std::min(cw, p->max[0]));
         int d = std::max(p->min[2], std::min(cd, p->max[2]));
         int h = std::max(p->min[1], std::min(p->max[1], 6));
         int x0 = cell[0] + 2 + (cw - w) / 2, z0 = cell[1] + 2 + (cd - d) / 2;
-        RoomRow row{node, p->id, x0, z0, x0 + w, z0 + d, 0, 0};
-        std::string e = run_program(*p, w, h, d, hash_words({seed, 0xC4A7, (uint64_t)node}), room_floor[node]);
+        RoomRow row{node, p->id, x0, z0, x0 + w, z0 + d, 0, 0, dist};
+        std::string e = run_program(*p, w, h, d, hash_words({seed, 0xC4A7, (uint64_t)node}), room_floor[node], nullptr, &room_feat[node]);
         if (!e.empty()) {
             // a program that cannot run at this size: a plain box, counted and named in the log
             ++f.program_fallbacks;
             row.program = p->id + "!fallback";
             room_floor[node].assign((size_t)w * d, 0);
+            room_feat[node].assign((size_t)w * d, F_NONE);
             for (int z = 1; z < d - 1; ++z) for (int x = 1; x < w - 1; ++x) room_floor[node][(size_t)z * w + x] = 1;
         }
         // door: the floor tile nearest the box centre
@@ -328,6 +376,7 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     f.tile.assign((size_t)S * S, ROCK);
     f.owner.assign((size_t)S * S, -1);
     f.behind.assign((size_t)S * S, 0);
+    f.feat.assign((size_t)S * S, F_NONE);
     for (auto& ro : f.rooms) {
         int w = ro.x1 - ro.x0;
         for (int z = ro.z0; z < ro.z1; ++z)
@@ -335,12 +384,14 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                 size_t t = f.idx(x, z);
                 f.owner[t] = (int16_t)ro.node;
                 f.behind[t] = behind[ro.node];
-                if (room_floor[ro.node][(size_t)(z - ro.z0) * w + (x - ro.x0)]) f.tile[t] = FLOOR;
+                size_t li = (size_t)(z - ro.z0) * w + (x - ro.x0);
+                if (room_floor[ro.node][li]) f.tile[t] = FLOOR;
+                f.feat[t] = room_feat[ro.node][li];
             }
     }
     for (int t = 0; t < S * S; ++t)
         if (D.occ[t] != FREE && D.occ[t] != ROOMBOX) { f.tile[t] = FLOOR; f.behind[t] = D.cmask[t]; }
-    for (int t : D.carve_in_box) f.tile[t] = FLOOR;
+    for (int t : D.carve_in_box) { f.tile[t] = FLOOR; if (feat_blocks(f.feat[t])) f.feat[t] = F_BRIDGE; }
     // program islands: a room's floor pieces not joined to its door piece get a path inside the box
     for (auto& ro : f.rooms) {
         for (int guard = 0; guard < 64; ++guard) {
@@ -383,7 +434,7 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                 }
             }
             if (hit < 0) return "room " + std::to_string(ro.node) + " island cannot join its door";
-            for (int c = hit; c >= 0; c = prev[c]) f.tile[c] = FLOOR;
+            for (int c = hit; c >= 0; c = prev[c]) { f.tile[c] = FLOOR; if (feat_blocks(f.feat[c])) f.feat[c] = F_BRIDGE; }
             ++f.island_repairs;
         }
     }
@@ -392,6 +443,7 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         for (int x = 0; x < S; ++x) {
             size_t t = f.idx(x, z);
             if (x == 0 || z == 0 || x == S - 1 || z == S - 1) { f.tile[t] = HARD; continue; }
+            if (f.tile[t] == ROCK && feat_blocks(f.feat[t])) { f.tile[t] = HARD; continue; } // a chasm, lava or deep water is not dug
             if (!P.hard_walls || f.tile[t] != ROCK) continue;
             for (int dz = -1; dz <= 1; ++dz)
                 for (int dx = -1; dx <= 1; ++dx) {
@@ -420,6 +472,7 @@ uint64_t floor_hash(const Floor& f) {
     auto str = [&](const std::string& s) { word(s.size()); for (char c : s) byte((uint8_t)c); };
     word((uint64_t)f.W); word((uint64_t)f.H);
     for (uint8_t t : f.tile) byte(t);
+    for (uint8_t t : f.feat) byte(t);
     auto ents = f.entities;
     std::sort(ents.begin(), ents.end(), [](const EntityRow& a, const EntityRow& b) { return std::tie(a.kind, a.id, a.x, a.z) < std::tie(b.kind, b.id, b.x, b.z); });
     for (auto& e : ents) { str(e.kind); word((uint64_t)e.id); word((uint64_t)e.x); word((uint64_t)e.z); }

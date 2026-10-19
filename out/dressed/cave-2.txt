@@ -1,0 +1,1378 @@
+seed 2 ok 1 theme cave hash 61f8e6e1423d75f0 dress_hash 6414e26d15968ca7 why 
+summary rooms 26 items 1050 fixtures 56 wall_items 777 density_per_10m2 7.10419 clone_groups 0 clone_wall_groups 0 neg_space_rooms 44.0678 neg_space_halls 57.9614 filled 26/26 three_kinds 26/26
+legend floor . | behind-lock 1-9 | HARD # | water ~ deep = lava ^ chasm : sky " bridge + hazard ! (floor tag) | stairs < > key k lock L boss @ chest $ secret ? merchant m plaque p seat f
+legend fixtures table T bench b shelf S barrel o crate c brazier * altar A bed B rack R pillar I statue & rubble % | floor prop , | wall items counted, not drawn
+################################################################################################################################
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                               ########           ##########  #
+#                                                                                               #,2,%22#           #33##3333#  #
+#                                                                                              ##2,,22,##          #33333,,3#  #
+#                                                                                              #2222,$,2###        #333,@,,,#  #
+#                                                                                              #22,2,22,22#        #3#33,333#  #
+#                                                                                              #22#2222222#        #,##33333#  #
+#                                                                                              #2##########        #####333##  #
+#                                                                                              #2#                     #333#   #
+#                                                                                              #2#                     #333#####
+#                                                                                              #2#                     #3333333#
+#                                                                                              #2#                     #333###3#
+#                                                                                              #2#                    ##333###3#
+#                                                                                            ###2##     #########     #33333##3#
+#                        .......                                            ############     #2222#     #22::,,2#######3,333##3#
+#                        ............                                       #,111111111#     #%22##     #%2++2,222222233,,,3##3#
+#                        .....,......                                       #,11111,111#     #%222#######%2++2,,222222333L,,##3#
+#                        %%.....~~~..,        ,........                     #,1111,1111#     #2,,2222222222++2,,222222333%,,##3#
+#                         .....k~=~..,        ., .... .                     #1111111111#     #,,f2222222222++2,########3#333##3#
+#                         . ...~==~..,        ..,..,,..                     #^^^^++^^^^#     #,,,2222222222++2##      ########3#
+#                         . ,,.~~~~...        ....?%,..                     #11111?1111#     ##,22#####2#22::##         ######3#
+#                         , .,.......         .... %,..                     ##%11111111#      #222#   #2####            #333333#
+#                         . ........,         .........                      #%11111111#      #222#   #2#               #3######
+#                         .                        .                         #,11111111#      #222#   #2#               #3#    #
+#    .,,........          .                        .                         #111111111#      #222#   #2#               #3#    #
+#    .,........,          .                        .                         #####1#####      #222#####2#               #3#    #
+#    ..~~~~~~~..          .                        .                             #1#          #222##2222#               #3#    #
+#    ..~=====~..          .                        .                             #1#          #222##2####             ###3###  #
+#    ..~=====~..          .                        .                             #1#          #222##2#                #33333#  #
+#    ..~==+~+~.......................,%...............                           #1#          #222##2#                #3333##  #
+#    ..~==~~~~.......................,,...............                           #1#          #222##2#                #333###  #
+#    ..~==+~+~.............,..........,................                          #1#         ##,22##2#                ##3%%3#  #
+#    ..~===~~~,,.       .,,..      ......       ..%....                         ##1###########2,,%##2#                #33>3,#  #
+#    ..~,~~~.....       .,,..............       . %.,..                      ####%+,,,11111112222%##2#                ##3,,,#  #
+#    ..,.........   .....,,........................,.,,                     ##,%1++,,,,111111222L%##2#                #,3,33#  #
+#    .,.....%%      ......,...........%..........,,...,     #################,111++1111111111222,2##2#                #,,3#3#  #
+#       ....%       ..  .%,,.    .... ,,,       ,,.....     #1111111111111111,,11++1111#######2,2,##2#                #3333,#  #
+#                   ..   ,,      ..... ,.          ...      #11111111111111111111++1111#     ###,2##2#                #######  #
+#                   ..           ...               ...      #11##############1111::11,1#       #,2##2#                         #
+#                   ..           ...               ...      #11#            #111########       #####2#                         #
+#                   ..           ...               ...      #11#            #111#                  #2#                         #
+#                   ..           ...               ...      #11#            #111#                  #2#                         #
+#                   ..           ...              #...#     #11#            #111#                  #2####                      #
+#                   ..           ...              #111#     #11########     #111#                  #2222#                      #
+#   ..%,..         ...           ...           ####111##### #11##111,1#     #111#                  ####2#                      #
+#   ....          &...        ,,....           #1111111111# #11####,11#     #111#                     #2#                      #
+#   ....          &...        ,.....%          #1111111111###11####%,1#######111#                     #2#                      #
+#     .............T*...............%        ##^^^^+++++++111111111%111111111111#                     #2#                      #
+#   .,,<,..........Tp...............%.       #11,111L11111111111111m111111111111##                  ###2###                    #
+#   .,,,,...........*.................       #1,,111,,,1,1111111111%1111111111111#                  #22222#                    #
+#   . ,..,.       b..,      . .....,..       #,11111111,#####11##11,#1######11111#                  #22222#                    #
+#      ....        ..       .                ############   #11##111###    #,11,1#                  #2,,22#                    #
+#                           .                               #11######      #11111#                  #2222##                    #
+#                           .                               #11#           #11111#                  #2,k22#                    #
+#                           .                               #11#           #,1111#                  #22,22#                    #
+#                           .                               #11#           #1,111#                  #2#,22#                    #
+#                           .                               #11#           #,,111#                  #22222#                    #
+#                           .                             ###11####        #,,111#                  #22222#                    #
+#                           .                             #11111,,#        #######                  #######                    #
+#                           .                           ###111111,#                                                            #
+#                       ,,,o,S                          #111,1111,#                                                            #
+#                       .o,c,c                          #1,11111#1#                                                            #
+#                       ,, ,,c                          #11%%11##1#                                                            #
+#                       c.  .o                          #####11####                                                            #
+#                       ..  .c                              #11#                                                               #
+#                       ..  ,c                              #11#                                                               #
+#                       .,  $.                              #11#                                                               #
+#                       .S  ..                              #11#                                                               #
+#                       ,.  ..                              #11#                                                               #
+#                       ..  ..                              #11#                                                               #
+#                       ......                       ########11####                                                            #
+#                       ......                       #111111111111#                                                            #
+#                                                    #111111111111#                                                            #
+#                                                    #^^^^^^+++^^^#                                                            #
+#                                                    #1,1111111111#                                                            #
+#                                                    #11,,,11111,1#                                                            #
+#                                                    #11,%1,,11111#                                                            #
+#                                                    ########1#####                                                            #
+#                                                           #1#                                                                #
+#                                                           #1#                                                                #
+#                                                           #1#                                                                #
+#                                                           #1#                                                                #
+#                                                           #1#                                                                #
+#                                                         ###1#####                                                            #
+#                                                       ###,111111#                                                            #
+#                                                       #1#1,,1,,1#                                                            #
+#                                                       #1111k%1,1#                                                            #
+#                                                       #11,,1%##1#                                                            #
+#                                                       #111,11##1#                                                            #
+#                                                       ###########                                                            #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+#                                                                                                                              #
+################################################################################################################################
+room 0 E entrance cave-pocket district caverns [3,45)-(12,55) door 7,50
+room 1 N0 nexus special-nexus-stairhub district caverns [16,45)-(24,55) door 20,50
+room 2 H0 room cave-crystal-grotto district caverns [28,45)-(40,55) door 34,50
+room 3 J0 room cave-underground-lake district caverns [3,24)-(19,41) door 11,32
+room 4 Aa1 room cave-pocket district caverns [34,31)-(42,41) door 38,36
+room 5 Aa2 room cave-crystal-grotto district caverns [46,31)-(57,41) door 51,36
+room 6 Ab1 room cave-pocket district caverns [23,31)-(30,41) door 26,36
+room 7 L1 lock cave-lava-tube district rift [44,45)-(60,55) door 52,50
+room 8 H1 haven cave-pocket district rift [64,45)-(71,55) door 67,50
+room 9 J1 room cave-chasm-rift district rift [75,33)-(89,43) door 82,38
+room 10 Ba1 room cave-pocket district rift [75,50)-(82,61) door 78,55
+room 11 Bb1 room cave-pocket district rift [56,59)-(67,67) door 61,63
+room 12 Bb2 room cave-lava-tube district rift [52,71)-(71,81) door 61,76
+room 13 L2 lock cave-pocket district rift [93,31)-(99,42) door 96,36
+room 14 F2 stronghold cave-pocket district rift [93,15)-(99,26) door 96,20
+room 15 R2 room cave-chasm-rift district rift [103,14)-(114,27) door 108,20
+room 16 L3 lock cave-pocket district caverns [118,14)-(125,22) door 121,18
+room 17 B boss cave-pocket district caverns [115,3)-(125,10) door 120,6
+room 18 X exit cave-pocket district caverns [118,29)-(125,40) door 121,34
+room 19 K1 key cave-underground-lake district caverns [23,14)-(40,27) door 31,20
+room 20 K2 key cave-pocket district rift [56,85)-(67,92) door 61,88
+room 21 K3 key cave-pocket district rift [100,50)-(107,61) door 103,55
+room 22 T0 treasure special-vault-strongroom district caverns [22,60)-(32,76) door 28,68
+room 23 T1 treasure cave-pocket district rift [96,3)-(107,10) door 101,6
+room 24 S0 secret cave-crystal-grotto district caverns [44,17)-(57,27) door 50,22
+room 25 S1 secret cave-lava-tube district rift [75,15)-(89,29) door 82,22
+roomdress 0 cave hall 1 floor 46 items 47 density 10.2174 neg_space 58.6957 kinds 5 clone 0 wall 36/39 gmiss 0
+roomdress 1 nexus hall 1 floor 43 items 30 density 6.97674 neg_space 34.8837 kinds 4 clone 0 wall 21/26 gmiss 0
+roomdress 2 cave hall 1 floor 59 items 38 density 6.44068 neg_space 57.6271 kinds 3 clone 0 wall 31/35 gmiss 0
+roomdress 3 cave hall 1 floor 128 items 52 density 4.0625 neg_space 83.5938 kinds 4 clone 0 wall 40/51 gmiss 0
+roomdress 4 cave hall 1 floor 67 items 35 density 5.22388 neg_space 41.791 kinds 4 clone 0 wall 25/30 gmiss 0
+roomdress 5 cave hall 1 floor 69 items 44 density 6.37681 neg_space 52.1739 kinds 4 clone 0 wall 33/37 gmiss 0
+roomdress 6 cave hall 1 floor 53 items 36 density 6.79245 neg_space 24.5283 kinds 4 clone 0 wall 22/24 gmiss 0
+roomdress 7 cave hall 1 floor 73 items 39 density 5.34247 neg_space 69.863 kinds 5 clone 0 wall 30/36 gmiss 0
+roomdress 8 cave hall 1 floor 39 items 32 density 8.20513 neg_space 46.1538 kinds 4 clone 0 wall 25/30 gmiss 0
+roomdress 9 cave hall 1 floor 71 items 41 density 5.77465 neg_space 52.1127 kinds 6 clone 0 wall 27/37 gmiss 0
+roomdress 10 cave hall 1 floor 51 items 28 density 5.4902 neg_space 64.7059 kinds 4 clone 0 wall 20/25 gmiss 0
+roomdress 11 cave hall 1 floor 44 items 38 density 8.63636 neg_space 59.0909 kinds 4 clone 0 wall 30/34 gmiss 0
+roomdress 12 cave hall 1 floor 69 items 37 density 5.36232 neg_space 78.2609 kinds 5 clone 0 wall 28/39 gmiss 0
+roomdress 13 cave hall 1 floor 36 items 30 density 8.33333 neg_space 30.5556 kinds 4 clone 0 wall 19/24 gmiss 0
+roomdress 14 cave hall 1 floor 39 items 34 density 8.71795 neg_space 30.7692 kinds 5 clone 0 wall 24/27 gmiss 0
+roomdress 15 cave hall 1 floor 56 items 41 density 7.32143 neg_space 51.7857 kinds 5 clone 0 wall 31/34 gmiss 0
+roomdress 16 cave hall 1 floor 35 items 27 density 7.71429 neg_space 37.1429 kinds 4 clone 0 wall 18/22 gmiss 0
+roomdress 17 cave hall 1 floor 38 items 35 density 9.21053 neg_space 60.5263 kinds 4 clone 0 wall 27/31 gmiss 0
+roomdress 18 cave hall 1 floor 40 items 44 density 11 neg_space 62.5 kinds 4 clone 0 wall 33/41 gmiss 0
+roomdress 19 cave hall 1 floor 97 items 56 density 5.7732 neg_space 83.5052 kinds 5 clone 0 wall 45/55 gmiss 0
+roomdress 20 cave hall 1 floor 39 items 45 density 11.5385 neg_space 61.5385 kinds 5 clone 0 wall 34/35 gmiss 0
+roomdress 21 cave hall 1 floor 44 items 39 density 8.86364 neg_space 81.8182 kinds 5 clone 0 wall 34/35 gmiss 0
+roomdress 22 vault hall 0 floor 59 items 74 density 12.5424 neg_space 44.0678 kinds 4 clone 0 wall 46/59 gmiss 0
+roomdress 23 cave hall 1 floor 40 items 39 density 9.75 neg_space 62.5 kinds 4 clone 0 wall 27/33 gmiss 0
+roomdress 24 cave hall 1 floor 53 items 45 density 8.49057 neg_space 77.3585 kinds 5 clone 0 wall 36/45 gmiss 0
+roomdress 25 cave hall 1 floor 90 items 44 density 4.88889 neg_space 85.5556 kinds 6 clone 0 wall 36/41 gmiss 0
+entity stairs_up 0 7,50
+entity map_plaque 0 20,50
+entity lock_door 1 52,50
+entity merchant 0 67,50
+entity lock_door 2 96,36
+entity faction_seat 0 96,20
+entity lock_door 3 121,18
+entity boss 0 120,6
+entity stairs_down 0 121,34
+entity key 1 31,20
+entity key 2 61,88
+entity key 3 103,55
+entity chest 0 28,68
+entity chest 0 101,6
+entity secret 0 50,22
+entity secret 0 82,22
+dress prop creature_den 1 5 51 0 edge 0 activity:denning den
+dress prop bones 0 6 51 0 edge 0 activity:denning -
+dress prop bones 1 5 50 0 edge 0 activity:denning -
+dress prop crystal 1 7 51 0 core 0 activity:growth light
+dress prop mushrooms 1 8 50 0 core 0 activity:growth -
+dress prop mushrooms 0 6 50 0 edge 0 activity:growth -
+dress fixture rubble 1 6 46 0 edge 0 item:rubble -
+dress prop puddle 0 9 52 0 core 0 item:puddle liquid
+dress prop puddle 1 8 51 0 core 0 item:puddle liquid
+dress prop nest 1 7 46 0 edge 0 item:nest den
+dress prop pack 0 6 52 0 edge 0 item:pack container
+dress wall roots 0 4 46 1 edge 0 wall -
+dress wall graffiti 1 5 46 0 edge 0 wall writing
+dress wall roots 1 6 46 0 edge 0 wall -
+dress wall cobweb 1 7 46 0 edge 0 wall -
+dress wall roots 1 8 46 2 edge 0 wall -
+dress wall glowworms 0 8 46 0 edge 0 wall light
+dress wall glowworms 1 9 46 2 edge 0 wall light
+dress wall cobweb 0 9 46 3 edge 0 wall -
+dress wall roots 0 9 46 0 edge 0 wall -
+dress wall moss 1 4 47 1 edge 0 wall -
+dress wall roots 0 7 47 3 edge 0 wall -
+dress wall glowworms 1 4 48 2 edge 0 wall light
+dress wall moss 0 4 48 1 edge 0 wall -
+dress wall cobweb 1 5 48 2 edge 0 wall -
+dress wall roots 1 7 48 3 edge 0 wall -
+dress wall glowworms 0 6 49 1 edge 0 wall light
+dress wall cobweb 0 8 49 0 edge 0 wall -
+dress wall plaque 0 9 49 0 entry 0 wall writing
+dress wall graffiti 1 10 49 0 entry 0 wall writing
+dress wall graffiti 0 11 49 0 entry 0 wall writing
+dress wall graffiti 0 4 50 0 edge 0 wall writing
+dress wall moss 1 4 50 1 edge 0 wall -
+dress wall chains 1 5 50 0 edge 0 wall -
+dress wall chains 0 4 51 1 edge 0 wall -
+dress wall roots 1 11 51 2 entry 0 wall -
+dress wall chains 1 4 52 2 edge 0 wall -
+dress wall glowworms 1 4 52 3 edge 0 wall light
+dress wall moss 0 4 52 1 edge 0 wall -
+dress wall chains 0 6 52 2 edge 0 wall -
+dress wall moss 0 6 52 1 edge 0 wall -
+dress wall roots 0 10 52 3 entry 0 wall -
+dress wall moss 1 7 53 2 edge 0 wall -
+dress wall glowworms 0 7 53 1 edge 0 wall light
+dress wall cobweb 1 8 53 2 edge 0 wall -
+dress wall cobweb 0 9 53 2 edge 0 wall -
+dress wall graffiti 0 10 53 3 edge 0 wall writing
+dress fixture table 2 19 50 1 core 1 activity:wayfinding station
+dress fixture brazier 0 20 51 2 core 1 activity:wayfinding light
+dress fixture brazier 1 20 49 0 core 1 activity:wayfinding light
+dress prop map_scroll 0 19 50 0 core 1 activity:wayfinding writing
+dress prop candle 1 19 50 0 core 1 activity:wayfinding light
+dress fixture statue 1 18 48 1 edge 1 item:statue -
+dress fixture statue 2 18 47 1 edge 1 item:statue -
+dress fixture bench 1 18 52 2 edge 1 item:bench station
+dress prop urn 0 21 52 0 edge 1 item:urn container
+dress wall plaque 0 20 45 1 entry 1 wall writing
+dress wall mosaic 0 19 46 0 entry 1 wall writing
+dress wall sconce 0 21 46 3 entry 1 wall light
+dress wall sconce 0 18 47 0 edge 1 wall light
+dress wall plaque 1 18 47 1 edge 1 wall writing
+dress wall sconce 1 21 47 3 entry 1 wall light
+dress wall graffiti 0 18 48 1 edge 1 wall writing
+dress wall plaque 1 16 49 0 entry 1 wall writing
+dress wall sconce 0 17 49 0 entry 1 wall light
+dress wall banner 0 22 49 0 entry 1 wall -
+dress wall mosaic 1 23 49 0 entry 1 wall writing
+dress wall graffiti 1 16 51 2 entry 1 wall writing
+dress wall chains 1 17 51 2 entry 1 wall -
+dress wall plaque 0 23 51 2 entry 1 wall writing
+dress wall sconce 1 18 52 2 edge 1 wall light
+dress wall sconce 1 18 52 1 edge 1 wall light
+dress wall sconce 0 21 52 2 edge 1 wall light
+dress wall mosaic 1 21 52 3 edge 1 wall writing
+dress wall mosaic 0 19 53 2 edge 1 wall writing
+dress wall sconce 0 19 53 1 edge 1 wall light
+dress wall plaque 0 20 53 3 edge 1 wall writing
+dress prop creature_den 1 30 48 0 edge 2 activity:denning den
+dress prop bones 1 31 47 0 edge 2 activity:denning -
+dress prop bones 0 30 47 0 edge 2 activity:denning -
+dress fixture rubble 2 36 49 3 edge 2 item:rubble -
+dress fixture rubble 3 36 50 0 edge 2 item:rubble -
+dress fixture rubble 0 36 48 3 edge 2 item:rubble -
+dress prop nest 1 35 52 0 edge 2 item:nest den
+dress wall roots 0 33 45 1 entry 2 wall -
+dress wall roots 1 35 46 3 entry 2 wall -
+dress wall plaque 0 30 47 1 edge 2 wall writing
+dress wall moss 0 31 47 0 edge 2 wall -
+dress wall glowworms 1 32 47 0 edge 2 wall light
+dress wall moss 1 35 47 3 entry 2 wall -
+dress wall cobweb 1 30 48 1 edge 2 wall -
+dress wall sconce 1 36 48 3 edge 2 wall light
+dress wall sconce 0 36 48 0 edge 2 wall light
+dress wall roots 1 28 49 0 entry 2 wall -
+dress wall graffiti 0 29 49 0 entry 2 wall writing
+dress wall roots 0 36 49 3 edge 2 wall -
+dress wall cobweb 0 37 50 3 edge 2 wall -
+dress wall roots 1 37 50 0 edge 2 wall -
+dress wall roots 0 29 51 2 entry 2 wall -
+dress wall moss 1 37 51 3 edge 2 wall -
+dress wall moss 0 28 52 3 entry 2 wall -
+dress wall roots 0 28 52 1 entry 2 wall -
+dress wall moss 0 30 52 2 edge 2 wall -
+dress wall roots 0 30 52 1 edge 2 wall -
+dress wall roots 1 31 52 2 edge 2 wall -
+dress wall moss 1 32 52 2 edge 2 wall -
+dress wall plaque 1 33 52 2 edge 2 wall writing
+dress wall sconce 0 34 52 2 edge 2 wall light
+dress wall moss 1 35 52 2 edge 2 wall -
+dress wall roots 0 36 52 2 edge 2 wall -
+dress wall glowworms 0 37 52 3 edge 2 wall light
+dress wall roots 1 28 53 3 entry 2 wall -
+dress wall moss 0 28 53 1 entry 2 wall -
+dress wall glowworms 0 28 54 3 entry 2 wall light
+dress wall moss 1 28 54 1 entry 2 wall -
+dress prop creature_den 0 7 26 0 edge 3 activity:denning den
+dress prop bones 0 6 27 0 core 3 activity:denning -
+dress prop bones 1 6 26 0 edge 3 activity:denning -
+dress prop crystal 0 7 36 0 core 3 activity:growth light
+dress prop mushrooms 1 8 35 0 hazard 3 activity:growth -
+dress prop mushrooms 1 6 37 0 edge 3 activity:growth -
+dress fixture rubble 3 12 37 3 edge 3 item:rubble -
+dress fixture rubble 2 12 38 3 edge 3 item:rubble -
+dress fixture rubble 1 13 37 2 edge 3 item:rubble -
+dress prop puddle 1 14 34 0 core 3 item:puddle liquid
+dress prop puddle 0 15 34 0 core 3 item:puddle liquid
+dress prop nest 1 15 27 0 edge 3 item:nest den
+dress wall moss 0 5 26 0 edge 3 wall -
+dress wall roots 0 5 26 1 edge 3 wall -
+dress wall moss 1 6 26 0 edge 3 wall -
+dress wall glowworms 1 8 26 0 edge 3 wall light
+dress wall roots 1 9 26 0 edge 3 wall -
+dress wall moss 1 10 26 0 edge 3 wall -
+dress wall moss 0 11 26 0 edge 3 wall -
+dress wall graffiti 0 13 26 0 edge 3 wall writing
+dress wall cobweb 1 14 26 0 edge 3 wall -
+dress wall sconce 0 15 26 3 edge 3 wall light
+dress wall glowworms 0 15 26 0 edge 3 wall light
+dress wall roots 1 15 27 3 edge 3 wall -
+dress wall sconce 1 5 28 1 edge 3 wall light
+dress wall roots 0 15 28 3 edge 3 wall -
+dress wall chains 0 5 29 1 edge 3 wall -
+dress wall roots 1 15 29 3 edge 3 wall -
+dress wall roots 0 5 30 1 edge 3 wall -
+dress wall moss 1 5 31 1 edge 3 wall -
+dress wall roots 0 16 31 0 entry 3 wall -
+dress wall sconce 1 17 31 0 entry 3 wall light
+dress wall moss 0 18 31 0 entry 3 wall -
+dress wall cobweb 0 5 33 1 edge 3 wall -
+dress wall moss 1 18 33 2 entry 3 wall -
+dress wall glowworms 1 16 34 3 edge 3 wall light
+dress wall glowworms 0 5 35 1 edge 3 wall light
+dress wall moss 0 16 35 3 edge 3 wall -
+dress wall glowworms 0 14 36 2 edge 3 wall light
+dress wall glowworms 1 15 36 2 edge 3 wall light
+dress wall cobweb 0 16 36 2 edge 3 wall -
+dress wall cobweb 1 16 36 3 edge 3 wall -
+dress wall cobweb 1 5 37 2 edge 3 wall -
+dress wall cobweb 0 5 37 1 edge 3 wall -
+dress wall chains 1 6 37 2 edge 3 wall -
+dress wall chains 1 7 37 2 edge 3 wall -
+dress wall chains 0 13 37 3 edge 3 wall -
+dress wall chains 0 8 38 2 edge 3 wall -
+dress wall chains 1 8 38 1 edge 3 wall -
+dress wall graffiti 1 9 38 2 edge 3 wall writing
+dress wall graffiti 1 10 38 2 edge 3 wall writing
+dress wall graffiti 0 11 38 2 edge 3 wall writing
+dress prop creature_den 1 39 38 0 edge 4 activity:denning den
+dress prop bones 1 40 38 0 entry 4 activity:denning -
+dress prop bones 0 38 38 0 edge 4 activity:denning -
+dress prop crystal 0 38 32 0 core 4 activity:growth light
+dress prop mushrooms 1 38 33 0 core 4 activity:growth -
+dress prop mushrooms 1 37 31 0 edge 4 activity:growth -
+dress fixture rubble 2 38 31 0 edge 4 item:rubble -
+dress fixture rubble 0 38 37 2 edge 4 item:rubble -
+dress prop puddle 1 37 32 0 core 4 item:puddle liquid
+dress prop nest 0 39 39 0 edge 4 item:nest den
+dress wall sconce 1 36 31 0 entry 4 wall light
+dress wall roots 1 38 31 0 edge 4 wall -
+dress wall roots 1 39 31 0 entry 4 wall -
+dress wall glowworms 0 40 31 0 entry 4 wall light
+dress wall moss 0 41 31 0 entry 4 wall -
+dress wall roots 0 34 33 2 entry 4 wall -
+dress wall graffiti 1 41 33 2 entry 4 wall writing
+dress wall sconce 0 35 34 1 entry 4 wall light
+dress wall roots 0 40 34 3 entry 4 wall -
+dress wall roots 1 40 35 3 entry 4 wall -
+dress wall glowworms 1 41 36 0 entry 4 wall light
+dress wall roots 0 37 37 2 edge 4 wall -
+dress wall glowworms 1 41 37 2 entry 4 wall light
+dress wall cobweb 0 36 38 3 entry 4 wall -
+dress wall cobweb 0 38 38 2 edge 4 wall -
+dress wall glowworms 1 38 38 1 edge 4 wall light
+dress wall cobweb 1 40 38 3 entry 4 wall -
+dress wall moss 1 37 39 2 edge 4 wall -
+dress wall graffiti 0 37 39 3 edge 4 wall writing
+dress wall cobweb 1 37 39 0 edge 4 wall -
+dress wall glowworms 0 39 39 2 edge 4 wall light
+dress wall roots 1 39 39 1 edge 4 wall -
+dress wall glowworms 0 40 39 2 edge 4 wall light
+dress wall sconce 1 40 39 3 edge 4 wall light
+dress wall roots 1 35 40 3 entry 4 wall -
+dress prop creature_den 1 49 38 0 edge 5 activity:denning den
+dress prop bones 1 48 38 0 edge 5 activity:denning -
+dress prop bones 1 50 37 0 core 5 activity:denning -
+dress prop crystal 1 53 36 0 core 5 activity:growth light
+dress prop mushrooms 1 54 37 0 edge 5 activity:growth -
+dress prop mushrooms 0 52 35 0 core 5 activity:growth -
+dress fixture rubble 2 50 34 2 edge 5 item:rubble -
+dress fixture rubble 3 50 35 1 edge 5 item:rubble -
+dress prop puddle 0 49 37 0 core 5 item:puddle liquid
+dress prop puddle 1 51 36 0 core 5 item:puddle liquid
+dress prop nest 0 54 36 0 edge 5 item:nest den
+dress wall moss 1 46 31 0 entry 5 wall -
+dress wall roots 1 47 31 0 entry 5 wall -
+dress wall graffiti 0 48 31 0 entry 5 wall writing
+dress wall roots 0 50 31 0 entry 5 wall -
+dress wall glowworms 0 52 31 0 entry 5 wall light
+dress wall sconce 1 53 31 3 entry 5 wall light
+dress wall moss 0 53 31 0 entry 5 wall -
+dress wall chains 0 53 32 3 edge 5 wall -
+dress wall glowworms 1 46 33 2 entry 5 wall light
+dress wall plaque 1 47 33 2 entry 5 wall writing
+dress wall moss 1 54 33 3 edge 5 wall -
+dress wall sconce 0 54 33 0 edge 5 wall light
+dress wall glowworms 1 48 34 1 edge 5 wall light
+dress wall roots 0 49 34 2 edge 5 wall -
+dress wall glowworms 0 54 34 3 edge 5 wall light
+dress wall sconce 1 48 35 1 edge 5 wall light
+dress wall moss 0 50 35 1 edge 5 wall -
+dress wall glowworms 0 54 35 3 edge 5 wall light
+dress wall roots 0 46 36 0 entry 5 wall -
+dress wall roots 1 47 36 0 entry 5 wall -
+dress wall moss 0 49 36 0 edge 5 wall -
+dress wall roots 1 54 36 3 edge 5 wall -
+dress wall chains 0 46 37 2 entry 5 wall -
+dress wall roots 1 54 37 3 edge 5 wall -
+dress wall glowworms 1 48 38 2 edge 5 wall light
+dress wall sconce 0 48 38 1 edge 5 wall light
+dress wall chains 1 49 38 2 edge 5 wall -
+dress wall glowworms 0 50 38 2 edge 5 wall light
+dress wall cobweb 1 54 38 3 edge 5 wall -
+dress wall glowworms 0 51 39 1 entry 5 wall light
+dress wall glowworms 1 53 39 3 entry 5 wall light
+dress wall graffiti 1 51 40 1 entry 5 wall writing
+dress wall moss 1 53 40 3 entry 5 wall -
+dress prop creature_den 0 27 38 0 edge 6 activity:denning den
+dress prop bones 1 26 38 0 edge 6 activity:denning -
+dress prop bones 0 26 39 0 edge 6 activity:denning -
+dress prop crystal 0 26 34 0 core 6 activity:growth light
+dress prop mushrooms 1 27 33 0 entry 6 activity:growth -
+dress prop mushrooms 1 25 34 0 core 6 activity:growth -
+dress fixture rubble 2 25 38 2 edge 6 item:rubble -
+dress prop puddle 0 26 37 0 core 6 item:puddle liquid
+dress prop puddle 1 26 36 0 core 6 item:puddle liquid
+dress prop nest 0 25 39 0 edge 6 item:nest den
+dress prop bedroll 1 25 35 0 core 6 vignette:hermit-camp den
+dress prop lantern 1 26 35 0 core 6 vignette:hermit-camp light
+dress prop cup 1 25 35 0 core 6 vignette:hermit-camp -
+dress prop note 0 25 36 0 entry 6 vignette:hermit-camp writing
+dress wall plaque 1 23 31 0 entry 6 wall writing
+dress wall cobweb 0 24 31 0 entry 6 wall -
+dress wall moss 1 25 31 0 entry 6 wall -
+dress wall roots 0 27 31 0 entry 6 wall -
+dress wall glowworms 0 28 31 0 entry 6 wall light
+dress wall moss 0 29 31 0 entry 6 wall -
+dress wall glowworms 1 23 33 2 entry 6 wall light
+dress wall roots 1 29 33 2 entry 6 wall -
+dress wall glowworms 0 24 34 1 entry 6 wall light
+dress wall graffiti 0 24 35 1 entry 6 wall writing
+dress wall roots 0 29 35 0 entry 6 wall -
+dress wall roots 1 23 36 0 entry 6 wall -
+dress wall plaque 0 23 37 2 entry 6 wall writing
+dress wall chains 0 29 37 2 entry 6 wall -
+dress wall roots 1 24 38 2 entry 6 wall -
+dress wall graffiti 1 24 38 1 entry 6 wall writing
+dress wall sconce 1 27 38 2 edge 6 wall light
+dress wall moss 1 28 38 2 entry 6 wall -
+dress wall moss 0 28 38 3 entry 6 wall -
+dress wall roots 0 25 39 2 edge 6 wall -
+dress wall glowworms 0 26 39 2 edge 6 wall light
+dress wall roots 1 26 39 3 edge 6 wall -
+dress prop creature_den 1 55 52 0 edge 7 activity:denning den
+dress prop bones 1 54 51 0 core 7 activity:denning -
+dress prop bones 0 56 51 0 edge 7 activity:denning -
+dress prop crystal 0 47 51 0 core 7 activity:growth light
+dress prop mushrooms 1 48 50 0 hazard 7 activity:growth -
+dress prop mushrooms 0 48 51 0 core 7 activity:growth -
+dress prop puddle 0 52 51 0 core 7 item:puddle liquid
+dress prop puddle 1 53 51 0 core 7 item:puddle liquid
+dress prop nest 0 46 52 0 edge 7 item:nest den
+dress wall glowworms 1 51 45 1 entry 7 wall light
+dress wall roots 1 53 45 3 entry 7 wall -
+dress wall moss 1 51 46 1 entry 7 wall -
+dress wall glowworms 0 53 46 3 entry 7 wall light
+dress wall chains 1 48 47 0 edge 7 wall -
+dress wall roots 0 49 47 0 edge 7 wall -
+dress wall roots 1 50 47 0 edge 7 wall -
+dress wall roots 1 54 47 0 edge 7 wall -
+dress wall glowworms 1 56 47 0 edge 7 wall light
+dress wall graffiti 1 57 47 0 edge 7 wall writing
+dress wall moss 0 48 48 1 hazard 7 wall -
+dress wall moss 0 58 49 0 entry 7 wall -
+dress wall chains 1 59 49 0 entry 7 wall -
+dress wall sconce 0 46 50 0 hazard 7 wall light
+dress wall glowworms 1 46 50 1 hazard 7 wall light
+dress wall chains 0 46 51 1 edge 7 wall -
+dress wall chains 1 56 51 2 edge 7 wall -
+dress wall roots 0 57 51 2 entry 7 wall -
+dress wall roots 1 58 51 2 entry 7 wall -
+dress wall moss 1 59 51 2 entry 7 wall -
+dress wall roots 0 46 52 2 edge 7 wall -
+dress wall moss 0 46 52 1 edge 7 wall -
+dress wall glowworms 0 48 52 2 edge 7 wall light
+dress wall graffiti 0 49 52 2 edge 7 wall writing
+dress wall chains 0 51 52 2 edge 7 wall -
+dress wall graffiti 0 52 52 2 edge 7 wall writing
+dress wall moss 1 53 52 2 edge 7 wall -
+dress wall chains 1 54 52 2 edge 7 wall -
+dress wall roots 1 55 52 2 edge 7 wall -
+dress wall roots 0 55 52 3 edge 7 wall -
+dress prop creature_den 0 67 47 0 edge 8 activity:denning den
+dress prop bones 1 68 46 0 edge 8 activity:denning -
+dress prop bones 0 68 48 0 core 8 activity:denning -
+dress fixture rubble 0 67 49 0 edge 8 item:rubble -
+dress fixture rubble 3 67 48 1 edge 8 item:rubble -
+dress fixture rubble 1 67 51 3 edge 8 item:rubble -
+dress prop nest 1 67 52 0 edge 8 item:nest den
+dress wall roots 1 65 46 2 edge 8 wall -
+dress wall graffiti 1 65 46 0 edge 8 wall writing
+dress wall roots 0 65 46 1 edge 8 wall -
+dress wall glowworms 0 66 46 0 edge 8 wall light
+dress wall roots 0 67 46 0 edge 8 wall -
+dress wall glowworms 1 68 46 0 edge 8 wall light
+dress wall moss 0 69 46 3 edge 8 wall -
+dress wall moss 1 69 47 3 edge 8 wall -
+dress wall glowworms 1 67 48 1 edge 8 wall light
+dress wall glowworms 1 69 48 3 entry 8 wall light
+dress wall roots 0 64 49 0 entry 8 wall -
+dress wall roots 1 65 49 0 entry 8 wall -
+dress wall graffiti 1 66 49 0 entry 8 wall writing
+dress wall roots 0 70 49 0 entry 8 wall -
+dress wall glowworms 0 64 51 2 entry 8 wall light
+dress wall glowworms 1 68 51 2 entry 8 wall light
+dress wall moss 1 65 52 1 entry 8 wall -
+dress wall plaque 1 69 52 2 entry 8 wall writing
+dress wall moss 0 69 52 3 entry 8 wall -
+dress wall moss 0 69 52 1 entry 8 wall -
+dress wall graffiti 0 65 53 2 edge 8 wall writing
+dress wall roots 1 65 53 1 edge 8 wall -
+dress wall chains 0 66 53 2 edge 8 wall -
+dress wall roots 0 67 53 2 edge 8 wall -
+dress wall glowworms 0 67 53 3 edge 8 wall light
+dress prop creature_den 1 77 37 0 edge 9 activity:denning den
+dress prop bones 0 77 38 0 entry 9 activity:denning -
+dress prop bones 0 78 36 0 edge 9 activity:denning -
+dress prop crystal 1 84 36 0 core 9 activity:growth light
+dress prop mushrooms 1 85 35 0 edge 9 activity:growth -
+dress prop mushrooms 1 83 35 0 hazard 9 activity:growth -
+dress fixture rubble 2 79 36 0 edge 9 item:rubble -
+dress fixture rubble 0 81 35 1 edge 9 item:rubble -
+dress prop puddle 1 78 38 0 core 9 item:puddle liquid
+dress prop nest 0 85 40 0 edge 9 item:nest den
+dress prop bones 1 84 35 0 edge 9 vignette:fallen-adventurer -
+dress prop rusty_sword 0 83 36 0 hazard 9 vignette:fallen-adventurer -
+dress prop pack 1 85 36 0 core 9 vignette:fallen-adventurer container
+dress prop note 0 86 36 0 entry 9 vignette:fallen-adventurer writing
+dress wall graffiti 0 82 33 1 entry 9 wall writing
+dress wall sconce 0 82 34 3 entry 9 wall light
+dress wall moss 1 81 35 0 edge 9 wall -
+dress wall graffiti 1 81 35 1 edge 9 wall writing
+dress wall glowworms 1 83 35 0 hazard 9 wall light
+dress wall glowworms 1 84 35 0 edge 9 wall light
+dress wall sconce 1 86 35 0 entry 9 wall light
+dress wall moss 1 87 35 0 entry 9 wall -
+dress wall cobweb 0 88 35 0 entry 9 wall -
+dress wall graffiti 0 78 36 0 edge 9 wall writing
+dress wall cobweb 1 78 36 1 edge 9 wall -
+dress wall chains 0 79 36 0 edge 9 wall -
+dress wall cobweb 1 80 36 0 hazard 9 wall -
+dress wall roots 1 87 37 2 entry 9 wall -
+dress wall roots 0 88 37 2 entry 9 wall -
+dress wall roots 1 75 38 0 entry 9 wall -
+dress wall glowworms 0 86 38 3 edge 9 wall light
+dress wall glowworms 1 76 39 2 entry 9 wall light
+dress wall roots 1 86 39 3 edge 9 wall -
+dress wall roots 0 77 40 1 entry 9 wall -
+dress wall moss 0 80 40 2 hazard 9 wall -
+dress wall moss 1 83 40 2 hazard 9 wall -
+dress wall graffiti 1 85 40 2 edge 9 wall writing
+dress wall sconce 0 86 40 3 edge 9 wall light
+dress wall roots 1 77 41 1 entry 9 wall -
+dress wall cobweb 1 79 41 3 entry 9 wall -
+dress wall roots 0 79 42 3 entry 9 wall -
+dress prop creature_den 0 76 59 0 edge 10 activity:denning den
+dress prop bones 1 77 59 0 edge 10 activity:denning -
+dress prop bones 1 77 58 0 core 10 activity:denning -
+dress prop crystal 1 77 57 0 core 10 activity:growth light
+dress prop mushrooms 0 76 58 0 edge 10 activity:growth -
+dress prop mushrooms 1 76 56 0 edge 10 activity:growth -
+dress prop puddle 0 79 53 0 core 10 item:puddle liquid
+dress prop nest 1 76 53 0 edge 10 item:nest den
+dress wall plaque 0 79 50 3 entry 10 wall writing
+dress wall roots 1 75 51 2 entry 10 wall -
+dress wall cobweb 1 80 51 3 entry 10 wall -
+dress wall moss 1 80 51 0 entry 10 wall -
+dress wall moss 0 76 52 1 entry 10 wall -
+dress wall roots 1 76 53 1 edge 10 wall -
+dress wall moss 0 80 53 3 edge 10 wall -
+dress wall graffiti 0 80 54 3 edge 10 wall writing
+dress wall glowworms 1 76 55 1 edge 10 wall light
+dress wall graffiti 1 76 56 1 edge 10 wall writing
+dress wall glowworms 0 80 57 3 edge 10 wall light
+dress wall roots 0 76 58 1 edge 10 wall -
+dress wall roots 1 80 58 3 edge 10 wall -
+dress wall roots 0 76 59 2 edge 10 wall -
+dress wall roots 1 76 59 1 edge 10 wall -
+dress wall roots 0 77 59 2 edge 10 wall -
+dress wall cobweb 0 78 59 2 edge 10 wall -
+dress wall moss 1 79 59 2 edge 10 wall -
+dress wall moss 0 80 59 2 edge 10 wall -
+dress wall moss 1 80 59 3 edge 10 wall -
+dress prop creature_den 1 65 61 0 edge 11 activity:denning den
+dress prop bones 0 65 62 0 edge 11 activity:denning -
+dress prop bones 1 64 60 0 edge 11 activity:denning -
+dress fixture rubble 3 59 64 2 edge 11 item:rubble -
+dress fixture rubble 1 60 64 2 edge 11 item:rubble -
+dress prop puddle 1 58 63 0 core 11 item:puddle liquid
+dress prop puddle 0 60 62 0 core 11 item:puddle liquid
+dress prop nest 0 65 60 0 edge 11 item:nest den
+dress wall glowworms 0 62 59 3 entry 11 wall light
+dress wall roots 1 59 60 0 edge 11 wall -
+dress wall sconce 1 59 60 1 edge 11 wall light
+dress wall graffiti 1 60 60 0 entry 11 wall writing
+dress wall glowworms 1 63 60 0 entry 11 wall light
+dress wall glowworms 0 64 60 0 edge 11 wall light
+dress wall glowworms 1 65 60 3 edge 11 wall light
+dress wall glowworms 1 65 60 0 edge 11 wall light
+dress wall plaque 0 59 61 1 edge 11 wall writing
+dress wall moss 1 65 61 3 edge 11 wall -
+dress wall cobweb 1 57 62 0 edge 11 wall -
+dress wall roots 0 57 62 1 edge 11 wall -
+dress wall glowworms 0 58 62 0 edge 11 wall light
+dress wall glowworms 1 64 62 2 edge 11 wall light
+dress wall graffiti 1 65 62 3 edge 11 wall writing
+dress wall glowworms 0 57 63 1 edge 11 wall light
+dress wall sconce 0 63 63 2 edge 11 wall light
+dress wall cobweb 0 63 63 3 edge 11 wall -
+dress wall moss 0 65 63 3 edge 11 wall -
+dress wall moss 1 57 64 2 edge 11 wall -
+dress wall graffiti 0 57 64 1 edge 11 wall writing
+dress wall plaque 1 58 64 2 edge 11 wall writing
+dress wall sconce 1 60 64 2 edge 11 wall light
+dress wall moss 0 62 64 3 entry 11 wall -
+dress wall roots 0 65 64 2 edge 11 wall -
+dress wall moss 0 65 64 3 edge 11 wall -
+dress wall roots 0 61 65 1 entry 11 wall -
+dress wall moss 1 62 65 3 entry 11 wall -
+dress wall moss 0 61 66 1 entry 11 wall -
+dress wall roots 1 62 66 3 entry 11 wall -
+dress prop creature_den 0 59 78 0 edge 12 activity:denning den
+dress prop bones 0 58 77 0 core 12 activity:denning -
+dress prop bones 1 60 78 0 edge 12 activity:denning -
+dress prop crystal 1 56 77 0 core 12 activity:growth light
+dress prop mushrooms 0 55 76 0 hazard 12 activity:growth -
+dress prop mushrooms 0 57 77 0 core 12 activity:growth -
+dress fixture rubble 3 57 78 2 edge 12 item:rubble -
+dress prop puddle 1 64 77 0 core 12 item:puddle liquid
+dress prop nest 1 56 78 0 edge 12 item:nest den
+dress wall roots 1 61 71 1 entry 12 wall -
+dress wall glowworms 0 62 71 3 entry 12 wall light
+dress wall moss 0 61 72 1 entry 12 wall -
+dress wall glowworms 1 54 73 0 edge 12 wall light
+dress wall moss 1 54 73 1 edge 12 wall -
+dress wall moss 0 55 73 0 edge 12 wall -
+dress wall glowworms 0 58 73 0 edge 12 wall light
+dress wall roots 0 60 73 0 edge 12 wall -
+dress wall graffiti 0 63 73 0 edge 12 wall writing
+dress wall cobweb 1 64 73 0 edge 12 wall -
+dress wall glowworms 1 65 73 3 edge 12 wall light
+dress wall graffiti 1 65 73 0 edge 12 wall writing
+dress wall moss 1 54 74 1 hazard 12 wall -
+dress wall moss 0 65 74 3 hazard 12 wall -
+dress wall plaque 1 54 76 1 hazard 12 wall writing
+dress wall roots 1 54 77 1 edge 12 wall -
+dress wall moss 1 54 78 2 edge 12 wall -
+dress wall glowworms 0 54 78 1 edge 12 wall light
+dress wall glowworms 1 55 78 2 edge 12 wall light
+dress wall moss 0 57 78 2 edge 12 wall -
+dress wall plaque 1 58 78 2 edge 12 wall writing
+dress wall cobweb 0 59 78 2 edge 12 wall -
+dress wall glowworms 0 62 78 2 edge 12 wall light
+dress wall roots 0 65 78 3 edge 12 wall -
+dress wall roots 0 61 79 3 entry 12 wall -
+dress wall plaque 0 61 79 1 entry 12 wall writing
+dress wall graffiti 0 61 80 3 entry 12 wall writing
+dress wall moss 1 61 80 1 entry 12 wall -
+dress prop creature_den 0 96 39 0 edge 13 activity:denning den
+dress prop bones 1 96 40 0 edge 13 activity:denning -
+dress prop bones 0 95 38 0 edge 13 activity:denning -
+dress prop crystal 1 96 34 0 core 13 activity:growth light
+dress prop mushrooms 1 95 33 0 entry 13 activity:growth -
+dress prop mushrooms 1 95 34 0 edge 13 activity:growth -
+dress fixture rubble 2 97 35 3 edge 13 item:rubble -
+dress fixture rubble 3 97 34 3 edge 13 item:rubble -
+dress fixture rubble 0 97 36 3 edge 13 item:rubble -
+dress prop puddle 0 96 37 0 core 13 item:puddle liquid
+dress prop nest 0 97 38 0 edge 13 item:nest den
+dress wall graffiti 0 95 31 1 entry 13 wall writing
+dress wall sconce 1 95 32 1 entry 13 wall light
+dress wall roots 0 95 33 1 entry 13 wall -
+dress wall moss 1 97 33 3 entry 13 wall -
+dress wall roots 1 94 34 0 entry 13 wall -
+dress wall moss 0 94 34 1 entry 13 wall -
+dress wall cobweb 0 97 34 3 edge 13 wall -
+dress wall glowworms 1 93 35 0 entry 13 wall light
+dress wall cobweb 1 97 35 3 edge 13 wall -
+dress wall moss 0 97 37 3 edge 13 wall -
+dress wall roots 1 94 38 2 entry 13 wall -
+dress wall moss 0 94 38 1 entry 13 wall -
+dress wall sconce 0 95 38 2 edge 13 wall light
+dress wall glowworms 1 97 38 3 edge 13 wall light
+dress wall glowworms 0 96 39 1 edge 13 wall light
+dress wall cobweb 1 97 39 3 edge 13 wall -
+dress wall roots 1 96 40 1 edge 13 wall -
+dress wall roots 0 97 40 2 edge 13 wall -
+dress wall plaque 1 97 40 3 edge 13 wall writing
+dress prop creature_den 1 95 22 0 edge 14 activity:denning den
+dress prop bones 1 95 21 0 edge 14 activity:denning -
+dress prop bones 0 94 21 0 edge 14 activity:denning -
+dress prop crystal 1 95 20 0 core 14 activity:growth light
+dress prop mushrooms 0 96 19 0 entry 14 activity:growth -
+dress prop mushrooms 1 96 21 0 entry 14 activity:growth -
+dress fixture rubble 2 94 17 1 edge 14 item:rubble -
+dress fixture rubble 0 94 18 1 edge 14 item:rubble -
+dress prop puddle 0 95 19 0 core 14 item:puddle liquid
+dress prop nest 1 94 20 0 edge 14 item:nest den
+dress wall moss 1 96 15 3 entry 14 wall -
+dress wall moss 0 96 15 1 entry 14 wall -
+dress wall glowworms 1 94 16 0 edge 14 wall light
+dress wall roots 1 94 16 1 edge 14 wall -
+dress wall moss 0 95 16 0 entry 14 wall -
+dress wall roots 1 97 16 2 entry 14 wall -
+dress wall roots 0 97 16 3 entry 14 wall -
+dress wall cobweb 1 97 16 0 entry 14 wall -
+dress wall plaque 0 94 17 1 edge 14 wall writing
+dress wall roots 1 96 17 3 entry 14 wall -
+dress wall roots 0 94 18 1 edge 14 wall -
+dress wall cobweb 0 97 18 3 entry 14 wall -
+dress wall chains 1 94 19 1 edge 14 wall -
+dress wall cobweb 1 98 19 0 entry 14 wall -
+dress wall roots 1 94 20 1 edge 14 wall -
+dress wall glowworms 0 94 21 2 edge 14 wall light
+dress wall roots 0 94 21 1 edge 14 wall -
+dress wall moss 1 98 21 2 entry 14 wall -
+dress wall moss 1 95 22 1 edge 14 wall -
+dress wall glowworms 0 97 22 3 entry 14 wall light
+dress wall cobweb 0 95 23 1 entry 14 wall -
+dress wall glowworms 1 97 23 3 entry 14 wall light
+dress wall roots 0 95 25 1 entry 14 wall -
+dress wall roots 1 97 25 3 entry 14 wall -
+dress prop creature_den 1 110 19 0 edge 15 activity:denning den
+dress prop bones 1 111 19 0 entry 15 activity:denning -
+dress prop bones 0 111 18 0 entry 15 activity:denning -
+dress prop crystal 1 110 17 0 core 15 activity:growth light
+dress prop mushrooms 0 110 16 0 edge 15 activity:growth -
+dress prop mushrooms 0 109 16 0 hazard 15 activity:growth -
+dress fixture rubble 1 105 17 1 edge 15 item:rubble -
+dress fixture rubble 3 105 18 1 edge 15 item:rubble -
+dress prop puddle 1 110 18 0 core 15 item:puddle liquid
+dress prop nest 0 110 20 0 edge 15 item:nest den
+dress wall glowworms 1 105 16 0 edge 15 wall light
+dress wall chains 0 105 16 1 edge 15 wall -
+dress wall glowworms 1 106 16 0 hazard 15 wall light
+dress wall moss 1 110 16 0 edge 15 wall -
+dress wall moss 0 111 16 3 edge 15 wall -
+dress wall glowworms 0 111 16 0 edge 15 wall light
+dress wall chains 1 105 17 1 edge 15 wall -
+dress wall moss 0 113 17 0 entry 15 wall -
+dress wall moss 0 105 18 1 edge 15 wall -
+dress wall glowworms 0 103 19 0 entry 15 wall light
+dress wall chains 0 104 19 0 entry 15 wall -
+dress wall plaque 0 111 19 2 entry 15 wall writing
+dress wall graffiti 1 112 19 2 entry 15 wall writing
+dress wall glowworms 1 113 19 2 entry 15 wall light
+dress wall roots 0 110 20 2 edge 15 wall -
+dress wall glowworms 1 110 20 3 edge 15 wall light
+dress wall graffiti 0 104 21 2 entry 15 wall writing
+dress wall chains 1 109 21 2 hazard 15 wall -
+dress wall roots 0 103 22 3 entry 15 wall -
+dress wall cobweb 0 103 22 1 entry 15 wall -
+dress wall plaque 1 105 22 2 edge 15 wall writing
+dress wall roots 1 105 22 1 edge 15 wall -
+dress wall sconce 0 106 22 2 hazard 15 wall light
+dress wall cobweb 1 103 23 3 entry 15 wall -
+dress wall roots 1 103 23 1 entry 15 wall -
+dress wall chains 1 103 24 3 entry 15 wall -
+dress wall roots 1 103 24 1 entry 15 wall -
+dress wall roots 0 103 25 3 entry 15 wall -
+dress wall chains 1 103 25 1 entry 15 wall -
+dress wall roots 0 103 26 3 entry 15 wall -
+dress wall glowworms 1 103 26 1 entry 15 wall light
+dress prop creature_den 1 123 19 0 edge 16 activity:denning den
+dress prop bones 1 122 19 0 core 16 activity:denning -
+dress prop bones 1 123 18 0 edge 16 activity:denning -
+dress prop crystal 0 121 17 0 core 16 activity:growth light
+dress prop mushrooms 1 120 16 0 entry 16 activity:growth -
+dress prop mushrooms 0 120 17 0 entry 16 activity:growth -
+dress fixture rubble 2 121 19 1 edge 16 item:rubble -
+dress prop puddle 1 122 17 0 core 16 item:puddle liquid
+dress prop puddle 0 122 18 0 core 16 item:puddle liquid
+dress wall chains 0 120 14 1 entry 16 wall -
+dress wall moss 0 122 14 3 entry 16 wall -
+dress wall roots 0 119 15 0 entry 16 wall -
+dress wall graffiti 0 119 15 1 entry 16 wall writing
+dress wall glowworms 1 123 15 3 entry 16 wall light
+dress wall plaque 1 123 15 0 entry 16 wall writing
+dress wall cobweb 0 123 16 3 edge 16 wall -
+dress wall glowworms 0 118 17 0 entry 16 wall light
+dress wall cobweb 1 123 17 3 edge 16 wall -
+dress wall graffiti 1 123 18 3 edge 16 wall writing
+dress wall moss 1 118 19 2 entry 16 wall -
+dress wall sconce 1 120 19 2 entry 16 wall light
+dress wall graffiti 0 123 19 3 edge 16 wall writing
+dress wall glowworms 0 119 20 1 entry 16 wall light
+dress wall roots 0 121 20 2 edge 16 wall -
+dress wall glowworms 0 121 20 1 edge 16 wall light
+dress wall roots 1 123 20 2 edge 16 wall -
+dress wall graffiti 1 123 20 3 edge 16 wall writing
+dress prop creature_den 1 123 6 0 edge 17 activity:denning den
+dress prop bones 0 122 5 0 core 17 activity:denning -
+dress prop bones 1 122 6 0 core 17 activity:denning -
+dress prop crystal 1 121 6 0 core 17 activity:growth light
+dress prop mushrooms 0 120 7 0 entry 17 activity:growth -
+dress prop mushrooms 0 121 5 0 core 17 activity:growth -
+dress prop puddle 1 119 6 0 core 17 item:puddle liquid
+dress prop nest 0 116 8 0 edge 17 item:nest den
+dress wall graffiti 0 116 4 0 edge 17 wall writing
+dress wall glowworms 1 116 4 1 edge 17 wall light
+dress wall glowworms 0 117 4 3 edge 17 wall light
+dress wall glowworms 0 120 4 0 edge 17 wall light
+dress wall moss 1 120 4 1 edge 17 wall -
+dress wall plaque 0 122 4 0 edge 17 wall writing
+dress wall glowworms 1 123 4 3 edge 17 wall light
+dress wall sconce 1 123 4 0 edge 17 wall light
+dress wall roots 0 116 5 1 edge 17 wall -
+dress wall moss 0 118 5 0 edge 17 wall -
+dress wall cobweb 1 119 5 0 edge 17 wall -
+dress wall glowworms 1 123 5 3 edge 17 wall light
+dress wall graffiti 1 116 6 1 edge 17 wall writing
+dress wall sconce 0 123 6 3 edge 17 wall light
+dress wall moss 1 116 7 3 edge 17 wall -
+dress wall plaque 1 116 7 1 edge 17 wall writing
+dress wall graffiti 0 118 7 2 edge 17 wall writing
+dress wall moss 0 118 7 1 edge 17 wall -
+dress wall moss 0 123 7 3 edge 17 wall -
+dress wall roots 1 116 8 2 edge 17 wall -
+dress wall glowworms 0 116 8 3 edge 17 wall light
+dress wall roots 1 116 8 1 edge 17 wall -
+dress wall moss 0 119 8 2 entry 17 wall -
+dress wall glowworms 1 119 8 1 entry 17 wall light
+dress wall roots 0 123 8 2 entry 17 wall -
+dress wall moss 1 120 9 1 entry 17 wall -
+dress wall roots 1 122 9 3 entry 17 wall -
+dress prop creature_den 1 119 36 0 edge 18 activity:denning den
+dress prop bones 1 120 37 0 core 18 activity:denning -
+dress prop bones 0 119 37 0 edge 18 activity:denning -
+dress prop crystal 1 122 35 0 core 18 activity:growth light
+dress prop mushrooms 0 123 34 0 edge 18 activity:growth -
+dress prop mushrooms 1 123 35 0 edge 18 activity:growth -
+dress fixture rubble 1 121 33 0 edge 18 item:rubble -
+dress fixture rubble 2 122 33 0 edge 18 item:rubble -
+dress prop puddle 1 121 35 0 core 18 item:puddle liquid
+dress prop puddle 1 121 36 0 edge 18 item:puddle liquid
+dress prop nest 0 123 38 0 edge 18 item:nest den
+dress wall plaque 1 121 29 3 entry 18 wall writing
+dress wall moss 0 119 30 0 edge 18 wall -
+dress wall moss 1 119 30 1 edge 18 wall -
+dress wall moss 1 120 30 0 entry 18 wall -
+dress wall roots 0 122 30 0 entry 18 wall -
+dress wall roots 1 123 30 3 edge 18 wall -
+dress wall moss 0 123 30 0 edge 18 wall -
+dress wall chains 1 119 31 1 edge 18 wall -
+dress wall plaque 0 122 31 3 edge 18 wall writing
+dress wall glowworms 1 119 32 2 edge 18 wall light
+dress wall glowworms 0 119 32 1 edge 18 wall light
+dress wall roots 0 121 32 3 edge 18 wall -
+dress wall roots 0 120 33 1 edge 18 wall -
+dress wall glowworms 0 123 33 3 edge 18 wall light
+dress wall glowworms 1 123 33 0 edge 18 wall light
+dress wall roots 1 119 34 2 edge 18 wall -
+dress wall chains 0 119 34 0 edge 18 wall -
+dress wall roots 1 119 34 1 edge 18 wall -
+dress wall glowworms 1 123 34 3 edge 18 wall light
+dress wall graffiti 0 123 35 3 edge 18 wall writing
+dress wall plaque 1 119 36 0 edge 18 wall writing
+dress wall glowworms 0 119 36 1 edge 18 wall light
+dress wall roots 0 122 36 2 edge 18 wall -
+dress wall moss 1 123 36 3 edge 18 wall -
+dress wall moss 0 119 37 1 edge 18 wall -
+dress wall sconce 1 121 37 3 edge 18 wall light
+dress wall moss 1 123 37 1 edge 18 wall -
+dress wall cobweb 0 119 38 2 edge 18 wall -
+dress wall chains 0 119 38 1 edge 18 wall -
+dress wall cobweb 1 120 38 2 edge 18 wall -
+dress wall cobweb 0 122 38 2 edge 18 wall -
+dress wall cobweb 1 123 38 2 edge 18 wall -
+dress wall sconce 0 123 38 3 edge 18 wall light
+dress prop creature_den 0 37 20 0 edge 19 activity:denning den
+dress prop bones 1 37 19 0 edge 19 activity:denning -
+dress prop bones 0 37 21 0 edge 19 activity:denning -
+dress prop crystal 1 29 23 0 core 19 activity:growth light
+dress prop mushrooms 1 29 22 0 core 19 activity:growth -
+dress prop mushrooms 1 28 22 0 edge 19 activity:growth -
+dress fixture rubble 3 26 19 2 edge 19 item:rubble -
+dress fixture rubble 0 25 19 2 edge 19 item:rubble -
+dress prop puddle 1 30 18 0 core 19 item:puddle liquid
+dress prop nest 1 26 23 0 edge 19 item:nest den
+dress prop pack 1 36 24 0 edge 19 item:pack container
+dress wall moss 1 25 16 0 edge 19 wall -
+dress wall chains 0 25 16 1 edge 19 wall -
+dress wall moss 0 26 16 0 edge 19 wall -
+dress wall moss 1 27 16 0 edge 19 wall -
+dress wall moss 0 28 16 0 edge 19 wall -
+dress wall moss 1 29 16 0 edge 19 wall -
+dress wall chains 1 30 16 0 edge 19 wall -
+dress wall cobweb 1 31 16 3 edge 19 wall -
+dress wall roots 0 31 16 0 edge 19 wall -
+dress wall chains 1 25 17 1 edge 19 wall -
+dress wall glowworms 1 36 17 3 edge 19 wall light
+dress wall glowworms 0 36 17 0 edge 19 wall light
+dress wall roots 1 25 18 1 edge 19 wall -
+dress wall moss 0 36 18 3 edge 19 wall -
+dress wall roots 0 25 19 2 edge 19 wall -
+dress wall plaque 0 25 19 1 edge 19 wall writing
+dress wall glowworms 1 37 19 3 edge 19 wall light
+dress wall sconce 0 26 20 1 edge 19 wall light
+dress wall roots 1 27 20 2 edge 19 wall -
+dress wall glowworms 0 37 20 3 edge 19 wall light
+dress wall roots 0 26 21 3 edge 19 wall -
+dress wall glowworms 1 26 21 1 edge 19 wall light
+dress wall glowworms 0 28 21 1 edge 19 wall light
+dress wall roots 1 26 22 3 edge 19 wall -
+dress wall cobweb 0 26 22 1 edge 19 wall -
+dress wall cobweb 1 28 22 1 edge 19 wall -
+dress wall cobweb 0 37 22 2 edge 19 wall -
+dress wall cobweb 0 37 22 3 edge 19 wall -
+dress wall chains 0 26 23 3 edge 19 wall -
+dress wall cobweb 1 26 23 1 edge 19 wall -
+dress wall chains 0 28 23 1 edge 19 wall -
+dress wall chains 1 36 23 3 edge 19 wall -
+dress wall roots 0 26 24 3 entry 19 wall -
+dress wall glowworms 1 26 24 1 entry 19 wall light
+dress wall graffiti 0 28 24 2 edge 19 wall writing
+dress wall graffiti 1 29 24 2 edge 19 wall writing
+dress wall graffiti 0 31 24 2 edge 19 wall writing
+dress wall graffiti 1 32 24 2 edge 19 wall writing
+dress wall graffiti 1 33 24 2 edge 19 wall writing
+dress wall graffiti 0 35 24 2 edge 19 wall writing
+dress wall sconce 1 36 24 2 edge 19 wall light
+dress wall sconce 1 36 24 3 edge 19 wall light
+dress wall glowworms 0 26 25 3 entry 19 wall light
+dress wall glowworms 0 26 25 1 entry 19 wall light
+dress wall moss 1 26 26 1 entry 19 wall -
+dress prop creature_den 1 60 90 0 edge 20 activity:denning den
+dress prop bones 1 59 89 0 core 20 activity:denning -
+dress prop bones 0 60 89 0 core 20 activity:denning -
+dress prop crystal 1 60 87 0 core 20 activity:growth light
+dress prop mushrooms 0 59 86 0 edge 20 activity:growth -
+dress prop mushrooms 0 61 87 0 entry 20 activity:growth -
+dress fixture rubble 2 62 88 3 edge 20 item:rubble -
+dress fixture rubble 1 62 89 3 edge 20 item:rubble -
+dress prop puddle 0 64 87 0 core 20 item:puddle liquid
+dress prop puddle 1 63 87 0 core 20 item:puddle liquid
+dress prop nest 1 64 88 0 edge 20 item:nest den
+dress wall roots 1 61 85 3 entry 20 wall -
+dress wall plaque 1 61 85 1 entry 20 wall writing
+dress wall moss 1 59 86 0 edge 20 wall -
+dress wall cobweb 0 59 86 1 edge 20 wall -
+dress wall roots 0 60 86 0 entry 20 wall -
+dress wall roots 1 62 86 0 entry 20 wall -
+dress wall plaque 0 63 86 0 edge 20 wall writing
+dress wall roots 0 64 86 0 edge 20 wall -
+dress wall moss 0 65 86 3 edge 20 wall -
+dress wall roots 1 57 87 3 edge 20 wall -
+dress wall plaque 1 57 87 0 edge 20 wall writing
+dress wall roots 1 57 87 1 edge 20 wall -
+dress wall moss 0 59 87 1 edge 20 wall -
+dress wall glowworms 0 65 87 3 edge 20 wall light
+dress wall plaque 0 57 88 1 edge 20 wall writing
+dress wall roots 0 58 88 0 edge 20 wall -
+dress wall moss 1 63 88 2 edge 20 wall -
+dress wall moss 1 64 88 2 edge 20 wall -
+dress wall roots 0 65 88 3 edge 20 wall -
+dress wall roots 1 57 89 1 edge 20 wall -
+dress wall plaque 1 62 89 3 edge 20 wall writing
+dress wall moss 0 65 89 3 edge 20 wall -
+dress wall graffiti 1 65 89 1 edge 20 wall writing
+dress wall glowworms 1 57 90 2 edge 20 wall light
+dress wall glowworms 0 57 90 1 edge 20 wall light
+dress wall glowworms 1 58 90 2 edge 20 wall light
+dress wall cobweb 1 59 90 2 edge 20 wall -
+dress wall glowworms 1 60 90 2 edge 20 wall light
+dress wall glowworms 0 61 90 2 edge 20 wall light
+dress wall cobweb 0 62 90 2 edge 20 wall -
+dress wall cobweb 1 62 90 3 edge 20 wall -
+dress wall cobweb 1 65 90 2 edge 20 wall -
+dress wall cobweb 0 65 90 3 edge 20 wall -
+dress wall graffiti 0 65 90 1 edge 20 wall writing
+dress prop creature_den 0 103 56 0 edge 21 activity:denning den
+dress prop bones 1 103 57 0 edge 21 activity:denning -
+dress prop bones 1 102 55 0 core 21 activity:denning -
+dress prop puddle 1 103 53 0 core 21 item:puddle liquid
+dress prop puddle 0 102 53 0 core 21 item:puddle liquid
+dress wall glowworms 0 103 50 3 entry 21 wall light
+dress wall roots 0 103 50 1 entry 21 wall -
+dress wall graffiti 0 101 51 0 edge 21 wall writing
+dress wall roots 0 101 51 1 edge 21 wall -
+dress wall graffiti 0 102 51 0 entry 21 wall writing
+dress wall moss 1 104 51 0 entry 21 wall -
+dress wall glowworms 1 105 51 3 edge 21 wall light
+dress wall moss 1 101 52 1 edge 21 wall -
+dress wall cobweb 1 105 52 3 edge 21 wall -
+dress wall chains 0 101 53 1 edge 21 wall -
+dress wall moss 0 105 53 2 edge 21 wall -
+dress wall graffiti 1 105 53 3 edge 21 wall writing
+dress wall glowworms 0 101 54 1 edge 21 wall light
+dress wall glowworms 0 104 54 3 edge 21 wall light
+dress wall moss 1 101 55 1 edge 21 wall -
+dress wall glowworms 1 105 55 3 edge 21 wall light
+dress wall moss 0 105 55 0 edge 21 wall -
+dress wall roots 1 101 56 1 edge 21 wall -
+dress wall moss 1 102 56 2 edge 21 wall -
+dress wall roots 0 105 56 3 edge 21 wall -
+dress wall chains 1 101 57 3 edge 21 wall -
+dress wall chains 0 101 57 1 edge 21 wall -
+dress wall glowworms 1 103 57 1 edge 21 wall light
+dress wall moss 0 105 57 3 edge 21 wall -
+dress wall glowworms 0 101 58 1 edge 21 wall light
+dress wall graffiti 0 102 58 0 edge 21 wall writing
+dress wall roots 1 105 58 3 edge 21 wall -
+dress wall graffiti 1 101 59 2 edge 21 wall writing
+dress wall roots 0 101 59 1 edge 21 wall -
+dress wall cobweb 0 102 59 2 edge 21 wall -
+dress wall cobweb 0 103 59 2 edge 21 wall -
+dress wall cobweb 1 104 59 2 edge 21 wall -
+dress wall graffiti 0 105 59 2 edge 21 wall writing
+dress wall cobweb 0 105 59 3 edge 21 wall -
+dress prop chest_small 1 28 63 0 core 22 activity:hoard container
+dress fixture crate 0 29 63 3 edge 22 activity:hoard container
+dress fixture crate 1 27 63 1 edge 22 activity:hoard container
+dress prop coins 1 28 63 0 core 22 activity:hoard container
+dress fixture barrel 1 25 63 3 edge 22 item:barrel container
+dress fixture shelf 0 25 69 3 edge 22 item:shelf container
+dress prop trap_plate 1 28 62 0 entry 22 item:trap_plate hazard
+dress wall sconce 0 28 60 3 entry 22 wall light
+dress wall graffiti 0 24 62 0 edge 22 wall writing
+dress wall sconce 1 25 62 0 edge 22 wall light
+dress wall sconce 0 26 62 0 edge 22 wall light
+dress wall banner 1 29 62 3 edge 22 wall -
+dress wall banner 0 29 62 0 edge 22 wall -
+dress wall shield_mount 1 24 63 1 edge 22 wall -
+dress wall shield_mount 0 26 63 2 edge 22 wall -
+dress wall banner 1 29 63 3 edge 22 wall -
+dress wall chains 1 27 64 2 edge 22 wall -
+dress wall banner 0 27 64 1 edge 22 wall -
+dress wall cobweb 1 29 64 3 edge 22 wall -
+dress wall graffiti 1 25 65 3 edge 22 wall writing
+dress wall sconce 0 28 65 1 edge 22 wall light
+dress wall chains 0 29 65 3 edge 22 wall -
+dress wall banner 1 24 66 1 edge 22 wall -
+dress wall shield_mount 0 25 66 3 edge 22 wall -
+dress wall sconce 1 28 66 1 edge 22 wall light
+dress wall shield_mount 1 29 66 3 edge 22 wall -
+dress wall shield_mount 1 25 67 3 edge 22 wall -
+dress wall sconce 1 28 67 1 edge 22 wall light
+dress wall plaque 0 29 67 3 edge 22 wall writing
+dress wall plaque 1 25 68 3 edge 22 wall writing
+dress wall shield_mount 0 28 68 1 edge 22 wall -
+dress wall chains 0 29 68 3 edge 22 wall -
+dress wall sconce 0 24 69 1 edge 22 wall light
+dress wall plaque 1 29 69 3 edge 22 wall writing
+dress wall plaque 0 24 70 1 edge 22 wall writing
+dress wall chains 1 25 70 3 edge 22 wall -
+dress wall plaque 1 28 70 1 edge 22 wall writing
+dress wall plaque 0 24 71 1 edge 22 wall writing
+dress wall banner 0 25 71 3 edge 22 wall -
+dress wall cobweb 0 28 71 1 edge 22 wall -
+dress wall moss 0 29 71 3 edge 22 wall -
+dress wall graffiti 1 24 72 1 edge 22 wall writing
+dress wall cobweb 0 26 72 0 edge 22 wall -
+dress wall moss 1 27 72 0 edge 22 wall -
+dress wall graffiti 0 29 72 3 edge 22 wall writing
+dress wall moss 1 24 73 2 edge 22 wall -
+dress wall cobweb 1 24 73 1 edge 22 wall -
+dress wall cobweb 1 25 73 2 edge 22 wall -
+dress wall cobweb 0 26 73 2 edge 22 wall -
+dress wall chains 0 27 73 2 edge 22 wall -
+dress wall chains 1 28 73 2 edge 22 wall -
+dress wall moss 0 29 73 2 edge 22 wall -
+dress prop urn 1 24 70 0 edge 22 clutter container
+dress fixture shelf 1 29 62 3 edge 22 clutter container
+dress prop chest_small 1 27 64 0 edge 22 clutter container
+dress prop weapon_pile 1 25 68 0 edge 22 clutter container
+dress prop chest_small 0 25 64 0 edge 22 clutter container
+dress fixture barrel 2 27 62 1 edge 22 clutter container
+dress prop weapon_pile 0 26 62 0 edge 22 clutter container
+dress prop coins 0 25 69 0 edge 22 clutter container
+dress prop weapon_pile 0 26 63 0 edge 22 clutter container
+dress prop chest_small 1 24 62 0 edge 22 clutter container
+dress fixture barrel 0 29 65 3 edge 22 clutter container
+dress prop coins 1 27 63 0 edge 22 clutter container
+dress prop weapon_pile 1 28 64 0 edge 22 clutter container
+dress fixture crate 2 29 64 3 edge 22 clutter container
+dress fixture crate 1 24 65 1 edge 22 clutter container
+dress prop coins 1 25 63 0 edge 22 clutter container
+dress prop chest_small 0 25 62 0 edge 22 clutter container
+dress fixture crate 0 29 66 3 edge 22 clutter container
+dress prop coins 0 25 63 0 edge 22 clutter container
+dress fixture crate 2 29 67 0 edge 22 clutter container
+dress prop sack 1 28 67 0 edge 22 clutter container
+dress prop sack 0 24 64 0 edge 22 clutter container
+dress prop creature_den 0 102 6 0 edge 23 activity:denning den
+dress prop bones 1 102 5 0 edge 23 activity:denning -
+dress prop bones 0 103 7 0 edge 23 activity:denning -
+dress prop crystal 1 98 5 0 core 23 activity:growth light
+dress prop mushrooms 1 97 4 0 edge 23 activity:growth -
+dress prop mushrooms 0 99 4 0 edge 23 activity:growth -
+dress fixture rubble 2 100 4 0 edge 23 item:rubble -
+dress prop nest 1 98 7 0 edge 23 item:nest den
+dress prop bedroll 0 100 6 0 core 23 vignette:hermit-camp den
+dress prop lantern 1 100 7 0 core 23 vignette:hermit-camp light
+dress prop cup 0 100 6 0 core 23 vignette:hermit-camp -
+dress prop note 1 99 5 0 core 23 vignette:hermit-camp writing
+dress wall moss 0 97 4 0 edge 23 wall -
+dress wall glowworms 1 97 4 1 edge 23 wall light
+dress wall moss 1 98 4 0 edge 23 wall -
+dress wall roots 0 99 4 0 edge 23 wall -
+dress wall chains 0 100 4 0 edge 23 wall -
+dress wall moss 1 102 4 3 edge 23 wall -
+dress wall plaque 0 102 4 0 edge 23 wall writing
+dress wall roots 1 97 5 1 edge 23 wall -
+dress wall sconce 0 102 5 3 edge 23 wall light
+dress wall glowworms 0 96 6 0 edge 23 wall light
+dress wall moss 0 96 6 1 edge 23 wall -
+dress wall moss 0 103 6 3 edge 23 wall -
+dress wall glowworms 1 103 6 0 edge 23 wall light
+dress wall glowworms 0 96 7 1 entry 23 wall light
+dress wall roots 1 104 7 0 edge 23 wall -
+dress wall glowworms 0 105 7 0 edge 23 wall light
+dress wall roots 0 96 8 1 entry 23 wall -
+dress wall plaque 0 97 8 2 entry 23 wall writing
+dress wall glowworms 1 97 8 3 entry 23 wall light
+dress wall roots 0 99 8 2 edge 23 wall -
+dress wall roots 1 99 8 1 edge 23 wall -
+dress wall roots 0 100 8 2 edge 23 wall -
+dress wall glowworms 1 101 8 2 edge 23 wall light
+dress wall moss 1 103 8 2 edge 23 wall -
+dress wall glowworms 0 104 8 2 edge 23 wall light
+dress wall cobweb 0 105 8 3 edge 23 wall -
+dress wall chains 1 96 9 1 entry 23 wall -
+dress prop creature_den 0 47 20 0 edge 24 activity:denning den
+dress prop bones 0 48 21 0 edge 24 activity:denning -
+dress prop bones 1 46 19 0 edge 24 activity:denning -
+dress prop crystal 0 52 22 0 core 24 activity:growth light
+dress prop mushrooms 0 52 23 0 core 24 activity:growth -
+dress prop mushrooms 1 52 21 0 edge 24 activity:growth -
+dress fixture rubble 3 51 22 1 edge 24 item:rubble -
+dress fixture rubble 2 51 23 1 edge 24 item:rubble -
+dress prop puddle 1 51 21 0 core 24 item:puddle liquid
+dress wall roots 1 46 19 0 edge 24 wall -
+dress wall roots 0 46 19 1 edge 24 wall -
+dress wall moss 1 47 19 0 edge 24 wall -
+dress wall roots 0 48 19 2 edge 24 wall -
+dress wall roots 1 48 19 0 edge 24 wall -
+dress wall moss 0 50 19 0 edge 24 wall -
+dress wall glowworms 1 51 19 0 edge 24 wall light
+dress wall moss 0 52 19 0 edge 24 wall -
+dress wall glowworms 0 53 19 2 edge 24 wall light
+dress wall roots 1 53 19 0 edge 24 wall -
+dress wall roots 0 54 19 3 edge 24 wall -
+dress wall sconce 0 54 19 0 edge 24 wall light
+dress wall moss 1 46 20 1 edge 24 wall -
+dress wall moss 1 52 20 3 edge 24 wall -
+dress wall chains 1 54 20 3 edge 24 wall -
+dress wall glowworms 1 54 20 1 edge 24 wall light
+dress wall moss 0 48 21 0 edge 24 wall -
+dress wall glowworms 0 53 21 0 edge 24 wall light
+dress wall glowworms 0 54 21 3 edge 24 wall light
+dress wall glowworms 1 46 22 1 edge 24 wall light
+dress wall cobweb 1 54 22 3 edge 24 wall -
+dress wall sconce 1 46 23 1 edge 24 wall light
+dress wall cobweb 0 49 23 3 edge 24 wall -
+dress wall cobweb 0 51 23 1 edge 24 wall -
+dress wall cobweb 1 54 23 3 edge 24 wall -
+dress wall cobweb 1 46 24 2 edge 24 wall -
+dress wall cobweb 0 47 24 2 edge 24 wall -
+dress wall chains 0 49 24 2 edge 24 wall -
+dress wall chains 1 52 24 2 edge 24 wall -
+dress wall chains 0 53 24 2 edge 24 wall -
+dress wall chains 1 54 24 2 edge 24 wall -
+dress wall chains 0 54 24 3 edge 24 wall -
+dress wall cobweb 0 51 25 3 entry 24 wall -
+dress wall glowworms 0 51 25 1 entry 24 wall light
+dress wall chains 0 51 26 3 entry 24 wall -
+dress wall graffiti 0 51 26 1 entry 24 wall writing
+dress prop creature_den 0 77 18 0 edge 25 activity:denning den
+dress prop bones 0 77 19 0 edge 25 activity:denning -
+dress prop bones 1 77 17 0 edge 25 activity:denning -
+dress fixture rubble 2 78 23 1 edge 25 item:rubble -
+dress fixture rubble 1 78 24 1 edge 25 item:rubble -
+dress prop puddle 0 83 18 0 core 25 item:puddle liquid
+dress prop puddle 1 82 19 0 core 25 item:puddle liquid
+dress prop nest 1 78 25 0 edge 25 item:nest den
+dress wall graffiti 1 77 17 0 edge 25 wall writing
+dress wall glowworms 0 77 17 1 edge 25 wall light
+dress wall moss 0 78 17 0 edge 25 wall -
+dress wall moss 1 79 17 0 edge 25 wall -
+dress wall roots 1 80 17 0 edge 25 wall -
+dress wall glowworms 1 81 17 0 edge 25 wall light
+dress wall moss 0 82 17 0 edge 25 wall -
+dress wall sconce 0 83 17 0 edge 25 wall light
+dress wall chains 0 84 17 0 edge 25 wall -
+dress wall roots 0 85 17 0 edge 25 wall -
+dress wall moss 1 86 17 0 edge 25 wall -
+dress wall sconce 1 86 18 3 edge 25 wall light
+dress wall graffiti 0 77 19 1 edge 25 wall writing
+dress wall glowworms 1 86 19 3 edge 25 wall light
+dress wall plaque 1 77 20 1 hazard 25 wall writing
+dress wall plaque 0 86 20 3 hazard 25 wall writing
+dress wall chains 1 77 22 2 hazard 25 wall -
+dress wall glowworms 1 77 22 1 hazard 25 wall light
+dress wall graffiti 0 78 23 1 edge 25 wall writing
+dress wall roots 0 86 23 3 edge 25 wall -
+dress wall sconce 0 86 24 3 edge 25 wall light
+dress wall moss 1 78 25 1 edge 25 wall -
+dress wall moss 0 86 25 3 edge 25 wall -
+dress wall chains 1 78 26 2 edge 25 wall -
+dress wall glowworms 0 79 26 2 edge 25 wall light
+dress wall glowworms 1 80 26 2 edge 25 wall light
+dress wall roots 1 81 26 2 edge 25 wall -
+dress wall plaque 1 83 26 2 edge 25 wall writing
+dress wall chains 1 84 26 2 edge 25 wall -
+dress wall graffiti 1 85 26 2 edge 25 wall writing
+dress wall roots 0 86 26 2 edge 25 wall -
+dress wall roots 1 86 26 3 edge 25 wall -
+dress wall moss 1 82 27 3 entry 25 wall -
+dress wall moss 0 82 27 1 entry 25 wall -
+dress wall cobweb 1 82 28 3 entry 25 wall -
+dress wall glowworms 1 82 28 1 entry 25 wall light
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333330000000000000330033330000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003222230000000000000333332230000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000033222233000000000000333222230000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000013332223330000000000303311130000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011033333330000000000300111110000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000011100000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011100000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000111110000
+zone 00000000000000000000000003333333000000000000000000000000000000000000000000000000000000000000003111000000034004330000000111130000
+zone 00000000000000000000000003222223333330000000000000000000000000000000000000000333333333300000003210000000034444211100001112230000
+zone 00000000000000000000000003222222222230000000000000000000000000000000000000000322222222300000003231000000034444211100001112230000
+zone 00000000000000000000000003322222444233000000003333333330000000000000000000000322222222300000003211100001114444311100001113230000
+zone 00000000000000000000000000333224404223000000003303223030000000000000000000000444444444400000003211100001114444300000000103330000
+zone 00000000000000000000000000303224004223000000003333223330000000000000000000000000044000000000003311100001114444000000000000000000
+zone 00000000000000000000000000303224444233000000003223332230000000000000000000000444444444400000000321000001034000000000000000000000
+zone 00000000000000000000000000303222222230000000003223032230000000000000000000000032222222300000000111000001000000000000000000000000
+zone 00000000000000000000000000103333333330000000003333313330000000000000000000000032222222300000000111000001000000000000000000000000
+zone 00000000000000000000000000100000000000000000000000010000000000000000000000000032222222300000000111000001000000000000000000000000
+zone 00000333333333330000000000100000000000000000000000010000000000000000000000000033331333300000000000000001000000000000000000000000
+zone 00000322222222230000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000
+zone 00000324444444230000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000
+zone 00000324000004230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000
+zone 00000324000004230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000311130000
+zone 00000324004444231110000111111100001113311100001111111100000000000000000000000000000000000000000111000000000000000000000321300000
+zone 00000324004444221110000111111100001112211100001112111300000000000000000000000000000000000000000111000000000000000000000333000000
+zone 00000324004444221110000111111100001112211100001112212330000000000000000000000000001000000000000111000000000000000000000033330000
+zone 00000324000444223000000012221000000122221000000033322230000000000000000000000000001000000000001323000000000000000000000332230000
+zone 00000324444422223000000012211100001112221000000030322230000000000000000000000000034433111000011123000000000000000000000032230000
+zone 00000322222223333000000111211100001112211100001113322230000000000000000000000033444422111000011123000000000000000000000333330000
+zone 00000333322233000000000111211100001113311100001112222230000000000000000000000332444422111000011123000000000000000000000323030000
+zone 00000000333330000000000013331000001110331000000033311130000000000000000000011122444422300000001333000000000000000000000333330000
+zone 00000000000000000000000003300000001113033000000000011100000000000000000000011122444422300000000033000000000000000000000000000000
+zone 00000000000000000000000000000000001100000000000000011100000000000000000000000111400433300000000033000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000111000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000111000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000110000000000011100000000000000011100000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00003333330000000001110000000000011100000000000000011100000000000333330000000000000000000000000000000000000000000000000000000000
+zone 00003223000000000033110000000033311100000000000033311133330000000003230000000000000000000000000000000000000000000000000000000000
+zone 00003333000000000032230000000032222330000000000044444444440000000003210000000000000000000000000000000000000000000000000000000000
+zone 00000033311100001112211100001112222230000000000000044444441100001113111000000000000000000000000000000000000000000000000000000000
+zone 00003332211100001112211100001112222233000000004444444444411100001112111000011111000000000000000000000001000000000000000000000000
+zone 00003332211100001112211100001112222223000000003222222223311100001113111000011111100000000000000000000311130000000000000000000000
+zone 00003033221000000033330000001033333333000000003333333333000000000123010000001111300000000000000000000321230000000000000000000000
+zone 00000003333000000003300000001000000000000000000000000000000000000333000000003222300000000000000000000322330000000000000000000000
+zone 00000000000000000000000000001000000000000000000000000000000000000000000000003222300000000000000000000322300000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000003222300000000000000000000322330000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000003222300000000000000000000333230000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000003222300000000000000000000303230000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000003222300000000000000000000333230000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000001100000000000003333300000000000000000000333330000000000000000000000
+zone 00000000000000000000000000001000000000000000000000000000000311113300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000001000000000000000000000000000000321122300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033331300000000000000000000000000033322233300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033332300000000000000000000000000032222330300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033033300000000000000000000000000033331100300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033003300000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033333300000000000000000000000000000001100000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000033333300000000000000000000000033333331133300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000044444444444400000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000044400000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000044444444444400000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000032222222222300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000033333331333300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000311133300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000030321222300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000033322333300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000032222300300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000033333300300000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
