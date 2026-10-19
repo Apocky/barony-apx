@@ -80,3 +80,8 @@ against itself across repeats: 28.4 dB). The second matrix failed one run (a dro
 the key-hold fix in ccce8244). One picture of the third matrix is excluded from the sheet because
 keys pressed on the real keyboard reached that game window (logged as "You say: wwwwwwwwwa/pos").
 Sheet: `C:\Apocrypha\diagnostics\barony-f0\sheet\sheet.png` (game art, so outside the repository).
+
+From-scratch check (2026-10-18 22:50, MEASURED): `build.ps1 -BuildDir build\vs2022-clean` at 2a76428b
+(clean tree) built barony.exe in 227 s with 2 compiler processes; with that exe a 4-run matrix
+(ours and vanilla, both seeds) gave the same two lines, gate PASS, 0 install files changed
+(`C:\Apocrypha\diagnostics\barony-f0\clean-build`).
