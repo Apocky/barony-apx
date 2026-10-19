@@ -78,7 +78,7 @@ namespace tactics
 		long long swing_resets = 0, jitter_sum = 0;
 		long long packs_formed = 0, pack_reacquire = 0;
 		long long calls_for_help = 0, calls_answered = 0, helpers_sent = 0, helpers_arrived = 0;
-		long long route_around = 0;
+		long long route_around = 0, reach_full = 0;
 	};
 	extern Counters C;
 	void resetCounters();

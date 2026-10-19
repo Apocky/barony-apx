@@ -135,7 +135,7 @@ def summarise(results, args):
               "jitter_mean", "swing_resets_jittered", "feints", "player_moved", "reach_assign", "ring_assign",
               "st_wait", "st_attack", "st_path", "st_hunt", "targeting_player_mean", "dist_mean", "overlap_ticks",
               "pack_reacquire", "friendly_fire_dmg", "player_attack_ticks", "creatures_lost_ticks",
-              "contact_attackers", "blocked_share", "waiters_nn_mean", "waiters_overlap_share", "route_around",
+              "contact_attackers", "contact_mean", "blocked_share", "waiters_nn_mean", "waiters_overlap_share", "route_around",
               "flow_builds", "flow_paths", "flow_fallback_astar", "astar_paths", "astar_null", "flow_path_us_mean",
               "astar_path_us_mean", "flow_build_us_p99"]
     for kind, rows in sorted(by.items()):
@@ -186,10 +186,11 @@ def gates(by, base, args):
         g["damage_on_within_20pct_of_ref"] = {"pass": None, "why": "no 12-creature on arms"}
     if off and on:
         blk = mean([a.get("blocked_share", 0) for a in off])
-        con_off = mean([a.get("contact_attackers", 0) for a in off])
-        con_on = mean([a.get("contact_attackers", 0) for a in on])
+        con_off = mean([a.get("contact_mean", 0) for a in off])   # creatures in contact at once (clear swing line)
+        con_on = mean([a.get("contact_mean", 0) for a in on])
         g["control_native_jam"] = {"pass": blk >= 0.5 and con_off <= con_on / 2, "off_blocked_share": round(blk, 3),
-                                   "off_contact_attackers": round(con_off, 2), "on_contact_attackers": round(con_on, 2),
+                                   "off_contact_mean": round(con_off, 2), "on_contact_mean": round(con_on, 2),
+                                   "off_contact_attackers_20s": round(mean([a.get("contact_attackers", 0) for a in off]), 2),
                                    "off_dmg_mean": round(mean([a["dmg"] for a in off]), 1), "n": len(off)}
     noring = [a for a in by.get("noring", []) if a.get("creatures") == 12]
     if noring and on:

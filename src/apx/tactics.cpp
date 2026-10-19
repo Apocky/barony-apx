@@ -207,7 +207,7 @@ namespace tactics
 
 	// The reach zone holds slot holders only: a creature without a reach slot walks round it at keepOut() and leaves it
 	// radially; a slot holder at the wrong angle steps out, walks round and enters radially at its own slot angle.
-	static void routeAround(Entity* target, Entity* my, double& gx, double& gy, bool ownSlot)
+	void routeAround(Entity* target, Entity* my, double& gx, double& gy, bool ownSlot)
 	{
 		double keepR = keepOut(bodyR(target));
 		double mx = my->x - target->x, myy = my->y - target->y, dMe = hypot(mx, myy);
@@ -303,6 +303,18 @@ namespace tactics
 		C.reach_slots_sum += ts.validN;
 		std::sort(cand.begin(), cand.end(), [](const Cand& a, const Cand& b) { return a.d < b.d || (a.d == b.d && a.uid < b.uid); });
 		std::vector<Uint32> holder(ts.n, 0), ringHolder(ts.k, 0);
+		// room is bodies, not slot indices: count every monster on this target already inside reach (holders,
+		// creatures stepping out, arrivals) and admit creatures from outside only into the remaining room
+		const double reachR = bodyR(target) + STRIKERANGE;
+		int inZone = 0;
+		for ( node_t* nd = map.creatures ? map.creatures->first : nullptr; nd; nd = nd->next )
+		{
+			Entity* c = (Entity*)nd->element;
+			Stat* cs = c ? c->getStats() : nullptr;
+			if ( c && c->behavior == &actMonster && cs && cs->HP > 0 && (Uint32)c->monsterTarget == tuid
+				&& hypot(c->x - target->x, c->y - target->y) < reachR ) { ++inZone; }
+		}
+		int admitted = 0;
 		// 1. holders keep a still-valid slot (hysteresis) unless blocked by an ally for too long
 		for ( auto& c : cand )
 		{
@@ -336,9 +348,12 @@ namespace tactics
 				s.wantReposition = false;
 				s.blockedSince = 0;
 			}
+			bool inside = c.d < reachR;
+			if ( best >= 0 && !inside && inZone + admitted >= ts.validN ) { best = -1; ++C.reach_full; } // no room yet: wait on the ring
 			if ( best >= 0 )
 			{
 				if ( s.reachIdx != best ) { ++C.reach_assign; }
+				if ( !inside ) { ++admitted; }
 				holder[best] = c.uid;
 				s.reachIdx = best;
 				s.ringIdx = -1; s.ringSlot = 0;
@@ -557,13 +572,11 @@ namespace tactics
 			}
 			else
 			{
-				double waitR = keepOut(bodyR(target)) + 2; // no room and no ring: wait behind, outside reach
-				if ( d >= waitR ) { hold = true; }
-				else
-				{
-					gx = target->x + (my->x - target->x) / std::max(d, 1.0) * waitR;
-					gy = target->y + (my->y - target->y) / std::max(d, 1.0) * waitR;
-				}
+				// no room and no ring: wait behind the front line, just outside reach on its own bearing
+				double waitR = keepOut(bodyR(target)) + 2;
+				gx = target->x + (my->x - target->x) / std::max(d, 1.0) * waitR;
+				gy = target->y + (my->y - target->y) / std::max(d, 1.0) * waitR;
+				routeAround(target, my, gx, gy, false);
 				s.faceTarget = true;
 			}
 			if ( hold || !moveTo(my, s, gx, gy, speed, dist2) )

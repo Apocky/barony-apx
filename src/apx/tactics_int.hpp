@@ -91,6 +91,7 @@ namespace tactics
 	bool corridorBlocked(Entity* my, Entity* target);
 	bool moveTo(Entity* my, TacticsState& s, double gx, double gy, double speed, double& dist2);
 	void stand(Entity* my, Entity* target, double speed);
+	void routeAround(Entity* target, Entity* my, double& gx, double& gy, bool ownSlot); // keep out of the reach zone
 	void addDecideUs(double us);
 	void addMoveUs(double us);
 	double angDiff(double a, double b);

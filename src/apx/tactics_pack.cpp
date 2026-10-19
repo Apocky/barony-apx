@@ -423,7 +423,7 @@ namespace tactics
 		if ( K.packs && target && s.role == ROLE_FLANKER && s.stance == STANCE_NORMAL ) { flankDecide(my, s, target); }
 	}
 
-	static bool followRoute(Entity* my, TacticsState& s, double speed, double& dist2, double fx, double fy)
+	static bool followRoute(Entity* my, TacticsState& s, double speed, double& dist2, double fx, double fy, Entity* keepOutOf)
 	{
 		// re-sync to the nearest waypoint ahead (the creature may have been pushed, or walked by the engine)
 		size_t best = s.routeAt;
@@ -440,8 +440,10 @@ namespace tactics
 			int t = s.route[s.routeAt];
 			double wx = (t % (int)map.width) * 16.0 + 8, wy = (t / (int)map.width) * 16.0 + 8;
 			if ( hypot(wx - my->x, wy - my->y) <= 6.0 ) { ++s.routeAt; continue; }
+			if ( keepOutOf ) { routeAround(keepOutOf, my, wx, wy, false); } // a route past the fight goes round its reach zone
 			return moveTo(my, s, wx, wy, speed, dist2);
 		}
+		if ( keepOutOf ) { routeAround(keepOutOf, my, fx, fy, false); }
 		return moveTo(my, s, fx, fy, speed, dist2);
 	}
 
@@ -460,7 +462,7 @@ namespace tactics
 				s.routeAt = 0;
 				s.routeKind = ROUTE_HOME;
 			}
-			if ( !followRoute(my, s, speed, dist2, s.homeX, s.homeY) ) { stand(my, target, speed); }
+			if ( !followRoute(my, s, speed, dist2, s.homeX, s.homeY, target) ) { stand(my, target, speed); }
 			else { s.faceMove = true; }
 			return true;
 		}
@@ -472,7 +474,7 @@ namespace tactics
 		if ( K.packs && s.flank == 1 && s.routeKind == ROUTE_FLANK )
 		{
 			double bx = target->x + 2.5 * TILE * cos(target->yaw + PI), by = target->y + 2.5 * TILE * sin(target->yaw + PI);
-			if ( !followRoute(my, s, speed, dist2, bx, by) ) { stand(my, target, speed); }
+			if ( !followRoute(my, s, speed, dist2, bx, by, target) ) { stand(my, target, speed); }
 			s.faceTarget = d < 3 * TILE;
 			return true;
 		}

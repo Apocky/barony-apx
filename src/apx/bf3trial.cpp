@@ -77,6 +77,7 @@ namespace bf3
 		std::vector<int> hist = std::vector<int>(13, 0);
 		std::unordered_map<Uint32, std::pair<int, int>> swing;   // per creature: swing attempts, swings stopped by a body
 		double nnSum = 0; long long nnN = 0, waiterSamples = 0, waiterOverlaps = 0;
+		long long contactSum = 0, contactSamples = 0, contactMax = 0;
 		int slots = 0, spawned = 0;
 	};
 	static Arm A;
@@ -454,6 +455,24 @@ namespace bf3
 		A.attackersMax = std::max<long long>(A.attackersMax, attackers);
 		A.hist[std::min(attackers, 12)]++;
 		if ( attackers > A.slots ) { ++A.overflowTicks; }
+		if ( ticks % 5 == 0 )
+		{
+			// in contact: in reach and the engine's own swing line (thin ray, packmates block) reaches the target
+			hit_t saved = hit;
+			int contact = 0;
+			for ( Uint32 u : trialUids )
+			{
+				Entity* c = uidToEntity(u);
+				if ( !c || !c->getStats() || c->getStats()->HP <= 0 || (Uint32)c->monsterTarget != pe->getUID() ) { continue; }
+				double d = hypot(c->x - pe->x, c->y - pe->y);
+				if ( d >= STRIKERANGE + tactics::bodyR(pe) ) { continue; }
+				lineTrace(c, c->x, c->y, atan2(pe->y - c->y, pe->x - c->x), STRIKERANGE + 8, LINETRACE_ATK_CHECK_FRIENDLYFIRE, false);
+				if ( hit.entity == pe ) { ++contact; }
+			}
+			hit = saved;
+			A.contactSum += contact; ++A.contactSamples;
+			A.contactMax = std::max<long long>(A.contactMax, contact);
+		}
 		if ( ticks % 10 == 0 )
 		{
 			samplePhases(pe);
@@ -539,9 +558,10 @@ namespace bf3
 			.d("waiters_pair_dist_mean", A.waitPairN ? A.waitPairSum / A.waitPairN : 0)
 			.d("waiters_nn_mean", A.nnN ? A.nnSum / A.nnN : 0).d("waiters_overlap_share", A.waiterSamples ? (double)A.waiterOverlaps / A.waiterSamples : 0)
 			.i("contact_attackers", contactAttackers()).d("blocked_share", A.attempts ? (double)(A.thin + A.wide) / A.attempts : 0)
+			.d("contact_mean", A.contactSamples ? (double)A.contactSum / A.contactSamples : 0).i("contact_max", A.contactMax)
 			.i("flank_started", C.flank_started).i("flank_arrived", C.flank_arrived).i("flank_failed", C.flank_failed)
 			.i("retreats", C.retreats).i("regroups", C.regroups).i("morale_breaks", C.morale_breaks).i("morale_events", C.morale_events)
-			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("route_around", C.route_around).i("surrenders", C.surrenders_offered).i("packs_formed", C.packs_formed)
+			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("route_around", C.route_around).i("reach_full", C.reach_full).i("surrenders", C.surrenders_offered).i("packs_formed", C.packs_formed)
 			.i("flow_builds", flow::ST.flow_builds).i("flow_cells_updated", flow::ST.flow_cells_updated)
 			.i("flow_fallback_astar", flow::ST.flow_fallback_astar).i("flow_paths", flow::ST.flow_paths)
 			.i("astar_paths", flow::ST.astar_paths).i("astar_null", flow::ST.astar_null).i("grid_builds", flow::ST.grid_builds)
@@ -640,8 +660,8 @@ namespace bf3
 			stepsDiffMax, fieldDearer, astarOnly, chaseFail, b50, b99);
 	}
 
-	// the nearest tile 8-24 steps from the arena with no clear line from where pack A stands (the engine's own
-	// alert reaches only allies the victim can see) and room for a pack of four
+	// the nearest tile 14-30 steps from the arena that no tile of the fight can see (the engine's own alert reaches
+	// only allies the victim can see) with room for a pack of four
 	static void findHiddenSpot()
 	{
 		hsSearched = true;
@@ -662,20 +682,32 @@ namespace bf3
 				q.push({ x, y });
 			}
 		}
-		std::vector<std::pair<double, double>> views{ { pinX, pinY } };
-		for ( int k = 0; k < 8; ++k ) { views.push_back({ pinX + 20 * cos(k * PI / 4), pinY + 20 * sin(k * PI / 4) }); }
+		std::vector<std::pair<double, double>> views;   // every walkable tile of the fight: within 5 tiles of the arena
+		for ( int y = pTY - 5; y <= pTY + 5; ++y )
+		{
+			for ( int x = pTX - 5; x <= pTX + 5; ++x )
+			{
+				if ( x < 0 || y < 0 || x >= W || y >= H || hypot(x - pTX, y - pTY) > 5 || dist[x + (size_t)y * W] < 0 ) { continue; }
+				views.push_back({ x * 16.0 + 8, y * 16.0 + 8 });
+			}
+		}
 		int best = 1 << 30;
 		for ( int y = 1; y < H - 1; ++y )
 		{
 			for ( int x = 1; x < W - 1; ++x )
 			{
 				int bd = dist[x + (size_t)y * W];
-				if ( bd < 8 || bd > 24 || bd >= best ) { continue; }
+				if ( bd < 14 || bd > 30 || bd >= best ) { continue; }
 				int room = 0;
 				for ( int k = 0; k < 4; ++k ) { if ( tactics::walkable(x + dx[k], y + dy[k]) ) { ++room; } }
 				if ( room < 3 ) { continue; }
-				bool seen = false;
-				for ( auto& v : views ) { if ( tactics::wallClear(nullptr, v.first, v.second, x * 16.0 + 8, y * 16.0 + 8) ) { seen = true; break; } }
+				bool seen = false;   // the spot and its four neighbours, from every tile of the fight
+				for ( int k = -1; k < 4 && !seen; ++k )
+				{
+					int sx = k < 0 ? x : x + dx[k], sy = k < 0 ? y : y + dy[k];
+					if ( !tactics::walkable(sx, sy) ) { continue; }
+					for ( auto& v : views ) { if ( tactics::wallClear(nullptr, v.first, v.second, sx * 16.0 + 8, sy * 16.0 + 8) ) { seen = true; break; } }
+				}
 				if ( seen ) { continue; }
 				best = bd; hsX = x; hsY = y; hsBfs = bd;
 			}
@@ -929,7 +961,7 @@ namespace bf3
 					helpMinDist = std::min(helpMinDist, d);
 					if ( !firstHelpArrival && d <= 4 * 16.0 ) { firstHelpArrival = ticks; }
 				}
-				if ( ticks - callTick >= 25 * TICKS_PER_SECOND )
+				if ( ticks - callTick >= 30 * TICKS_PER_SECOND )
 				{
 					writeHelpRow("");
 					cleanup();
