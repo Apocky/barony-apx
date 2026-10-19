@@ -85,11 +85,105 @@ static int vox_gate(const DressLib& lib, const std::string& dir) {
     return bad ? 1 : 0;
 }
 
+// ASCII of one site level: tiles, features, fixtures, dens D, patrol tiles -, entities
+static void level_ascii(std::ofstream& o, const Floor& f, const Level* L) {
+    std::vector<std::string> rows(f.H, std::string(f.W, ' '));
+    static const char FC[] = {0, '~', '=', '^', ':', '"', '+', 0};
+    for (int z = 0; z < f.H; ++z)
+        for (int x = 0; x < f.W; ++x) {
+            size_t t = f.idx(x, z);
+            char c = f.tile[t] == FLOOR ? '.' : f.tile[t] == HARD ? '#' : ' ';
+            if (f.feat[t] && f.feat[t] < 8 && FC[f.feat[t]] && f.feat[t] != F_SKY) c = FC[f.feat[t]];
+            rows[z][x] = c;
+        }
+    if (L) for (auto& p : L->patrols) for (int t : p.tiles) rows[t / f.W][t % f.W] = '-';
+    for (auto& d : f.dress) if (d.cls == "fixture") rows[d.z][d.x] = fixture_glyph(d.id); else if (d.cls == "prop" && rows[d.z][d.x] == '.') rows[d.z][d.x] = ',';
+    if (L) for (auto& d : L->dens) rows[d.z][d.x] = 'D';
+    for (auto& e : f.entities) rows[e.z][e.x] = e.kind.find("down") != std::string::npos ? '>' : e.kind.find("up") != std::string::npos || e.kind.find("landing") != std::string::npos ? '<' : 'E';
+    for (auto& s : rows) o << s << "\n";
+}
+
+static int site_mode(long long first, long long n, const std::string& dump_dir, const std::vector<Grammar>& gs, const std::vector<Program>& progs,
+                     const DressLib& lib, const Params& P, const SiteParams& SP) {
+    long long pass = 0, nondet = 0;
+    std::map<std::string, long long> why;
+    double alive_min = 1e9, lit_min = 1e9, wr_min = 1e9, ms_sum = 0, ms_max = 0;
+    long long dens = 0, patrols = 0, writings = 0, floors = 0;
+    for (long long s = first; s < first + n; ++s) {
+        auto t0 = std::chrono::steady_clock::now();
+        Site site;
+        std::string err;
+        bool built = build_site((uint64_t)s, gs, progs, lib, P, SP, site, err);
+        double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+        ms_sum += ms; ms_max = std::max(ms_max, ms);
+        SiteVerdict v;
+        if (!built) v.fails.push_back("build: " + err); else v = site_critic(site, SP);
+        if (built && s < first + 10) { Site again; std::string e2; if (!build_site((uint64_t)s, gs, progs, lib, P, SP, again, e2) || again.hash != site.hash) { ++nondet; v.fails.push_back("nondeterministic"); } }
+        pass += v.pass();
+        for (auto& w : v.fails) { std::string k = w.substr(0, w.find_first_of("0123456789")); why[k]++; }
+        std::string lv;
+        if (built)
+            for (int i = 0; i < 5; ++i) {
+                const Level& L = site.levels[i];
+                if (i < 4) {
+                    ++floors;
+                    alive_min = std::min(alive_min, 100.0 * L.alive / std::max(1, L.rooms));
+                    lit_min = std::min(lit_min, 100.0 * L.lit / std::max(1, L.rooms));
+                    wr_min = std::min(wr_min, (double)L.writings.size());
+                    dens += L.dens.size(); patrols += L.patrols.size(); writings += L.writings.size();
+                }
+                char buf[400];
+                std::snprintf(buf, sizeof buf, "%s{\"level\":\"%s\",\"theme\":\"%s\",\"faction\":\"%s\",\"rooms\":%d,\"dens\":%zu,\"patrols\":%zu,\"alive_pct\":%.1f,\"lit_pct\":%.1f,\"writings\":%zu,\"loops\":%d,\"vent\":%d,\"attempt\":%d}",
+                              i ? "," : "", L.name.c_str(), L.r.floor.theme.c_str(), L.faction.c_str(), L.rooms, L.dens.size(), L.patrols.size(),
+                              100.0 * L.alive / std::max(1, L.rooms), 100.0 * L.lit / std::max(1, L.rooms), L.writings.size(), L.r.floor.loops, L.r.floor.vent_rooms, L.r.floor.attempt);
+                lv += buf;
+            }
+        std::string fl;
+        for (auto& w : v.fails) fl += (fl.empty() ? "\"" : ",\"") + esc(w) + "\"";
+        std::printf("{\"site\":%lld,\"pass\":%s,\"ms\":%.1f,\"hash\":\"%016llx\",\"links\":%zu,\"levels\":[%s],\"fails\":[%s]}\n", s, v.pass() ? "true" : "false", ms,
+                    (unsigned long long)site.hash, site.links.size(), lv.c_str(), fl.c_str());
+        if (!dump_dir.empty() && built) {
+            std::filesystem::create_directories(dump_dir);
+            std::ofstream o(dump_dir + "/site-" + std::to_string(s) + ".txt");
+            o << "site " << s << " hash " << std::hex << site.hash << std::dec << " pass " << v.pass() << "\n";
+            for (auto& l : site.links) o << "link " << l.kind << " level " << l.from << " (" << l.fx << "," << l.fz << ") -> level " << l.to << " (" << l.tx << "," << l.tz << ")" << (l.dig_tiles ? " dig " + std::to_string(l.dig_tiles) : "") << "\n";
+            for (auto& w : v.fails) o << "fail " << w << "\n";
+            o << "\nlevel 0 surface (" << site.surface.W << "x" << site.surface.H << "): parts";
+            for (auto& p : site.surface_parts) o << " " << p;
+            o << "\n";
+            level_ascii(o, site.surface, nullptr);
+            for (int i = 0; i < 5; ++i) {
+                const Level& L = site.levels[i];
+                o << "\nlevel " << i + 1 << " " << L.name << " theme " << L.r.floor.theme << " faction " << L.faction << " rooms " << L.rooms << " dens " << L.dens.size()
+                  << " patrols " << L.patrols.size() << " alive " << L.alive << " lit " << L.lit << " writings " << L.writings.size() << "\n";
+                level_ascii(o, L.r.floor, &L);
+                for (auto& ro : L.r.floor.rooms)
+                    o << "room " << ro.node << " " << kind_name(L.r.floor.mission.nodes[ro.node].kind) << " " << ro.program << " [" << ro.x0 << "," << ro.z0 << ")-(" << ro.x1 << "," << ro.z1 << ") door " << ro.door_x << "," << ro.door_z << "\n";
+                for (size_t r = 0; r < L.r.floor.rooms.size(); ++r)
+                    if (!L.room_lit[r]) o << "dark room " << L.r.floor.rooms[r].node << " " << L.r.floor.rooms[r].program << " (marked dark)\n";
+                for (auto& w : L.writings) o << "writing " << w.id << " " << w.kind << " " << w.x << "," << w.z << " text " << std::hex << w.text << std::dec << "\n";
+            }
+        }
+    }
+    std::string ws;
+    for (auto& [k, c] : why) ws += (ws.empty() ? "\"" : ",\"") + esc(k) + "\":" + std::to_string(c);
+    bool gate = pass == n && nondet == 0;
+    std::printf("{\"site_summary\":true,\"thin\":%s,\"sites\":%lld,\"pass\":%lld,\"nondeterministic\":%lld,\"alive_min_pct\":%.1f,\"lit_min_pct\":%.1f,\"writings_min\":%.0f,"
+                "\"dens_per_floor\":%.2f,\"patrols_per_floor\":%.2f,\"writings_per_floor\":%.2f,\"ms_mean\":%.1f,\"ms_max\":%.1f,\"fail_kinds\":{%s},\"gate\":\"%s\"}\n",
+                SP.thin ? "true" : "false", n, pass, nondet, alive_min > 1e8 ? 0 : alive_min, lit_min > 1e8 ? 0 : lit_min, wr_min > 1e8 ? 0 : wr_min,
+                floors ? (double)dens / floors : 0, floors ? (double)patrols / floors : 0, floors ? (double)writings / floors : 0, ms_sum / std::max(1LL, n), ms_max,
+                ws.c_str(), gate ? "PASS" : "FAIL");
+    return gate ? 0 : 1;
+}
+
 int main(int argc, char** argv) {
     long long seeds = 1000, first = 1, dump_seed = -1, max_retried = -1; // max-retried: floors needing a second sub-seed, gated
     std::string grammar = APXGEN_ROOT "/grammar/default.grammar", dump_path, vox_dir, presence_path;
     std::string kits = APXGEN_ROOT "/../Apockalypsis/kits/rooms;" APXGEN_ROOT "/kits/rooms";
     Params P;
+    SiteParams SP;
+    long long site_n = 0;
+    std::string site_dump;
     bool quiet = false, dress = true, clone_cap = true, strict_soft = false; // strict-soft: Clone Army 0 is a gate
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -110,6 +204,10 @@ int main(int argc, char** argv) {
         else if (a == "--no-band-steal") P.band_steal = false;
         else if (a == "--boss-largest") P.boss_largest = true;
         else if (a == "--no-edge-reorder") P.edge_reorders = 0;
+        else if (a == "--site") site_n = std::stoll(nxt());
+        else if (a == "--site-dump") site_dump = nxt();
+        else if (a == "--thin") SP.thin = true;
+        else if (a == "--corridor-feat-cost") P.corridor_feat_cost = std::stoi(nxt());
         else if (a == "--max-retried") max_retried = std::stoll(nxt());
         else if (a == "--presence") presence_path = nxt();
         else if (a == "--vox") vox_dir = nxt();
@@ -128,6 +226,14 @@ int main(int argc, char** argv) {
     if (!load_dress(APXGEN_ROOT "/kits", lib, err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 2; }
     lib.clone_cap = clone_cap;
     if (!vox_dir.empty()) return vox_gate(lib, vox_dir);
+    if (site_n > 0) {
+        std::vector<Grammar> gs(2);
+        if (!load_grammar(APXGEN_ROOT "/grammar/hollow.grammar", gs[0], err) || !load_grammar(APXGEN_ROOT "/grammar/default.grammar", gs[1], err)) {
+            std::fprintf(stderr, "%s\n", err.c_str());
+            return 2;
+        }
+        return site_mode(first, site_n, site_dump, gs, progs, lib, P, SP);
+    }
 
     if (dump_seed >= 0) {
         Result r = generate((uint64_t)dump_seed, g, progs, P);

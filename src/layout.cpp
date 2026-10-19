@@ -68,6 +68,8 @@ struct Digger {
     std::vector<uint8_t> occ;       // FREE, ROOMBOX, else corridor tag (lock region)
     std::vector<uint32_t> cmask;    // corridor behind mask per tile
     std::vector<int> carve_in_box;  // footprint tiles inside room boxes (door openings)
+    std::vector<uint8_t> featg;     // room programs' features on the grid: crossing a blocker costs feat_cost
+    uint32_t feat_cost = 24;
     int corridor_tiles = 0, narrowed = 0;
     int width_hist[4] = {0, 0, 0, 0};
     std::vector<uint32_t> g;
@@ -132,7 +134,16 @@ struct Digger {
                 if (nx < 1 || nz < 1 || nx >= S - 1 || nz >= S - 1) continue;
                 int n = (int)id(nx, nz);
                 if (n != goal && !foot_ok(nx, nz, w, a, b, tag, pass)) continue;
-                uint32_t ng = gc + 1;
+                uint32_t pen = 0; // go round lava, chasms, deep water where a way exists: every footprint tile counts
+                if (feat_cost) {
+                    int lo = -(w - 1) / 2, hi = w / 2;
+                    for (int dz = lo; dz <= hi; ++dz)
+                        for (int dx = lo; dx <= hi; ++dx) {
+                            int px = nx + dx, pz = nz + dz;
+                            if (px >= 0 && pz >= 0 && px < S && pz < S && feat_blocks(featg[id(px, pz)])) pen += feat_cost;
+                        }
+                }
+                uint32_t ng = gc + 1 + pen;
                 if (ng < g[n]) { g[n] = ng; from[n] = c; open.push({ng + h(nx, nz), ng, n}); }
             }
         }
@@ -419,7 +430,10 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     for (int node = 0; node < N; ++node) {
         Rect cell = cells[cell_of[node]];
         int cw = cell[2] - cell[0] - 4, cd = cell[3] - cell[1] - 4;
-        const std::string sp = special_of(m.nodes[node].kind);
+        const std::string sp0 = special_of(m.nodes[node].kind);
+        // the cave layer's lava vent (gameplay/20 section 2): the first plain room a vent program fits
+        const bool vent = sp0.empty() && P.vent && f.vent_rooms == 0 && m.nodes[node].kind == Kind::Room;
+        const std::string sp = vent ? "vent" : sp0;
         const std::string& dist = f.region_district[f.reg[node]];
         std::vector<const Program*> fits, special, themed, district;
         for (auto& p : progs) {
@@ -430,8 +444,9 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         }
         if (fits.empty() && special.empty()) return "no program fits cell " + std::to_string(cw) + "x" + std::to_string(cd);
         const std::vector<const Program*>& pool = !special.empty() ? special : !district.empty() ? district : !themed.empty() ? themed : fits;
-        f.special_rooms += !special.empty();
-        if (!sp.empty()) {
+        if (vent) f.vent_rooms += !special.empty();
+        else f.special_rooms += !special.empty();
+        if (!sp0.empty()) {
             if (special.empty()) ++f.special_missed;
             else {
                 static const char* SK[] = {"haven", "boss", "vault", "nexus", "stronghold"};
@@ -477,6 +492,11 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     D.cmask.assign((size_t)S * S, 0);
     D.g.assign((size_t)S * S, 0);
     D.from.assign((size_t)S * S, -1);
+    D.featg.assign((size_t)S * S, F_NONE);
+    D.feat_cost = P.corridor_feat_cost;
+    for (auto& ro : f.rooms)
+        for (int z = ro.z0; z < ro.z1; ++z)
+            for (int x = ro.x0; x < ro.x1; ++x) D.featg[D.id(x, z)] = room_feat[ro.node][(size_t)(z - ro.z0) * (ro.x1 - ro.x0) + (x - ro.x0)];
     for (size_t c = 0; c < cells.size(); ++c)
         for (int z = cells[c][1]; z < cells[c][3]; ++z)
             for (int x = cells[c][0]; x < cells[c][2]; ++x) D.tile_band[D.id(x, z)] = band_of_cell[c];
@@ -630,22 +650,27 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                 for (int x = ro.x0; x < ro.x1; ++x) if (f.tile[f.idx(x, z)] == FLOOR && lab[f.idx(x, z)] < 0) { island = (int)f.idx(x, z); break; }
             if (island < 0) break;
             // BFS through the box interior from the island to the door piece, carve the path
-            std::vector<int> prev((size_t)S * S, -2);
-            std::deque<int> q2{island};
-            prev[island] = -1;
+            // pass 0 keeps off lava, chasms and deep water; pass 1 may cross them (they become bridge)
+            std::vector<int> prev;
             int hit = -1;
-            while (!q2.empty() && hit < 0) {
-                int c = q2.front(); q2.pop_front();
-                int x = c % S, z = c / S;
-                const int DD[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-                for (auto& d2 : DD) {
-                    int nx = x + d2[0], nz = z + d2[1];
-                    if (!inside(nx, nz)) continue;
-                    int n = nz * S + nx;
-                    if (prev[n] != -2) continue;
-                    prev[n] = c;
-                    if (lab[n] == 0) { hit = n; break; }
-                    q2.push_back(n);
+            for (int pass = P.corridor_feat_cost ? 0 : 1; pass < 2 && hit < 0; ++pass) {
+                prev.assign((size_t)S * S, -2);
+                std::deque<int> q2{island};
+                prev[island] = -1;
+                while (!q2.empty() && hit < 0) {
+                    int c = q2.front(); q2.pop_front();
+                    int x = c % S, z = c / S;
+                    const int DD[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                    for (auto& d2 : DD) {
+                        int nx = x + d2[0], nz = z + d2[1];
+                        if (!inside(nx, nz)) continue;
+                        int n = nz * S + nx;
+                        if (prev[n] != -2) continue;
+                        if (pass == 0 && feat_blocks(f.feat[n])) continue;
+                        prev[n] = c;
+                        if (lab[n] == 0) { hit = n; break; }
+                        q2.push_back(n);
+                    }
                 }
             }
             if (hit < 0) return "room " + std::to_string(ro.node) + " (" + ro.program + " " + std::to_string(ro.x1 - ro.x0) + "x" + std::to_string(ro.z1 - ro.z0) + ") island cannot join its door";

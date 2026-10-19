@@ -3,6 +3,8 @@
 id = "vault"
 clutter = ["crate", "sack", "chest_small", "barrel", "coins", "shelf", "weapon_pile", "urn"]
 never = ["creature_den", "rat_nest", "bedroll"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "hoard"

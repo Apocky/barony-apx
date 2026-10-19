@@ -229,6 +229,69 @@ Gate: `--max-retried 10` (the w2_gate ctest now carries it). Controls, each must
 f3_control_no_band_steal). Timing in this run: mean 16.0 ms, max 145 ms per floor while other
 sessions were building; not re-measured on an idle machine.
 
+# H1a -- the Hollow's site (gameplay/20 sections 2-3)
+
+Started 2026-10-19 01:30:13 -0700, site gates measured 01:49:49-01:53:17, ctest 11/11 by 01:56
+(about 26 min to the gates). `src/site.cpp`, `grammar/hollow.grammar`, `apxgen --site N`.
+
+- Levels: a 64 x 64 surface pocket (open sky; a stream of shallow water, a broken ruin of
+  diggable stone holding the way down, a copse, a camp), then floor 1 fortress (faction garrison),
+  floor 2 temple (cult), floor 3 crypt or sewer by seed (undead and vermin), floor 4 mine (goblins),
+  then the cave layer (beasts) whose first fitting plain room takes `cave-lava-vent` (a lava pool,
+  a crust ring).
+- Floors run `grammar/hollow.grammar`: the default grammar plus a second boss (`boss:2`, hung in
+  the stronghold region): 3 keys, 3 locks, 2 secrets, 2 bosses, 2 cycles, 24-40 rooms, 2 loops.
+- Links, in order down the site: stairs (surface to floor 1), shaft (1 to 2), flooded sump (2 to 3:
+  shallow water round both ends), collapsed level (3 to 4: a dead-end pocket of 2-4 diggable tiles
+  out of a room of the deepest lock region, walled HARD so nothing else reaches it; the way down
+  sits at its far end; the floor's critic runs again on the changed tiles), stairs (4 to caves).
+- Population per floor: dens (the stronghold, rooms dressed with a den, then spread farthest:
+  3 + rooms/12), 3 patrol routes from dens to the farthest room door of the same lock region
+  (never across a lock), then more patrols or dens on the farthest dead room until 70 percent of
+  rooms are alive (cap 8 patrols, 3 extra dens). Writings (dress rows of content writing and the
+  map plaque) each get a text kind: history, map_region, quest_hint or form.
+- Lit: a room is lit by a light-content item, lava beside its floor, or open sky. Function
+  programs gained `light` and `lit_permille` (900): a room with no emissive gets one; the rest are
+  dark on purpose and the site dump marks them.
+
+Mechanisms fixed on the way (all floors): corridors pay `Params::corridor_feat_cost` = 24 per
+lava/chasm/deep tile under their whole footprint (a 3-wide corridor used to pave a vent with its
+side lanes); island repair first looks for a path that keeps off those features.
+
+Gates per site (`site_critic`), MEASURED on sites 1-1000:
+
+| Gate | Result |
+|---|---|
+| sites passing every gate | 1000 / 1000 (determinism: sites 1-10 built twice, 0 mismatches) |
+| surface: ruin, stream, copse, camp, one walkable piece | 1000 / 1000 |
+| floors 1-4: F2 hard gates, 24-40 rooms, 3 keys, 3 locks, 2 secrets, 2 bosses, 2 cycles, 2 loops, all 5 specials | 4000 / 4000 floors |
+| 4 distinct factions on the 4 floors | 1000 / 1000 |
+| links stairs, shaft, sump, collapse, in order; collapse reached only by digging from its room | 1000 / 1000 |
+| caves: vent room with lava | 1000 / 1000 |
+| rooms per floor | 27-40, mean 32.3 |
+| dens / patrols per floor (gate: 2 or more each) | min 5 / 3, mean 5.5 / 3.4 |
+| Alive, rooms within 16 steps of a den or patrol (gate 60 percent) | min 70.0, mean 77.4 percent |
+| Lit (gate 80 percent) | min 82.1, mean 99.8 percent |
+| Readable, writings per floor (gate 12) | min 91, mean 230 |
+| ms per site (5 levels + surface, generate + dress + populate) | mean 140, max 464 |
+
+Control `--thin` (1 den, no patrols, no wall dressing): 0 / 200 sites pass (Alive min 2.5
+percent, writings min 3, patrols 0); ctest h1a_control_thin (WILL_FAIL). Floor gates after the
+H1a changes (1000 seeds): pass 1000, retried 1, all 5 specials 1000, Clone Army 0, clearance 0,
+GUARANTEED misses 0, presence out of band 0, density mean 6.77 / min 5.36. ctest 11 / 11.
+
+Dumps: `out/site/site-1.txt` .. `site-3.txt` (links, every level's map with dens D and patrol
+tiles -, rooms, dark rooms, writings); per-site rows `out/h1a-1000.jsonl`.
+
+Not done / not checked (H1a):
+- "16 m" is 16 walking steps at 1 tile = 1 m (ASSUMED, as the density rule).
+- Writings are counted from dressing (wall plaques, graffiti, mosaics count): 91-534 per floor, far
+  above 12; the text itself is a seeded id with a kind, not written text.
+- The link endpoints are not aligned between levels (an x, z on each side, no shared geometry).
+- Not in Barony yet; the vendored copy in barony-apx (F2-integration) has not taken these commits.
+- Spec rows not built here: Vertical (30 percent with a second level, pit, shaft or balcony),
+  interactive materials, the director's three-candidate pick, decay stages, crafting depth.
+
 ## Not done / not checked (F3)
 
 - ASSUMED: 1 tile = 1 m^2 for the density rule (`DressLib::m2_per_tile`); no spec gives Barony's

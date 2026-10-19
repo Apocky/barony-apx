@@ -3,6 +3,8 @@
 id = "haven"
 clutter = ["bench", "urn", "candle", "shelf", "crate", "barrel", "lantern", "bucket"]
 never = ["spikes", "trap_plate", "creature_den", "rat_nest", "bones"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "shrine"

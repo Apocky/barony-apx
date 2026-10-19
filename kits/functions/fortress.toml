@@ -3,6 +3,8 @@
 id = "fortress"
 clutter = ["crate", "barrel", "sack", "weapon_pile", "bench", "bucket", "lantern", "rubble"]
 never = ["altar", "rat_nest", "creature_den"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "arming"

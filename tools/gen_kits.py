@@ -221,6 +221,12 @@ prog('special-stronghold-hall', 'any', '', 10, 20, ['special', 'faction'], 'STRO
       repeat('x', 3, 'w-3', 4, [box('col', 'i', 2, 'i+1', 3), box('col', 'i', 'd-3', 'i+1', 'd-2')]),
       op('subtract', dst='void', src='col')], special='stronghold', function='stronghold')
 
+# the cave layer's lava vent (gameplay/20 section 2): a cavern round a lava vent, a basalt crust ring
+prog('cave-lava-vent', 'any', '', 8, 20, ['cave', 'lava', 'vent'], 'the lava vent: a molten pool in a cavern, a crust rim to walk',
+     cave_base('vent', 640) + [disc('lava', 'w/2', 'd/2', '(w+d)/10'), disc('crust', 'w/2', 'd/2', '(w+d)/10+2'),
+                               op('subtract', dst='crust', src='lava'), op('union', dst='void', src='crust'),
+                               op('dilate', mask='hazard', src='lava', k=1)], special='vent', function='cave')
+
 for a, kw in P:
     pid = a[0]
     with open(os.path.join(OUT, pid + '.toml'), 'w', newline='\n') as f:

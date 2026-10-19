@@ -267,6 +267,41 @@ content = ""
 place = "wall"
 
 [[prop]]
+id = "tree"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "bush"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "stump"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "tent"
+content = "den"
+place = "floor"
+
+[[prop]]
+id = "campfire"
+content = "light"
+place = "floor"
+
+[[prop]]
+id = "ruin_stone"
+content = ""
+place = "floor"
+
+[[prop]]
+id = "reeds"
+content = ""
+place = "floor"
+
+[[prop]]
 id = "glowworms"
 content = "light"
 place = "wall"

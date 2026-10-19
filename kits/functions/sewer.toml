@@ -3,6 +3,8 @@
 id = "sewer"
 clutter = ["barrel", "crate", "puddle", "sack", "bones", "bucket", "rat_nest", "rubble"]
 never = ["altar", "bed", "statue"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "sluice"

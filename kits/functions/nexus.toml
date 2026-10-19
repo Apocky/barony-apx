@@ -3,6 +3,8 @@
 id = "nexus"
 clutter = ["urn", "crate", "bench", "statue", "brazier", "lantern", "barrel", "sack"]
 never = ["creature_den", "spikes"]
+light = ["sconce", "lantern"]
+lit_permille = 900
 
 [[activity]]
 id = "wayfinding"
