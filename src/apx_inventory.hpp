@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "main.hpp"
+#include "apx_inv_logic.hpp"
 
 class Item;
 class Frame;
@@ -49,10 +50,26 @@ namespace apx_inv
 	bool listHandleMove(int player);
 	const ListState& listState(int player);
 	void listTestPad(bool on);
-	void listTestPadPress();    // self-test only: one D-pad-down press, set in the binding just before the list reads it // self-test only: run the gamepad move path without a controller attached
+	void listTestPadPress();    // self-test only: one D-pad-down press, set in the binding just before the list reads it
+
+	// Steps 3-5 (apx_inventory_ui.cpp): row actions open Barony's context menu, plus Inspect and
+	// Break; a second list (chest, shop, follower pack) beside ours, transfer by row; the bench shell.
+	enum OtherView : int { OTHER_NONE, OTHER_CHEST, OTHER_SHOP, OTHER_FOLLOWER };
+	struct ViewState { int other = OTHER_NONE; int otherRows = 0; int otherSelected = 0; int focus = 0; bool inspectShown = false;
+		Uint32 inspectUid = 0; int station = 0; int stationOps = 0; bool benchShown = false; int transfers = 0; int refusedHeavy = 0;
+		int benchRows = 0; int benchTab = 0; int benchTabSwitches = 0; int benchActions = 0; };
+	const ViewState& viewState(int player);
+	void inspectOpen(int player, Item* item);
+	void breakItem(int player, Item* item);
+	bool openRowMenu(int player, Item* item);           // Barony's context menu for an item of the list
+	bool activateSelected(int player);                 // what Enter / gamepad confirm does on the focused row
+	void setFocus(int player, int focus, int selectedRow); // self-test and mouse: 0 ours, 1 theirs, 2 bench
+	void benchTab(int player, int d);                  // Craft / Salvage / Formbook
 
 	// -apxselftest=inventory: runs once on the test floor, writes JSONL, then quits the game.
 	void selfTestArm(const char* which);
 	void selfTestTick();
+	void shotWhen(const char* view, const char* name); // self-test: screenshot on the first frame that view is drawn
+	void shotIfView(const char* view);
 	const char* takeShotRequest(); // a screenshot file name the test wants this frame, or nullptr
 }
