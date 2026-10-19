@@ -68,7 +68,7 @@ bool load_grammar(const std::string& path, Grammar& g, std::string& err) {
 
 static bool is_lock(const Mission& m, int v) { return m.nodes[v].kind == Kind::Lock; }
 
-bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::string& err) {
+bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::string& err, int room_cap) {
     Rng r(hash_words({seed, 0x4D15}));
     m = Mission{};
     std::map<std::string, int> name;
@@ -123,6 +123,10 @@ bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::stri
         } else if (t[0] == "grow" && t.size() == 3) {
             int lo = std::atoi(t[1].c_str()), hi = std::atoi(t[2].c_str());
             int target = lo + (int)r.next((uint64_t)(hi - lo + 1));
+            if (room_cap >= 0 && target > room_cap) {
+                if (room_cap < lo) return bad("room cap " + std::to_string(room_cap) + " under the grow minimum " + std::to_string(lo));
+                target = room_cap; // a small floor: the mission grows to what its cells hold
+            }
             int serial = 0;
             while ((int)m.nodes.size() < target) {
                 std::vector<int> cand;

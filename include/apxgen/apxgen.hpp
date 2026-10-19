@@ -36,7 +36,7 @@ struct Mission {
 // A grammar is rows of text (grammar/*.grammar); rows run in order. See grammar/default.grammar.
 struct Grammar { std::vector<std::string> rows; std::string source; };
 bool load_grammar(const std::string& path, Grammar& g, std::string& err);
-bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::string& err);
+bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::string& err, int room_cap = -1); // room_cap: the grow row stops there
 std::vector<char> reach(const Mission& m, const std::vector<int>& closed);
 std::string check_mission(const Mission& m);   // "" = ok
 std::vector<uint32_t> regions(const Mission& m); // locks closed between node and entrance
@@ -95,6 +95,10 @@ struct Params {
     bool boss_largest = false;   // true = F3.1 rule: the boss takes the largest cell of its band (far moves)
     bool band_steal = true;
     int corridor_feat_cost = 24; // extra A* cost per lava/chasm/deep tile in a room (0 = the F3 paving behaviour)
+    int min_size = 80;           // floors are clamped to 80..160 tiles a side
+    bool boss_cell_last = false; // measured worse at 96/128 (retries 19, 8 vs 1, 1): off; rotate the band order so the boss band ends on the largest cell
+    int cap_spare = 6;           // spare cells a capped mission leaves (special swaps and steals need them)
+    bool cap_rooms_to_cells = true; // grow the mission only to the cells a small floor has (false = control)
     bool adaptive_leaf = true;   // re-split with smaller leaves when cells < nodes + 2 (false = the F3 behaviour)
     bool vent = false;           // the cave layer: one room takes a special "vent" program (lava vent)
     int edge_reorders = 4;       // corridor-pass restarts with the failed edge first (0 = control)      // false = control: a special that fits no cell of its band dead-ends           // the boss cell holds at least this many tiles a side inside its margin
@@ -145,7 +149,7 @@ struct Floor {
     std::vector<std::string> region_district; // district per lock region
     std::vector<uint8_t> feat;   // Feat per tile
     int special_rooms = 0, themed_rooms = 0, district_rooms = 0;
-    int leaf_shrinks = 0, vent_rooms = 0, special_swaps = 0, special_merges = 0, band_steals = 0, edge_reorders = 0, special_missed = 0; // missed: a special node on a non-special program
+    int room_capped = 0, leaf_shrinks = 0, vent_rooms = 0, special_swaps = 0, special_merges = 0, band_steals = 0, edge_reorders = 0, special_missed = 0; // missed: a special node on a non-special program
     unsigned special_kinds = 0;  // bit per special kind placed: haven boss vault nexus stronghold
     int boss_w = 0, boss_d = 0;
     std::vector<uint8_t> zone;   // Zone per tile (room floor only)

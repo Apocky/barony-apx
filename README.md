@@ -330,6 +330,30 @@ smaller largest leaf (24, 22, ... down to 2 * leaf_min - 1), `Params::adaptive_l
 cells, the mission has 24-40 rooms, and two bosses need cells of 16 or more. That needs a design
 decision (floor size at least 96, a mission scaled to the floor, or smaller rooms), not a patch.
 
+Decision 2026-10-19 (relayed from the parent session): 80 is the minimum floor size; targets are
+96-128; 48 and 64 are out of scope. `Params::min_size` = 80 clamps every floor to 80-160. To make
+80 pass:
+- room cap: when a floor has fewer cells than rooms + 6, the mission's grow row stops at cells - 6
+  (`Params::cap_rooms_to_cells`, `cap_spare` = 6; never under the grammar's 24); cells stay large
+  so special rooms still fit, and the 6 spares feed the special swaps and band steals. The
+  adaptive leaf shrink runs only when that cap would go under 24.
+- a GUARANTEED wall fixture may stand free when door bands leave no wall tile (counted relaxed).
+- tried and rejected: rotating the band order so the boss band ends on the largest cell made 96 and
+  128 worse (retries 19 and 8 against 1 and 1); it stays off (`boss_cell_last`).
+
+MEASURED, seeds 1-1000 per size:
+
+| size | pass | retried | rooms mean | GUARANTEED misses | clearance |
+|---|---|---|---|---|---|
+| 80 | 1000 | 242 | 27.3 | 0 | 0 |
+| 96 | 1000 | 1 | 28.8 | 0 | 0 |
+| 128 | 1000 | 1 | 32.5 | 0 | 0 |
+
+Control at 80 with `--no-room-cap`: 620 / 1000 pass. ctest: size80_gate (300 seeds, retries at
+most 90) and size80_control_no_room_cap (WILL_FAIL); 14 / 14 pass; sites 200 / 200.
+Open: at 80, 24 percent of floors need a second sub-seed (mostly "no cell in band fits special
+boss"), and one presence row (fortress card-game vignette, LIKELY) measures 56 percent, under 60.
+
 ## Not done / not checked (F3)
 
 - ASSUMED: 1 tile = 1 m^2 for the density rule (`DressLib::m2_per_tile`); no spec gives Barony's

@@ -224,8 +224,10 @@ struct RoomCtx {
     int place_fixture(const FixtureDef& fx, uint8_t zone, int mode, int target, const std::string& source, bool relax_ok) {
         struct Cand { long long score; int x, z, rot; };
         // pass 0 the asked zone; 1 any zone but hazard; 2 any zone (a last resort, still counted)
-        for (int pass = 0; pass < 3; ++pass) {
+        // pass 3 (GUARANTEED only): a wall fixture may stand free when no wall tile is left
+        for (int pass = 0; pass < 4; ++pass) {
             if (pass >= 1 && !relax_ok) break;
+            if (pass == 3 && fx.support != "wall") break;
             std::vector<Cand> cs;
             for (int t : tiles) {
                 int x = t % W, z = t / W;
@@ -233,6 +235,7 @@ struct RoomCtx {
                 if (pass == 0 && zone != Z_NONE && zt != zone) continue;
                 if (pass == 1 && zt == Z_HAZARD && zone != Z_HAZARD) continue;
                 if (pass == 2 && (zone == Z_NONE || zt != Z_HAZARD)) continue; // only what pass 1 left out
+                if (pass == 3 && zt == Z_HAZARD) continue;
                 if (occ[t] != O_FREE) continue;
                 if (capped(zt, fx.id, fx.variants)) continue;
                 for (int rot = 0; rot < 4; ++rot) {
@@ -241,7 +244,7 @@ struct RoomCtx {
                     bool ok = true;
                     for (int u : ft) if (occ[u] != O_FREE) { ok = false; break; }
                     if (!ok) continue;
-                    if (fx.support == "wall") {
+                    if (fx.support == "wall" && pass < 3) {
                         for (int u : ft) if (!wall(u % W - FX[rot], u / W - FZ[rot])) { ok = false; break; }
                         if (!ok) continue;
                     }

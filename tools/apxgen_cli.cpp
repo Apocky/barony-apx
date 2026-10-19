@@ -211,6 +211,8 @@ int main(int argc, char** argv) {
         else if (a == "--thin") SP.thin = true;
         else if (a == "--all-legible") SP.all_legible = true;
         else if (a == "--no-adaptive-leaf") P.adaptive_leaf = false;
+        else if (a == "--no-room-cap") P.cap_rooms_to_cells = false;
+        else if (a == "--min-size") P.min_size = std::stoi(nxt());
         else if (a == "--corridor-feat-cost") P.corridor_feat_cost = std::stoi(nxt());
         else if (a == "--max-retried") max_retried = std::stoll(nxt());
         else if (a == "--presence") presence_path = nxt();
