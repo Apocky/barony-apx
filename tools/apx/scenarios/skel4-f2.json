@@ -1,0 +1,1 @@
+{ "name": "skel4-f2", "party": 1, "floor": 2, "seed": 77, "spawn": [{ "kind": "skeleton", "n": 4, "ring_tiles": 10 }], "bot": { "skill": 0.7 }, "encounters": 500, "reload_every": 25 }

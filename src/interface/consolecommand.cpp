@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "../main.hpp"
+#include "../apx/telemetry.hpp"
 #include "consolecommand.hpp"
 
 #include <sstream>
@@ -1508,6 +1509,10 @@ namespace ConsoleCommands {
 		const int endIndex = argc >= 3 ? atoi(argv[2]) : nummodels;
 		reloadModels(startIndex, endIndex);
 		});
+
+	static ConsoleCommand ccmd_apxshot("/apxshot", "apx: write a screenshot through the pre-swap GL hook", []CCMD{
+		apx::shotRequest(argc > 1 ? argv[1] : "");
+	});
 
 	static ConsoleCommand ccmd_killmonsters("/killmonsters", "kill all monsters (cheat)", []CCMD{
 		if (!(svFlags & SV_FLAG_CHEATS))

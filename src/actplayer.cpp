@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/telemetry.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
@@ -6143,6 +6144,8 @@ void playerDebugTests(Entity* my)
 
 void actPlayer(Entity* my)
 {
+	if ( apx::simOn ) { apx::botThink(my); }
+	struct ApxPost { Entity* m; ~ApxPost() { if ( apx::simOn ) { apx::botPost(m); } } } apxPost{ my }; // selection must be set AFTER actPlayer recomputes it
 	if (!my)
 	{
 		return;

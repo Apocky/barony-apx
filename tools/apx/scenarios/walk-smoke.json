@@ -1,0 +1,1 @@
+{ "name": "walk-f1-smoke", "mode": "walk", "party": 1, "floor": 1, "seed": 4242, "runs": 3, "bot": { "skill": 0.7 } }

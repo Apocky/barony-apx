@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/telemetry.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
@@ -67,6 +68,7 @@ enum ArrowSpriteTypes : int
 
 void actArrow(Entity* my)
 {
+	ApxDmgScope apxScope(SRC_ARROW);
 	node_t* node = nullptr;
 
 	// lifespan

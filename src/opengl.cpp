@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/telemetry.hpp"
 #include "draw.hpp"
 #include "entity.hpp"
 #include "files.hpp"
@@ -2617,6 +2618,8 @@ void GO_SwapBuffers(SDL_Window* screen)
         GL_CHECK_ERR(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
         main_framebuffer.draw(vidgamma);
     }
+	
+    apxShotMaybe(screen); // BF1-5: read the finished frame from the back buffer BEFORE the swap
 	
     SDL_GL_SwapWindow(screen);
     

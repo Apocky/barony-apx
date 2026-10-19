@@ -1,0 +1,1 @@
+{ "name": "walk-p2-smoke", "mode": "walk", "party": 2, "floor": 1, "seed": 4242, "runs": 2, "bot": { "skill": 0.7 } }

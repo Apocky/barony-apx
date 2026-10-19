@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/telemetry.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
@@ -142,6 +143,7 @@ void onThrownLandingParticle(Entity* my)
 
 void actThrown(Entity* my)
 {
+	ApxDmgScope apxScope(SRC_THROWN);
 	Item* item = nullptr;
 	Category cat = GEM;
 	ItemType type = WOODEN_SHIELD;

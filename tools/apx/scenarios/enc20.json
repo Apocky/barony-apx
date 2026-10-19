@@ -1,0 +1,3 @@
+{ "name": "enc20", "party": 1, "floor": 1, "seed": 77, "spawn": [{ "kind": "skeleton", "n": 4, "ring_tiles": 10 }], "bot": { "skill": 0.7 }, "encounters": 20, "reload_every": 25 }
+
+

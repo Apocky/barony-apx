@@ -1,0 +1,1 @@
+{ "name": "smoke-skel4", "party": 1, "floor": 1, "seed": 77, "spawn": [{ "kind": "skeleton", "n": 4, "ring_tiles": 10 }], "bot": { "skill": 0.7 }, "encounters": 5, "reload_every": 25 }

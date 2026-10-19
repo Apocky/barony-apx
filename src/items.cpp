@@ -11,6 +11,7 @@
 
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
+#include "apx/telemetry.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
@@ -2259,6 +2260,7 @@ Entity* dropItemMonster(Item* const item, Entity* const monster, Stat* const mon
 
 void consumeItem(Item*& item, const int player)
 {
+	if ( apx::enabled ) { apx::onItemUse(true); }
 	if ( item == nullptr )
 	{
 		return;
@@ -2597,6 +2599,7 @@ EquipItemResult equipItem(Item* const item, Item** const slot, const int player,
 
 void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDropping, bool serverCheckUse)
 {
+	if ( apx::enabled ) { apx::onItemUse(false); }
 	if ( item == nullptr )
 	{
 		return;

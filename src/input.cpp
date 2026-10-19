@@ -186,6 +186,16 @@ void Input::defaultBindings() {
 	}
 }
 
+void Input::apxSet(const char* name, bool on, float analogValue) {
+	auto& b = bindings[name];
+	if (on && !b.binary) {
+		b.consumed = false;
+		b.heldTicks = ::ticks;
+	}
+	b.binary = on;
+	b.analog = on ? (analogValue != 0.f ? analogValue : 1.f) : 0.f;
+}
+
 float Input::analog(const char* binding) const {
 	if (multiplayer != SINGLE && player != 0) {
 		return inputs[0].analog(binding);

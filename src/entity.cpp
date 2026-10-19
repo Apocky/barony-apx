@@ -11,6 +11,7 @@ See LICENSE for details.
 
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
+#include "apx/telemetry.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
@@ -3180,6 +3181,8 @@ void Entity::setHP(int amount)
 	}
 
 	int healthDiff = entitystats->HP;
+	const int apxHpBefore = entitystats->HP;
+	const int apxWanted = amount; // requested HP before clamping, godmode and buddha edits
 
 	if ( this->behavior == &actPlayer && godmode )
 	{
@@ -3197,6 +3200,7 @@ void Entity::setHP(int amount)
 	{
 		entitystats->HP = 1; //Buddhas never die!
 	}
+	if ( apx::enabled ) { apx::onHp(this, entitystats->HP - apxHpBefore, this->behavior == &actPlayer && apxWanted < 1); }
 
 	if ( this->behavior == &actPlayer && entitystats->OLDHP >= entitystats->HP )
 	{
@@ -3812,6 +3816,7 @@ static ConsoleVariable<bool> cvar_noxp("/noxp", false);
 
 void Entity::handleEffects(Stat* myStats)
 {
+	ApxDmgScope apxScope(SRC_DOT);
 	int increasestat[3] = { 0, 0, 0 };
 	int player = -1;
 
@@ -10099,6 +10104,7 @@ Causes an entity to attack using whatever weapon it's holding
 
 void Entity::attack(int pose, int charge, Entity* target)
 {
+	ApxDmgScope apxScope(SRC_MELEE);
 	Stat* hitstats = nullptr;
 	Stat* myStats = nullptr;
 	int player, playerhit = -1;
@@ -10349,7 +10355,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 									messagePlayerColor(playerhit, MESSAGE_STATUS, color, Language::get(2523));
 								}
 							}
-							tmpEntity->modHP(-explodeDmg);
+							{ ApxDmgScope apxScope(SRC_EXPLOSION); tmpEntity->modHP(-explodeDmg); }
 						}
 					}
 				}
@@ -12346,7 +12352,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 							}
 						}
 
-						this->modHP(-abs(thornsEffect));
+						{ ApxDmgScope apxScope(SRC_THORNS); this->modHP(-abs(thornsEffect)); }
 						if ( myStats->HP <= 0 && myStats->OLDHP > myStats->HP )
 						{
 							if ( colliderParent && (colliderParent->behavior == &actMonster || colliderParent->behavior == &actPlayer) )
@@ -15901,7 +15907,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 							}
 						}
 						Sint32 oldHP = myStats->HP;
-						this->modHP(-abs(thornsEffect));
+						{ ApxDmgScope apxScope(SRC_THORNS); this->modHP(-abs(thornsEffect)); }
 						if ( myStats->HP <= 0 && oldHP > myStats->HP )
 						{
 							hit.entity->killedByMonsterObituary(this);
@@ -16308,7 +16314,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 											cameravars[playerhit].shakex += 0.2;
 											cameravars[playerhit].shakey += 20;
 										}
-										tmpEntity->modHP(-explodeDmg);
+										{ ApxDmgScope apxScope(SRC_EXPLOSION); tmpEntity->modHP(-explodeDmg); }
 										if ( playerhit >= 0 )
 										{
 											Uint32 color = makeColorRGB(255, 0, 0);

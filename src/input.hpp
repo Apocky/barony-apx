@@ -108,6 +108,9 @@ public:
 	//! get the status of disabled variable
 	auto isDisabled() const { return disabled; }
 
+	//! apx bot seam (BF1-4): drives a binding as a device would. Fresh press clears `consumed`.
+	void apxSet(const char* binding, bool on, float analogValue = 0.f);
+
 	//! gets the analog value of a particular input binding
 	//! @param binding the binding to query
 	//! @return the analog value (range = -1.f : +1.f)

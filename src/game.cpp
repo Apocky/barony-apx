@@ -16,6 +16,9 @@
 #include "messages.hpp"
 #include "entity.hpp"
 #include "files.hpp"
+#include "apx/telemetry.hpp"
+static std::string apxOutDir, apxScenario;
+static bool apxSimFlag = false;
 #include "menu.hpp"
 #include "classdescriptions.hpp"
 #include "interface/interface.hpp"
@@ -864,7 +867,7 @@ static void demo_record(const char* filename) {
 
     // seed RNG
     local_rng.seedTime();
-    local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+    local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
     net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
     demo_file->write(&uniqueGameKey, sizeof(uniqueGameKey), 1);
 
@@ -1874,6 +1877,7 @@ void gameLogic(void)
 
 				if ( loadnextlevel == true )
 				{
+					if ( apx::enabled ) { apx::closeEncounter("level_change"); }
 				    // when this flag is set, it's time to load the next level.
 					loadnextlevel = false;
 					loadedNextLevel = true;
@@ -2157,6 +2161,10 @@ void gameLogic(void)
 						mapseed = forceMapSeed;
 						forceMapSeed = 0;
 					}
+					if ( apx::seedBase )
+					{
+						mapseed = apx::deriveSeed(currentlevel, secretlevel);
+					}
 
 					if ( !secretlevel )
 					{
@@ -2259,7 +2267,9 @@ void gameLogic(void)
 	                    updateLoadingScreen(10);
 
 					    int checkMapHash = -1;
+					    auto apxT0 = std::chrono::steady_clock::now();
 					    int result = physfsLoadMapFile(currentlevel, mapseed, false, &checkMapHash);
+					    apxLoadMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - apxT0).count();
 					    if (!verifyMapHash(map.filename, checkMapHash))
 					    {
 						    conductGameChallenges[CONDUCT_MODDED] = 1;
@@ -2271,7 +2281,9 @@ void gameLogic(void)
 					    assignActions(&map);
                         updateLoadingScreen(55);
 
+					    apxT0 = std::chrono::steady_clock::now();
 					    generatePathMaps();
+					    apxPathMapsMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - apxT0).count();
 	                    updateLoadingScreen(99);
 
 		                loading_done = true;
@@ -2287,6 +2299,7 @@ void gameLogic(void)
                     createChunks();
 		            loading = false;
 	                int result = loading_task.get();
+	                apx::onFloorLoaded();
 
                     for (int c = 0; c < MAXPLAYERS; ++c) {
                         auto& camera = players[c]->camera();
@@ -4187,6 +4200,7 @@ bool handleEvents(void)
 		numframes = max_frames;
 	}
 	if ( apx::headlessOn ) { numframes = apx::headlessBatch(); } // apx headless: fixed tick batch per pass, no real-time pacing
+	if ( apx::simOn ) { numframes = apx::simBatch(); } // sim mode: fixed batch of real ticks per iteration, no pacing
 
 	// calculate fps
 	if ( timesync != 0 )
@@ -5362,6 +5376,7 @@ bool handleEvents(void)
 			gameLogic();
 			++ticks;
 			apxLuaTick();
+			apx::onTick();
 		}
 		else
 		{
@@ -7285,6 +7300,12 @@ int main(int argc, char** argv)
 					{
 						fullscreen = 0;
 					}
+					else if ( !strncmp(argv[c], "-apx-window=", 12) )
+					{
+						// BF1-5 test aid: windowed | borderless | fullscreen
+						fullscreen = !strcmp(argv[c] + 12, "fullscreen");
+						borderless = !strcmp(argv[c] + 12, "borderless");
+					}
 					else if ( !strncmp(argv[c], "-size=", 6) )
 					{
 						strncpy(tempstr, argv[c] + 6, strcspn(argv[c] + 6, "x"));
@@ -7306,6 +7327,23 @@ int main(int argc, char** argv)
 					{
 						strcpy(configtoload, argv[c] + 5);
 						loadingconfig = true;
+					}
+					else if ( !strncmp(argv[c], "-apx-out=", 9) )
+					{
+						apxOutDir = argv[c] + 9;
+					}
+					else if ( !strcmp(argv[c], "-apx-sim") )
+					{
+						apxSimFlag = true;
+					}
+					else if ( !strncmp(argv[c], "-apx-scenario=", 14) )
+					{
+						apxScenario = argv[c] + 14;
+						apxSimFlag = true;
+					}
+					else if ( !strncmp(argv[c], "-apx-seed=", 10) )
+					{
+						apx::seedBase = (Uint32)strtoul(argv[c] + 10, nullptr, 10);
 					}
 					else if (!strncmp(argv[c], "-quickstart=", 12))
 					{
@@ -7409,6 +7447,9 @@ int main(int argc, char** argv)
 		else {
 			skipintro = false;
 		}
+
+		apx::init(apxOutDir.c_str(), !apxOutDir.empty());
+		apx::simInit(apxSimFlag ? apxScenario.c_str() : nullptr);
 
 		// initialize map
 		map.tiles = nullptr;
@@ -7746,6 +7787,7 @@ int main(int argc, char** argv)
 						stats[0]->sex = static_cast<sex_t>(local_rng.rand() % 2);
 						stats[0]->stat_appearance = local_rng.rand() % NUMAPPEARANCES;
 						stats[0]->clearStats();
+						apx::seedRuntimeRngs(); // -apx-seed: a reproducible quickstart character (initClass rolls from local_rng)
 						initClass(0);
 						if ( stats[0]->playerRace != RACE_HUMAN )
 						{
@@ -7754,7 +7796,7 @@ int main(int argc, char** argv)
 
 						// generate unique game key
 						local_rng.seedTime();
-						local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey));
+						local_rng.getSeed(&uniqueGameKey, sizeof(uniqueGameKey)); apx::applyGameKey();
 						uniqueLobbyKey = local_rng.getU32();
 						net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 						doNewGame(false);
@@ -8306,14 +8348,18 @@ int main(int argc, char** argv)
                 if (!hdrEnabled) {
                     main_framebuffer.unbindForWriting();
                 }
-				takeScreenshot();
+				{
+					// BF1-5: the old call site runs after the swap and reads an undefined buffer; use the pre-swap hook
+					static const bool apxOldShot = getenv("APX_SHOT_OLD") && getenv("APX_SHOT_OLD")[0] == '1';
+					if ( apxOldShot ) { takeScreenshot(); } else { apx::shotRequest(""); }
+				}
                 if (!hdrEnabled) {
                     main_framebuffer.bindForWriting();
                 }
 			}
 
 			// frame rate limiter (apx headless: none)
-			while ( !apx::headlessOn && frameRateLimit(fpsLimit, true, true) )
+			while ( !apx::headlessOn && !apx::simOn && frameRateLimit(fpsLimit, true, true) )
 			{
 				if ( !intro )
 				{
@@ -8394,8 +8440,9 @@ int main(int argc, char** argv)
 
 		// deinit
 		apxLuaShutdown();
+		apx::close();
 		deinitGame();
-		return deinitApp();
+		{ int apxRc = deinitApp(); return apx::simExit ? apx::simExit : apxRc; }
 	}
 #ifndef NINTENDO
 	catch (const std::exception &exc)

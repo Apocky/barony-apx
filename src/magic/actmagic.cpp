@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "../main.hpp"
+#include "../apx/telemetry.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
 #include "../entity.hpp"
@@ -1886,6 +1887,7 @@ std::map<int, Uint32> lastMagicSoundPlayed;
 
 void actMagicMissile(Entity* my)   //TODO: Verify this function.
 {
+	ApxDmgScope apxScope(SRC_MAGIC);
 	if (!my || !my->children.first || !my->children.first->element)
 	{
 		return;
