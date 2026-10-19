@@ -39,6 +39,7 @@ See LICENSE for details.
 #include "ui/MainMenu.hpp"
 #include "ui/GameUI.hpp"
 #include "apx_stamina.hpp"
+#include "apx_combat.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -3272,6 +3273,7 @@ void Entity::modHP(int amount)
 		}
 	}
 
+	amount = apx::combat_glue::interceptPlayerDamage(this, entitystats, amount); // apx F4c: downed instead of a lethal blow
 	if ( entitystats && entitystats->getEffectActive(EFF_STASIS) )
 	{
 		amount = 0;
@@ -8047,7 +8049,8 @@ void Entity::handleEffects(Stat* myStats)
 
 	// unparalyze certain boss characters
 	if ( myStats->getEffectActive(EFF_PARALYZED) && ((myStats->type >= LICH && myStats->type < KOBOLD)
-		|| myStats->type == COCKATRICE || myStats->type == LICH_FIRE || myStats->type == LICH_ICE) )
+		|| myStats->type == COCKATRICE || myStats->type == LICH_FIRE || myStats->type == LICH_ICE)
+		&& !apx::combat_glue::staggered(this) ) // apx F4c: a poise stagger holds even on these bosses
 	{
 		myStats->clearEffect(EFF_PARALYZED);
 		myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 0;
@@ -10116,6 +10119,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 	double tangent;
 
 	if ( (myStats = getStats()) == nullptr )
+	{
+		return;
+	}
+	if ( !apx::combat_glue::canAttack(this) ) // apx F4c: arms disabled or downed
 	{
 		return;
 	}
@@ -13169,6 +13176,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 						printlog("[apx-hit] move=%d pose=%d target=%u damage=%d extra=%d dist=%.1f", apx::moveFor(player), pose, hit.entity->getUID(),
 							damage, pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ? 1 : 0, entityDist(this, hit.entity));
 					}
+					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 
 					if ( hitstats )

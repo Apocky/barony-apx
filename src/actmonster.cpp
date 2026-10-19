@@ -32,6 +32,7 @@
 #include "ui/MainMenu.hpp"
 #include "apx/lua_layer.hpp"
 #include "menu.hpp"
+#include "apx_combat.hpp"
 
 float limbs[NUMMONSTERS][30][3];
 
@@ -2856,6 +2857,7 @@ void actMonster(Entity* my)
 	{
 	    return;
 	}
+	apx::combat_glue::tick(my); // apx F4c: poise regen, stagger end
 
 	int x, y;
 	double dist, dist2;
