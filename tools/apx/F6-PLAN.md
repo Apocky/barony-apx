@@ -20,3 +20,19 @@ then ONE batched launch. NOT in this pass: BF6-5 part visuals, the Formbook (BF6
 One batched launch at the end (D70 slots for the save probe; exclusive lock for host+client):
 mapseed 101, `-apxfloor=1`, `APX_BF6_PROBE=save,net`, `APX_BF6_OUT=C:\Apocrypha\diagnostics\bf6\<step>-<time>.jsonl`;
 controls in the same job: APX_SAVE_STRIP=1, APX_NET_STRIP=1, APX_PARTS=0.
+
+## Results 2026-10-19 15:46 (build 1224df99; rows C:\Apocrypha\diagnostics\bf6\matrix-20261019-152209.jsonl)
+| Gate | Samples | Result |
+|---|---|---|
+| T1 S1 determinism + control | 10^6 rolls x2, 2.9 s | equal; changed index differs |
+| T1 S2 cap + control | 10^6 | over_cap 0 (cap off: 10,110 over); ip_rerolls 6.8 % (target under 5 %, ASSUMED), ip_clamped 7,909 |
+| T1 coverage | 524 types | forms_unmapped 0 |
+| T1 codecs | 10^5 each | string and blob round trips equal; 1,000 corruptions and every truncation rejected |
+| T1 S4 salvage + control | 92,363 items (stopped at 10^5 cap; looted half-width 0.0014 points) | looted 59.91 %, crafted 100 %, discharge 19.94 %, aura 25.04 %, halving 63,333/63,333; symmetric fails |
+| T3 save round trip | 1 launch | 49/49 items equal, parts 40/40, save_blob_dropped 0, sidecar written |
+| T3 save control APX_SAVE_STRIP=1 | 1 launch | parts kept 0/40 |
+| T3 vanilla APX_PARTS=0 | 1 launch | no parts, no sidecar, floor line equal to parts-on (11 rooms, 12 monsters, 21 gold, 18 items, 2 decorations) |
+| T3 host = client | 2 processes | 40 sent, 40 received, 40 blobs equal (ITEM 74-106 bytes) |
+| T3 net controls | 2 + 2 processes | APX_NET_STRIP: 40/40 without blob; APX_PARTS=0 host: ITEM 29 bytes, 0 blobs |
+Not covered: a 6-part item in-engine (floor-1 quality allows 2-3 parts; offline round trips cover 0-12 parts), the
+tinkering station in a live game (T2 hook, no launch yet), DROP/EQUI/CITM/shop blobs, BF6-5 visuals, Formbook.
