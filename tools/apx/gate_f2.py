@@ -247,7 +247,8 @@ def mp_session(exe, seed, size, args):
                 if k.startswith("APXGEN"):
                     e.pop(k)
             e["BARONY_DATADIR"] = str(args.datadir)
-            e.update(env)
+            if role == "host" or args.client_switches:
+                e.update(env)  # by default the client gets no apx-gen switch: it must adopt the host's
             procs[role] = pf.subprocess.Popen([str(exe)] + extra, cwd=d, env=e)
             if role == "host":
                 pf.wait_for(logs["host"], re.compile(r"apxlobby: hosting"), deadline, procs["host"])
@@ -322,17 +323,27 @@ def main():
     ap.add_argument("--settle", type=float, default=4.0)
     ap.add_argument("--shot-delay", type=float, default=4.0)
     ap.add_argument("--net-seconds", type=float, default=20.0)
+    ap.add_argument("--client-switches", action="store_true", help="mp: give the client the host's APXGEN env too")
     ap.add_argument("--lock-dir", type=Path, default=None)
     ap.add_argument("--wait-foreign", type=float, default=1800.0)
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     seeds = list(range(args.first, args.first + args.count)) if args.count else [int(s) for s in args.seeds.split(",")]
     rows = []
-    pf.wait_until_no_barony(args.wait_foreign, args.lock_dir)
-    pf.hold_lock(args.lock_dir, True)
+    for attempt in range(20):
+        pf.wait_until_no_barony(args.wait_foreign, args.lock_dir)
+        pf.hold_lock(args.lock_dir, True)
+        time.sleep(2)
+        if not pf.foreign_locks(args.lock_dir) and not pf.barony_running():
+            break
+        pf.hold_lock(args.lock_dir, False)  # someone else took Barony at the same moment: back off
+        print(f"[f2] collision {attempt + 1}; waiting again", flush=True)
+        time.sleep(20)
+    else:
+        sys.exit("never got Barony to myself")
     try:
-        if pf.foreign_locks(args.lock_dir) or len(pf.barony_running()) > 0:
-            sys.exit("someone else took Barony at the same moment; lock released")
+        if False:
+            pass
         if args.mode in ("sweep", "one"):
             env = {"APXGEN": "1", "APXGEN_SIZE": str(args.size)}
             if args.control:

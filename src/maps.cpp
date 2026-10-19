@@ -6888,7 +6888,13 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				apxWalk += (!t[1] && t[0] && !lavatiles[t[0]]) ? 1 : 0;
 			}
 		}
-		printlog("apx: vanilla floor %ux%u walk tiles %d\n", map.width, map.height, apxWalk);
+		int apxTorches = 0;
+		for ( node_t* an = map.entities->first; an; an = an->next )
+		{
+			Entity* ae = (Entity*)an->element;
+			apxTorches += (ae && ae->sprite >= 4 && ae->sprite <= 7) ? 1 : 0;
+		}
+		printlog("apx: vanilla floor %ux%u walk tiles %d torches %d\n", map.width, map.height, apxWalk, apxTorches);
 	}
 	printlog("successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.\n", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	//messagePlayer(0, "successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);

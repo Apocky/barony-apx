@@ -6296,6 +6296,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		local_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 		net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 		uniqueLobbyKey = SDLNet_Read32(&net_packet->data[13]);
+		apxgenReadNet(&net_packet->data[17], (int)net_packet->len - 17);
 	    if (net_packet->data[12] == 0) {
 		    loadingsavegame = 0;
 			loadinglobbykey = 0;

@@ -61,6 +61,7 @@ def main():
     ap.add_argument("--out", type=Path, default=Path(r"C:\Apocrypha\diagnostics\barony-f2"))
     ap.add_argument("--commit", required=True)
     ap.add_argument("--since", default="", help="only rows with ts >= this ISO time")
+    ap.add_argument("--w1-exe", default="", help="only W1/mp rows whose exe path contains this (the uncapped build)")
     ap.add_argument("--showcase", type=Path, default=APOCKALYPSIS / "tools" / "showcase.py")
     args = ap.parse_args()
     rows = [json.loads(l) for l in (args.out / "f2.jsonl").read_text().splitlines() if l.strip()]
@@ -95,7 +96,8 @@ def main():
     level_s = [r["level_wall_s"] for r in normal if "level_wall_s" in r]
 
     # W1
-    w1 = [r for r in rows if r["kind"] == "w1" and r["finish"] == "ok"]
+    w1 = [r for r in rows if r["kind"] == "w1" and r["finish"] == "ok" and args.w1_exe in r.get("exe", "")]
+    mp = [r for r in rows if r["kind"] == "mp" and r["finish"] == "ok"]
     w1_by = {}
     for r in w1:
         size = r["env"].get("APXGEN_SIZE", "vanilla")
@@ -125,6 +127,14 @@ def main():
          pf(w5_control)],
         ["generator failures / fallbacks", "0", str(len(fails)), pf(not fails)],
     ]
+    for r in mp:
+        n = r.get("net", {})
+        if r["size"] != "vanilla":
+            gates.append([f"host vs client, {r['size']}x{r['size']}", "same floor hash on both",
+                          f"{r['host'].get('hash')} / {r['client'].get('hash')}", pf(r.get("same_hash"))])
+        gates.append([f"bytes/s host to client, {r['size']}", "measured over the window",
+                      f"{n.get('bytes_per_s')} B/s ({n.get('bytes')} B, {n.get('packets')} packets, {n.get('seconds')} s)",
+                      "MEASURED" if n else "MISSING"])
     for size in ("128", "96", "48", "vanilla"):
         r = w1_by.get(size)
         if not r:
@@ -180,8 +190,11 @@ def main():
             f"W5: {len(repeated)} seeds launched twice, {len(w5_bad)} hash mismatches",
             f"apx gen ms p50 {pct(gen_ms, 0.5)} p99 {pct(gen_ms, 0.99)}; load+entities ms p50 {pct(load_ms, 0.5)} p99 {pct(load_ms, 0.99)}; "
             f"level change wall s p50 {pct(level_s, 0.5)} (n={len(gen_ms)}, 128x128)",
-        ] + [w1line(s) for s in ("128", "96", "48", "vanilla")],
-        "next": ["Clients: live host + client hash check and per-client bytes/s (needs two processes).",
+        ] + [w1line(s) for s in ("128", "96", "48", "vanilla")]
+          + [f"mp {r['size']}: host {r['host'].get('generated')} client {r['client'].get('generated')} same counts {r.get('same_counts')}; "
+             f"lobby to game {r.get('t_lobby_to_game_s')} s; net {r.get('net')}" for r in mp]
+          + ["48x48: apx-gen 527a535 builds 0/50 seeds at 48, 56 and 64 (CLI, MEASURED), 12/50 at 80, 47/50 at 96; vanilla floor here is 40x40"],
+        "next": ["apx-gen: small floors (48-80) and the 3/50 seeds at 96 that exhaust their sub-seeds.",
                  "Map DRESS fixtures beyond table/bench to Barony sprites; boss per band; population calibration against vanilla walk tiles."],
     }
     (sheet / "F2.json").write_text(json.dumps(spec, indent=2))

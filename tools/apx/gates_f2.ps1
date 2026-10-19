@@ -15,7 +15,8 @@ function Step($name, [string[]]$a) {
     python $py @a @common
     Write-Host ("[gates] {0} exit {1} after {2:n0} s" -f $name, $LASTEXITCODE, ((Get-Date) - $t).TotalSeconds)
 }
-Step 'w2-sweep'   @('sweep', '--first', "$First", '--count', "$Count", '--per-process', '5')
-Step 'w2-control' @('sweep', '--first', "$First", '--count', '5', '--per-process', '5', '--control', '1')
-Step 'w5-repeat'  @('sweep', '--first', "$First", '--count', '10', '--per-process', '5')
+Step 'w2-sweep'   @('sweep', '--first', "$First", '--count', "$Count", '--per-process', '4')
+Step 'w2-control' @('sweep', '--first', "$First", '--count', '4', '--per-process', '4', '--control', '1')
+Step 'w5-repeat'  @('sweep', '--first', "$First", '--count', '12', '--per-process', '4')
 Step 'w1'         @('w1', '--seeds', '3001', '--sizes', '128,96,vanilla')
+Step 'mp'         @('mp', '--seeds', '3001', '--sizes', '128,96,vanilla')

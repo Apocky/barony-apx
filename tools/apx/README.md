@@ -161,3 +161,33 @@ Throughput (2026-10-19, MEASURED, farm_bench.py, 24 floor-1 jobs, same dungeon l
 one windowed launch at a time: 313.7 s = 275 jobs per hour; after, all 24 submitted to the farm headless
 (code 76491ea6, 13.8 GB commit free, at most 5 games at once by the memory budget): 35.0 s = 2,468 jobs
 per hour, 8.96x. Rows: `C:\Apocrypha\diagnostics\barony-farm\bench.jsonl`.
+## F2: apx-gen floors (`-apxgen`)
+
+`-apxgen` (or `APXGEN=1`) makes `generateDungeon` (src/maps.cpp) build each generated floor with the
+apx-gen core vendored at `src/apx/gen` (apx-gen 7057f3d9, see VENDOR.txt). Without the switch the vanilla
+generator runs unchanged: it is the control. Knobs: `-apxgen-size=N` (tiles per side, default 128),
+`-apxgen-pop=PCT` (population, 100 = 1x), `-apxgen-root=DIR` (kits); `APXGEN_CONTROL=1` moves every key
+behind its own lock (the W2 control, must fail).
+
+What the bridge (src/apx/apx_gen_bridge.cpp) does per floor:
+1. reads the band's floor/wall/ceiling/water/lava tiles from the level set's own template map;
+2. `apx::generate` + `apx::dress_floor` on (map seed, size);
+3. writes the tiles as a tile-only `.lmp` in the run folder and reloads it with `loadMap`, so every
+   size-dependent buffer is Barony's own (vismaps, lightmaps, shoparea);
+4. entity rows: player starts, ladder, doors (a Lock room's every opening gets a locked door; an
+   opening is walled down to one tile only where the floor stays one piece), skeleton keys, torches
+   (one per 6 wall faces, one per 12 corridor tiles), free light sources where a room interior is
+   over 5 tiles from any light, monsters (monstercurve via sprite 10), items, gold, chests, boss,
+   shopkeeper, table/chair fixtures;
+5. in-engine W2 on Barony's tiles and door entities (connected, keys open their locks in order, each
+   lock seals its room, exit reachable) and a floor hash over tiles + entity rows (W5).
+
+Log lines: `apxgen: floor|entities|W2|hash ...`; a failure logs `apxgen: FAILED` then
+`apxgen: FALLBACK` (vanilla floor), never silently. Instruments: `/apxfps_begin [uncap]`,
+`/apxfps_end`, `/apxhall`, `/apxnet`. Gate runs: `-apxhost` / `-apxjoin=ADDR` open, join and ready a
+LAN lobby through the lobby's own calls. Driver: `tools/apx/gate_f2.py` (sweep, w1, mp),
+`tools/apx/gates_f2.ps1`, sheet `tools/apx/f2_sheet.py`, top-down `tools/apx/f2_topdown.py`.
+Results: D46 sheet `C:\Apocrypha\diagnostics\barony-f2\sheet` (game art, outside the repository).
+
+Clients regenerate the floor from the map seed like vanilla clients do; both sides must run with the
+same `-apxgen*` switches (not yet carried in the lobby's svFlags).

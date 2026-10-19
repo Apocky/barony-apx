@@ -61,6 +61,32 @@ bool apxgenParseArgument(const char* a)
 	return false;
 }
 
+int apxgenWriteNet(unsigned char* p)
+{
+	p[0] = 'A'; p[1] = 'P'; p[2] = 'X';
+	p[3] = apxgen.enabled ? 1 : 0;
+	p[4] = (unsigned char)(apxgen.size & 0xff); p[5] = (unsigned char)((apxgen.size >> 8) & 0xff);
+	p[6] = (unsigned char)(apxgen.populationPct & 0xff); p[7] = (unsigned char)((apxgen.populationPct >> 8) & 0xff);
+	return 8;
+}
+
+void apxgenReadNet(const unsigned char* p, int len)
+{
+	if ( len < 8 || p[0] != 'A' || p[1] != 'P' || p[2] != 'X' )
+	{
+		if ( apxgen.enabled )
+		{
+			apxgen.enabled = false; // the host runs the vanilla generator: so must we
+			printlog("apxgen: host sent no apx-gen settings; this client uses the vanilla generator");
+		}
+		return;
+	}
+	apxgen.enabled = p[3] != 0;
+	apxgen.size = p[4] | (p[5] << 8);
+	apxgen.populationPct = p[6] | (p[7] << 8);
+	printlog("apxgen: settings from host: enabled %d size %d pop %d", (int)apxgen.enabled, apxgen.size, apxgen.populationPct);
+}
+
 namespace {
 
 struct Library
@@ -101,7 +127,7 @@ struct Textures { int floor = 0, wall = 0, ceiling = 0, water = 0, lava = 0; };
 // The band's look comes from the level set's own template map (mine, swamp, labyrinth, ruins, hell...).
 Textures bandTextures()
 {
-	std::map<int, int> f, w, c;
+	std::map<int, int> f, w, c, wat, lav;
 	for ( Uint32 x = 0; x < map.width; ++x )
 	{
 		for ( Uint32 y = 0; y < map.height; ++y )
@@ -110,12 +136,18 @@ Textures bandTextures()
 			if ( t[1] ) { ++w[t[1]]; }
 			else if ( t[0] && !(swimmingtiles && swimmingtiles[t[0]]) && !(lavatiles && lavatiles[t[0]]) ) { ++f[t[0]]; }
 			if ( t[2] ) { ++c[t[2]]; }
+			if ( !t[1] && t[0] && lavatiles && lavatiles[t[0]] ) { ++lav[t[0]]; }
+			else if ( !t[1] && t[0] && swimmingtiles && swimmingtiles[t[0]] ) { ++wat[t[0]]; }
 		}
 	}
 	Textures tx;
 	tx.floor = modeOf(f);
 	tx.wall = modeOf(w);
 	tx.ceiling = modeOf(c);
+	// liquids: the template's own water and lava first (the first swimmable tile overall is not
+	// the band's water: index 22 rendered as a red checker in the mines), else the first global one
+	tx.water = modeOf(wat);
+	tx.lava = modeOf(lav);
 	for ( Uint32 i = 1; i < numtiles; ++i )
 	{
 		if ( !tx.water && swimmingtiles && swimmingtiles[i] && !(lavatiles && lavatiles[i]) ) { tx.water = i; }
@@ -570,10 +602,24 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		return -1;
 	}
 
-	// torches: per room, one per 40 floor tiles on wall faces (at least one), spaced along the walls
+	// torches. Rooms: one per TORCH_FACES wall faces (at least 2), faces walked in perimeter order
+	// (sorted by angle round the room centre) so they spread along all walls. Corridors: one per
+	// TORCH_CORRIDOR corridor tiles. The first W1 pictures (one per 40 floor tiles, no corridor
+	// torches) measured luma 7-13 against vanilla's 52 (eye.py), i.e. unlit halls.
+	constexpr int TORCH_FACES = 6, TORCH_CORRIDOR = 12;
 	apx::Rng rng((uint64_t)seed ^ 0x7a7c4e5ULL);
 	extern int apxgenHallX, apxgenHallY, apxgenHallTiles;
 	apxgenHallTiles = 0;
+	std::vector<Placed> lightAt; // tiles lit by a torch or light source
+	int nLights = 0;
+	auto torchAt = [&](const Placed& p, int s) {
+		Entity* t = newEntity(s, 1, map.entities, nullptr);
+		t->x = p.x * 16 + (s == 4 ? 0 : s == 6 ? 16 : 8);
+		t->y = p.y * 16 + (s == 5 ? 0 : s == 7 ? 16 : 8);
+		++nTorches;
+		lightAt.push_back(p);
+	};
+	std::vector<char> inBox((size_t)W * H, 0);
 	for ( auto& ro : f.rooms )
 	{
 		std::vector<std::pair<Placed, int>> faces; // tile, side (4 west 5 north 6 east 7 south)
@@ -582,6 +628,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		{
 			for ( int x = ro.x0; x < ro.x1; ++x )
 			{
+				if ( x >= 0 && y >= 0 && x < W && y < H ) { inBox[(size_t)y * W + x] = 1; }
 				if ( !isWalkTile(x, y) ) { continue; }
 				++floorTiles;
 				if ( isWall(x - 1, y) ) { faces.push_back({ { x, y }, 4 }); }
@@ -596,16 +643,74 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 			if ( !c.empty() ) { apxgenHallTiles = floorTiles; apxgenHallX = c[0].x; apxgenHallY = c[0].y; }
 		}
 		if ( faces.empty() ) { continue; }
-		int want = std::max(1, floorTiles / 40);
+		const int cx2 = ro.x0 + ro.x1, cy2 = ro.z0 + ro.z1; // twice the centre, integer
+		auto octantKey = [&](const std::pair<Placed, int>& a) {
+			// integer pseudo-angle (0..8) of the face's wall point round the centre: deterministic
+			const long long dx = 2LL * a.first.x + (a.second == 4 ? -1 : a.second == 6 ? 1 : 0) - cx2;
+			const long long dy = 2LL * a.first.y + (a.second == 5 ? -1 : a.second == 7 ? 1 : 0) - cy2;
+			const long long ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+			const long long den = ax + ay ? ax + ay : 1;
+			long long t = dy * 1000000 / den; // -1e6..1e6 along the half
+			return dx >= 0 ? (dy >= 0 ? t : 4000000 + t) : 2000000 - t;
+		};
+		std::stable_sort(faces.begin(), faces.end(), [&](const std::pair<Placed, int>& a, const std::pair<Placed, int>& b) {
+			return octantKey(a) < octantKey(b);
+		});
+		int want = std::max(2, (int)faces.size() / TORCH_FACES);
 		const size_t step = std::max<size_t>(1, faces.size() / want), off = rng.next(step);
 		for ( size_t i = off; i < faces.size() && want > 0; i += step, --want )
 		{
-			const Placed& p = faces[i].first;
-			const int s = faces[i].second;
-			Entity* t = newEntity(s, 1, map.entities, nullptr);
-			t->x = p.x * 16 + (s == 4 ? 0 : s == 6 ? 16 : 8);
-			t->y = p.y * 16 + (s == 5 ? 0 : s == 7 ? 16 : 8);
-			++nTorches;
+			torchAt(faces[i].first, faces[i].second);
+		}
+	}
+	int corridorRun = 0;
+	for ( int y = 1; y < H - 1; ++y )
+	{
+		for ( int x = 1; x < W - 1; ++x )
+		{
+			if ( inBox[(size_t)y * W + x] || !isWalkTile(x, y) || used[(size_t)y * W + x] ) { continue; }
+			if ( ++corridorRun < TORCH_CORRIDOR ) { continue; }
+			const int side = isWall(x - 1, y) ? 4 : isWall(x, y - 1) ? 5 : isWall(x + 1, y) ? 6 : isWall(x, y + 1) ? 7 : 0;
+			if ( !side ) { continue; }
+			torchAt({ x, y }, side);
+			corridorRun = 0;
+		}
+	}
+
+	// room interiors far from every wall torch (lakes, big halls) get free-standing light sources:
+	// greedily at the open tile farthest from any light while that distance exceeds LIGHT_COVER
+	constexpr int LIGHT_COVER = 5, LIGHTS_PER_ROOM = 6;
+	for ( auto& ro : f.rooms )
+	{
+		for ( int k = 0; k < LIGHTS_PER_ROOM; ++k )
+		{
+			int best = -1;
+			Placed bp = { -1, -1 };
+			for ( int y = std::max(1, ro.z0); y < std::min(H - 1, ro.z1); ++y )
+			{
+				for ( int x = std::max(1, ro.x0); x < std::min(W - 1, ro.x1); ++x )
+				{
+					if ( isWall(x, y) ) { continue; }
+					int dmin = 1 << 30;
+					for ( auto& l : lightAt )
+					{
+						const int dx = l.x - x, dy = l.y - y;
+						dmin = std::min(dmin, dx * dx + dy * dy);
+					}
+					if ( dmin > best ) { best = dmin; bp = { x, y }; }
+				}
+			}
+			if ( best <= LIGHT_COVER * LIGHT_COVER || bp.x < 0 ) { break; }
+			Entity* ls = newEntity(131, 1, map.entities, nullptr);
+			ls->x = bp.x * 16;
+			ls->y = bp.y * 16;
+			ls->lightSourceAlwaysOn = 1;
+			ls->lightSourceBrightness = 160;
+			ls->lightSourceRadius = 6;
+			ls->lightSourceFlicker = 0;
+			ls->lightSourceRGB = 0xff | (0xc8 << 8) | (0x96 << 16); // warm white, R in the low byte
+			lightAt.push_back(bp);
+			++nLights;
 		}
 	}
 
@@ -790,13 +895,17 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	h = fnv(h, ((uint64_t)W << 32) | (uint64_t)H);
 	for ( size_t i = 0; i < (size_t)W * H * MAPLAYERS; ++i ) { h = fnv(h, (uint32_t)map.tiles[i]); }
 	int nEntities = 0;
+	// entity rows beside the floor file (sprite, x, y in world units): the sheet draws them top-down
+	FILE* rowsOut = fopen((lmp.substr(0, lmp.size() - 4) + "_entities.txt").c_str(), "w");
 	for ( node_t* nd = map.entities->first; nd; nd = nd->next )
 	{
 		Entity* e = (Entity*)nd->element;
 		if ( !e ) { continue; }
+		if ( rowsOut ) { fprintf(rowsOut, "%d %d %d\n", (int)e->sprite, (int)e->x, (int)e->y); }
 		h = fnv(h, ((uint64_t)(uint32_t)e->sprite << 32) | ((uint64_t)((int)e->x & 0xffff) << 16) | (uint64_t)((int)e->y & 0xffff));
 		++nEntities;
 	}
+	if ( rowsOut ) { fclose(rowsOut); }
 
 	const double msGen = std::chrono::duration<double, std::milli>(t1 - t0).count();
 	const double msLoad = std::chrono::duration<double, std::milli>(t2 - t1).count();
@@ -804,8 +913,8 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	printlog("apxgen: floor seed %u level %d set '%s' size %dx%d theme %s attempt %d rooms %d corridors %d tiles; textures floor %d wall %d ceiling %d water %d lava %d; water %d lava %d pit %d\n",
 		seed, currentlevel, levelset, W, H, f.theme.c_str(), f.attempt, (int)f.rooms.size(), f.corridor_tiles,
 		tx.floor, tx.wall, tx.ceiling, tx.water, tx.lava, nWater, nLava, nPit);
-	printlog("apxgen: entities %d: starts %d doors %d locked %d lock-openings %d lock-unsealed %d narrowed %d wall-rejected %d torches %d chests %d keys %d boss %d merchant %d monsters %d items %d gold %d fixtures %d unmapped-dress %d\n",
-		nEntities, nStarts, nDoors, nLocked, nLockOpenings, nLockUnsealed, nNarrowed, nWallRejected, nTorches, nChests, nKeys, nBoss, nMerchant, nMonsters, nItems, nGold, nFixtures, nUnmapped);
+	printlog("apxgen: entities %d: starts %d doors %d locked %d lock-openings %d lock-unsealed %d narrowed %d wall-rejected %d torches %d lights %d chests %d keys %d boss %d merchant %d monsters %d items %d gold %d fixtures %d unmapped-dress %d\n",
+		nEntities, nStarts, nDoors, nLocked, nLockOpenings, nLockUnsealed, nNarrowed, nWallRejected, nTorches, nLights, nChests, nKeys, nBoss, nMerchant, nMonsters, nItems, nGold, nFixtures, nUnmapped);
 	printlog("apxgen: W2 %s connected %d (%d/%d walk tiles) locks %d (%d/%d opened) exit %d keys-behind-own-lock %d control %d locks-unsealed %d\n",
 		w2 ? "PASS" : "FAIL", (int)w2Connected, reached, walkTotal, (int)w2Locks, (int)open.size(), (int)lockIds.size(), (int)w2Exit,
 		keysBehindOwnLock, apxgen.control, locksUnsealed);

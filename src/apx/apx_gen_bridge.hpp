@@ -16,6 +16,12 @@ struct ApxGenConfig
 };
 extern ApxGenConfig apxgen;
 
+// The host carries its apx-gen switches to clients in the start packets (STRT/RSTR bytes 17..24),
+// so a client always builds the floor the host builds. Returns bytes written (8).
+int apxgenWriteNet(unsigned char* p);
+// Client side: adopts the host's switches when the packet carries them (len >= 8 and the 'APX' tag).
+void apxgenReadNet(const unsigned char* p, int len);
+
 // Reads APXGEN* environment variables (command line wins; called before argument parsing).
 void apxgenReadEnvironment();
 // Handles one -apxgen* argument; true if consumed.

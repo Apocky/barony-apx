@@ -12146,6 +12146,7 @@ bind_failed:
 	        lobbyWindowSvFlags = SDLNet_Read32(&net_packet->data[4]);
 	        uniqueGameKey = SDLNet_Read32(&net_packet->data[8]);
 			uniqueLobbyKey = SDLNet_Read32(&net_packet->data[13]);
+			apxgenReadNet(&net_packet->data[17], (int)net_packet->len - 17);
 	        local_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 	        net_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 	        beginFade(FadeDestination::GameStart);
@@ -18859,7 +18860,7 @@ failed:
 					SDLNet_Write32(uniqueLobbyKey, &net_packet->data[13]);
 		            net_packet->address.host = net_clients[c - 1].host;
 		            net_packet->address.port = net_clients[c - 1].port;
-		            net_packet->len = 17;
+		            net_packet->len = 17 + apxgenWriteNet(&net_packet->data[17]); // apx: host's apx-gen switches
 		            sendPacketSafe(net_sock, -1, net_packet, c - 1);
 	            }
 	        }
@@ -25758,7 +25759,7 @@ failed:
 						SDLNet_Write32(uniqueLobbyKey, &net_packet->data[13]);
 	                    net_packet->address.host = net_clients[c - 1].host;
 	                    net_packet->address.port = net_clients[c - 1].port;
-	                    net_packet->len = 17;
+	                    net_packet->len = 17 + apxgenWriteNet(&net_packet->data[17]); // apx: host's apx-gen switches
 	                    sendPacketSafe(net_sock, -1, net_packet, c - 1);
                     }
 				}
@@ -28041,7 +28042,7 @@ failed:
 						SDLNet_Write32(uniqueLobbyKey, &net_packet->data[13]);
 						net_packet->address.host = net_clients[c - 1].host;
 						net_packet->address.port = net_clients[c - 1].port;
-						net_packet->len = 17;
+						net_packet->len = 17 + apxgenWriteNet(&net_packet->data[17]); // apx: host's apx-gen switches
 						sendPacketSafe(net_sock, -1, net_packet, c - 1);
 					}
 				}
