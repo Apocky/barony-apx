@@ -6,6 +6,8 @@ local function check(name, cond)
 end
 local seen = { level = false, spawned = false, damage = false, death = false, tick = 0 }
 local rat, base
+local cleared = false
+apx.on("floor_cleared", function(ev) cleared = ev.floor end)
 
 apx.on("level_entered", function(ev)
   seen.level = true
@@ -31,6 +33,14 @@ poll = apx.every(10, function()
   check("monster_spawned event fired for the summon", seen.spawned == rat)
   check("unknown monster is refused", apx.spawn("not_a_monster", px, py) == nil)
   check("spawn outside the map is refused", apx.spawn("rat", -5, 3) == nil)
+  local near = apx.monsters_near(px, py, 3)
+  local found = false; for _, u in ipairs(near) do if u == rat then found = true end end
+  check("monsters_near finds the rat", found)
+  check("control: a distant query does not find the rat", (function() for _, u in ipairs(apx.monsters_near(px + 40, py + 40, 2)) do if u == rat then return false end end return true end)())
+  local li = apx.light_at(math.floor(px), math.floor(py))
+  check("light_at returns 0..255 or nil", li == nil or (li >= 0 and li <= 255), tostring(li))
+  if pu then check("line_of_sight returns a boolean", type(apx.line_of_sight(pu, rat)) == "boolean") end
+  check("misspelled event is a catchable error", not pcall(apx.on, "level_entred", function() end))
   local hp = apx.get_stat(rat, "hp")
   check("get_stat hp > 0", hp ~= nil and hp > 0)
   check("set_stat hp", apx.set_stat(rat, "hp", 3) and apx.get_stat(rat, "hp") == 3)
@@ -43,8 +53,9 @@ poll = apx.every(10, function()
   check("damage event fired", seen.damage == 1)
   apx.hurt(rat, 50)
   check("death event fired", seen.death)
-  apx.after(30, function()
+  apx.after(80, function()
     local st = apx.stats()
+    check("floor_cleared fired after the last monster died", cleared ~= false)
     check("control: errors were caught (>= 3) and the game kept running", st.errors >= 3)
     check("control: the looping handler did not hang the game", true)
     check("hello script loaded", st.scripts_loaded >= 3)

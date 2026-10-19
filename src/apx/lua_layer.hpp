@@ -12,6 +12,7 @@ void apxLuaShutdown();
 void apxLuaTick();                                  // game.cpp, right after ++ticks
 void apxLuaLevelEntered();                          // end of assignActions (maps.cpp)
 void apxLuaMonsterSpawned(Entity* e, const char* source); // summonMonsterNoSmoke (actmonster.cpp)
+void apxLuaItemPicked(int player, int type, int count);       // itemPickup (items.cpp)
 void apxLuaHpChanged(Entity* e, int oldHP, int newHP);    // Entity::modHP (entity.cpp)
 
 // Debug: reload scripts (console command /apx_lua_reload, or APX_LUA_WATCH=1 polling).

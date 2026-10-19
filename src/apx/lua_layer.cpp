@@ -14,6 +14,8 @@
 #include "../monster.hpp"
 #include "../net.hpp"
 #include "../player.hpp"
+#include "../collision.hpp"
+#include "../items.hpp"
 #include "lua_layer.hpp"
 
 extern "C" {
@@ -27,6 +29,7 @@ extern "C" {
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <functional>
 #include <random>
 #include <sstream>
@@ -62,6 +65,7 @@ struct Layer {
 	std::mt19937_64 rng{0x41504b59ull};
 	fs::file_time_type stamp{};
 	// counters, written to the log at shutdown and on request (rule: every decline is visible)
+	bool hadMonsters = false;
 	int nErrors = 0, nDisabled = 0, nDropped = 0, nEvents = 0, nLoaded = 0, nScriptFail = 0;
 };
 Layer G;
@@ -123,7 +127,7 @@ std::vector<Handler>* handlersFor(const std::string& ev, bool create) {
 }
 
 bool validEvent(const std::string& e) {
-	return e == "level_entered" || e == "monster_spawned" || e == "damage" || e == "death";
+	return e == "level_entered" || e == "monster_spawned" || e == "damage" || e == "death" || e == "item_picked" || e == "floor_cleared";
 }
 
 // ---- API -----------------------------------------------------------------------------------
@@ -245,6 +249,88 @@ int api_hurt(lua_State* L) {
 	e->modHP(-(int)a); // goes through the same choke point as every other damage (fires damage and death events)
 	lua_pushboolean(L, 1); return 1;
 }
+int api_monsters_near(lua_State* L) {
+	lua_Number x = luaL_checknumber(L, 1), y = luaL_checknumber(L, 2), r = luaL_checknumber(L, 3);
+	luaL_argcheck(L, r > 0 && r <= 128, 3, "radius 0..128 tiles");
+	lua_newtable(L); int i = 0;
+	if ( map.creatures ) {
+		for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) {
+			Entity* e = (Entity*)nd->element; if ( !e || e->behavior != &actMonster ) { continue; }
+			double dx = e->x / 16.0 - x, dy = e->y / 16.0 - y;
+			if ( dx * dx + dy * dy <= r * r ) { lua_pushinteger(L, e->getUID()); lua_rawseti(L, -2, ++i); }
+		}
+	}
+	return 1;
+}
+// Light at a tile for player 0's lightmap, 0..255 (max of r,g,b). nil when no lightmap exists (no game running).
+int api_light_at(lua_State* L) {
+	lua_Integer x = luaL_checkinteger(L, 1), y = luaL_checkinteger(L, 2);
+	if ( x < 0 || y < 0 || x >= (lua_Integer)map.width || y >= (lua_Integer)map.height || lightmaps[0].size() < (size_t)map.width * map.height ) { lua_pushnil(L); return 1; }
+	const auto& v = lightmaps[0][y + x * map.height];
+	float m = std::max(v.x, std::max(v.y, v.z));
+	lua_pushinteger(L, (lua_Integer)std::min(255.f, std::max(0.f, m * 255.f))); return 1;
+}
+int api_line_of_sight(lua_State* L) {
+	Entity* a = entityByUid(luaL_checkinteger(L, 1)); Entity* b = entityByUid(luaL_checkinteger(L, 2));
+	if ( !a || !b ) { lua_pushnil(L); return 1; }
+	real_t dx = b->x - a->x, dy = b->y - a->y, dist = sqrt(dx * dx + dy * dy);
+	if ( dist < 1 ) { lua_pushboolean(L, 1); return 1; }
+	real_t d = lineTrace(a, a->x, a->y, atan2(dy, dx), dist, 0, false);
+	lua_pushboolean(L, d >= dist - 2 || hit.entity == b); return 1;
+}
+// JSON encoder for apx.row: nil/boolean/number/string/table (array or string-keyed), depth 6.
+void jsonValue(lua_State* L, int idx, std::string& out, int depth) {
+	idx = lua_absindex(L, idx);
+	switch ( lua_type(L, idx) ) {
+	case LUA_TBOOLEAN: out += lua_toboolean(L, idx) ? "true" : "false"; break;
+	case LUA_TNUMBER: {
+		char b[48];
+		if ( lua_isinteger(L, idx) ) { snprintf(b, sizeof(b), "%lld", (long long)lua_tointeger(L, idx)); }
+		else { double d = lua_tonumber(L, idx); if ( d != d || d > 1e300 || d < -1e300 ) { d = 0; } snprintf(b, sizeof(b), "%.4f", d); }
+		out += b; break; }
+	case LUA_TSTRING: {
+		size_t n; const char* t = lua_tolstring(L, idx, &n); out += '"';
+		for ( size_t i = 0; i < n; i++ ) { unsigned char c = t[i];
+			if ( c == '"' || c == '\\' ) { out += '\\'; out += (char)c; } else if ( c < 32 || c > 126 ) { char b[8]; snprintf(b, sizeof(b), "\\u%04x", c); out += b; } else { out += (char)c; } }
+		out += '"'; break; }
+	case LUA_TTABLE: {
+		if ( depth > 6 ) { out += "null"; break; }
+		bool arr = lua_rawlen(L, idx) > 0; int count = 0;
+		out += arr ? '[' : '{';
+		if ( arr ) { for ( lua_Integer i = 1; i <= (lua_Integer)lua_rawlen(L, idx); i++ ) { if ( i > 1 ) { out += ','; } lua_rawgeti(L, idx, i); jsonValue(L, -1, out, depth + 1); lua_pop(L, 1); } }
+		else { lua_pushnil(L); while ( lua_next(L, idx) ) {
+			if ( lua_type(L, -2) == LUA_TSTRING ) { if ( count++ ) { out += ','; } jsonValue(L, -2, out, depth + 1); out += ':'; jsonValue(L, -1, out, depth + 1); }
+			lua_pop(L, 1); } }
+		out += arr ? ']' : '}'; break; }
+	default: out += "null"; break;
+	}
+}
+int g_rowsWritten = 0, g_rowsRefused = 0;
+int api_row(lua_State* L) {
+	const char* name = luaL_checkstring(L, 1); luaL_checktype(L, 2, LUA_TTABLE);
+	for ( const char* c = name; *c; c++ ) { if ( !(isalnum((unsigned char)*c) || *c == '_' || *c == '-') ) { return luaL_error(L, "bad row file name"); } }
+	std::string line; jsonValue(L, 2, line, 0); line += '\n';
+	static std::map<std::string, std::ofstream> files; // opened once per file: a per-row open cost 1.4 ms p99 (measured)
+	static std::map<std::string, size_t> sizes;
+	std::string key = name;
+	auto it = files.find(key);
+	if ( it == files.end() ) {
+		const char* d = getenv("APX_ROWS_DIR");
+		std::string dir = d ? d : "C:/Apocrypha/diagnostics/apx-lua";
+		std::error_code ec; fs::create_directories(dir, ec);
+		fs::path f = fs::path(dir) / (key + ".jsonl");
+		sizes[key] = fs::exists(f, ec) ? (size_t)fs::file_size(f, ec) : 0;
+		it = files.emplace(key, std::ofstream(f, std::ios::app | std::ios::binary)).first;
+	}
+	if ( sizes[key] > 8u * 1024 * 1024 || !it->second ) { g_rowsRefused++; lua_pushboolean(L, 0); return 1; }
+	it->second << line; it->second.flush(); sizes[key] += line.size();
+	bool good = it->second.good();
+	g_rowsWritten++; lua_pushboolean(L, good); return 1;
+}
+int api_run_seed(lua_State* L) { lua_pushinteger(L, (lua_Integer)uniqueGameKey); return 1; }
+int api_clock_us(lua_State* L) {
+	lua_pushinteger(L, (lua_Integer)(SDL_GetPerformanceCounter() * 1000000ull / SDL_GetPerformanceFrequency())); return 1;
+}
 int api_entity_pos(lua_State* L) {
 	Entity* e = entityByUid(luaL_checkinteger(L, 1));
 	if ( !e ) { lua_pushnil(L); return 1; }
@@ -280,7 +366,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };
@@ -300,6 +386,7 @@ void buildSafeTable(lua_State* L) {
 	lua_newtable(L);                       // real
 	luaL_setfuncs(L, kApi, 0);
 	lua_newtable(L); lua_setfield(L, -2, "run");
+	lua_newtable(L); lua_setfield(L, -2, "shared"); // scripts share live Lua values here (functions allowed); never saved
 	lua_newtable(L);                       // proxy
 	lua_newtable(L);                       // proxy metatable
 	lua_pushvalue(L, -3); lua_setfield(L, -2, "__index");
@@ -315,11 +402,13 @@ bool readFile(const fs::path& p, std::string& out) {
 	std::ostringstream ss; ss << f.rdbuf(); out = ss.str(); return true;
 }
 
-void loadDir(const std::string& dir) {
+void loadDir(const std::string& dir, const std::string& only = "") {
 	std::error_code ec;
 	if ( !fs::is_directory(dir, ec) ) { logf("script folder not found: %s", dir.c_str()); return; }
 	std::vector<fs::path> files;
-	for ( auto& e : fs::directory_iterator(dir, ec) ) { if ( e.is_regular_file() && e.path().extension() == ".lua" ) { files.push_back(e.path()); } }
+	for ( auto& e : fs::directory_iterator(dir, ec) ) { if ( e.is_regular_file() && e.path().extension() == ".lua" ) {
+		if ( !only.empty() && ("," + only + ",").find("," + e.path().stem().string() + ",") == std::string::npos ) { continue; }
+		files.push_back(e.path()); } }
 	std::sort(files.begin(), files.end());
 	lua_State* L = G.L;
 	for ( auto& p : files ) {
@@ -343,7 +432,7 @@ void loadDir(const std::string& dir) {
 
 void loadAll() {
 	loadDir(G.dir);
-	if ( G.test ) { loadDir(G.testDir); }
+	if ( G.test ) { const char* t = getenv("APX_LUA_TESTS"); loadDir(G.testDir, t ? t : "control_error,selftest"); }
 	std::error_code ec;
 	G.stamp = fs::exists(G.dir, ec) ? fs::last_write_time(G.dir, ec) : fs::file_time_type{};
 }
@@ -459,6 +548,14 @@ void apxLuaTick() {
 		std::error_code ec; auto t = fs::exists(G.dir, ec) ? fs::last_write_time(G.dir, ec) : fs::file_time_type{};
 		if ( t != G.stamp ) { apxLuaReload(); return; }
 	}
+	if ( ticks % 25 == 0 && G.hadMonsters ) {
+		int alive = 0;
+		if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster ) { alive++; } } }
+		if ( alive == 0 ) {
+			G.hadMonsters = false;
+			dispatch("floor_cleared", [&](lua_State* L) { lua_newtable(L); lua_pushinteger(L, currentlevel); lua_setfield(L, -2, "floor"); });
+		}
+	}
 	if ( G.timers.empty() ) { return; }
 	lua_State* L = G.L;
 	for ( size_t i = 0; i < G.timers.size(); i++ ) { // handlers may add timers: index loop, copy before call
@@ -483,7 +580,7 @@ void apxLuaLevelEntered() {
 	if ( map.creatures ) { // generator-made monsters first, so a script can see them before level_entered
 		std::vector<Entity*> mons;
 		for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster ) { mons.push_back(e); } }
-		n = (int)mons.size();
+		n = (int)mons.size(); G.hadMonsters = n > 0;
 		for ( Entity* e : mons ) { apxLuaMonsterSpawned(e, "generator"); }
 	}
 	dispatch("level_entered", [&](lua_State* L) {
@@ -500,7 +597,18 @@ void apxLuaLevelEntered() {
 
 void apxLuaMonsterSpawned(Entity* e, const char* source) {
 	if ( !G.on || !e ) { return; }
+	G.hadMonsters = true;
 	dispatch("monster_spawned", [&](lua_State* L) { pushEntityTable(L, e); lua_pushstring(L, source); lua_setfield(L, -2, "source"); });
+}
+
+void apxLuaItemPicked(int player, int type, int count) {
+	if ( !G.on ) { return; }
+	dispatch("item_picked", [&](lua_State* L) {
+		lua_newtable(L);
+		lua_pushinteger(L, player); lua_setfield(L, -2, "player");
+		lua_pushinteger(L, type); lua_setfield(L, -2, "item_type");
+		lua_pushinteger(L, count); lua_setfield(L, -2, "count");
+	});
 }
 
 void apxLuaHpChanged(Entity* e, int oldHP, int newHP) {

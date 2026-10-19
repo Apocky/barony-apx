@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -3860,6 +3861,7 @@ Item* itemPickup(const int player, Item* const item, Item* addToSpecificInventor
 	{
 		return nullptr;
 	}
+	apxLuaItemPicked(player, (int)item->type, (int)item->count);
 	Item* item2;
 
 	/*if ( stats[player]->getProficiency(PRO_APPRAISAL) >= CAPSTONE_UNLOCK_LEVEL[PRO_APPRAISAL] )
