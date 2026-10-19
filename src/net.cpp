@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/parts_engine.hpp"
 #include "main.hpp"
 #include "draw.hpp"
 #include "game.hpp"
@@ -1362,7 +1363,7 @@ void serverSendItemToPickupAndEquip(int player, Item* item)
 	net_packet->data[28] = item->identified;
 	net_packet->address.host = net_clients[player - 1].host;
 	net_packet->address.port = net_clients[player - 1].port;
-	net_packet->len = 29;
+	net_packet->len = apxPartsNetAppend(item, net_packet->data, 29); // apx F6: parts blob after byte 29
 	sendPacketSafe(net_sock, -1, net_packet, player - 1);
 }
 
@@ -4668,6 +4669,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		    net_packet->data[28],
 		    NULL);
 		item->ownerUid = SDLNet_Read32(&net_packet->data[24]);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 29); // apx F6
 		Item* pickedUp = itemPickup(clientnum, item);
 		free(item);
 		if ( players[clientnum] && players[clientnum]->entity )
@@ -6224,6 +6226,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		    net_packet->data[28],
 		    NULL);
 		item->ownerUid = SDLNet_Read32(&net_packet->data[24]);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 29); // apx F6
 		Item* pickedUp = itemPickup(clientnum, item);
 		free(item);
 		if ( players[clientnum] && players[clientnum]->entity && pickedUp )

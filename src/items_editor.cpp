@@ -60,6 +60,7 @@ Item* newItem(const ItemType type, const Status status, const Sint16 beatitude, 
 	item->appearance = appearance;
 	item->identified = identified;
 	item->uid = itemuids;
+	memset(&item->apx, 0, sizeof(item->apx)); // apx F6
 	if ( inventory )
 	{
 		/*int x, y;

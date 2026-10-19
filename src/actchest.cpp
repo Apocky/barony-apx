@@ -15,6 +15,7 @@
 #include "entity.hpp"
 #include "interface/interface.hpp"
 #include "items.hpp"
+#include "apx/parts_engine.hpp"
 #include "engine/audio/sound.hpp"
 #include "net.hpp"
 #include "player.hpp"
@@ -758,6 +759,7 @@ void createChestInventory(Entity* my, int chestType)
 		break;
 	}
 
+	apxPartsBindInventory(inventory, my->behavior == &actMonster ? 1 : 0); // apx F6: chest 0, monster 1
 	if ( my->behavior == &::actChest )
 	{
 		// sort items into slots
@@ -1830,6 +1832,7 @@ Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStac
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actItem;
 				entity->skill[10] = item->type;
+				apxPartsToFloor(entity, item); // apx F6
 				entity->skill[11] = item->status;
 				entity->skill[12] = item->beatitude;
 				entity->skill[13] = item->count;
@@ -1929,6 +1932,7 @@ Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStac
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actItem;
 				entity->skill[10] = item->type;
+				apxPartsToFloor(entity, item); // apx F6
 				entity->skill[11] = item->status;
 				entity->skill[12] = item->beatitude;
 				entity->skill[13] = item->count;

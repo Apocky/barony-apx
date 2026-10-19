@@ -14,6 +14,7 @@
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
+#include "apx/parts_engine.hpp"
 #include "messages.hpp"
 #include "interface/interface.hpp"
 #include "magic/magic.hpp"
@@ -224,6 +225,7 @@ Item* newItem(const ItemType type, const Status status, const Sint16 beatitude, 
 	item->interactNPCUid = 0;
 	item->notifyIcon = false;
 	item->spellNotifyIcon = false;
+	memset(&item->apx, 0, sizeof(item->apx)); // apx F6
 	if ( inventory )
 	{
 		Player::Inventory_t* playerInventoryUI = nullptr;
@@ -1442,6 +1444,10 @@ Sint32 itemModelFirstperson(const Item* const item)
 
 int itemCompare(const Item* const item1, const Item* const item2, bool checkAppearance, bool comparisonUsedForStacking)
 {
+	if ( item1 && item2 && (item1->apx.nParts > 0 || item2->apx.nParts > 0) && item1->uid != item2->uid )
+	{
+		return 1; // apx F6: an item with parts is one of a kind (never stacks)
+	}
 	Sint32 model1 = 0;
 	Sint32 model2 = 0;
 
@@ -1598,6 +1604,7 @@ bool playerThrowDuck(const int player, Item* const item, int charge)
 		entity->flags[UPDATENEEDED] = true;
 		entity->flags[PASSABLE] = true;
 		entity->skill[10] = item->type;
+		apxPartsToFloor(entity, item); // apx F6
 		entity->skill[11] = item->status;
 		entity->skill[12] = item->beatitude;
 		entity->skill[13] = 1;
@@ -1728,6 +1735,7 @@ bool playerGreasyDropItem(const int player, Item* const item)
 		entity->flags[PASSABLE] = true;
 		entity->behavior = &actItem;
 		entity->skill[10] = item->type;
+		apxPartsToFloor(entity, item); // apx F6
 		entity->skill[11] = item->status;
 		entity->skill[12] = item->beatitude;
 		entity->skill[13] = item->count;
@@ -1916,6 +1924,7 @@ bool dropItem(Item* const item, const int player, const bool notifyMessage, cons
 		entity->flags[PASSABLE] = true;
 		entity->behavior = &actItem;
 		entity->skill[10] = item->type;
+		apxPartsToFloor(entity, item); // apx F6
 		entity->skill[11] = item->status;
 		entity->skill[12] = item->beatitude;
 		entity->skill[13] = qtyToDrop;
@@ -1982,6 +1991,7 @@ bool dropItem(Item* const item, const int player, const bool notifyMessage, cons
 
 Entity* dropItemMonster(Item* const item, Entity* const monster, Stat* const monsterStats, Sint16 count)
 {
+	apxPartsBind(item, 1 /* SRC_MONSTER */); // apx F6: a monster's loot rolls its parts when it drops
 	// WARNING - dropItemMonster is used on playerDeaths, modifying this here neet to edit in actPlayer.cpp and net.cpp
 	Entity* entity = nullptr;
 	bool itemDroppable = true;
@@ -2145,6 +2155,7 @@ Entity* dropItemMonster(Item* const item, Entity* const monster, Stat* const mon
 		entity->flags[USERFLAG1] = true; // speeds up game when many items are dropped
 		entity->behavior = &actItem;
 		entity->skill[10] = item->type;
+		apxPartsToFloor(entity, item); // apx F6
 		entity->skill[11] = item->status;
 		entity->skill[12] = item->beatitude;
 		entity->skill[13] = count;
@@ -3919,7 +3930,7 @@ Item* itemPickup(const int player, Item* const item, Item* addToSpecificInventor
 		net_packet->data[28] = item->identified ? 1 : 0;
 		net_packet->address.host = net_clients[player - 1].host;
 		net_packet->address.port = net_clients[player - 1].port;
-		net_packet->len = 29;
+		net_packet->len = apxPartsNetAppend(item, net_packet->data, 29); // apx F6: parts blob after byte 29
 		sendPacketSafe(net_sock, -1, net_packet, player - 1);
 	}
 	else
@@ -4063,6 +4074,7 @@ Item* itemPickup(const int player, Item* const item, Item* addToSpecificInventor
 		}
 
 		item2 = newItem(item->type, item->status, item->beatitude, item->count, item->appearance, item->identified, &stats[player]->inventory);
+		item2->apx = item->apx; // apx F6: the picked-up copy keeps its parts
 		item2->ownerUid = item->ownerUid;
 		item2->notifyIcon = item->notifyIcon;
 
@@ -4469,6 +4481,7 @@ Item* newItemFromEntity(const Entity* const entity, bool discardUid)
 	}
 	item->ownerUid = static_cast<Uint32>(entity->itemOriginalOwner);
 	item->interactNPCUid = static_cast<Uint32>(entity->interactedByMonster);
+	apxPartsFromFloor(entity, item); // apx F6
 	return item;
 }
 
@@ -6741,6 +6754,7 @@ void copyItem(Item* const itemToSet, const Item* const itemToCopy) //This should
 	itemToSet->uid = itemToCopy->uid;
 	itemToSet->ownerUid = itemToCopy->ownerUid;
 	itemToSet->isDroppable = itemToCopy->isDroppable;
+	itemToSet->apx = itemToCopy->apx; // apx F6
 }
 
 ItemType itemTypeWithinGoldValue(const int cat, const int minValue, const int maxValue, BaronyRNG& rng)
