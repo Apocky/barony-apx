@@ -84,6 +84,7 @@ static Entry header(const std::string& t) { Entry e; e.header = true; e.row.name
 static Entry line(const std::string& t, int32_t mass = 0, uint32_t id = 0, int kind = 0)
 {
 	Entry e; e.row.name = t; e.row.mass = mass; e.row.uid = id; e.row.kind = kind; e.row.type = 0; e.row.status = 4;
+	if ( mass == 0 && kind == 0 ) { e.row.price = -2; } // an information row: no mass column
 	return e;
 }
 
@@ -94,12 +95,15 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 {
 	const Provider& pv = provider();
 	std::vector<Entry> e;
-	head = std::string(apx_logic::stationName(station)) + ":";
-	for ( int t = 0; t < 3; ++t ) { head += t == tab ? std::string(" [") + benchTabName(t) + "]" : std::string(" ") + benchTabName(t); }
+	head.clear();
+	for ( int t = 0; t < 3; ++t ) { head += (t ? " " : "") + (t == tab ? std::string("[") + benchTabName(t) + "]" : std::string(benchTabName(t))); }
 	if ( tab == 0 ) // Craft: Forms this station can make, then the chosen Form's slots
 	{
 		auto fb = pv.formbook(player);
-		e.push_back(header("Forms (operations: " + std::to_string(apx_logic::stationOps(station).size()) + ")"));
+		std::string ops;
+		for ( auto& o : apx_logic::stationOps(station) ) { ops += (ops.empty() ? "" : ", ") + o; }
+		e.push_back(header(std::string(apx_logic::stationName(station)) + ": " + ops));
+		e.push_back(header("Forms"));
 		if ( fb.empty() ) { e.push_back(line("No Forms known yet. Break an item to learn its Form.")); }
 		for ( auto& f : fb ) { if ( f.successes > 0 ) { e.push_back(line(f.name + "  " + std::to_string(f.successes) + "/5", 0, f.form, 1)); } }
 		if ( selectedForm )
@@ -119,6 +123,7 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
 		SalvagePreview pr;
 		bool ok = pv.salvagePreview(player, selectedOwn, -1, pr);
+		e.push_back(header(std::string(apx_logic::stationName(station)) + ": dismantle"));
 		e.push_back(header(std::string(selectedOwn->getName()) + (pr.looted ? " (looted)" : "")));
 		e.push_back(line("Item", selectedOwn->getWeight()));
 		if ( !pr.parts.empty() )

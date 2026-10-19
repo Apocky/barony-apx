@@ -69,5 +69,7 @@ namespace apx_inv
 	// -apxselftest=inventory: runs once on the test floor, writes JSONL, then quits the game.
 	void selfTestArm(const char* which);
 	void selfTestTick();
+	void shotWhen(const char* view, const char* name); // self-test: screenshot on the first frame that view is drawn
+	void shotIfView(const char* view);
 	const char* takeShotRequest(); // a screenshot file name the test wants this frame, or nullptr
 }

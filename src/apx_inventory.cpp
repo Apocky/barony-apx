@@ -305,6 +305,7 @@ static struct S345 {
 	int followerFound = 0, followerView = 0, giveOk = 0, followerTakeOk = 0;
 	int benchControl = -1, benchShown = 0, benchStation = 0, benchOps = 0;
 	int benchTab0Rows = 0, benchTab1Rows = 0, benchTab2Rows = 0, benchTab1 = -1, benchTab2 = -1;
+	int benchShot = 0, followerTicks = 0, followerOpen = 0, benchOpen = 0, followerWindow = 0, benchTicks = 0, benchWindow = 0, giveAt = -1, takeAt = -1;
 } R;
 
 
@@ -320,19 +321,55 @@ static void probe(const char* tag)
 	if ( g_testFollower && pl.entity ) { fd = sqrt((g_testFollower->x - pl.entity->x) * (g_testFollower->x - pl.entity->x) + (g_testFollower->y - pl.entity->y) * (g_testFollower->y - pl.entity->y)); }
 	fprintf(f, "{\"test\":\"probe\",\"tag\":\"%s\",\"active\":%d,\"gui_mode\":%d,\"shootmode\":%d,\"inv_mode\":%d,\"menu_open\":%d,\"menu_item\":%u,"
 		"\"sel\":%d,\"sel_uid\":%u,\"inspect\":%d,\"other\":%d,\"focus\":%d,\"station\":%d,\"bench\":%d,\"bench_rows\":%d,\"bench_tab\":%d,"
-		"\"followers\":%u,\"follower_dist\":%.1f}\n",
+		"\"followers\":%u,\"follower_dist\":%.1f,\"inv_x\":%d,\"inv_w\":%d,\"inv_disabled\":%d,\"inv_opacity\":%.2f,\"doll_hide\":%.2f,\"generic_gui\":%d,\"follower_menu\":%d,\"chest_gui\":%d}\n",
 		tag, (int)listActive(0), pl.gui_mode, (int)pl.shootmode, pl.inventory_mode, (int)ui->itemMenuOpen, ui->itemMenuItem,
 		st.selected, st.selectedUid, (int)vs.inspectShown, vs.other, vs.focus, vs.station, (int)vs.benchShown, vs.benchRows, vs.benchTab,
-		(unsigned)list_Size(&stats[0]->FOLLOWERS), fd);
+		(unsigned)list_Size(&stats[0]->FOLLOWERS), fd,
+		pl.inventoryUI.frame ? pl.inventoryUI.frame->getSize().x : -1, pl.inventoryUI.frame ? pl.inventoryUI.frame->getSize().w : -1,
+		pl.inventoryUI.frame ? (int)pl.inventoryUI.frame->isDisabled() : -1, pl.inventoryUI.frame ? (double)pl.inventoryUI.frame->getOpacity() : -1.0,
+		(double)pl.inventoryUI.animPaperDollHide, (int)GenericGUI[0].isGUIOpen(), (int)FollowerMenu[0].followerMenuIsOpen(), (int)pl.inventoryUI.chestGUI.bOpen);
 	fclose(f);
 }
 
-static void runSteps345(int dt)
+static void runBench(int dt)
 {
+	// step 5 first, before the chest and follower phases: a decoration beside the player that is not
+	// a station (control: no bench), then the same decoration as a workbench; the three views
 	auto& pl = *players[0];
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	if ( dt == 142 )
+	{
+		inspectOpen(0, nullptr);
+		Entity* me = pl.entity;
+		g_testDeco = newEntity(1618, 1, map.entities, nullptr);
+		g_testDeco->x = me->x + 16; g_testDeco->y = me->y; g_testDeco->z = 0;
+		g_testDeco->flags[PASSABLE] = true; g_testDeco->flags[NOUPDATE] = true;
+	}
+	else if ( dt == 154 ) { R.benchControl = viewState(0).benchShown; g_testDeco->sprite = 1617; } // now a workbench
+	if ( dt >= 158 && dt < 172 ) { ++R.benchWindow; R.benchTicks += viewState(0).benchShown; R.benchOpen += listActive(0); if ( !R.benchShot ) { R.benchShot = 1; shotWhen("bench", "apx-u1b-bench.png"); } }
+	if ( dt == 166 ) { probe("bench"); R.benchShown = R.benchTicks > 0; R.benchStation = viewState(0).station; R.benchOps = viewState(0).stationOps; }
+	else if ( dt == 172 ) { R.benchTab0Rows = viewState(0).benchRows; benchTab(0, 1); }
+	else if ( dt == 176 ) { R.benchTab1Rows = viewState(0).benchRows; R.benchTab1 = viewState(0).benchTab; benchTab(0, 1); }
+	else if ( dt == 180 ) { R.benchTab2Rows = viewState(0).benchRows; R.benchTab2 = viewState(0).benchTab; probe("bench-tabs"); benchTab(0, 1); g_testDeco->x += 4000; }
+}
+
+static void runSteps345(int dtIn)
+{
+	if ( dtIn <= 180 ) { runBench(dtIn); return; }
+	const int dt = dtIn - 40;  // the step 3-4 timeline below starts at 141
+	static int transfersBefore = 0;
+	auto& pl = *players[0];
+	if ( g_testFollower && dt >= 205 && dt < 240 ) { g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y; g_testFollower->vel_x = g_testFollower->vel_y = 0; }
+	if ( dt >= 210 && dt < 240 ) { ++R.followerWindow; R.followerTicks += viewState(0).other == OTHER_FOLLOWER; R.followerOpen += listActive(0); }
+	if ( g_testFollower && dt >= 212 && dt < 236 && viewState(0).other == OTHER_FOLLOWER )
+	{
+		if ( R.giveAt < 0 ) { R.giveAt = dt; transfersBefore = viewState(0).transfers; shotWhen("other", "apx-u1b-follower.png"); setFocus(0, 0, 1); activateSelected(0); }
+		else if ( R.takeAt < 0 && dt >= R.giveAt + 4 ) { R.takeAt = dt; R.giveOk = viewState(0).transfers == transfersBefore + 1; setFocus(0, 1, 1); activateSelected(0); }
+		else if ( R.takeAt >= 0 && dt == R.takeAt + 4 ) { R.followerTakeOk = viewState(0).transfers == transfersBefore + 2; }
+	}
+	if ( dt >= 200 && (pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY) ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); } // closeChest and the new follower close the GUI; a player reopens it
 	auto* ui = inputs.getUIInteraction(0);
 	static Uint32 menuUid = 0, breakUid = 0;
-	static int transfersBefore = 0;
 	if ( dt == 141 )
 	{
 		emptyInventory(0);
@@ -380,12 +417,17 @@ static void runSteps345(int dt)
 			list_FreeAll(cl);
 			for ( int k = 0; k < 3; ++k ) { newItem(static_cast<ItemType>(GEM_EMERALD + k), SERVICABLE, 0, 1, 0, true, cl); }
 			openedChest[0] = g_testChest;
+			g_testChest->chestStatus = 1; // as actChest does, so closeChest() really closes it
+			g_testChest->chestOpener = 0;
+			g_testChest->x = pl.entity->x + 16; g_testChest->y = pl.entity->y; // in reach, or actChest closes it
 			pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 			pl.inventoryUI.chestGUI.openChest(false);
 		}
 	}
+	else if ( dt == 172 || dt == 176 ) { probe(dt == 172 ? "chest+2" : "chest+6"); }
 	else if ( dt == 180 && g_testChest )
 	{
+		probe("chest+10");
 		R.chestView = viewState(0).other == OTHER_CHEST;
 		R.chestRows = viewState(0).otherRows;
 		transfersBefore = viewState(0).transfers;
@@ -419,45 +461,9 @@ static void runSteps345(int dt)
 		g_testFollower = summonMonster(HUMAN, (long)me->x + 16, (long)me->y, true);
 		R.followerFound = g_testFollower != nullptr;
 		if ( g_testFollower ) { forceFollower(*me, *g_testFollower); }
-		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 208 && g_testFollower ) { g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y; }
 	else if ( dt == 212 ) { probe("follower"); }
-	else if ( dt == 215 && g_testFollower )
-	{
-		g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y; // keep it beside us
-		R.followerView = viewState(0).other == OTHER_FOLLOWER;
-		transfersBefore = viewState(0).transfers;
-		setFocus(0, 0, 1);
-		activateSelected(0);         // give
-		g_shot = "apx-u1b-follower.png";
-	}
-	else if ( dt == 222 && g_testFollower )
-	{
-		g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y;
-		R.giveOk = viewState(0).transfers == transfersBefore + 1;
-		setFocus(0, 1, 1);
-		activateSelected(0);         // take back
-	}
-	else if ( dt == 228 && g_testFollower )
-	{
-		R.followerTakeOk = viewState(0).transfers == transfersBefore + 2;
-		g_testFollower->x = pl.entity->x + 2000; // away, so the bench column is free
-	}
-	else if ( dt == 232 )
-	{
-		// step 5 control: a decoration that is not a station -> no bench
-		Entity* me = pl.entity;
-		g_testDeco = newEntity(1618, 1, map.entities, nullptr);
-		g_testDeco->x = me->x + 16; g_testDeco->y = me->y; g_testDeco->z = 0;
-		g_testDeco->flags[PASSABLE] = true; g_testDeco->flags[NOUPDATE] = true;
-	}
-	else if ( dt == 250 ) { R.benchControl = viewState(0).benchShown; g_testDeco->sprite = 1617; } // now a workbench
-	else if ( dt == 262 ) { probe("bench"); }
-	else if ( dt == 272 ) { R.benchTab0Rows = viewState(0).benchRows; benchTab(0, 1); }
-	else if ( dt == 276 ) { R.benchTab1Rows = viewState(0).benchRows; R.benchTab1 = viewState(0).benchTab; benchTab(0, 1); }
-	else if ( dt == 280 ) { R.benchTab2Rows = viewState(0).benchRows; R.benchTab2 = viewState(0).benchTab; probe("bench-tabs"); }
-	else if ( dt == 268 ) { R.benchShown = viewState(0).benchShown; R.benchStation = viewState(0).station; R.benchOps = viewState(0).stationOps; g_shot = "apx-u1b-bench.png"; }
+	else if ( dt == 240 && g_testFollower ) { R.followerView = R.followerTicks > 0; g_testFollower->x = pl.entity->x + 2000; } // away, so the bench column is free
 	else if ( dt == 290 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
@@ -466,10 +472,10 @@ static void runSteps345(int dt)
 			fprintf(f, "{\"test\":\"steps345\",\"mode\":\"%s\",\"menu_open\":%d,\"menu_item_right\":%d,\"inspect_shown\":%d,\"break_gone\":%d,"
 				"\"chest_found\":%d,\"chest_view\":%d,\"chest_rows\":%d,\"take_ok\":%d,\"store_ok\":%d,\"heavy_refused\":%d,"
 				"\"follower_found\":%d,\"follower_view\":%d,\"give_ok\":%d,\"follower_take_ok\":%d,\"bench_control_shown\":%d,\"bench_shown\":%d,\"bench_station\":\"%s\",\"bench_ops\":%d,"
-				"\"bench_rows_craft_salvage_formbook\":[%d,%d,%d],\"bench_tabs_reached\":[%d,%d],\"provider\":\"%s\"}\n",
+				"\"bench_rows_craft_salvage_formbook\":[%d,%d,%d],\"follower_view_ticks\":[%d,%d],\"bench_ticks\":[%d,%d],\"list_open_ticks_follower_bench\":[%d,%d],\"bench_tabs_reached\":[%d,%d],\"provider\":\"%s\"}\n",
 				vanillaGrid() ? "vanilla" : "apx", R.menuOpen, R.menuItemRight, R.inspectShown, R.breakGone, R.chestFound, R.chestView, R.chestRows,
 				R.takeOk, R.storeOk, R.heavyRefused, R.followerFound, R.followerView, R.giveOk, R.followerTakeOk, R.benchControl, R.benchShown,
-				apx_logic::stationName(R.benchStation), R.benchOps, R.benchTab0Rows, R.benchTab1Rows, R.benchTab2Rows, R.benchTab1, R.benchTab2, apx_bench::provider().name);
+				apx_logic::stationName(R.benchStation), R.benchOps, R.benchTab0Rows, R.benchTab1Rows, R.benchTab2Rows, R.followerTicks, R.followerWindow, R.benchTicks, R.benchWindow, R.followerOpen, R.benchOpen, R.benchTab1, R.benchTab2, apx_bench::provider().name);
 			fclose(f);
 		}
 	}
@@ -491,10 +497,10 @@ static void runUiPhases()
 	else if ( dt == 60 ) { A = listState(0); g_shot = "apx-u1-full.png"; }
 	else if ( dt >= 70 && dt <= 86 && (dt - 70) % 4 == 0 ) { listTestPadPress(); }
 	else if ( dt == 100 ) { B = listState(0); }
-	else if ( dt >= 104 && dt <= 124 && (dt - 104) % 4 == 0 ) { keystatus[SDLK_DOWN] = ((dt - 104) / 4) % 2 == 0; }
+	else if ( dt >= 104 && dt <= 134 && (dt - 104) % 6 == 0 ) { keystatus[SDLK_DOWN] = ((dt - 104) / 6) % 2 == 0; } // 3 presses held 6 ticks (~120 ms, a human tap)
 	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); itemsAfter = (int)list_Size(&stats[0]->inventory); }
-	else if ( dt >= 141 && dt < 300 ) { runSteps345(dt); }
-	else if ( dt == 300 )
+	else if ( dt >= 141 && dt < 340 ) { runSteps345(dt); }
+	else if ( dt == 340 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -506,8 +512,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 370 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 410 )
+	else if ( dt == 410 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 450 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
@@ -527,6 +533,20 @@ static void runUiPhases()
 		g_test.clear();
 		mainloop = 0;
 	}
+}
+
+static std::string g_shotWhenView, g_shotWhenName;
+void shotWhen(const char* view, const char* name) { g_shotWhenView = view; g_shotWhenName = name; }
+static Uint32 g_shotRunTick = 0;
+static int g_shotRun = 0;
+void shotIfView(const char* view)
+{
+	// only after the view has been drawn on 5 consecutive game ticks (the test's forced follower
+	// makes the game close the inventory every few ticks; a lone frame may never reach the screen)
+	if ( g_shotWhenView.empty() || g_shotWhenView != view ) { return; }
+	g_shotRun = (ticks == g_shotRunTick + 1) ? g_shotRun + 1 : (ticks == g_shotRunTick ? g_shotRun : 1);
+	g_shotRunTick = ticks;
+	if ( g_shotRun >= 5 ) { g_shot = g_shotWhenName; g_shotWhenView.clear(); }
 }
 
 const char* takeShotRequest()

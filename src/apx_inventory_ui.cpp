@@ -153,6 +153,17 @@ static int nearStation(int player)
 }
 
 // ---------------------------------------------------------------- actions
+static void rememberSel(int player)
+{
+	auto& st = g_list[player];
+	const auto& own = g_own[player];
+	if ( st.selected >= 0 && st.selected < (int)own.size() && !own[st.selected].header )
+	{
+		st.selectedUid = own[st.selected].row.uid;
+		st.selectedKind = own[st.selected].row.kind;
+	}
+}
+
 static void moveSel(int player, int d)
 {
 	auto& st = g_list[player];
@@ -172,6 +183,7 @@ static void moveSel(int player, int d)
 	if ( st.selected < st.scroll ) { st.scroll = st.selected; }
 	if ( st.selected > 0 && st.selected - 1 < st.scroll && g_own[player][st.selected - 1].header ) { st.scroll = st.selected - 1; }
 	if ( st.visibleRows > 0 && st.selected >= st.scroll + st.visibleRows ) { st.scroll = st.selected - st.visibleRows + 1; }
+	rememberSel(player);
 }
 
 void setFocus(int player, int focus, int row)
@@ -183,7 +195,7 @@ void setFocus(int player, int focus, int row)
 	{
 		if ( vs.focus == 1 ) { vs.otherSelected = apx_logic::move(g_other[player], row, 0); }
 		else if ( vs.focus == 2 ) { g_benchSel[player] = apx_logic::move(g_bench[player], row, 0); }
-		else { g_list[player].selected = apx_logic::move(g_own[player], row, 0); }
+		else { g_list[player].selected = apx_logic::move(g_own[player], row, 0); rememberSel(player); }
 	}
 }
 
@@ -436,7 +448,7 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 	const char* headText, long long carried, long long limit, int focusId, bool focused)
 {
 	list->setSize(r);
-	if ( auto hf = list->findField("apx head") ) { hf->setSize(SDL_Rect{ 6, 2, r.w - 12, 18 }); hf->setText(headText); }
+	if ( auto hf = list->findField("apx head") ) { hf->setSize(SDL_Rect{ 6, 2, r.w - 12, 18 }); hf->setText(fitText(hf, headText, r.w - 14).c_str()); }
 	if ( auto barBg = list->findFrame("apx bar bg") )
 	{
 		barBg->setSize(SDL_Rect{ 6, 22, r.w - 12, 6 });
@@ -483,9 +495,10 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 			continue;
 		}
 		f->setSize(SDL_Rect{ 10, 0, r.w - 74, ROW_H });
-		f->setText(fitText(f, d.row.name + (d.row.equipped ? " [E]" : ""), r.w - 78).c_str());
+		f->setText(fitText(f, d.row.name + (d.row.equipped ? " [E]" : ""), d.row.price == -2 ? r.w - 20 : r.w - 78).c_str());
+		if ( d.row.price == -2 ) { f->setSize(SDL_Rect{ 10, 0, r.w - 16, ROW_H }); }
 		mf->setSize(SDL_Rect{ r.w - 72, 0, 60, ROW_H });
-		mf->setText(d.row.price >= 0 ? (std::to_string(d.row.price) + " g").c_str() : massText(d.row.mass).c_str());
+		mf->setText(d.row.price >= 0 ? (std::to_string(d.row.price) + " g").c_str() : d.row.price == -2 ? "" : massText(d.row.mass).c_str());
 		mf->setTextColor(d.row.price >= 0 ? makeColor(240, 210, 90, 255) : makeColor(200, 200, 200, 255));
 		int c = d.row.type < 0 ? 4 : std::max(0, std::min(4, d.row.status));
 		f->setTextColor(d.row.equipped ? makeColor(140, 220, 255, 255) : cond[c]);
@@ -557,7 +570,9 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 
 	g_own[player] = ownEntries(player);
 	st.rowCount = (int)g_own[player].size();
-	for ( int i = 0; i < st.rowCount; ++i ) // keep the selection on the same item when rows move
+	auto holds = [&](int i) { const auto& en = g_own[player][i]; return !en.header && en.row.uid == st.selectedUid && (st.selectedUid || en.row.kind == st.selectedKind); };
+	bool stillThere = st.selected >= 0 && st.selected < st.rowCount && holds(st.selected);
+	for ( int i = 0; i < st.rowCount && !stillThere; ++i ) // keep the selection on the same item when rows move
 	{
 		const auto& en = g_own[player][i];
 		if ( !en.header && en.row.uid == st.selectedUid && (st.selectedUid || en.row.kind == st.selectedKind) ) { st.selected = i; break; }
@@ -649,6 +664,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 			: view == OTHER_SHOP ? "Shop  " + std::to_string(stats[player]->GOLD) + " gold"
 			: std::string("Pack ") + (g_follower[player]->getStats() ? g_follower[player]->getStats()->name : "") + " " + massText((Sint32)otherMass);
 		drawList(player, other, rr, g_other[player], vs.otherSelected, g_otherScroll[player], st.visibleRows, oh.c_str(), otherMass, 0, 1, vs.focus == 1);
+		shotIfView("other");
 	}
 	// inspect panel (closed by Escape / cancel, or when its item is gone)
 	Item* insp = vs.inspectShown ? uidToItem(vs.inspectUid) : nullptr;
@@ -689,6 +705,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		vs.benchTab = g_benchTab[player];
 		SDL_Rect br{ rr.x, r.y, PANEL_W + 40, r.h };
 		drawList(player, bench, br, g_bench[player], g_benchSel[player], g_benchScroll[player], st.visibleRows, bh.c_str(), carried, limit, 2, vs.focus == 2);
+		shotIfView("bench");
 	}
 }
 } // namespace apx_inv
