@@ -79,6 +79,7 @@ namespace bf3
 		double nnSum = 0; long long nnN = 0, waiterSamples = 0, waiterOverlaps = 0;
 		long long contactSum = 0, contactSamples = 0, contactMax = 0;
 		long long traceAlly = 0, traceNone = 0, traceOther = 0, traceOtherPlayerOwned = 0;
+		long long pinCorrections = 0, foreignSeen = 0, foreignRemoved = 0;
 		int slots = 0, spawned = 0;
 	};
 	static Arm A;
@@ -238,6 +239,10 @@ namespace bf3
 		}
 		pinX = pTX * 16.0 + 8; pinY = pTY * 16.0 + 8; pinYaw = 0;
 		pe->x = pinX; pe->y = pinY; pe->yaw = pinYaw;
+		// the engine moves an entity between spatial-grid cells (TileEntityList) only when it changes tile inside its
+		// own behaviour call; a teleport from outside must re-register it, or every line trace that searches the grid
+		// (findEntityInLine: monster swings, sight) misses the character from most directions
+		TileEntityList.updateEntity(*pe);
 		pinned = true;
 		std::vector<std::pair<int, int>> reach;
 		openCount(pTX, pTY, 8, &reach);
@@ -420,6 +425,25 @@ namespace bf3
 		++A.spreadN;
 	}
 
+	static std::vector<Uint32> foreignUids;
+	static void removeForeign(Entity* pe)
+	{
+		for ( node_t* nd = map.creatures ? map.creatures->first : nullptr; nd; nd = nd->next )
+		{
+			Entity* c = (Entity*)nd->element;
+			Stat* cs = c ? c->getStats() : nullptr;
+			if ( !c || c->behavior != &actMonster || !cs || cs->HP <= 0 || isTrial(c) ) { continue; }
+			if ( std::find(foreignUids.begin(), foreignUids.end(), c->getUID()) == foreignUids.end() )
+			{
+				foreignUids.push_back(c->getUID());
+				++A.foreignSeen;
+				printlog("[apx] bf3 foreign monster %s at %.1f tiles (removed: %s)", monstertypename[cs->type],
+					hypot(c->x - pe->x, c->y - pe->y) / 16.0, hypot(c->x - pe->x, c->y - pe->y) <= 16 * 16.0 ? "yes" : "no");
+			}
+			if ( hypot(c->x - pe->x, c->y - pe->y) <= 16 * 16.0 ) { removeQuietly(c); ++A.foreignRemoved; }
+		}
+	}
+
 	static void sample(Entity* pe)
 	{
 		int inReach = 0, attackers = 0, near6 = 0;
@@ -451,6 +475,7 @@ namespace bf3
 		}
 		++A.ticks;
 		if ( pe->skill[9] != 0 ) { ++A.playerAttackTicks; } // PLAYER_ATTACK (actplayer.cpp): the test character swung
+		if ( ticks % 10 == 0 ) { removeForeign(pe); }
 		A.inReachSum += inReach; A.attackersSum += attackers; A.near6Sum += near6;
 		A.inReachMax = std::max<long long>(A.inReachMax, inReach);
 		A.attackersMax = std::max<long long>(A.attackersMax, attackers);
@@ -568,6 +593,7 @@ namespace bf3
 			.i("contact_attackers", contactAttackers()).d("blocked_share", A.attempts ? (double)(A.thin + A.wide) / A.attempts : 0)
 			.d("contact_mean", A.contactSamples ? (double)A.contactSum / A.contactSamples : 0).i("contact_max", A.contactMax)
 			.i("trace_ally", A.traceAlly).i("trace_none", A.traceNone).i("trace_other", A.traceOther).i("trace_other_player_owned", A.traceOtherPlayerOwned)
+			.i("pin_corrections", A.pinCorrections).i("foreign_seen", A.foreignSeen).i("foreign_removed", A.foreignRemoved)
 			.i("flank_started", C.flank_started).i("flank_arrived", C.flank_arrived).i("flank_failed", C.flank_failed)
 			.i("retreats", C.retreats).i("regroups", C.regroups).i("morale_breaks", C.morale_breaks).i("morale_events", C.morale_events)
 			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("route_around", C.route_around).i("reach_full", C.reach_full).i("surrenders", C.surrenders_offered).i("packs_formed", C.packs_formed)
@@ -800,7 +826,9 @@ namespace bf3
 		if ( pinned && pe )
 		{
 			if ( fabs(pe->x - pinX) > 0.5 || fabs(pe->y - pinY) > 0.5 || fabs(pe->yaw - pinYaw) > 0.01 ) { ++A.playerMoved; }
+			bool moved = pe->x != pinX || pe->y != pinY;
 			pe->x = pinX; pe->y = pinY; pe->yaw = pinYaw; pe->vel_x = 0; pe->vel_y = 0;
+			if ( moved ) { TileEntityList.updateEntity(*pe); ++A.pinCorrections; } // keep the grid cell right (see chooseArena)
 		}
 		if ( ph >= P_PREP && !pe ) { printlog("[apx] bf3: the test character is gone"); finish(5); return; }
 		if ( !pe && ph != P_WAIT_GAME && ph != P_WAIT_LOAD ) { return; } // a floor is loading
