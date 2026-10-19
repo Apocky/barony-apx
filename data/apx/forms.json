@@ -1,50 +1,662 @@
 {
  "_note": "F6 v1 Forms (19-GEAR-PARTS section 2, the families the vanilla types map to; Plain is the fallback). required slots first; optional slots with their quality gate q. Graft has no gate in 19; v1 gates it at q8 (ASSUMED). slots: role (strike, structural, balance, grip, other) for Item Power, volume in cm^3 for salvage mass (ASSUMED).",
  "families": [
-  {"id": "Blades", "optional": [{"q": 2, "slot": "Guard"}, {"q": 3, "slot": "Pommel"}, {"q": 5, "slot": "Edge"}, {"q": 7, "slot": "Fuller"}, {"q": 8, "slot": "Graft"}], "required": ["Blade", "Grip"]},
-  {"id": "Hafts", "optional": [{"q": 2, "slot": "Grip"}, {"q": 4, "slot": "Pommel"}, {"q": 5, "slot": "Spike"}, {"q": 6, "slot": "Chain"}, {"q": 8, "slot": "Graft"}], "required": ["Head", "Haft", "Binding"]},
-  {"id": "Fists", "optional": [{"q": 3, "slot": "Plate"}, {"q": 8, "slot": "Graft"}], "required": ["Knuckle", "Strap"]},
-  {"id": "Bows", "optional": [{"q": 2, "slot": "Grip"}, {"q": 4, "slot": "Nock"}, {"q": 6, "slot": "Fletching"}, {"q": 8, "slot": "Graft"}], "required": ["Limb", "String", "Riser"]},
-  {"id": "Armour", "optional": [{"q": 3, "slot": "Strap"}, {"q": 4, "slot": "Trim"}, {"q": 5, "slot": "Visor"}, {"q": 6, "slot": "Joint"}, {"q": 8, "slot": "Graft"}], "required": ["Plate", "Padding"]},
-  {"id": "Cloth", "optional": [{"q": 3, "slot": "Lining"}, {"q": 5, "slot": "Hem"}], "required": ["Body", "Clasp"]},
-  {"id": "Shields", "optional": [{"q": 2, "slot": "Strap"}, {"q": 4, "slot": "Boss"}, {"q": 5, "slot": "Lining"}, {"q": 6, "slot": "Rim"}, {"q": 8, "slot": "Graft"}], "required": ["Plate", "Grip"]},
-  {"id": "Tools", "optional": [{"q": 3, "slot": "Hook"}, {"q": 4, "slot": "Lens"}, {"q": 5, "slot": "Reservoir"}], "required": ["Head", "Shaft", "Binding"]},
-  {"id": "Plain", "optional": [], "required": ["Body"]}
+  {
+   "id": "Blades",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Guard"
+    },
+    {
+     "q": 3,
+     "slot": "Pommel"
+    },
+    {
+     "q": 5,
+     "slot": "Edge"
+    },
+    {
+     "q": 7,
+     "slot": "Fuller"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Blade",
+    "Grip"
+   ]
+  },
+  {
+   "id": "Hafts",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Grip"
+    },
+    {
+     "q": 4,
+     "slot": "Pommel"
+    },
+    {
+     "q": 5,
+     "slot": "Spike"
+    },
+    {
+     "q": 6,
+     "slot": "Chain"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Head",
+    "Haft",
+    "Binding"
+   ]
+  },
+  {
+   "id": "Fists",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Plate"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Knuckle",
+    "Strap"
+   ]
+  },
+  {
+   "id": "Bows",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Grip"
+    },
+    {
+     "q": 4,
+     "slot": "Nock"
+    },
+    {
+     "q": 6,
+     "slot": "Fletching"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Limb",
+    "String",
+    "Riser"
+   ]
+  },
+  {
+   "id": "Armour",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Strap"
+    },
+    {
+     "q": 4,
+     "slot": "Trim"
+    },
+    {
+     "q": 5,
+     "slot": "Visor"
+    },
+    {
+     "q": 6,
+     "slot": "Joint"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Plate",
+    "Padding"
+   ]
+  },
+  {
+   "id": "Cloth",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Lining"
+    },
+    {
+     "q": 5,
+     "slot": "Hem"
+    }
+   ],
+   "required": [
+    "Body",
+    "Clasp"
+   ]
+  },
+  {
+   "id": "Shields",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Strap"
+    },
+    {
+     "q": 4,
+     "slot": "Boss"
+    },
+    {
+     "q": 5,
+     "slot": "Lining"
+    },
+    {
+     "q": 6,
+     "slot": "Rim"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Plate",
+    "Grip"
+   ]
+  },
+  {
+   "id": "Tools",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Hook"
+    },
+    {
+     "q": 4,
+     "slot": "Lens"
+    },
+    {
+     "q": 5,
+     "slot": "Reservoir"
+    }
+   ],
+   "required": [
+    "Head",
+    "Shaft",
+    "Binding"
+   ]
+  },
+  {
+   "id": "Plain",
+   "optional": [],
+   "required": [
+    "Body"
+   ]
+  },
+  {
+   "id": "Daggers",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Guard"
+    },
+    {
+     "q": 4,
+     "slot": "Pommel"
+    },
+    {
+     "q": 5,
+     "slot": "Edge"
+    },
+    {
+     "q": 8,
+     "slot": "Fuller"
+    },
+    {
+     "q": 9,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Point",
+    "Grip"
+   ]
+  },
+  {
+   "id": "Polearms",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Langet"
+    },
+    {
+     "q": 4,
+     "slot": "Spike"
+    },
+    {
+     "q": 5,
+     "slot": "Grip"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Head",
+    "Shaft",
+    "Binding"
+   ]
+  },
+  {
+   "id": "Staves",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Cap"
+    },
+    {
+     "q": 3,
+     "slot": "Ferrule"
+    },
+    {
+     "q": 4,
+     "slot": "Grip"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Shaft",
+    "Binding"
+   ]
+  },
+  {
+   "id": "Crossbows",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Trigger"
+    },
+    {
+     "q": 4,
+     "slot": "Nock"
+    },
+    {
+     "q": 5,
+     "slot": "Riser"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Stock",
+    "Prod",
+    "String"
+   ]
+  },
+  {
+   "id": "Thrown",
+   "optional": [
+    {
+     "q": 4,
+     "slot": "Cord"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Tip",
+    "Fletching"
+   ]
+  },
+  {
+   "id": "Helms",
+   "optional": [
+    {
+     "q": 2,
+     "slot": "Nasal"
+    },
+    {
+     "q": 3,
+     "slot": "Visor"
+    },
+    {
+     "q": 4,
+     "slot": "Crest"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Shell",
+    "Liner"
+   ]
+  },
+  {
+   "id": "Boots",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Strap"
+    },
+    {
+     "q": 4,
+     "slot": "Trim"
+    },
+    {
+     "q": 5,
+     "slot": "Plate"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Upper",
+    "Sole"
+   ]
+  },
+  {
+   "id": "Gloves",
+   "optional": [
+    {
+     "q": 3,
+     "slot": "Plate"
+    },
+    {
+     "q": 4,
+     "slot": "Knuckle"
+    },
+    {
+     "q": 8,
+     "slot": "Graft"
+    }
+   ],
+   "required": [
+    "Palm",
+    "Cuff"
+   ]
+  }
  ],
  "slots": [
-  {"id": "Blade", "role": "strike", "volume": 300},
-  {"id": "Grip", "role": "grip", "volume": 80},
-  {"id": "Guard", "role": "balance", "volume": 60},
-  {"id": "Pommel", "role": "balance", "volume": 40},
-  {"id": "Edge", "role": "strike", "volume": 100},
-  {"id": "Fuller", "role": "balance", "volume": 20},
-  {"id": "Graft", "role": "other", "volume": 30},
-  {"id": "Head", "role": "strike", "volume": 250},
-  {"id": "Haft", "role": "structural", "volume": 400},
-  {"id": "Binding", "role": "grip", "volume": 20},
-  {"id": "Spike", "role": "strike", "volume": 40},
-  {"id": "Chain", "role": "structural", "volume": 100},
-  {"id": "Knuckle", "role": "strike", "volume": 120},
-  {"id": "Strap", "role": "grip", "volume": 40},
-  {"id": "Plate", "role": "structural", "volume": 900},
-  {"id": "Limb", "role": "strike", "volume": 300},
-  {"id": "String", "role": "grip", "volume": 10},
-  {"id": "Riser", "role": "structural", "volume": 150},
-  {"id": "Nock", "role": "other", "volume": 5},
-  {"id": "Fletching", "role": "other", "volume": 10},
-  {"id": "Padding", "role": "structural", "volume": 400},
-  {"id": "Visor", "role": "other", "volume": 120},
-  {"id": "Joint", "role": "balance", "volume": 80},
-  {"id": "Trim", "role": "other", "volume": 30},
-  {"id": "Body", "role": "structural", "volume": 600},
-  {"id": "Clasp", "role": "grip", "volume": 15},
-  {"id": "Lining", "role": "other", "volume": 200},
-  {"id": "Hem", "role": "other", "volume": 50},
-  {"id": "Boss", "role": "balance", "volume": 150},
-  {"id": "Rim", "role": "balance", "volume": 200},
-  {"id": "Shaft", "role": "structural", "volume": 300},
-  {"id": "Hook", "role": "other", "volume": 20},
-  {"id": "Lens", "role": "other", "volume": 20},
-  {"id": "Reservoir", "role": "other", "volume": 100}
+  {
+   "id": "Blade",
+   "role": "strike",
+   "volume": 300
+  },
+  {
+   "id": "Grip",
+   "role": "grip",
+   "volume": 80
+  },
+  {
+   "id": "Guard",
+   "role": "balance",
+   "volume": 60
+  },
+  {
+   "id": "Pommel",
+   "role": "balance",
+   "volume": 40
+  },
+  {
+   "id": "Edge",
+   "role": "strike",
+   "volume": 100
+  },
+  {
+   "id": "Fuller",
+   "role": "balance",
+   "volume": 20
+  },
+  {
+   "id": "Graft",
+   "role": "other",
+   "volume": 30
+  },
+  {
+   "id": "Head",
+   "role": "strike",
+   "volume": 250
+  },
+  {
+   "id": "Haft",
+   "role": "structural",
+   "volume": 400
+  },
+  {
+   "id": "Binding",
+   "role": "grip",
+   "volume": 20
+  },
+  {
+   "id": "Spike",
+   "role": "strike",
+   "volume": 40
+  },
+  {
+   "id": "Chain",
+   "role": "structural",
+   "volume": 100
+  },
+  {
+   "id": "Knuckle",
+   "role": "strike",
+   "volume": 120
+  },
+  {
+   "id": "Strap",
+   "role": "grip",
+   "volume": 40
+  },
+  {
+   "id": "Plate",
+   "role": "structural",
+   "volume": 900
+  },
+  {
+   "id": "Limb",
+   "role": "strike",
+   "volume": 300
+  },
+  {
+   "id": "String",
+   "role": "grip",
+   "volume": 10
+  },
+  {
+   "id": "Riser",
+   "role": "structural",
+   "volume": 150
+  },
+  {
+   "id": "Nock",
+   "role": "other",
+   "volume": 5
+  },
+  {
+   "id": "Fletching",
+   "role": "other",
+   "volume": 10
+  },
+  {
+   "id": "Padding",
+   "role": "structural",
+   "volume": 400
+  },
+  {
+   "id": "Visor",
+   "role": "other",
+   "volume": 120
+  },
+  {
+   "id": "Joint",
+   "role": "balance",
+   "volume": 80
+  },
+  {
+   "id": "Trim",
+   "role": "other",
+   "volume": 30
+  },
+  {
+   "id": "Body",
+   "role": "structural",
+   "volume": 600
+  },
+  {
+   "id": "Clasp",
+   "role": "grip",
+   "volume": 15
+  },
+  {
+   "id": "Lining",
+   "role": "other",
+   "volume": 200
+  },
+  {
+   "id": "Hem",
+   "role": "other",
+   "volume": 50
+  },
+  {
+   "id": "Boss",
+   "role": "balance",
+   "volume": 150
+  },
+  {
+   "id": "Rim",
+   "role": "balance",
+   "volume": 200
+  },
+  {
+   "id": "Shaft",
+   "role": "structural",
+   "volume": 300
+  },
+  {
+   "id": "Hook",
+   "role": "other",
+   "volume": 20
+  },
+  {
+   "id": "Lens",
+   "role": "other",
+   "volume": 20
+  },
+  {
+   "id": "Reservoir",
+   "role": "other",
+   "volume": 100
+  },
+  {
+   "id": "Point",
+   "role": "strike",
+   "volume": 80
+  },
+  {
+   "id": "Langet",
+   "role": "other",
+   "volume": 60
+  },
+  {
+   "id": "Ferrule",
+   "role": "other",
+   "volume": 30
+  },
+  {
+   "id": "Cap",
+   "role": "other",
+   "volume": 40
+  },
+  {
+   "id": "Stock",
+   "role": "structural",
+   "volume": 500
+  },
+  {
+   "id": "Prod",
+   "role": "strike",
+   "volume": 350
+  },
+  {
+   "id": "Trigger",
+   "role": "other",
+   "volume": 15
+  },
+  {
+   "id": "Tip",
+   "role": "strike",
+   "volume": 20
+  },
+  {
+   "id": "Cord",
+   "role": "grip",
+   "volume": 10
+  },
+  {
+   "id": "Shell",
+   "role": "structural",
+   "volume": 700
+  },
+  {
+   "id": "Liner",
+   "role": "other",
+   "volume": 150
+  },
+  {
+   "id": "Crest",
+   "role": "balance",
+   "volume": 30
+  },
+  {
+   "id": "Nasal",
+   "role": "other",
+   "volume": 20
+  },
+  {
+   "id": "Upper",
+   "role": "structural",
+   "volume": 200
+  },
+  {
+   "id": "Sole",
+   "role": "structural",
+   "volume": 150
+  },
+  {
+   "id": "Palm",
+   "role": "structural",
+   "volume": 80
+  },
+  {
+   "id": "Cuff",
+   "role": "grip",
+   "volume": 60
+  }
  ]
 }

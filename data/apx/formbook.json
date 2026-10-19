@@ -1,0 +1,101 @@
+{
+ "_note": "Starting Formbook (05 section 5). Forms are vanilla ItemType names (form_map.json keys). known = successes 1, mastered = 5. default is known by every character; origins (D58) add to it.",
+ "default": {
+  "known": [
+   "IRON_DAGGER",
+   "LEATHER_BOOTS",
+   "QUARTERSTAFF",
+   "SLING",
+   "TOOL_TORCH",
+   "TUNIC",
+   "WOODEN_SHIELD"
+  ],
+  "mastered": []
+ },
+ "origins": {
+  "barbarian": {
+   "known": [
+    "IRON_AXE",
+    "IRON_MACE",
+    "LEATHER_BREASTPIECE"
+   ],
+   "mastered": [
+    "IRON_AXE"
+   ]
+  },
+  "cleric": {
+   "known": [
+    "BRONZE_MACE",
+    "BRONZE_SHIELD"
+   ],
+   "mastered": [
+    "BRONZE_MACE"
+   ]
+  },
+  "healer": {
+   "known": [
+    "TOOL_ALEMBIC",
+    "TUNIC"
+   ],
+   "mastered": [
+    "TOOL_ALEMBIC"
+   ]
+  },
+  "hunter": {
+   "known": [
+    "CROSSBOW",
+    "LONGBOW"
+   ],
+   "mastered": [
+    "LONGBOW"
+   ]
+  },
+  "merchant": {
+   "known": [
+    "TOOL_LANTERN",
+    "TOOL_TINKERING_KIT"
+   ],
+   "mastered": [
+    "TOOL_TINKERING_KIT"
+   ]
+  },
+  "rogue": {
+   "known": [
+    "SHORTBOW",
+    "TOOL_LOCKPICK"
+   ],
+   "mastered": [
+    "IRON_DAGGER"
+   ]
+  },
+  "wanderer": {
+   "known": [
+    "LEATHER_HELM",
+    "SHORTBOW"
+   ],
+   "mastered": [
+    "SHORTBOW"
+   ]
+  },
+  "warrior": {
+   "known": [
+    "IRON_BREASTPIECE",
+    "IRON_SHIELD",
+    "IRON_SPEAR",
+    "IRON_SWORD"
+   ],
+   "mastered": [
+    "IRON_SWORD"
+   ]
+  },
+  "wizard": {
+   "known": [
+    "HAT_WIZARD",
+    "WIZARD_DOUBLET"
+   ],
+   "mastered": [
+    "QUARTERSTAFF"
+   ]
+  }
+ }
+}

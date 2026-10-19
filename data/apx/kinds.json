@@ -1,0 +1,390 @@
+{
+ "_note": "D66 damage kinds (04 section 3.2). materials: resistance to crushing/slashing/piercing as a target or armour layer 0-100; brittle = shatter share under impact; edge = edge holding as a strike part; poise = armour-mass poise weight (D75). families: percent of a move's damage delivered as crush/slash/pierce (sum 100). ASSUMED, tuned in F4.",
+ "families": {
+  "Blades": {
+   "crush": 0,
+   "pierce": 30,
+   "slash": 70
+  },
+  "Bows": {
+   "crush": 0,
+   "pierce": 100,
+   "slash": 0
+  },
+  "Crossbows": {
+   "crush": 0,
+   "pierce": 100,
+   "slash": 0
+  },
+  "Daggers": {
+   "crush": 0,
+   "pierce": 75,
+   "slash": 25
+  },
+  "Fists": {
+   "crush": 90,
+   "pierce": 10,
+   "slash": 0
+  },
+  "Hafts": {
+   "crush": 45,
+   "pierce": 0,
+   "slash": 55
+  },
+  "Polearms": {
+   "crush": 5,
+   "pierce": 60,
+   "slash": 35
+  },
+  "Shields": {
+   "crush": 100,
+   "pierce": 0,
+   "slash": 0
+  },
+  "Staves": {
+   "crush": 85,
+   "pierce": 10,
+   "slash": 5
+  },
+  "Thrown": {
+   "crush": 0,
+   "pierce": 80,
+   "slash": 20
+  },
+  "Tools": {
+   "crush": 60,
+   "pierce": 20,
+   "slash": 20
+  }
+ },
+ "materials": {
+  "aethite": {
+   "brittle": 5,
+   "crush": 65,
+   "edge": 100,
+   "pierce": 90,
+   "poise": 50,
+   "slash": 95
+  },
+  "ash": {
+   "brittle": 8,
+   "crush": 35,
+   "edge": 8,
+   "pierce": 22,
+   "poise": 27,
+   "slash": 28
+  },
+  "blackiron": {
+   "brittle": 4,
+   "crush": 60,
+   "edge": 95,
+   "pierce": 85,
+   "poise": 74,
+   "slash": 90
+  },
+  "bone": {
+   "brittle": 60,
+   "crush": 20,
+   "edge": 35,
+   "pierce": 40,
+   "poise": 35,
+   "slash": 45
+  },
+  "brass": {
+   "brittle": 4,
+   "crush": 40,
+   "edge": 45,
+   "pierce": 55,
+   "poise": 70,
+   "slash": 55
+  },
+  "brick": {
+   "brittle": 35,
+   "crush": 25,
+   "edge": 0,
+   "pierce": 40,
+   "poise": 55,
+   "slash": 45
+  },
+  "bronze": {
+   "brittle": 5,
+   "crush": 45,
+   "edge": 55,
+   "pierce": 60,
+   "poise": 72,
+   "slash": 60
+  },
+  "chitin": {
+   "brittle": 25,
+   "crush": 40,
+   "edge": 40,
+   "pierce": 50,
+   "poise": 25,
+   "slash": 60
+  },
+  "clay": {
+   "brittle": 50,
+   "crush": 15,
+   "edge": 0,
+   "pierce": 20,
+   "poise": 30,
+   "slash": 20
+  },
+  "cloth": {
+   "brittle": 0,
+   "crush": 10,
+   "edge": 0,
+   "pierce": 10,
+   "poise": 5,
+   "slash": 15
+  },
+  "coal": {
+   "brittle": 45,
+   "crush": 10,
+   "edge": 0,
+   "pierce": 15,
+   "poise": 20,
+   "slash": 15
+  },
+  "copper": {
+   "brittle": 3,
+   "crush": 35,
+   "edge": 40,
+   "pierce": 45,
+   "poise": 75,
+   "slash": 45
+  },
+  "flesh": {
+   "brittle": 0,
+   "crush": 20,
+   "edge": 0,
+   "pierce": 10,
+   "poise": 15,
+   "slash": 15
+  },
+  "flint": {
+   "brittle": 75,
+   "crush": 10,
+   "edge": 90,
+   "pierce": 40,
+   "poise": 45,
+   "slash": 45
+  },
+  "glass": {
+   "brittle": 90,
+   "crush": 5,
+   "edge": 85,
+   "pierce": 30,
+   "poise": 45,
+   "slash": 35
+  },
+  "gold": {
+   "brittle": 2,
+   "crush": 20,
+   "edge": 25,
+   "pierce": 30,
+   "poise": 100,
+   "slash": 30
+  },
+  "granite": {
+   "brittle": 45,
+   "crush": 35,
+   "edge": 10,
+   "pierce": 55,
+   "poise": 70,
+   "slash": 60
+  },
+  "hide": {
+   "brittle": 0,
+   "crush": 35,
+   "edge": 5,
+   "pierce": 25,
+   "poise": 15,
+   "slash": 40
+  },
+  "horn": {
+   "brittle": 15,
+   "crush": 35,
+   "edge": 35,
+   "pierce": 40,
+   "poise": 30,
+   "slash": 45
+  },
+  "ice": {
+   "brittle": 85,
+   "crush": 10,
+   "edge": 50,
+   "pierce": 25,
+   "poise": 25,
+   "slash": 25
+  },
+  "iron": {
+   "brittle": 5,
+   "crush": 45,
+   "edge": 60,
+   "pierce": 65,
+   "poise": 70,
+   "slash": 70
+  },
+  "ivory": {
+   "brittle": 30,
+   "crush": 30,
+   "edge": 55,
+   "pierce": 45,
+   "poise": 40,
+   "slash": 50
+  },
+  "lead": {
+   "brittle": 2,
+   "crush": 40,
+   "edge": 5,
+   "pierce": 35,
+   "poise": 95,
+   "slash": 25
+  },
+  "linen": {
+   "brittle": 0,
+   "crush": 10,
+   "edge": 0,
+   "pierce": 10,
+   "poise": 5,
+   "slash": 15
+  },
+  "oak": {
+   "brittle": 8,
+   "crush": 40,
+   "edge": 10,
+   "pierce": 30,
+   "poise": 30,
+   "slash": 35
+  },
+  "obsidian": {
+   "brittle": 80,
+   "crush": 10,
+   "edge": 95,
+   "pierce": 35,
+   "poise": 50,
+   "slash": 40
+  },
+  "pewter": {
+   "brittle": 4,
+   "crush": 30,
+   "edge": 30,
+   "pierce": 38,
+   "poise": 68,
+   "slash": 40
+  },
+  "quartz": {
+   "brittle": 80,
+   "crush": 15,
+   "edge": 80,
+   "pierce": 45,
+   "poise": 50,
+   "slash": 50
+  },
+  "salt": {
+   "brittle": 60,
+   "crush": 5,
+   "edge": 0,
+   "pierce": 15,
+   "poise": 35,
+   "slash": 15
+  },
+  "scale": {
+   "brittle": 10,
+   "crush": 45,
+   "edge": 35,
+   "pierce": 60,
+   "poise": 35,
+   "slash": 65
+  },
+  "silk": {
+   "brittle": 0,
+   "crush": 8,
+   "edge": 0,
+   "pierce": 8,
+   "poise": 3,
+   "slash": 20
+  },
+  "silver": {
+   "brittle": 3,
+   "crush": 30,
+   "edge": 45,
+   "pierce": 40,
+   "poise": 85,
+   "slash": 40
+  },
+  "sinew": {
+   "brittle": 0,
+   "crush": 25,
+   "edge": 0,
+   "pierce": 15,
+   "poise": 8,
+   "slash": 20
+  },
+  "steel": {
+   "brittle": 3,
+   "crush": 55,
+   "edge": 90,
+   "pierce": 80,
+   "poise": 72,
+   "slash": 85
+  },
+  "stone": {
+   "brittle": 40,
+   "crush": 30,
+   "edge": 10,
+   "pierce": 45,
+   "poise": 60,
+   "slash": 50
+  },
+  "sulfur": {
+   "brittle": 50,
+   "crush": 5,
+   "edge": 0,
+   "pierce": 10,
+   "poise": 35,
+   "slash": 10
+  },
+  "tin": {
+   "brittle": 5,
+   "crush": 25,
+   "edge": 25,
+   "pierce": 30,
+   "poise": 60,
+   "slash": 35
+  },
+  "water": {
+   "brittle": 0,
+   "crush": 0,
+   "edge": 0,
+   "pierce": 0,
+   "poise": 10,
+   "slash": 0
+  },
+  "wood": {
+   "brittle": 10,
+   "crush": 30,
+   "edge": 5,
+   "pierce": 20,
+   "poise": 25,
+   "slash": 25
+  },
+  "wool": {
+   "brittle": 0,
+   "crush": 20,
+   "edge": 0,
+   "pierce": 12,
+   "poise": 8,
+   "slash": 20
+  },
+  "yew": {
+   "brittle": 8,
+   "crush": 35,
+   "edge": 10,
+   "pierce": 25,
+   "poise": 28,
+   "slash": 30
+  }
+ }
+}

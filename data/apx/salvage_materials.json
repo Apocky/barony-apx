@@ -1,0 +1,210 @@
+{
+ "_note": "What a salvaged part of each material returns (05 section 5, salvage.json percentages apply on top): unit name, grams per unit, extra loss when the part is broken (brittle materials).",
+ "materials": {
+  "aethite": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "ash": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 500,
+   "unit": "plank"
+  },
+  "blackiron": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "bone": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 150,
+   "unit": "bone"
+  },
+  "brass": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "brick": {
+   "break_loss_pct": 20,
+   "grams_per_unit": 600,
+   "unit": "rubble"
+  },
+  "bronze": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "chitin": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 150,
+   "unit": "bone"
+  },
+  "clay": {
+   "break_loss_pct": 20,
+   "grams_per_unit": 600,
+   "unit": "rubble"
+  },
+  "cloth": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 200,
+   "unit": "bolt"
+  },
+  "coal": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 250,
+   "unit": "lump"
+  },
+  "copper": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "flesh": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 300,
+   "unit": "pelt"
+  },
+  "flint": {
+   "break_loss_pct": 30,
+   "grams_per_unit": 150,
+   "unit": "shards"
+  },
+  "glass": {
+   "break_loss_pct": 30,
+   "grams_per_unit": 150,
+   "unit": "shards"
+  },
+  "gold": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "granite": {
+   "break_loss_pct": 20,
+   "grams_per_unit": 600,
+   "unit": "rubble"
+  },
+  "hide": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 300,
+   "unit": "pelt"
+  },
+  "horn": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 150,
+   "unit": "bone"
+  },
+  "ice": {
+   "break_loss_pct": 30,
+   "grams_per_unit": 150,
+   "unit": "shards"
+  },
+  "iron": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "ivory": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 150,
+   "unit": "bone"
+  },
+  "lead": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "linen": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 200,
+   "unit": "bolt"
+  },
+  "oak": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 500,
+   "unit": "plank"
+  },
+  "obsidian": {
+   "break_loss_pct": 30,
+   "grams_per_unit": 150,
+   "unit": "shards"
+  },
+  "pewter": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "quartz": {
+   "break_loss_pct": 30,
+   "grams_per_unit": 150,
+   "unit": "shards"
+  },
+  "salt": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 250,
+   "unit": "lump"
+  },
+  "scale": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 300,
+   "unit": "pelt"
+  },
+  "silk": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 200,
+   "unit": "bolt"
+  },
+  "silver": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "sinew": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 200,
+   "unit": "bolt"
+  },
+  "steel": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "stone": {
+   "break_loss_pct": 20,
+   "grams_per_unit": 600,
+   "unit": "rubble"
+  },
+  "sulfur": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 250,
+   "unit": "lump"
+  },
+  "tin": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 400,
+   "unit": "ingot"
+  },
+  "water": {
+   "break_loss_pct": 10,
+   "grams_per_unit": 250,
+   "unit": "lump"
+  },
+  "wood": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 500,
+   "unit": "plank"
+  },
+  "wool": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 200,
+   "unit": "bolt"
+  },
+  "yew": {
+   "break_loss_pct": 0,
+   "grams_per_unit": 500,
+   "unit": "plank"
+  }
+ }
+}
