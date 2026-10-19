@@ -14,6 +14,7 @@
 #pragma once
 
 #include "main.hpp"
+#include "apx/selftest_all.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
@@ -40,8 +41,8 @@ namespace combat_glue
 	inline bool poiseOn() { static const bool on = envFlag("APX_POISE", true); return on; }
 	inline bool zonesOn() { static const bool on = envFlag("APX_ZONES", true); return on; }
 	inline bool downedOn() { static const bool on = envFlag("APX_DOWNED", true); return on; }
-	inline bool forceCoop() { static const bool on = envFlag("APX_DOWNED_FORCE_COOP", false); return on; }
-	inline bool selftestOn() { static const bool on = envFlag("APX_F4C_SELFTEST", false); return on; }
+	inline bool forceCoop() { static const bool on = envFlag("APX_DOWNED_FORCE_COOP", false); return on || selftestall::active(selftestall::F4C); } // the f4c stage runs solo as co-op, as its script does
+	inline bool selftestOn() { static const bool on = envFlag("APX_F4C_SELFTEST", false); return on || selftestall::armed(); } // D77: also the "f4c" stage of -apxselftest=all
 
 	struct Rec
 	{
@@ -265,6 +266,7 @@ namespace combat_glue
 
 	inline void selftestStep(Entity* my, Stat* s)
 	{
+		if ( selftestall::armed() && !selftestall::active(selftestall::F4C) ) { return; } // D77: wait for the "f4c" stage
 		Selftest& T = st();
 		if ( T.phase == 0 ) { T.t0 = ::ticks; T.phase = 1; return; }
 		Uint32 dt = ::ticks - T.t0;
@@ -366,7 +368,14 @@ namespace combat_glue
 			T.check(s->HP <= 0 && took >= (Uint32)kDownedTicks - 2 && took <= (Uint32)kDownedTicks + 2, "bleed_out_20s", took, kDownedTicks);
 			printlog("[apx-f4c] summary pass=%d fail=%d poise=%d zones=%d downed=%d coop_forced=%d", T.pass, T.fail, (int)poiseOn(), (int)zonesOn(), (int)downedOn(), (int)forceCoop());
 			T.phase = 7;
-			mainloop = 0;
+			if ( selftestall::armed() )
+			{
+				char buf[160];
+				snprintf(buf, sizeof buf, "\"checks_pass\":%d,\"checks_fail\":%d,\"poise\":%d,\"zones\":%d,\"downed\":%d", T.pass, T.fail,
+					(int)poiseOn(), (int)zonesOn(), (int)downedOn());
+				selftestall::done(selftestall::F4C, T.fail == 0 && T.pass > 0, buf);
+			}
+			else { mainloop = 0; }
 		}
 	}
 } // namespace combat_glue

@@ -18,6 +18,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <vector>
+#include <string>
+#include "apx/selftest_all.hpp"
 
 namespace apx
 {
@@ -306,9 +308,13 @@ namespace apx
 	inline bool& shotRequest() { static bool b = false; return b; }
 	inline bool consumeShot() { bool r = shotRequest(); shotRequest() = false; return r; }
 	inline Uint32& selftestClock() { static Uint32 t = 0; return t; }
-	inline bool selftestOn() { static const bool on = std::getenv("APX_SELFTEST") != nullptr; return on; }
-	inline bool selftestMoves() { static const bool on = selftestOn() && std::getenv("APX_SELFTEST_MOVES") != nullptr; return on; }
-	inline bool selftestEndurance() { static const bool on = selftestOn() && std::getenv("APX_SELFTEST_ENDURANCE") != nullptr; return on; }
+	// -apxselftest=all (D77) runs the move script as its "moves" stage, so it counts as APX_SELFTEST + APX_SELFTEST_MOVES
+	inline bool selftestOn() { static const bool on = std::getenv("APX_SELFTEST") != nullptr; return on || selftestall::armed(); }
+	inline bool selftestMoves() { static const bool on = std::getenv("APX_SELFTEST") != nullptr && std::getenv("APX_SELFTEST_MOVES") != nullptr; return on || selftestall::armed(); }
+	// hits per move during the move script: far-dummy phase (only hits on the far dummy) and cluster phase
+	struct MoveTally { int far[5] = { 0, 0, 0, 0, 0 }; int cluster[5] = { 0, 0, 0, 0, 0 }; int farOther = 0; };
+	inline MoveTally& moveTally() { static MoveTally m; return m; }
+	inline bool selftestEndurance() { static const bool on = std::getenv("APX_SELFTEST") != nullptr && std::getenv("APX_SELFTEST_ENDURANCE") != nullptr; return on && !selftestall::armed(); }
 	struct Win { Uint32 start, len; int move; };
 	// APX_SELFTEST_NET=host|client : two processes on this PC (lobby autopilot from the F2 branch). The client runs a sword
 	// script against dummies the host spawned around it; the host logs what arrives ('APXS' state, 'ATAK' move byte).
@@ -373,6 +379,14 @@ namespace apx
 		return m;
 	}
 	inline Entity*& farDummy() { static Entity* e = nullptr; return e; }
+	// [apx-hit] site (entity.cpp): count the move script's hits for the -apxselftest=all "moves" verdict
+	inline void selftestRecordHit(int move, Entity* target)
+	{
+		if ( !selftestall::active(selftestall::MOVES) || move < 0 || move > 4 ) { return; }
+		Uint32 sc = 0; moveScript(&sc, nullptr);
+		if ( selftestClock() < sc ) { if ( target == farDummy() ) { ++moveTally().far[move]; } else { ++moveTally().farOther; } }
+		else { ++moveTally().cluster[move]; }
+	}
 	inline void selftestSpawn(int phase)
 	{
 		Entity* me = players[0] ? players[0]->entity : nullptr;
@@ -429,6 +443,7 @@ namespace apx
 			return;
 		}
 		if ( player != 0 ) return;
+		if ( selftestall::armed() && !selftestall::active(selftestall::MOVES) ) return; // D77: wait for the "moves" stage
 		Uint32& t = selftestClock();
 		++t;
 		if ( selftestEndurance() )
@@ -459,7 +474,24 @@ namespace apx
 				selftestSpawn(1);
 			}
 			for ( auto& w : moveScript() ) { if ( w.move == SWORD_LUNGE && (t == w.start - 2 || t == w.start + 100) ) { printlog("[apx-move] selftest_pos t=%u pos=%.2f,%.2f", t, players[0]->entity->x, players[0]->entity->y); } }
-			if ( t == en ) { printlog("[apx-move] selftest_done"); }
+			if ( t == en )
+			{
+				printlog("[apx-move] selftest_done");
+				if ( selftestall::armed() )
+				{
+					// far dummy beyond vanilla reach, inside thrust reach: plain swings must miss it, thrusts and lunges hit
+					const MoveTally& m = moveTally();
+					int cluster = 0;
+					for ( int k = 0; k < 5; ++k ) { cluster += m.cluster[k]; }
+					const bool pass = m.far[MOVE_NONE] == 0 && m.far[SWORD_THRUST] > 0 && m.far[SWORD_LUNGE] > 0 && cluster > 0;
+					char buf[256];
+					snprintf(buf, sizeof buf, "\"far_none\":%d,\"far_thrust\":%d,\"far_lunge\":%d,\"far_other_targets\":%d,"
+						"\"cluster_none\":%d,\"cluster_slash\":%d,\"cluster_vertical\":%d,\"cluster_thrust\":%d,\"moves_knob\":%d",
+						m.far[MOVE_NONE], m.far[SWORD_THRUST], m.far[SWORD_LUNGE], m.farOther, m.cluster[MOVE_NONE], m.cluster[SWORD_SLASH],
+						m.cluster[SWORD_VERTICAL], m.cluster[SWORD_THRUST], movesEnabled() ? 1 : 0);
+					selftestall::done(selftestall::MOVES, pass, buf);
+				}
+			}
 			return;
 		}
 		if ( t == 1400 ) { shotRequest() = true; }
