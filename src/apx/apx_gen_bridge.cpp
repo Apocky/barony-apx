@@ -679,7 +679,15 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 
 	// room interiors far from every wall torch (lakes, big halls) get free-standing light sources:
 	// greedily at the open tile farthest from any light while that distance exceeds LIGHT_COVER
-	constexpr int LIGHT_COVER = 5, LIGHTS_PER_ROOM = 6;
+	constexpr int LIGHT_COVER = 3, LIGHTS_PER_ROOM = 12; // 5/6 left start rooms at luma 14 vs vanilla 52 (eye.py, apx-gen 7057f3d9 floors)
+	lightAt.push_back(start); // the arrival tile always counts as lit: see below
+	{
+		Entity* ls = newEntity(131, 1, map.entities, nullptr);
+		ls->x = start.x * 16; ls->y = start.y * 16;
+		ls->lightSourceAlwaysOn = 1; ls->lightSourceBrightness = 160; ls->lightSourceRadius = 6; ls->lightSourceFlicker = 0;
+		ls->lightSourceRGB = 0xff | (0xc8 << 8) | (0x96 << 16);
+		++nLights;
+	}
 	for ( auto& ro : f.rooms )
 	{
 		for ( int k = 0; k < LIGHTS_PER_ROOM; ++k )
