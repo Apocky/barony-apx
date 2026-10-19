@@ -19,7 +19,8 @@ REPO = Path(__file__).resolve().parents[2]
 DIAG = Path(r"C:\Apocrypha\diagnostics")
 RUNS = Path(r"C:\Apocrypha\runs")
 SLOT_ARMS = ("on,off,on,slots5,noring,on,off,vanilla,on,slots5,noring,off,on,vanilla,on,on,nodiag,nodiag"
-             ",on:12:rat,off:12:rat,on:12:rat,off:12:rat,on:12:rat,vanilla:12:rat,vanilla:12:rat")  # D72 fodder crowd
+             ",on:12:rat,off:12:rat,on:12:rat,off:12:rat,on:12:rat,vanilla:12:rat,vanilla:12:rat"  # D72 fodder crowd
+             ",flow:150,flow:150")  # 150 creatures chasing: stuck counts in big crowds (timing only from --mode exclusive)
 EXCL_ARMS = "on,noring,noring,on,flow:150,noflow:150,noflow:150,flow:150,probe:150,off"
 # the gates that decide whether the build is final enough to spend exclusive and parity minutes on; damage and the
 # jam control wait for Apocky's reference decision and do not block

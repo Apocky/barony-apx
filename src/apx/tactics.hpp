@@ -88,6 +88,7 @@ namespace tactics
 		long long route_blocked_replans = 0;  // a planned walk stuck 1 s on a step: that tile avoided 5 s, route replanned
 		long long breakables_hit = 0;         // steered creatures bashing a breakable collider in their way (engine rule)
 		long long goal_moved_out = 0;         // routeAround: a goal inside the reach zone moved out to its edge first
+		long long no_path_holds = 0;          // steered ticks waiting: no path to the goal and a wall or gate in the straight way
 		long long flank_park = 0;             // flank ticks standing "at goal" while more than HOLD_EPS + 1 from the flank point
 	};
 	extern Counters C;

@@ -157,6 +157,31 @@ namespace tactics
 		return d >= len - 0.5;
 	}
 
+	// A body of radius r can stand at (px, py): the tiles under its four corners are walkable (clipMove keeps the whole
+	// box out of walls; a goal on a floor tile but within r of a wall cannot be reached: s12-excl queue points at
+	// 336,132.9 and 366.4,139.9 lay on wall tiles 21,8 and 22,8 and five creatures pushed at them for good).
+	bool bodyFits(double px, double py, double r)
+	{
+		if ( !walkable((int)floor(px / 16), (int)floor(py / 16)) ) { return false; }
+		for ( int k = 0; k < 4; ++k )
+		{
+			double cx = px + ((k & 1) ? r : -r), cy = py + ((k & 2) ? r : -r);
+			if ( !walkable((int)floor(cx / 16), (int)floor(cy / 16)) ) { return false; }
+		}
+		return true;
+	}
+
+	// A body of radius r walks the straight segment: the centre line and both edges are clear of walls. The thin ray
+	// alone let a creature's box clip the wall row it walked along (s12-excl uid 3587, row 11 beside walls 18-19,12).
+	bool bodyClear(double x0, double y0, double x1, double y1, double r)
+	{
+		double dx = x1 - x0, dy = y1 - y0, len = hypot(dx, dy);
+		if ( len < 1 ) { return true; }
+		double nx = -dy / len * r, ny = dx / len * r;
+		return wallClear(nullptr, x0, y0, x1, y1) && wallClear(nullptr, x0 + nx, y0 + ny, x1 + nx, y1 + ny)
+			&& wallClear(nullptr, x0 - nx, y0 - ny, x1 - nx, y1 - ny);
+	}
+
 	// a monster body (radius + swing room) crosses the segment from my to target
 	bool corridorBlocked(Entity* my, Entity* target)
 	{
@@ -316,7 +341,7 @@ namespace tactics
 	// radially), anyone else whose segment passes within keepOut of the target. Such a walk is routed (planGoalRoute).
 	bool needsRoute(Entity* target, Entity* my, double gx, double gy, bool ownSlot)
 	{
-		if ( !wallClear(my, my->x, my->y, gx, gy) ) { return true; }
+		if ( !bodyClear(my->x, my->y, gx, gy, bodyR(my) - 0.5) ) { return true; }
 		if ( ownSlot )
 		{
 			double dA = remainder(atan2(gy - target->y, gx - target->x) - atan2(my->y - target->y, my->x - target->x), 2 * PI);
@@ -342,12 +367,12 @@ namespace tactics
 		for ( int i = 0; i < ts.n; ++i )
 		{
 			double a = ts.base + i * 2 * PI / ts.n, px = target->x + ts.R * cos(a), py = target->y + ts.R * sin(a);
-			if ( walkable((int)floor(px / 16), (int)floor(py / 16)) && wallClear(target, target->x, target->y, px, py) ) { ts.valid[i] = 1; ++ts.validN; }
+			if ( bodyFits(px, py, rA) && wallClear(target, target->x, target->y, px, py) ) { ts.valid[i] = 1; ++ts.validN; }
 		}
 		for ( int j = 0; j < ts.k; ++j )
 		{
 			double a = ts.base + j * 2 * PI / ts.k, px = target->x + ts.ringR * cos(a), py = target->y + ts.ringR * sin(a);
-			if ( walkable((int)floor(px / 16), (int)floor(py / 16)) && wallClear(target, target->x, target->y, px, py) ) { ts.ringValid[j] = 1; ++ts.ringValidN; }
+			if ( bodyFits(px, py, rA) && wallClear(target, target->x, target->y, px, py) ) { ts.ringValid[j] = 1; ++ts.ringValidN; }
 		}
 	}
 
@@ -505,13 +530,20 @@ namespace tactics
 			gx = target->x + ts.ringR * cos(a); gy = target->y + ts.ringR * sin(a);
 			return true;
 		}
-		double waitR = keepOut(bodyR(target)) + 2;
-		double bear = atan2(my->y - target->y, my->x - target->x), bestA = 1e9, a = bear;
+		double waitR = keepOut(bodyR(target)) + 2, rA = bodyR(my);
+		double bear = atan2(my->y - target->y, my->x - target->x), bestA = 1e9;
+		int best = -1;
 		for ( int i = 0; i < ts.n; ++i )
 		{
-			double ai = ts.base + i * 2 * PI / ts.n;
-			if ( ts.valid[i] && angDiff(ai, bear) < bestA ) { bestA = angDiff(ai, bear); a = ai; }
+			if ( !ts.valid[i] ) { continue; }
+			double ai = ts.base + i * 2 * PI / ts.n, da = angDiff(ai, bear);
+			if ( da >= bestA ) { continue; }
+			double qx = target->x + cos(ai) * waitR, qy = target->y + sin(ai) * waitR;
+			if ( !bodyFits(qx, qy, rA) || !wallClear(nullptr, target->x, target->y, qx, qy) ) { continue; } // a queue point in a wall
+			bestA = da; best = i;
 		}
+		if ( best < 0 ) { gx = my->x; gy = my->y; return true; } // no queue point with room: it waits where it stands
+		double a = ts.base + best * 2 * PI / ts.n;
 		gx = target->x + cos(a) * waitR; gy = target->y + sin(a) * waitR;
 		return true;
 	}
@@ -522,7 +554,7 @@ namespace tactics
 		double gx, gy;
 		bool own;
 		if ( !goalFor(my, s, target, gx, gy, own) ) { return false; }
-		return wallClear(my, my->x, my->y, gx, gy) || planGoalRoute(my, s, target, gx, gy);
+		return bodyClear(my->x, my->y, gx, gy, bodyR(my) - 0.5) || planGoalRoute(my, s, target, gx, gy);
 	}
 
 	// Every tick, not only at decide: the engine's ATTACK state sends a creature to PATH whenever its own packmates
@@ -709,7 +741,7 @@ namespace tactics
 			s.faceTarget = ownSlot ? d < 2 * TILE : true;
 			bool moved = false;
 			const bool inZone = d < keepOut(bodyR(target)) - 1;
-			if ( ownSlot && inZone && wallClear(my, my->x, my->y, gx, gy)
+			if ( ownSlot && inZone && bodyClear(my->x, my->y, gx, gy, bodyR(my) - 0.5)
 				&& angDiff(atan2(gy - target->y, gx - target->x), atan2(my->y - target->y, my->x - target->x)) <= PI / 2 )
 			{
 				// already inside reach, on its slot's side: straight to the slot (no step out and back in)
@@ -743,12 +775,19 @@ namespace tactics
 					++C.goal_route_steps;
 					moved = followRoute(my, s, speed, dist2, gx, gy, nullptr);
 				}
-				else
+				else if ( bodyClear(my->x, my->y, gx, gy, bodyR(my) - 0.5) )
 				{
-					routeAround(target, my, gx, gy, ownSlot); // no path to the goal tile (counted): the arc round the zone
+					routeAround(target, my, gx, gy, ownSlot); // no path, but only the zone is in the way: the arc round it
 					s.lastSteer = STEER_ARC;
 					++C.arc_fallback;
 					moved = moveTo(my, s, gx, gy, speed, dist2);
+				}
+				else
+				{
+					// no path and a wall or a closed gate in the straight way (the gate graph refuses it): wait, never push
+					// at it (s12-excl: the wall-blind arc pushed creatures at a closed gate and at walls)
+					s.lastSteer = STEER_HOLD;
+					++C.no_path_holds;
 				}
 			}
 			else
@@ -766,7 +805,7 @@ namespace tactics
 				stand(my, target, speed);
 				++C.steer_holds;
 				s.faceTarget = false;
-				s.lastSteer = STEER_AT_GOAL;
+				if ( s.lastSteer != STEER_HOLD ) { s.lastSteer = STEER_AT_GOAL; }
 			}
 		}
 		s.steeredTick = ticks;

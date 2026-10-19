@@ -658,7 +658,7 @@ namespace bf3
 			.i("holder_false_arrive", A.holderFalseArrive)
 			.i("flank_fail_target", C.flank_fail_target).i("flank_fail_progress", C.flank_fail_progress).i("flank_fail_time", C.flank_fail_time)
 			.i("flank_fail_nogoal", C.flank_fail_nogoal).i("flank_fail_noroute", C.flank_fail_noroute)
-			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park)
+			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park).i("no_path_holds", C.no_path_holds)
 			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
 			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
 			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)

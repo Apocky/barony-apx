@@ -45,7 +45,7 @@ namespace tactics
 
 	enum RouteKind : uint8_t { ROUTE_NONE = 0, ROUTE_FLANK = 1, ROUTE_HOME = 2, ROUTE_GOAL = 3 };
 	// how steer moved a creature on its last steered tick (diagnostics: the trial's dump and holder counters)
-	enum SteerKind : uint8_t { STEER_NONE = 0, STEER_STRAIGHT = 1, STEER_ROUTE = 2, STEER_ARC = 3, STEER_OUT = 4, STEER_AT_GOAL = 5, STEER_SWING = 6, STEER_PACK = 7 };
+	enum SteerKind : uint8_t { STEER_NONE = 0, STEER_STRAIGHT = 1, STEER_ROUTE = 2, STEER_ARC = 3, STEER_OUT = 4, STEER_AT_GOAL = 5, STEER_SWING = 6, STEER_PACK = 7, STEER_HOLD = 8 };
 
 	struct TacticsState
 	{
@@ -99,6 +99,8 @@ namespace tactics
 	bool eligible(Entity* my, Stat& st);
 	bool walkable(int tx, int ty);
 	bool wallClear(Entity* from, double x0, double y0, double x1, double y1);
+	bool bodyFits(double px, double py, double r);                         // a body of radius r can stand there
+	bool bodyClear(double x0, double y0, double x1, double y1, double r);  // and walk that straight segment
 	bool corridorBlocked(Entity* my, Entity* target);
 	bool moveTo(Entity* my, TacticsState& s, double gx, double gy, double speed, double& dist2);
 	void stand(Entity* my, Entity* target, double speed);

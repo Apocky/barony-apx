@@ -169,7 +169,9 @@ def summarise(results, args):
                                   "attackers_max": max(x["attackers_max_per_target"] for x in v), "reach_slots": v[0].get("reach_slots"),
                                   "friendly_fire_mean": round(mean([x.get("friendly_fire_dmg", 0) for x in v]), 1),
                                   "hits_mean": round(mean([x.get("hits", 0) for x in v]), 1),
-                                  "reach_overflow": sum(x.get("reach_overflow", 0) for x in v), "group_kind": v[0].get("group_kind")}
+                                  "reach_overflow": sum(x.get("reach_overflow", 0) for x in v), "group_kind": v[0].get("group_kind"),
+                                  "stuck": sum(x.get("stuck", 0) for x in v), "stuck_episodes": sum(x.get("stuck_episodes", 0) for x in v),
+                                  "steer_ticks": sum(x.get("steer_ticks", 0) for x in v), "no_path_holds": sum(x.get("no_path_holds", 0) for x in v)}
                               for b, v in sorted(kinds.items())} for k, kinds in sorted(by_monster.items())}
     base["flagged_rows"] = len(flagged)
     base["morale"] = [m for r in results for m in r["morale"]]
