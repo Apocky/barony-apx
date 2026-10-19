@@ -37,6 +37,31 @@ pwsh -NoProfile -File tools\apx\build.ps1 -Editor  # -> build\vs2022\Release\bar
   install rules that copy barony.exe into that folder (for us the Steam install, whose barony.exe
   is Apocky's S.A.M build). build.ps1 removes the variable from its own environment.
 
+### Shared compiler cache (ccache, all worktrees)
+
+```
+winget install Ccache.Ccache Ninja-build.Ninja                       # once per machine
+pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache              # -> build\ninja-ccache\barony.exe
+```
+
+`-Cache ccache` builds with Ninja in the VS 2022 Build Tools x64 environment (vcvars64, the same v143
+compiler as the VS build) and runs every cl.exe through ccache. The cache is
+`C:\Apocrypha\cache\ccache` (20 GB cap), shared by every barony-apx worktree: paths are rewritten
+relative to each worktree's root (CCACHE_BASEDIR), so a second worktree reuses what the first compiled.
+Release builds have no /Zi, so there is no shared PDB to defeat the cache; /MP is passed only to the
+Visual Studio generator (CMakeLists.txt). The exe lands in `build\ninja-ccache\` (Ninja is single-config),
+not `build\vs2022\Release\`. `-Cache vs` (default) is the original Visual Studio build, `-Cache none` is
+Ninja without a cache, `-Cache sccache` also works but measured slower.
+
+Measured 2026-10-19 (tools\apx\build_cache_bench.ps1; rows in C:\Apocrypha\diagnostics\barony-build),
+seconds; free commit memory varied 3.4-10.4 GB between steps (other lanes were building):
+
+| mode | cold, worktree A | clean build, worktree B, warm cache | one file changed |
+|---|---|---|---|
+| vs (original) | 184.8 | -- | 9.3 |
+| none (Ninja, control) | 184.0 | 248.5 | 10.0 |
+| sccache 0.18 | 547.3 (1 compiler process at 3.4 GB free) | 56.2 (158/158 hits) | 4.0 |
+| ccache 4.14.1 | 271.3 | 8.6 (158/158 hits) | 3.7 |
 ## Run against the Steam assets
 
 ```
@@ -131,3 +156,4 @@ Throughput (2026-10-19, MEASURED, farm_bench.py, 24 floor-1 jobs, same dungeon l
 one windowed launch at a time: 313.7 s = 275 jobs per hour; after, all 24 submitted to the farm headless
 (code 76491ea6, 13.8 GB commit free, at most 5 games at once by the memory budget): 35.0 s = 2,468 jobs
 per hour, 8.96x. Rows: `C:\Apocrypha\diagnostics\barony-farm\bench.jsonl`.
+F0 parity gate on the exe built entirely from the ccache in a second worktree (barony-apx-cachetest, 158/158 hits): PASS (2026-10-19 05:3x; output C:\Apocrypha\diagnostics\barony-build\parity-ccache).
