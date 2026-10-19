@@ -38,7 +38,7 @@ RE_ENTS = re.compile(r"apxgen: entities (\d+): (.*)")
 RE_FAIL = re.compile(r"apxgen: (FAILED|FALLBACK).*")
 RE_VANILLA = re.compile(r"apx: vanilla floor (\d+)x(\d+) walk tiles (\d+)")
 RE_FPS = re.compile(r"apxfps: frames (\d+) seconds ([\d.]+) frame-ms p50 ([\d.]+) p99 ([\d.]+) max ([\d.]+) "
-                    r"fps-p50 ([\d.]+) fps-p99 ([\d.]+) map (\d+)x(\d+)")
+                    r"fps-p50 ([\d.]+) fps-p99 ([\d.]+) map (\d+)x(\d+) uncapped (\d)")
 RE_HALL = re.compile(r"apxhall: at (\d+),(\d+) \(room (\d+) floor tiles\)|apxhall: no hall")
 RE_LEVEL_DONE = re.compile(r"successfully generated a dungeon with (\d+) rooms, (\d+) monsters, (\d+) gold, (\d+) items, (\d+) decorations\.")
 RE_LOADMAP = re.compile(r"LoadMap (\S+)")
@@ -191,7 +191,7 @@ def session(label, exe, seeds, extra, args, rows_out, w1=False):
                         except TimeoutError:
                             row["flags"].append("no_hall")
                         time.sleep(2.5)
-                    pf.chat_command(hwnd, "/apxfps_begin")
+                    pf.chat_command(hwnd, "/apxfps_begin uncap")
                     time.sleep(args.fps_seconds)
                     pf.chat_command(hwnd, "/apxfps_end")
                     try:

@@ -844,7 +844,15 @@ void apxgenNetSent(int hostnum, int bytes)
 	if ( hostnum >= 0 && hostnum < MAXPLAYERS ) { g_netBytes[hostnum] += bytes; ++g_netPackets[hostnum]; }
 }
 
-static ConsoleCommand ccmd_apxfps_begin("/apxfps_begin", "apx: start recording frame times", [](int, const char**) {
+static Uint32 g_savedFpsLimit = 0;
+static ConsoleCommand ccmd_apxfps_begin("/apxfps_begin", "apx: start recording frame times (uncap: fps limit 300, vsync off)", [](int argc, const char** argv) {
+	if ( argc > 1 && !strcmp(argv[1], "uncap") )
+	{
+		g_savedFpsLimit = fpsLimit;
+		fpsLimit = 300;
+		SDL_GL_SetSwapInterval(0);
+		printlog("apxfps: uncapped (fps limit %u -> 300, swap interval 0)\n", g_savedFpsLimit);
+	}
 	g_frameMs.clear();
 	g_frameRec = true;
 	g_lastFrame = std::chrono::steady_clock::now();
@@ -852,14 +860,21 @@ static ConsoleCommand ccmd_apxfps_begin("/apxfps_begin", "apx: start recording f
 });
 static ConsoleCommand ccmd_apxfps_end("/apxfps_end", "apx: frame-time p50/p99 since /apxfps_begin", [](int, const char**) {
 	g_frameRec = false;
+	const bool uncapped = g_savedFpsLimit != 0;
+	if ( uncapped )
+	{
+		fpsLimit = g_savedFpsLimit;
+		g_savedFpsLimit = 0;
+		SDL_GL_SetSwapInterval(verticalSync ? 1 : 0);
+	}
 	std::vector<float> v = g_frameMs;
 	if ( v.size() < 2 ) { printlog("apxfps: too few frames (%d)\n", (int)v.size()); return; }
 	v.erase(v.begin()); // the frame that straddled the command
 	std::sort(v.begin(), v.end());
 	auto q = [&](double p) { return v[std::min(v.size() - 1, (size_t)(p * (v.size() - 1) + 0.5))]; };
 	double sum = 0; for ( float x : v ) { sum += x; }
-	printlog("apxfps: frames %d seconds %.2f frame-ms p50 %.2f p99 %.2f max %.2f fps-p50 %.1f fps-p99 %.1f map %ux%u\n",
-		(int)v.size(), sum / 1000.0, q(0.5), q(0.99), v.back(), 1000.0 / q(0.5), 1000.0 / q(0.99), map.width, map.height);
+	printlog("apxfps: frames %d seconds %.2f frame-ms p50 %.2f p99 %.2f max %.2f fps-p50 %.1f fps-p99 %.1f map %ux%u uncapped %d\n",
+		(int)v.size(), sum / 1000.0, q(0.5), q(0.99), v.back(), 1000.0 / q(0.5), 1000.0 / q(0.99), map.width, map.height, uncapped ? 1 : 0);
 });
 static ConsoleCommand ccmd_apxhall("/apxhall", "apx: teleport to the largest room", [](int, const char**) {
 	if ( apxgenHallX < 0 || !players[clientnum] || !players[clientnum]->entity ) { printlog("apxhall: no hall\n"); return; }

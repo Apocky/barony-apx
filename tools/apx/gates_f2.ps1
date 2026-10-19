@@ -18,4 +18,4 @@ function Step($name, [string[]]$a) {
 Step 'w2-sweep'   @('sweep', '--first', "$First", '--count', "$Count", '--per-process', '5')
 Step 'w2-control' @('sweep', '--first', "$First", '--count', '5', '--per-process', '5', '--control', '1')
 Step 'w5-repeat'  @('sweep', '--first', "$First", '--count', '10', '--per-process', '5')
-Step 'w1'         @('w1', '--seeds', '3001', '--sizes', '128,96,48,vanilla')
+Step 'w1'         @('w1', '--seeds', '3001', '--sizes', '128,96,vanilla')
