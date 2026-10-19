@@ -111,7 +111,15 @@ Library& library()
 	static Library lib;
 	if ( lib.loaded ) { return lib; }
 	lib.loaded = true;
-	std::string root = apxgen.kitsRoot.empty() ? std::string(APXGEN_VENDOR_ROOT) : apxgen.kitsRoot;
+	std::string root = apxgen.kitsRoot;
+	if ( root.empty() ) // release layout first: <exe dir>/apxgen; then the vendored source copy (developer builds)
+	{
+		char* bp = SDL_GetBasePath();
+		const std::string rel = (bp ? std::string(bp) : std::string("./")) + "apxgen";
+		if ( bp ) { SDL_free(bp); }
+		FILE* f = fopen((rel + "/grammar/default.grammar").c_str(), "rb");
+		if ( f ) { fclose(f); root = rel; } else { root = APXGEN_VENDOR_ROOT; }
+	}
 	if ( !apx::load_grammar(root + "/grammar/default.grammar", lib.grammar, lib.err) ) { return lib; }
 	if ( !apx::load_programs({ root + "/kits/rooms-apockalypsis", root + "/kits/rooms" }, lib.programs, lib.err) ) { return lib; }
 	if ( !apx::load_districts(root + "/kits/districts.toml", lib.params, lib.err) ) { return lib; }

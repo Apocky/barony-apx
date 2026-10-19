@@ -36,8 +36,18 @@ apxparts::DB& db()
 	if ( !loaded )
 	{
 		loaded = true;
-		const char* dir = getenv("APX_PARTS_DATA");
-		const std::string e = apxparts::loadDB(dir && *dir ? dir : APX_PARTS_DATA_DIR, d);
+		const char* envDir = getenv("APX_PARTS_DATA");
+		std::string chosen = envDir && *envDir ? std::string(envDir) : std::string();
+		if ( chosen.empty() ) // release layout first: <exe dir>/data/apx; then the source copy (developer builds)
+		{
+			char* bp = SDL_GetBasePath();
+			const std::string rel = (bp ? std::string(bp) : std::string("./")) + "data/apx";
+			if ( bp ) { SDL_free(bp); }
+			FILE* f = fopen((rel + "/SCHEMA.md").c_str(), "rb");
+			if ( f ) { fclose(f); chosen = rel; } else { chosen = APX_PARTS_DATA_DIR; }
+		}
+		const char* dir = chosen.c_str();
+		const std::string e = apxparts::loadDB(dir, d);
 		if ( !e.empty() ) { printlog("apxparts: FAILED data load: %s (parts off)\n", e.c_str()); d.families.clear(); }
 		else { printlog("apxparts: data %s: %d materials, %d families, %d types, %d affixes\n", dir && *dir ? dir : APX_PARTS_DATA_DIR,
 			(int)d.materials.size(), (int)d.families.size(), (int)d.typeForms.size(), (int)d.affixPct.size()); }

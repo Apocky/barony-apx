@@ -18,6 +18,9 @@ New-Item -ItemType Directory -Force "$stage\data" | Out-Null
 Copy-Item data\apx "$stage\data\apx" -Recurse
 New-Item -ItemType Directory -Force "$stage\scripts" | Out-Null
 Copy-Item scripts\apx "$stage\scripts\apx" -Recurse
+New-Item -ItemType Directory -Force "$stage\apxgen" | Out-Null   # floor generator rules and kits (read from <exe dir>/apxgen)
+Copy-Item src\apx\gen\grammar "$stage\apxgen\grammar" -Recurse
+Copy-Item src\apx\gen\kits "$stage\apxgen\kits" -Recurse
 Get-ChildItem tools\apx\release -File | Copy-Item -Destination $stage
 Get-ChildItem LICENSE*.txt | Copy-Item -Destination $stage
 Set-Content "$stage\VERSION.txt" "Apocky's Labyrinth $Version`r`nbuilt from $(git rev-parse HEAD) on $(Get-Date -Format 'yyyy-MM-dd HH:mm zzz')" -Encoding ascii
