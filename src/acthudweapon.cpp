@@ -2447,6 +2447,7 @@ void actHudWeapon(Entity* my)
 					HUDWEAPON_CHOP++;
 					if ( !bearTrap )
 					{
+						apx::onMeleeRelease(HUDWEAPON_PLAYERNUM, static_cast<int>(HUDWEAPON_CHARGE)); // apx F4d: move, charged attack, combo stamina
 						players[HUDWEAPON_PLAYERNUM]->entity->attack(2, HUDWEAPON_CHARGE, nullptr);
 					}
 					if ( stats[HUDWEAPON_PLAYERNUM]->weapon
@@ -2689,6 +2690,7 @@ void actHudWeapon(Entity* my)
 					}
 					else if ( rapier )
 					{
+						apx::onMeleeRelease(HUDWEAPON_PLAYERNUM, static_cast<int>(HUDWEAPON_CHARGE)); // apx F4d: move, charged attack, combo stamina
 						players[HUDWEAPON_PLAYERNUM]->entity->attack(3, HUDWEAPON_CHARGE, nullptr);
 					}
 					else if ( !bearTrap && !flail )
@@ -2718,6 +2720,7 @@ void actHudWeapon(Entity* my)
 						}
 						else
 						{
+							apx::onMeleeRelease(HUDWEAPON_PLAYERNUM, static_cast<int>(HUDWEAPON_CHARGE)); // apx F4d: move, charged attack, combo stamina
 							players[HUDWEAPON_PLAYERNUM]->entity->attack(3, HUDWEAPON_CHARGE, nullptr);
 						}
 					}

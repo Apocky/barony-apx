@@ -12368,7 +12368,7 @@ void actParticleTimer(Entity* my)
 								if ( !entity->monsterIsTargetable() ) { continue; }
 							}
 
-							if ( entityDist(parent, entity) > STRIKERANGE + 8.0 ) { continue; }
+							if ( entityDist(parent, entity) > apx::sweepReach(parent) + 8.0 ) { continue; } // apx: the move's reach
 
 							real_t tangent = atan2(entity->y - parent->y, entity->x - parent->x);
 							real_t angle = parent->yaw - tangent;
@@ -12381,11 +12381,11 @@ void actParticleTimer(Entity* my)
 								angle += PI * 2;
 							}
 							if ( abs(angle) > apx::sweepArc(parent) ) { continue; }
-							const bool apxSlash = parent->behavior == &actPlayer && apx::moveFor(parent->skill[2]) == apx::SWORD_SLASH;
-							if ( apxSlash && apx::get(parent->skill[2]).sweepExtras >= apx::kSlashExtraTargets ) { continue; } // apx: 2-3 targets total
+							const bool apxSweep = parent->behavior == &actPlayer && apx::moves::usesSweep(apx::moveFor(parent->skill[2]));
+							if ( apxSweep && apx::get(parent->skill[2]).sweepExtras >= apx::sweepMaxExtra(parent) ) { continue; } // apx: the move's extra-target cap
 							bool oldPassable = entity->flags[PASSABLE];
 							entity->flags[PASSABLE] = false;
-							real_t d = lineTraceTarget(parent, parent->x, parent->y, tangent, STRIKERANGE, LINETRACE_ATK_CHECK_FRIENDLYFIRE
+							real_t d = lineTraceTarget(parent, parent->x, parent->y, tangent, apx::sweepReach(parent), LINETRACE_ATK_CHECK_FRIENDLYFIRE
 								| LINETRACE_TELEKINESIS, false, entity);
 							entity->flags[PASSABLE] = oldPassable;
 							if ( hit.entity != entity )
@@ -12396,10 +12396,11 @@ void actParticleTimer(Entity* my)
 							{
 								Sint32 prevAtk = parent->monsterAttack;
 								Sint32 prevAtkTime = parent->monsterAttackTime;
-								if ( apxSlash )
+								if ( apxSweep )
 								{
 									auto& apxS = apx::get(parent->skill[2]);
-									apx::extraScale = apx::kSlashFalloff[std::min(apxS.sweepExtras, 1)]; // apx: falloff per extra target
+									apx::extraIndex() = apxS.sweepExtras;
+									apx::extraScale = apx::sweepFalloff(parent, apxS.sweepExtras); // apx: falloff per extra target
 									++apxS.sweepExtras;
 								}
 								parent->attack(MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE, Stat::getMaxAttackCharge(parent->getStats()), entity);
