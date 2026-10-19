@@ -13177,6 +13177,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 					{
 						printlog("[apx-hit] move=%d pose=%d target=%u damage=%d extra=%d dist=%.1f impact=%d impact_uses=%llu", apx::moveFor(player), pose, hit.entity->getUID(),
 							damage, pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ? 1 : 0, entityDist(this, hit.entity), apx::combat::enabled() ? 1 : 0, apx::combat::uses());
+						apx::selftestRecordHit(apx::moveFor(player), hit.entity); // apx D77: moves stage tally
 					}
 					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
 					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger

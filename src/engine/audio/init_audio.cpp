@@ -402,6 +402,11 @@ struct ApxSoundJob
 // creates every job's sound on worker threads; returns the number that failed
 static int apxCreateSoundsParallel(std::vector<ApxSoundJob>& jobs, const char* what)
 {
+	if ( no_sound ) // no audio device (-nosound, -apxheadless): the serial loop's createSound calls failed silently too
+	{
+		for ( auto& j : jobs ) { *j.out = nullptr; }
+		return 0;
+	}
 	std::atomic<size_t> next{ 0 };
 	std::atomic<int> failed{ 0 };
 	std::mutex logMutex;
@@ -545,7 +550,8 @@ int loadSoundResources(real_t base_load_percent, real_t top_load_percent)
 	{
 		const int failed = apxCreateSoundsParallel(apxJobs, "sounds.txt");
 		updateLoadingScreen(base_load_percent + top_load_percent);
-		printlog("[apx] sounds: %d files on %u threads in %u ms, %d errors", (int)apxJobs.size(), apxSoundThreads(), SDL_GetTicks() - apxSoundsStart, failed);
+		printlog("[apx] sounds: %d files on %u threads in %u ms, %d errors%s", (int)apxJobs.size(), apxSoundThreads(), SDL_GetTicks() - apxSoundsStart, failed,
+			no_sound ? " (no sound: nothing loaded)" : "");
 	}
 	else
 	{

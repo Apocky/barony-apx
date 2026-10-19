@@ -121,6 +121,36 @@ From-scratch check (2026-10-18 22:50, MEASURED): `build.ps1 -BuildDir build\vs20
 (ours and vanilla, both seeds) gave the same two lines, gate PASS, 0 install files changed
 (`C:\Apocrypha\diagnostics\barony-f0\clean-build`).
 
+## Merge train: test by risk (D77)
+
+Every merge candidate runs two steps; the second adds launches only where the change carries that risk.
+
+```
+python tools\apx\test_select.py --base origin/apx-main                       # which checks this branch needs, and why
+pwsh -NoProfile -File tools\apx\selftest_all.ps1 -Exe <exe> -Headless        # always for game code: one launch, every self-test
+```
+
+`test_select.py` maps `git diff --name-only origin/apx-main...HEAD` to checks: game code or build ->
+`selftest_all`; generation or RNG (src/maps.cpp, src/prng.*, src/apx/gen, apx_gen_bridge) -> `golden_parity` +
+`floor_hash` (headless_gate.py); net (net.cpp, lobbies, MainMenu.cpp, apx_stamina.hpp's packets) -> `host_client`
+(gate_f2.py mp); save format (scores.cpp, apx_inventory, items.hpp, stat.hpp) -> `save_load` (u1_selftest.ps1);
+build files -> `golden_parity`; docs and tools only -> no launch. Offline test: `python tools\apx\test_select_test.py`
+(17 cases, under a second; `APX_TEST_SELECT_BREAK=1` drops the generation rule and must FAIL).
+
+`-apxselftest=all` (with `-quickstart=barbarian -apxfloor=1 -apxmapseed=<n>`) runs, in one process on floor 1,
+the stages features -> impact -> tierdmg -> inventory -> moves -> f4c (src/apx/selftest_all.cpp), writes
+`<APX_DIAG_DIR>/selftest-all.json` (+ `.jsonl`), logs `[apx-selftest] summary pass=N fail=M`, and quits; a stage limit (`APX_SELFTEST_STAGE_S`, default 120) and a budget (`APX_SELFTEST_BUDGET_S`, default 240) fail a stuck stage as "timeout"; if player 0 dies, the running stage fails and the rest are marked "not run". Each check keeps its control:
+
+| stage | passes when | control (must FAIL) |
+|---|---|---|
+| features | the new `[apx] features ...` line shows every default-on feature on | any knob below |
+| impact (F4b) | over a quarter of the monster x class multipliers change, magic none | -- (toggles itself) |
+| tierdmg (D74) | a hostile rat tagged fodder hits player 0 for less than vanilla 20; rule off gives 20 | `APX_TIER_DAMAGE=0` |
+| inventory (U1) | mass 100/100, wrong rows caught, no slot clash, carry rule, save/load identical; windowed also the UI phases | `APX_GRID=1` |
+| moves (F4a) | far dummy: plain swings 0 hits, thrusts and lunges hit; cluster hits | `APX_MOVES=0` |
+| f4c | all 19 poise/zone/downed checks pass (runs last: it downs player 0) | `APX_POISE=0`, `APX_ZONES=0`, `APX_DOWNED=0` |
+
+Headless skips the inventory UI phases (they need a visible window); windowed runs them.
 ## Test farm: -apxheadless and farm.py
 
 `-apxheadless` (or `APX_HEADLESS=1`) runs the game with a hidden window (never focused, so no key

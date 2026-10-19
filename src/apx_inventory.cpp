@@ -1,5 +1,7 @@
 // apx: our inventory, step 1 (virtual grid + mass limit) and the step 1-2 self-test. See apx_inventory.hpp.
 #include "apx_inventory.hpp"
+#include "apx/selftest_all.hpp"
+#include "apx/headless.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
@@ -130,6 +132,14 @@ static std::string g_test;
 static int g_ticks = 0, g_phase = 0, g_mark = 0;
 static std::string g_shot;
 static int g_loadedItems = 0;
+// -apxselftest=all (D77): the gates' verdict and numbers for the "inventory" stage
+static bool g_gatesPass = false;
+static std::string g_gatesFields;
+static void allModeDone(const std::string& extra)
+{
+	std::string fields = g_gatesFields + extra;
+	apx::selftestall::done(apx::selftestall::INVENTORY, g_gatesPass, fields);
+}
 static void runGates();
 static void runUiPhases();
 
@@ -193,9 +203,19 @@ static std::string snapshot(int p)
 void selfTestTick()
 {
 	if ( g_test.empty() || intro || !players[0] || !players[0]->entity || !stats[0] ) { return; }
+	if ( apx::selftestall::armed() && !apx::selftestall::active(apx::selftestall::INVENTORY) ) { return; } // D77: wait for the stage
 	++g_ticks;
 	if ( g_ticks < 120 ) { return; }
-	if ( g_phase == 0 ) { runGates(); g_phase = 1; g_mark = g_ticks; return; }
+	if ( g_phase == 0 )
+	{
+		runGates(); g_phase = 1; g_mark = g_ticks;
+		if ( apx::selftestall::armed() && apx::headlessOn ) // the UI phases need a visible window (keys, screenshots)
+		{
+			g_test.clear();
+			allModeDone(",\"ui\":\"skipped_headless\"");
+		}
+		return;
+	}
 	runUiPhases();
 }
 
@@ -281,6 +301,15 @@ static void runGates()
 		fclose(f);
 	}
 	printlog("[apx] inventory self-test gates (%s): mass %d/100, slot clashes %d, save/load %s", mode, massOk, slotClash, same ? "same" : "DIFFERENT");
+	{
+		char buf[320];
+		snprintf(buf, sizeof buf, "\"mode\":\"%s\",\"mass_ok\":%d,\"wrong_row_caught\":%d,\"slot_clash\":%d,\"out_of_grid\":%d,"
+			"\"carry_rule_right\":%d,\"carry_checks\":%d,\"save_load_same\":%s,\"save_control_caught\":%s",
+			mode, massOk, controlCaught, slotClash, outOfGrid, carryRight, carryChecks, same ? "true" : "false", controlSave ? "true" : "false");
+		g_gatesFields = buf;
+		g_gatesPass = !vanillaGrid() && massOk == 100 && controlCaught >= 95 && slotClash == 0 && outOfGrid == 0
+			&& carryRight == carryChecks && same && controlSave;
+	}
 }
 
 // Step 2 phases: the list on screen full size, gamepad and keyboard navigation, then the
@@ -531,7 +560,25 @@ static void runUiPhases()
 		}
 		printlog("[apx] inventory self-test UI phases done; gamepad %d, keyboard %d, quarter rows %d of %d", B.selected - A.selected, C.selected - B.selected, D.visibleRows, A.visibleRows);
 		g_test.clear();
-		mainloop = 0;
+		if ( apx::selftestall::armed() )
+		{
+			// back to one full-screen view for the stages that follow
+			splitscreen = false;
+			pl.bSplitscreen = false;
+			pl.camera().winx = 0;
+			pl.camera().winy = 0;
+			pl.camera().winw = xres;
+			pl.camera().winh = yres;
+			pl.closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+			char buf[200];
+			const bool quarterFewer = D.visibleRows > 0 && D.visibleRows < A.visibleRows;
+			snprintf(buf, sizeof buf, ",\"ui\":\"ran\",\"gamepad_moved\":%d,\"keyboard_moved\":%d,\"quarter_fewer_rows\":%s,\"items_kept\":%s",
+				B.selected - A.selected, C.selected - B.selected, quarterFewer ? "true" : "false",
+				(int)list_Size(&stats[0]->inventory) == itemsAtStart ? "true" : "false");
+			g_gatesPass = g_gatesPass && quarterFewer && (int)list_Size(&stats[0]->inventory) == itemsAtStart;
+			allModeDone(buf);
+		}
+		else { mainloop = 0; }
 	}
 }
 

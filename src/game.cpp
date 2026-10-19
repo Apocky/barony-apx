@@ -62,7 +62,7 @@ static bool apxSkipSplash() // the control BARONY_APX_KEEPSPLASH=1 keeps the log
 
 // apx F4b: one batched integration check through the real Entity::getDamageTableMultiplier.
 // For every monster type and every class: upstream value (switch off) and impact value (switch on).
-static void apxRunImpactSelfTest()
+static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 {
 	const bool was = apx::combat::enabled();
 	int rows = 0, changed = 0, magicChanged = 0;
@@ -82,13 +82,79 @@ static void apxRunImpactSelfTest()
 		}
 	}
 	apx::combat::setEnabled(was);
+	const bool pass = changed > rows / 4 && magicChanged == 0;
 	printlog("[apx impacttest] rows %d changed %d magic_changed %d uses %llu gate %s", rows, changed, magicChanged,
-		apx::combat::uses(), (changed > rows / 4 && magicChanged == 0) ? "PASS" : "FAIL");
+		apx::combat::uses(), pass ? "PASS" : "FAIL");
+	if ( fields ) // -apxselftest=all: a stage of the combined run, which goes on
+	{
+		char buf[128];
+		snprintf(buf, sizeof buf, "\"rows\":%d,\"changed\":%d,\"magic_changed\":%d", rows, changed, magicChanged);
+		*fields = buf;
+		return pass;
+	}
 	mainloop = 0;
+	return pass;
 }
 
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
+#include "apx/selftest_all.hpp"
+#include "apx/tiers.hpp"
+#include "apx_combat.hpp"
+#include "apx_stamina.hpp"
+
+// apx -apxselftest=all (D77): stages that run inside one tick on the test floor.
+// features: one "[apx] features" line from the real knob getters; every default-on feature must be on.
+static bool apxSelftestFeatures(std::string& fields)
+{
+	struct F { const char* name; bool on; };
+	const F f[] = {
+		{ "stamina", apx::staminaEnabled() }, { "moves", apx::movesEnabled() }, { "blockswing", apx::blockSwingEnabled() },
+		{ "endurance", apx::enduranceEnabled() }, { "charge2", apx::charge2Enabled() },
+		{ "poise", apx::combat_glue::poiseOn() }, { "zones", apx::combat_glue::zonesOn() }, { "downed", apx::combat_glue::downedOn() },
+		{ "tierdmg", apx::tierdmg::enabled() }, { "tierpoise", apx::tierdmg::poiseEnabled() },
+		{ "apxgrid", !apx_inv::vanillaGrid() },
+	};
+	std::string line, off;
+	for ( const F& x : f )
+	{
+		char b[48];
+		snprintf(b, sizeof b, "%s%s=%d", line.empty() ? "" : " ", x.name, x.on ? 1 : 0);
+		line += b;
+		if ( !x.on ) { off += off.empty() ? x.name : (std::string(",") + x.name); }
+		fields += std::string(fields.empty() ? "" : ",") + "\"" + x.name + "\":" + (x.on ? "1" : "0");
+	}
+	printlog("[apx] features %s impact=%d headless=%d", line.c_str(), apx::combat::enabled() ? 1 : 0, apx::headlessOn ? 1 : 0);
+	fields += ",\"off\":\"" + off + "\"";
+	return off.empty();
+}
+
+static bool apxSelftestImpact(std::string& fields) { return apxRunImpactSelfTest(&fields); }
+
+// tierdmg (D74): a hostile rat, tagged fodder the way the director tags its creatures, hits player 0 for 20 with
+// the rule as the knob says, then with the rule forced off (vanilla); the rule must lower fodder damage.
+// APX_TIER_DAMAGE=0 makes the two equal: FAIL.
+static bool apxSelftestTierDamage(std::string& fields)
+{
+	Entity* me = players[0] ? players[0]->entity : nullptr;
+	Entity* rat = me ? summonMonster(RAT, (long)me->x + 32, (long)me->y, true) : nullptr;
+	if ( !rat ) { fields = "\"error\":\"no rat\""; return false; }
+	const int vanilla = 20;
+	apx::tiers::tag(rat, apx::combat::Tier::Fodder);
+	const bool hostile = !rat->monsterAllyGetPlayerLeader();
+	apx::tierdmg::setOverride(-1);
+	const int knob = apx::tierdmg::onCreatureHit(rat, me, vanilla, apx::tierdmg::MELEE);
+	apx::tierdmg::setOverride(0);
+	const int off = apx::tierdmg::onCreatureHit(rat, me, vanilla, apx::tierdmg::MELEE);
+	apx::tierdmg::setOverride(-1);
+	apx::tiers::untag(rat);
+	if ( Stat* rs = rat->getStats() ) { rs->HP = 0; }
+	char buf[160];
+	snprintf(buf, sizeof buf, "\"in\":%d,\"rule\":%d,\"vanilla\":%d,\"knob\":%d,\"hostile\":%d,\"tier\":\"fodder\"", vanilla, knob, off,
+		apx::tierdmg::enabled() ? 1 : 0, hostile ? 1 : 0);
+	fields = buf;
+	return off == vanilla && knob < vanilla;
+}
 static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
@@ -990,6 +1056,7 @@ static real_t drunkextend[MAXPLAYERS] = { (real_t)0.0 };
 void gameLogic(void)
 {
 	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
+	apx::selftestall::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx D77
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -7366,6 +7433,13 @@ int main(int argc, char** argv)
 					}
 					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
 					{
+						if ( !strcmp(argv[c] + 13, "all") ) // apx D77: every in-game self-test in one process
+						{
+							apx::selftestall::arm();
+							apx::selftestall::setInline(apx::selftestall::FEATURES, apxSelftestFeatures);
+							apx::selftestall::setInline(apx::selftestall::IMPACT, apxSelftestImpact);
+							apx::selftestall::setInline(apx::selftestall::TIERDMG, apxSelftestTierDamage);
+						}
 						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
 					}
 					else if ( !strncmp(argv[c], "-apxmapseed=", 12) )
