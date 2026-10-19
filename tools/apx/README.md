@@ -62,6 +62,11 @@ seconds; free commit memory varied 3.4-10.4 GB between steps (other lanes were b
 | none (Ninja, control) | 184.0 | 248.5 | 10.0 |
 | sccache 0.18 | 547.3 (1 compiler process at 3.4 GB free) | 56.2 (158/158 hits) | 4.0 |
 | ccache 4.14.1 | 271.3 | 8.6 (158/158 hits) | 3.7 |
+
+F0 parity gate on the exe built entirely from the ccache in a second worktree (barony-apx-cachetest, 158/158 hits): PASS (2026-10-19 05:3x; output C:\Apocrypha\diagnostics\barony-build\parity-ccache).
+
+**Lanes: build with `-Cache ccache`** (exe: `build\ninja-ccache\barony.exe`, DLLs beside it). The default stays `-Cache vs` (exe: `build\vs2022\Release\barony.exe`) until every lane script has moved to the new path.
+
 ## Run against the Steam assets
 
 ```
@@ -156,4 +161,3 @@ Throughput (2026-10-19, MEASURED, farm_bench.py, 24 floor-1 jobs, same dungeon l
 one windowed launch at a time: 313.7 s = 275 jobs per hour; after, all 24 submitted to the farm headless
 (code 76491ea6, 13.8 GB commit free, at most 5 games at once by the memory budget): 35.0 s = 2,468 jobs
 per hour, 8.96x. Rows: `C:\Apocrypha\diagnostics\barony-farm\bench.jsonl`.
-F0 parity gate on the exe built entirely from the ccache in a second worktree (barony-apx-cachetest, 158/158 hits): PASS (2026-10-19 05:3x; output C:\Apocrypha\diagnostics\barony-build\parity-ccache).
