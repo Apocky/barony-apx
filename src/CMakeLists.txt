@@ -32,6 +32,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_data.cpp" # apx F6: parts-based gear (pure)
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_roll.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_engine.cpp" # apx F6: Barony hooks
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_bench.cpp" # apx F6 -> BU1 bench shell (no-op without apx_bench_api.hpp)
 	"${CMAKE_CURRENT_SOURCE_DIR}/actmonster.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actitem.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/acthudweapon.cpp"

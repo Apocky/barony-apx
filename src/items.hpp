@@ -896,7 +896,7 @@ enum EquipItemSendToServerSlot : int
 };
 void playerTryEquipItemAndUpdateServer(const int player, Item* item, bool checkInventorySpaceForPaperDoll);
 void clientSendEquipUpdateToServer(EquipItemSendToServerSlot slot, EquipItemResult equipType, int player,
-	ItemType type, Status status, Sint16 beatitude, int count, Uint32 appearance, bool identified);
+	ItemType type, Status status, Sint16 beatitude, int count, Uint32 appearance, bool identified, const Item* apxItem = nullptr);
 void clientUnequipSlotAndUpdateServer(const int player, EquipItemSendToServerSlot slot, Item* item);
 void clientSendAppearanceUpdateToServer(const int player, Item* item, const bool onIdentify);
 void clientSendItemTypeUpdateToServer(const int player, Item* item, ItemType prevItemType);

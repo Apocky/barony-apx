@@ -6383,6 +6383,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 	}
 
 	stats[statsPlayer]->clearStats();
+	if ( !info.hiscore_dummy_loading ) { apxPartsFormbookFromSave(player); } // apx F6: the Formbook saved with this game
 
 	// load game info
 	uniqueGameKey = info.gamekey;

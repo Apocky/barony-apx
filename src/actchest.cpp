@@ -1101,7 +1101,7 @@ void Entity::actChest()
 							net_packet->data[27] = (Sint8)item->y;
 							net_packet->address.host = net_clients[chestclicked - 1].host;
 							net_packet->address.port = net_clients[chestclicked - 1].port;
-							net_packet->len = 28;
+							net_packet->len = apxPartsNetAppend(item, net_packet->data, 28); // apx F6
 							sendPacketSafe(net_sock, -1, net_packet, chestclicked - 1);
 						}
 					}
@@ -1339,7 +1339,7 @@ Item* Entity::addItemToVoidChest(int player, Item* item, bool forceNewStack, Ite
 			net_packet->data[25] = item->identified;
 			net_packet->data[26] = forceNewStack ? 1 : 0;
 			net_packet->data[27] = 1;
-			net_packet->len = 28;
+			net_packet->len = apxPartsNetAppend(item, net_packet->data, 28); // apx F6
 			sendPacketSafe(net_sock, -1, net_packet, 0);
 
 			return item;
@@ -1376,7 +1376,7 @@ Item* Entity::addItemToChest(Item* item, bool forceNewStack, Item* specificDesti
 		net_packet->data[25] = item->identified;
 		net_packet->data[26] = forceNewStack ? 1 : 0;
 		net_packet->data[27] = players[player]->inventoryUI.chestGUI.voidChest ? 1 : 0;
-		net_packet->len = 28;
+		net_packet->len = apxPartsNetAppend(item, net_packet->data, 28); // apx F6
 		sendPacketSafe(net_sock, -1, net_packet, 0);
 
 		return addItemToChestClientside(player, item, forceNewStack, specificDestinationStack);
@@ -1431,7 +1431,7 @@ Item* Entity::addItemToChest(Item* item, bool forceNewStack, Item* specificDesti
 		net_packet->data[27] = (Sint8)item->y;
 		net_packet->address.host = net_clients[chestOpener - 1].host;
 		net_packet->address.port = net_clients[chestOpener - 1].port;
-		net_packet->len = 28;
+		net_packet->len = apxPartsNetAppend(item, net_packet->data, 28); // apx F6
 		sendPacketSafe(net_sock, -1, net_packet, chestOpener - 1);
 	}
 	return item;
@@ -1488,6 +1488,7 @@ Item* Entity::addItemToChestFromInventory(int player, Item* item, int amount, bo
 	playSoundPlayer(player, 47 + local_rng.rand() % 3, 64);
 
 	Item* newitem = newItem(item->type, item->status, item->beatitude, amount, item->appearance, item->identified, nullptr);
+	newitem->apx = item->apx; // apx F6
 	Item** slot = itemSlot(stats[player], item);
 	if ( multiplayer == CLIENT )
 	{
@@ -1624,6 +1625,7 @@ Item* Entity::getItemFromChest(Item* item, int amount, bool getInfoOnly)
 		}
 
 		newitem = newItem(item->type, item->status, item->beatitude, 1, item->appearance, item->identified, nullptr);
+		newitem->apx = item->apx; // apx F6: the taken copy keeps the chest item's parts (CITM carried them)
 
 		//Tell the server.
 		if ( !getInfoOnly )
@@ -1641,7 +1643,7 @@ Item* Entity::getItemFromChest(Item* item, int amount, bool getInfoOnly)
 			net_packet->data[25] = item->identified;
 			net_packet->data[26] = 0;
 			net_packet->data[27] = players[player]->inventoryUI.chestGUI.voidChest ? 1 : 0;
-			net_packet->len = 28;
+			net_packet->len = apxPartsNetAppend(item, net_packet->data, 28); // apx F6
 			sendPacketSafe(net_sock, -1, net_packet, 0);
 		}
 	}
@@ -1661,6 +1663,7 @@ Item* Entity::getItemFromChest(Item* item, int amount, bool getInfoOnly)
 		}
 
 		newitem = newItem(item->type, item->status, item->beatitude, 1, item->appearance, item->identified, nullptr);
+		newitem->apx = item->apx; // apx F6
 	}
 
 	if ( getInfoOnly )
