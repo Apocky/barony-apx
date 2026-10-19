@@ -34,6 +34,7 @@
 #include "playfab.hpp"
 #endif
 #include "apx_combat.hpp"
+#include "apx/hollow_probe.hpp"
 
 bool settings_smoothmouse = false;
 bool usecamerasmoothing = false;
@@ -6150,6 +6151,7 @@ void actPlayer(Entity* my)
 		return;
 	}
 	apx::combat_glue::tick(my); // apx F4c: poise, downed timer and revive, self-test
+	apx::hollow::tick(my); // apx H1b: the content probe (APX_BH_PROBE)
 	if ( logCheckObstacle )
 	{
 		if ( ticks % 50 == 0 )

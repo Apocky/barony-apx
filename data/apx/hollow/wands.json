@@ -1,0 +1,266 @@
+[
+ {
+  "depth": 0,
+  "id": "wand_00",
+  "spells": [
+   {
+    "element": "element_fire",
+    "modifier": "modifier_none",
+    "shape": "shape_point",
+    "verb": "verb_bolt"
+   }
+  ],
+  "tier": 1
+ },
+ {
+  "depth": 1,
+  "id": "wand_01",
+  "spells": [
+   {
+    "element": "element_ice",
+    "modifier": "modifier_trigger_on_hit",
+    "shape": "shape_line",
+    "verb": "verb_wall"
+   },
+   {
+    "element": "element_acid",
+    "modifier": "modifier_timer",
+    "shape": "shape_sphere",
+    "verb": "verb_pit"
+   }
+  ],
+  "tier": 2
+ },
+ {
+  "depth": 2,
+  "id": "wand_02",
+  "spells": [
+   {
+    "element": "element_stone",
+    "modifier": "modifier_timer",
+    "shape": "shape_cone",
+    "verb": "verb_pit"
+   },
+   {
+    "element": "element_lightning",
+    "modifier": "modifier_chain2",
+    "shape": "shape_ring",
+    "verb": "verb_burst"
+   },
+   {
+    "element": "element_void",
+    "modifier": "modifier_echo",
+    "shape": "shape_trail",
+    "verb": "verb_beam"
+   }
+  ],
+  "tier": 3
+ },
+ {
+  "depth": 3,
+  "id": "wand_03",
+  "spells": [
+   {
+    "element": "element_iron",
+    "modifier": "modifier_chain2",
+    "shape": "shape_sphere",
+    "verb": "verb_burst"
+   },
+   {
+    "element": "element_light",
+    "modifier": "modifier_echo",
+    "shape": "shape_plane",
+    "verb": "verb_beam"
+   },
+   {
+    "element": "element_life",
+    "modifier": "modifier_silent",
+    "shape": "shape_point",
+    "verb": "verb_ward"
+   },
+   {
+    "element": "element_stone",
+    "modifier": "modifier_anchored",
+    "shape": "shape_cone",
+    "verb": "verb_lift"
+   }
+  ],
+  "tier": 4
+ },
+ {
+  "depth": 4,
+  "id": "wand_04",
+  "spells": [
+   {
+    "element": "element_acid",
+    "modifier": "modifier_echo",
+    "shape": "shape_ring",
+    "verb": "verb_beam"
+   }
+  ],
+  "tier": 1
+ },
+ {
+  "depth": 5,
+  "id": "wand_05",
+  "spells": [
+   {
+    "element": "element_lightning",
+    "modifier": "modifier_silent",
+    "shape": "shape_plane",
+    "verb": "verb_ward"
+   },
+   {
+    "element": "element_void",
+    "modifier": "modifier_anchored",
+    "shape": "shape_point",
+    "verb": "verb_lift"
+   }
+  ],
+  "tier": 2
+ },
+ {
+  "depth": 0,
+  "id": "wand_06",
+  "spells": [
+   {
+    "element": "element_light",
+    "modifier": "modifier_anchored",
+    "shape": "shape_trail",
+    "verb": "verb_lift"
+   },
+   {
+    "element": "element_life",
+    "modifier": "modifier_inverted",
+    "shape": "shape_line",
+    "verb": "verb_pull"
+   },
+   {
+    "element": "element_stone",
+    "modifier": "modifier_none",
+    "shape": "shape_sphere",
+    "verb": "verb_bind"
+   }
+  ],
+  "tier": 3
+ },
+ {
+  "depth": 1,
+  "id": "wand_07",
+  "spells": [
+   {
+    "element": "element_shadow",
+    "modifier": "modifier_inverted",
+    "shape": "shape_point",
+    "verb": "verb_pull"
+   },
+   {
+    "element": "element_fire",
+    "modifier": "modifier_none",
+    "shape": "shape_cone",
+    "verb": "verb_bind"
+   },
+   {
+    "element": "element_iron",
+    "modifier": "modifier_trigger_on_hit",
+    "shape": "shape_ring",
+    "verb": "verb_mend"
+   },
+   {
+    "element": "element_light",
+    "modifier": "modifier_timer",
+    "shape": "shape_trail",
+    "verb": "verb_sense"
+   }
+  ],
+  "tier": 4
+ },
+ {
+  "depth": 2,
+  "id": "wand_08",
+  "spells": [
+   {
+    "element": "element_void",
+    "modifier": "modifier_none",
+    "shape": "shape_line",
+    "verb": "verb_bind"
+   }
+  ],
+  "tier": 1
+ },
+ {
+  "depth": 3,
+  "id": "wand_09",
+  "spells": [
+   {
+    "element": "element_life",
+    "modifier": "modifier_trigger_on_hit",
+    "shape": "shape_cone",
+    "verb": "verb_mend"
+   },
+   {
+    "element": "element_stone",
+    "modifier": "modifier_timer",
+    "shape": "shape_ring",
+    "verb": "verb_sense"
+   }
+  ],
+  "tier": 2
+ },
+ {
+  "depth": 4,
+  "id": "wand_10",
+  "spells": [
+   {
+    "element": "element_fire",
+    "modifier": "modifier_timer",
+    "shape": "shape_sphere",
+    "verb": "verb_sense"
+   },
+   {
+    "element": "element_iron",
+    "modifier": "modifier_chain2",
+    "shape": "shape_plane",
+    "verb": "verb_veil"
+   },
+   {
+    "element": "element_light",
+    "modifier": "modifier_echo",
+    "shape": "shape_point",
+    "verb": "verb_bolt"
+   }
+  ],
+  "tier": 3
+ },
+ {
+  "depth": 5,
+  "id": "wand_11",
+  "spells": [
+   {
+    "element": "element_ice",
+    "modifier": "modifier_chain2",
+    "shape": "shape_ring",
+    "verb": "verb_veil"
+   },
+   {
+    "element": "element_acid",
+    "modifier": "modifier_echo",
+    "shape": "shape_trail",
+    "verb": "verb_bolt"
+   },
+   {
+    "element": "element_shadow",
+    "modifier": "modifier_silent",
+    "shape": "shape_line",
+    "verb": "verb_wall"
+   },
+   {
+    "element": "element_fire",
+    "modifier": "modifier_anchored",
+    "shape": "shape_sphere",
+    "verb": "verb_pit"
+   }
+  ],
+  "tier": 4
+ }
+]

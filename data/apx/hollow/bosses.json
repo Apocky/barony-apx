@@ -1,0 +1,26 @@
+[
+ {
+  "faction": "warren",
+  "id": "cave_matriarch",
+  "kind": "SPIDER",
+  "name": "the Cave Matriarch",
+  "phase_note": "webs the exits; below half HP calls her brood from the vent",
+  "tier": "boss"
+ },
+ {
+  "faction": "cult",
+  "id": "high_cultist",
+  "kind": "HUMAN",
+  "name": "the High Cultist",
+  "phase_note": "ranged with cover play: below half HP floods the nave sump",
+  "tier": "boss"
+ },
+ {
+  "faction": "garrison",
+  "id": "warden",
+  "kind": "HUMAN",
+  "name": "the Warden",
+  "phase_note": "stagger-heavy: below half HP calls the garrison and fights shield-first",
+  "tier": "boss"
+ }
+]

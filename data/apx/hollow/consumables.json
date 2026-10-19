@@ -1,0 +1,482 @@
+[
+ {
+  "base_type": "POTION_ACID",
+  "class": "throwable",
+  "depth": 5,
+  "effect": "thrown: acid that eats metal",
+  "id": "flask_acid",
+  "label": "flask acid"
+ },
+ {
+  "base_type": "POTION_WATER",
+  "class": "throwable",
+  "depth": 4,
+  "effect": "thrown: salt water, puts out fire",
+  "id": "flask_brine",
+  "label": "flask brine"
+ },
+ {
+  "base_type": "POTION_FIRESTORM",
+  "class": "throwable",
+  "depth": 3,
+  "effect": "thrown: spreads burning oil",
+  "id": "flask_oil",
+  "label": "flask oil"
+ },
+ {
+  "base_type": "FOOD_APPLE",
+  "class": "food",
+  "depth": 5,
+  "effect": "eaten to stave off hunger",
+  "id": "food_apple",
+  "label": "apple"
+ },
+ {
+  "base_type": "FOOD_BREAD",
+  "class": "food",
+  "depth": 2,
+  "effect": "eaten to stave off hunger",
+  "id": "food_bread",
+  "label": "bread"
+ },
+ {
+  "base_type": "FOOD_CHEESE",
+  "class": "food",
+  "depth": 4,
+  "effect": "eaten to stave off hunger",
+  "id": "food_cheese",
+  "label": "cheese"
+ },
+ {
+  "base_type": "FOOD_CREAMPIE",
+  "class": "food",
+  "depth": 3,
+  "effect": "eaten to stave off hunger",
+  "id": "food_creampie",
+  "label": "creampie"
+ },
+ {
+  "base_type": "FOOD_FISH",
+  "class": "food",
+  "depth": 1,
+  "effect": "eaten to stave off hunger",
+  "id": "food_fish",
+  "label": "fish"
+ },
+ {
+  "base_type": "FOOD_MEAT",
+  "class": "food",
+  "depth": 0,
+  "effect": "eaten to stave off hunger",
+  "id": "food_meat",
+  "label": "meat"
+ },
+ {
+  "base_type": "FOOD_RATION",
+  "class": "food",
+  "depth": 4,
+  "effect": "eaten to stave off hunger",
+  "id": "food_ration",
+  "label": "ration"
+ },
+ {
+  "base_type": "FOOD_RATION_BITTER",
+  "class": "food",
+  "depth": 1,
+  "effect": "eaten to stave off hunger",
+  "id": "food_ration_bitter",
+  "label": "ration bitter"
+ },
+ {
+  "base_type": "FOOD_RATION_SOUR",
+  "class": "food",
+  "depth": 0,
+  "effect": "eaten to stave off hunger",
+  "id": "food_ration_sour",
+  "label": "ration sour"
+ },
+ {
+  "base_type": "FOOD_RATION_SPICY",
+  "class": "food",
+  "depth": 5,
+  "effect": "eaten to stave off hunger",
+  "id": "food_ration_spicy",
+  "label": "ration spicy"
+ },
+ {
+  "base_type": "FOOD_TIN",
+  "class": "food",
+  "depth": 2,
+  "effect": "eaten to stave off hunger",
+  "id": "food_tin",
+  "label": "tin"
+ },
+ {
+  "base_type": "FOOD_TOMALLEY",
+  "class": "food",
+  "depth": 3,
+  "effect": "eaten to stave off hunger",
+  "id": "food_tomalley",
+  "label": "tomalley"
+ },
+ {
+  "base_type": "POTION_ACID",
+  "class": "potion",
+  "depth": 0,
+  "effect": "burns whoever it touches",
+  "id": "potion_acid",
+  "label": "acid"
+ },
+ {
+  "base_type": "POTION_BLINDNESS",
+  "class": "potion",
+  "depth": 1,
+  "effect": "blinds the drinker",
+  "id": "potion_blindness",
+  "label": "blindness"
+ },
+ {
+  "base_type": "POTION_BOOZE",
+  "class": "potion",
+  "depth": 2,
+  "effect": "drunk: brave and clumsy",
+  "id": "potion_booze",
+  "label": "booze"
+ },
+ {
+  "base_type": "POTION_CONFUSION",
+  "class": "potion",
+  "depth": 3,
+  "effect": "confuses the drinker",
+  "id": "potion_confusion",
+  "label": "confusion"
+ },
+ {
+  "base_type": "POTION_CUREAILMENT",
+  "class": "potion",
+  "depth": 4,
+  "effect": "cures poison and illness",
+  "id": "potion_cureailment",
+  "label": "cureailment"
+ },
+ {
+  "base_type": "POTION_EXTRAHEALING",
+  "class": "potion",
+  "depth": 5,
+  "effect": "heals a great deal",
+  "id": "potion_extrahealing",
+  "label": "extrahealing"
+ },
+ {
+  "base_type": "POTION_FIRESTORM",
+  "class": "potion",
+  "depth": 0,
+  "effect": "bursts into flame when thrown",
+  "id": "potion_firestorm",
+  "label": "firestorm"
+ },
+ {
+  "base_type": "POTION_HEALING",
+  "class": "potion",
+  "depth": 1,
+  "effect": "heals wounds",
+  "id": "potion_healing",
+  "label": "healing"
+ },
+ {
+  "base_type": "POTION_ICESTORM",
+  "class": "potion",
+  "depth": 2,
+  "effect": "bursts into frost when thrown",
+  "id": "potion_icestorm",
+  "label": "icestorm"
+ },
+ {
+  "base_type": "POTION_INVISIBILITY",
+  "class": "potion",
+  "depth": 3,
+  "effect": "turns the drinker unseen",
+  "id": "potion_invisibility",
+  "label": "invisibility"
+ },
+ {
+  "base_type": "POTION_JUICE",
+  "class": "potion",
+  "depth": 4,
+  "effect": "a sweet drink, small heal",
+  "id": "potion_juice",
+  "label": "juice"
+ },
+ {
+  "base_type": "POTION_LEVITATION",
+  "class": "potion",
+  "depth": 5,
+  "effect": "floats over pits and water",
+  "id": "potion_levitation",
+  "label": "levitation"
+ },
+ {
+  "base_type": "POTION_PARALYSIS",
+  "class": "potion",
+  "depth": 0,
+  "effect": "freezes the drinker in place",
+  "id": "potion_paralysis",
+  "label": "paralysis"
+ },
+ {
+  "base_type": "POTION_POLYMORPH",
+  "class": "potion",
+  "depth": 1,
+  "effect": "changes the drinker's form",
+  "id": "potion_polymorph",
+  "label": "polymorph"
+ },
+ {
+  "base_type": "POTION_RESTOREMAGIC",
+  "class": "potion",
+  "depth": 2,
+  "effect": "restores magic",
+  "id": "potion_restoremagic",
+  "label": "restoremagic"
+ },
+ {
+  "base_type": "POTION_SICKNESS",
+  "class": "potion",
+  "depth": 3,
+  "effect": "poisons the drinker",
+  "id": "potion_sickness",
+  "label": "sickness"
+ },
+ {
+  "base_type": "POTION_SPEED",
+  "class": "potion",
+  "depth": 4,
+  "effect": "moves and acts faster",
+  "id": "potion_speed",
+  "label": "speed"
+ },
+ {
+  "base_type": "POTION_STRENGTH",
+  "class": "potion",
+  "depth": 5,
+  "effect": "raises strength for a while",
+  "id": "potion_strength",
+  "label": "strength"
+ },
+ {
+  "base_type": "POTION_THUNDERSTORM",
+  "class": "potion",
+  "depth": 0,
+  "effect": "bursts into lightning when thrown",
+  "id": "potion_thunderstorm",
+  "label": "thunderstorm"
+ },
+ {
+  "base_type": "POTION_WATER",
+  "class": "potion",
+  "depth": 1,
+  "effect": "plain water, quenches thirst",
+  "id": "potion_water",
+  "label": "water"
+ },
+ {
+  "base_type": "SCROLL_BLANK",
+  "class": "scroll",
+  "depth": 2,
+  "effect": "reads as blank",
+  "id": "scroll_blank",
+  "label": "blank"
+ },
+ {
+  "base_type": "SCROLL_CHARGING",
+  "class": "scroll",
+  "depth": 3,
+  "effect": "reads as charging",
+  "id": "scroll_charging",
+  "label": "charging"
+ },
+ {
+  "base_type": "SCROLL_CONJUREARROW",
+  "class": "scroll",
+  "depth": 4,
+  "effect": "reads as conjurearrow",
+  "id": "scroll_conjurearrow",
+  "label": "conjurearrow"
+ },
+ {
+  "base_type": "SCROLL_DESTROYARMOR",
+  "class": "scroll",
+  "depth": 5,
+  "effect": "reads as destroyarmor",
+  "id": "scroll_destroyarmor",
+  "label": "destroyarmor"
+ },
+ {
+  "base_type": "SCROLL_ENCHANTARMOR",
+  "class": "scroll",
+  "depth": 0,
+  "effect": "reads as enchantarmor",
+  "id": "scroll_enchantarmor",
+  "label": "enchantarmor"
+ },
+ {
+  "base_type": "SCROLL_ENCHANTWEAPON",
+  "class": "scroll",
+  "depth": 1,
+  "effect": "reads as enchantweapon",
+  "id": "scroll_enchantweapon",
+  "label": "enchantweapon"
+ },
+ {
+  "base_type": "SCROLL_FIRE",
+  "class": "scroll",
+  "depth": 2,
+  "effect": "reads as fire",
+  "id": "scroll_fire",
+  "label": "fire"
+ },
+ {
+  "base_type": "SCROLL_FOOD",
+  "class": "scroll",
+  "depth": 3,
+  "effect": "reads as food",
+  "id": "scroll_food",
+  "label": "food"
+ },
+ {
+  "base_type": "SCROLL_IDENTIFY",
+  "class": "scroll",
+  "depth": 4,
+  "effect": "reads as identify",
+  "id": "scroll_identify",
+  "label": "identify"
+ },
+ {
+  "base_type": "SCROLL_LIGHT",
+  "class": "scroll",
+  "depth": 5,
+  "effect": "reads as light",
+  "id": "scroll_light",
+  "label": "light"
+ },
+ {
+  "base_type": "TOOL_ALEMBIC",
+  "class": "tool",
+  "depth": 2,
+  "effect": "used as a alembic",
+  "id": "tool_alembic",
+  "label": "alembic"
+ },
+ {
+  "base_type": "TOOL_BEARTRAP",
+  "class": "throwable",
+  "depth": 0,
+  "effect": "thrown: beartrap",
+  "id": "tool_beartrap",
+  "label": "beartrap"
+ },
+ {
+  "base_type": "TOOL_BOMB",
+  "class": "throwable",
+  "depth": 0,
+  "effect": "thrown: bomb",
+  "id": "tool_bomb",
+  "label": "bomb"
+ },
+ {
+  "base_type": "TOOL_DECOY",
+  "class": "throwable",
+  "depth": 4,
+  "effect": "thrown: decoy",
+  "id": "tool_decoy",
+  "label": "decoy"
+ },
+ {
+  "base_type": "TOOL_DETONATOR_CHARGE",
+  "class": "throwable",
+  "depth": 5,
+  "effect": "thrown: detonator charge",
+  "id": "tool_detonator_charge",
+  "label": "detonator charge"
+ },
+ {
+  "base_type": "TOOL_FREEZE_BOMB",
+  "class": "throwable",
+  "depth": 2,
+  "effect": "thrown: freeze bomb",
+  "id": "tool_freeze_bomb",
+  "label": "freeze bomb"
+ },
+ {
+  "base_type": "TOOL_LANTERN",
+  "class": "tool",
+  "depth": 2,
+  "effect": "used as a lantern",
+  "id": "tool_lantern",
+  "label": "lantern"
+ },
+ {
+  "base_type": "TOOL_LOCKPICK",
+  "class": "tool",
+  "depth": 4,
+  "effect": "used as a lockpick",
+  "id": "tool_lockpick",
+  "label": "lockpick"
+ },
+ {
+  "base_type": "TOOL_MIRROR",
+  "class": "tool",
+  "depth": 0,
+  "effect": "used as a mirror",
+  "id": "tool_mirror",
+  "label": "mirror"
+ },
+ {
+  "base_type": "TOOL_PICKAXE",
+  "class": "tool",
+  "depth": 3,
+  "effect": "used as a pickaxe",
+  "id": "tool_pickaxe",
+  "label": "pickaxe"
+ },
+ {
+  "base_type": "TOOL_SKELETONKEY",
+  "class": "tool",
+  "depth": 5,
+  "effect": "used as a skeletonkey",
+  "id": "tool_skeletonkey",
+  "label": "skeletonkey"
+ },
+ {
+  "base_type": "TOOL_SLEEP_BOMB",
+  "class": "throwable",
+  "depth": 1,
+  "effect": "thrown: sleep bomb",
+  "id": "tool_sleep_bomb",
+  "label": "sleep bomb"
+ },
+ {
+  "base_type": "TOOL_TELEPORT_BOMB",
+  "class": "throwable",
+  "depth": 3,
+  "effect": "thrown: teleport bomb",
+  "id": "tool_teleport_bomb",
+  "label": "teleport bomb"
+ },
+ {
+  "base_type": "TOOL_TINKERING_KIT",
+  "class": "tool",
+  "depth": 1,
+  "effect": "used as a tinkering kit",
+  "id": "tool_tinkering_kit",
+  "label": "tinkering kit"
+ },
+ {
+  "base_type": "TOOL_TORCH",
+  "class": "tool",
+  "depth": 1,
+  "effect": "used as a torch",
+  "id": "tool_torch",
+  "label": "torch"
+ }
+]

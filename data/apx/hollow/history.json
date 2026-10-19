@@ -1,0 +1,677 @@
+[
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h001",
+  "kind": "t01",
+  "place": "cave",
+  "template": "t01",
+  "text": "In 400 before the Fall the Hollow Choir dug into the cave and found the deep spring.",
+  "year": -400
+ },
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h002",
+  "kind": "t01",
+  "place": "cave",
+  "template": "t01",
+  "text": "In 393 before the Fall the Hollow Choir dug into the cave and found black salt.",
+  "year": -393
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h003",
+  "kind": "t01",
+  "place": "mine",
+  "template": "t01",
+  "text": "In 386 before the Fall the Lantern Caravan dug into the mine and found black salt.",
+  "year": -386
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h004",
+  "kind": "t01",
+  "place": "fortress",
+  "template": "t01",
+  "text": "In 379 before the Fall the Deep Warren dug into the fortress and found the deep spring.",
+  "year": -379
+ },
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h005",
+  "kind": "t01",
+  "place": "crypt",
+  "template": "t01",
+  "text": "In 372 before the Fall the Hollow Choir dug into the crypt and found a drowned choir.",
+  "year": -372
+ },
+ {
+  "actors": [
+   "npc_ghost"
+  ],
+  "id": "h006",
+  "kind": "t02",
+  "place": "temple",
+  "template": "t02",
+  "text": "The drowned choirmaster sealed the temple in 365 before the Fall; the key was never named.",
+  "year": -365
+ },
+ {
+  "actors": [
+   "npc_scholar"
+  ],
+  "id": "h007",
+  "kind": "t02",
+  "place": "cave",
+  "template": "t02",
+  "text": "Tolly the scholar sealed the cave in 358 before the Fall; the key was never named.",
+  "year": -358
+ },
+ {
+  "actors": [
+   "npc_deserter"
+  ],
+  "id": "h008",
+  "kind": "t02",
+  "place": "mine",
+  "template": "t02",
+  "text": "Fenn the deserter sealed the mine in 351 before the Fall; the key was never named.",
+  "year": -351
+ },
+ {
+  "actors": [
+   "npc_caravan_master"
+  ],
+  "id": "h009",
+  "kind": "t02",
+  "place": "mine",
+  "template": "t02",
+  "text": "Mother Vey sealed the mine in 344 before the Fall; the key was never named.",
+  "year": -344
+ },
+ {
+  "actors": [
+   "npc_ghost"
+  ],
+  "id": "h010",
+  "kind": "t02",
+  "place": "crypt",
+  "template": "t02",
+  "text": "The drowned choirmaster sealed the crypt in 337 before the Fall; the key was never named.",
+  "year": -337
+ },
+ {
+  "actors": [
+   "caravan",
+   "npc_hermit"
+  ],
+  "id": "h011",
+  "kind": "t03",
+  "place": "sewer",
+  "template": "t03",
+  "text": "The sewer flooded in 330 before the Fall; the Lantern Caravan blamed old Haskel.",
+  "year": -330
+ },
+ {
+  "actors": [
+   "caravan",
+   "npc_prisoner"
+  ],
+  "id": "h012",
+  "kind": "t03",
+  "place": "plaza",
+  "template": "t03",
+  "text": "The plaza flooded in 323 before the Fall; the Lantern Caravan blamed Cass the prisoner.",
+  "year": -323
+ },
+ {
+  "actors": [
+   "caravan",
+   "npc_hermit"
+  ],
+  "id": "h013",
+  "kind": "t03",
+  "place": "sewer",
+  "template": "t03",
+  "text": "The sewer flooded in 316 before the Fall; the Lantern Caravan blamed old Haskel.",
+  "year": -316
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_guard_b"
+  ],
+  "id": "h014",
+  "kind": "t03",
+  "place": "sewer",
+  "template": "t03",
+  "text": "The sewer flooded in 309 before the Fall; the Deep Warren blamed Private Dunne.",
+  "year": -309
+ },
+ {
+  "actors": [
+   "garrison",
+   "npc_caravan_master"
+  ],
+  "id": "h015",
+  "kind": "t03",
+  "place": "mine",
+  "template": "t03",
+  "text": "The mine flooded in 302 before the Fall; the Warden's Garrison blamed Mother Vey.",
+  "year": -302
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h016",
+  "kind": "t04",
+  "place": "vent",
+  "template": "t04",
+  "text": "Seven candles left the vent in 295 before the Fall and was not seen again.",
+  "year": -295
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h017",
+  "kind": "t04",
+  "place": "mine",
+  "template": "t04",
+  "text": "A stone saint left the mine in 288 before the Fall and was not seen again.",
+  "year": -288
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h018",
+  "kind": "t04",
+  "place": "fortress",
+  "template": "t04",
+  "text": "Black salt left the fortress in 281 before the Fall and was not seen again.",
+  "year": -281
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h019",
+  "kind": "t04",
+  "place": "vent",
+  "template": "t04",
+  "text": "Black salt left the vent in 274 before the Fall and was not seen again.",
+  "year": -274
+ },
+ {
+  "actors": [
+   "garrison"
+  ],
+  "id": "h020",
+  "kind": "t04",
+  "place": "sewer",
+  "template": "t04",
+  "text": "Black salt left the sewer in 267 before the Fall and was not seen again.",
+  "year": -267
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h021",
+  "kind": "t05",
+  "place": "fortress",
+  "template": "t05",
+  "text": "Fire took the fortress in 260 before the Fall; only a silver bell survived.",
+  "year": -260
+ },
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h022",
+  "kind": "t05",
+  "place": "vent",
+  "template": "t05",
+  "text": "Fire took the vent in 253 before the Fall; only a stone saint survived.",
+  "year": -253
+ },
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h023",
+  "kind": "t05",
+  "place": "fortress",
+  "template": "t05",
+  "text": "Fire took the fortress in 246 before the Fall; only the first map survived.",
+  "year": -246
+ },
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h024",
+  "kind": "t05",
+  "place": "sewer",
+  "template": "t05",
+  "text": "Fire took the sewer in 239 before the Fall; only a lantern that never went out survived.",
+  "year": -239
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h025",
+  "kind": "t05",
+  "place": "mine",
+  "template": "t05",
+  "text": "Fire took the mine in 232 before the Fall; only a broken key survived.",
+  "year": -232
+ },
+ {
+  "actors": [
+   "garrison",
+   "npc_scholar"
+  ],
+  "id": "h026",
+  "kind": "t06",
+  "place": "cave",
+  "template": "t06",
+  "text": "Tolly the scholar wrote that the Warden's Garrison feared a nest of moths below the cave.",
+  "year": -225
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_goblin_envoy"
+  ],
+  "id": "h027",
+  "kind": "t06",
+  "place": "plaza",
+  "template": "t06",
+  "text": "Grik the envoy wrote that the Deep Warren feared a goat skull below the plaza.",
+  "year": -218
+ },
+ {
+  "actors": [
+   "caravan",
+   "npc_prisoner"
+  ],
+  "id": "h028",
+  "kind": "t06",
+  "place": "plaza",
+  "template": "t06",
+  "text": "Cass the prisoner wrote that the Lantern Caravan feared a lantern that never went out below the plaza.",
+  "year": -211
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_cultist_defector"
+  ],
+  "id": "h029",
+  "kind": "t06",
+  "place": "crypt",
+  "template": "t06",
+  "text": "Sister Ilse wrote that the Deep Warren feared a broken key below the crypt.",
+  "year": -204
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_hermit"
+  ],
+  "id": "h030",
+  "kind": "t06",
+  "place": "vent",
+  "template": "t06",
+  "text": "Old Haskel wrote that the Deep Warren feared the old charter below the vent.",
+  "year": -197
+ },
+ {
+  "actors": [
+   "cult",
+   "npc_alchemist"
+  ],
+  "id": "h031",
+  "kind": "t07",
+  "place": "mine",
+  "template": "t07",
+  "text": "In 190 before the Fall the Hollow Choir and Mirel the alchemist traded a warden's oath at the mine.",
+  "year": -190
+ },
+ {
+  "actors": [
+   "garrison",
+   "npc_guard_a"
+  ],
+  "id": "h032",
+  "kind": "t07",
+  "place": "sewer",
+  "template": "t07",
+  "text": "In 183 before the Fall the Warden's Garrison and Corporal Ames traded the vent's warmth at the sewer.",
+  "year": -183
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_guard_b"
+  ],
+  "id": "h033",
+  "kind": "t07",
+  "place": "cave",
+  "template": "t07",
+  "text": "In 176 before the Fall the Deep Warren and Private Dunne traded a stone saint at the cave.",
+  "year": -176
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_guard_a"
+  ],
+  "id": "h034",
+  "kind": "t07",
+  "place": "temple",
+  "template": "t07",
+  "text": "In 169 before the Fall the Deep Warren and Corporal Ames traded a drowned choir at the temple.",
+  "year": -169
+ },
+ {
+  "actors": [
+   "warren",
+   "npc_cultist_defector"
+  ],
+  "id": "h035",
+  "kind": "t07",
+  "place": "cave",
+  "template": "t07",
+  "text": "In 162 before the Fall the Deep Warren and Sister Ilse traded a broken key at the cave.",
+  "year": -162
+ },
+ {
+  "actors": [
+   "npc_smith"
+  ],
+  "id": "h036",
+  "kind": "t08",
+  "place": "fortress",
+  "template": "t08",
+  "text": "The fortress fell silent in 155 before the Fall; Brann the smith warned of a silver bell.",
+  "year": -155
+ },
+ {
+  "actors": [
+   "npc_deserter"
+  ],
+  "id": "h037",
+  "kind": "t08",
+  "place": "plaza",
+  "template": "t08",
+  "text": "The plaza fell silent in 148 before the Fall; Fenn the deserter warned of a stone saint.",
+  "year": -148
+ },
+ {
+  "actors": [
+   "npc_guard_a"
+  ],
+  "id": "h038",
+  "kind": "t08",
+  "place": "fortress",
+  "template": "t08",
+  "text": "The fortress fell silent in 141 before the Fall; Corporal Ames warned of a cask of oil.",
+  "year": -141
+ },
+ {
+  "actors": [
+   "npc_warden_prewar"
+  ],
+  "id": "h039",
+  "kind": "t08",
+  "place": "temple",
+  "template": "t08",
+  "text": "The temple fell silent in 134 before the Fall; Warden Orsk (before) warned of a lantern that never went out.",
+  "year": -134
+ },
+ {
+  "actors": [
+   "npc_cultist_defector"
+  ],
+  "id": "h040",
+  "kind": "t08",
+  "place": "vent",
+  "template": "t08",
+  "text": "The vent fell silent in 127 before the Fall; Sister Ilse warned of the deep spring.",
+  "year": -127
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h041",
+  "kind": "t09",
+  "place": "crypt",
+  "template": "t09",
+  "text": "Rats took the crypt in 120 before the Fall; the Deep Warren burned a broken key.",
+  "year": -120
+ },
+ {
+  "actors": [
+   "cult"
+  ],
+  "id": "h042",
+  "kind": "t09",
+  "place": "plaza",
+  "template": "t09",
+  "text": "Rats took the plaza in 113 before the Fall; the Hollow Choir burned green glass.",
+  "year": -113
+ },
+ {
+  "actors": [
+   "garrison"
+  ],
+  "id": "h043",
+  "kind": "t09",
+  "place": "temple",
+  "template": "t09",
+  "text": "Rats took the temple in 106 before the Fall; the Warden's Garrison burned a broken key.",
+  "year": -106
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h044",
+  "kind": "t09",
+  "place": "fortress",
+  "template": "t09",
+  "text": "Rats took the fortress in 99 before the Fall; the Deep Warren burned the sluice gate.",
+  "year": -99
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h045",
+  "kind": "t09",
+  "place": "temple",
+  "template": "t09",
+  "text": "Rats took the temple in 92 before the Fall; the Deep Warren burned a silver bell.",
+  "year": -92
+ },
+ {
+  "actors": [
+   "npc_prisoner"
+  ],
+  "id": "h046",
+  "kind": "t10",
+  "place": "fortress",
+  "template": "t10",
+  "text": "Cass the prisoner mapped the fortress in 85 before the Fall and hid the deep spring there.",
+  "year": -85
+ },
+ {
+  "actors": [
+   "npc_merchant"
+  ],
+  "id": "h047",
+  "kind": "t10",
+  "place": "sewer",
+  "template": "t10",
+  "text": "Odda the trader mapped the sewer in 78 before the Fall and hid a sealed ledger there.",
+  "year": -78
+ },
+ {
+  "actors": [
+   "npc_scholar"
+  ],
+  "id": "h048",
+  "kind": "t10",
+  "place": "cave",
+  "template": "t10",
+  "text": "Tolly the scholar mapped the cave in 71 before the Fall and hid the iron rod there.",
+  "year": -71
+ },
+ {
+  "actors": [
+   "npc_alchemist"
+  ],
+  "id": "h049",
+  "kind": "t10",
+  "place": "mine",
+  "template": "t10",
+  "text": "Mirel the alchemist mapped the mine in 64 before the Fall and hid seven candles there.",
+  "year": -64
+ },
+ {
+  "actors": [
+   "npc_goblin_envoy"
+  ],
+  "id": "h050",
+  "kind": "t10",
+  "place": "temple",
+  "template": "t10",
+  "text": "Grik the envoy mapped the temple in 57 before the Fall and hid seven candles there.",
+  "year": -57
+ },
+ {
+  "actors": [
+   "garrison"
+  ],
+  "id": "h051",
+  "kind": "t11",
+  "place": "sump",
+  "template": "t11",
+  "text": "The Warden's Garrison swore off a stone saint in 50 before the Fall.",
+  "year": -50
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h052",
+  "kind": "t11",
+  "place": "vent",
+  "template": "t11",
+  "text": "The Lantern Caravan swore off a broken key in 43 before the Fall.",
+  "year": -43
+ },
+ {
+  "actors": [
+   "garrison"
+  ],
+  "id": "h053",
+  "kind": "t11",
+  "place": "vent",
+  "template": "t11",
+  "text": "The Warden's Garrison swore off a stone saint in 36 before the Fall.",
+  "year": -36
+ },
+ {
+  "actors": [
+   "warren"
+  ],
+  "id": "h054",
+  "kind": "t11",
+  "place": "fortress",
+  "template": "t11",
+  "text": "The Deep Warren swore off the first map in 29 before the Fall.",
+  "year": -29
+ },
+ {
+  "actors": [
+   "caravan"
+  ],
+  "id": "h055",
+  "kind": "t11",
+  "place": "sewer",
+  "template": "t11",
+  "text": "The Lantern Caravan swore off the sluice gate in 22 before the Fall.",
+  "year": -22
+ },
+ {
+  "actors": [
+   "npc_cultist_defector"
+  ],
+  "id": "h056",
+  "kind": "t12",
+  "place": "sump",
+  "template": "t12",
+  "text": "After 15 before the Fall only Sister Ilse entered the sump, and took copper coins.",
+  "year": -15
+ },
+ {
+  "actors": [
+   "npc_smith"
+  ],
+  "id": "h057",
+  "kind": "t12",
+  "place": "mine",
+  "template": "t12",
+  "text": "After 8 before the Fall only Brann the smith entered the mine, and took seven candles.",
+  "year": -8
+ },
+ {
+  "actors": [
+   "npc_cultist_defector"
+  ],
+  "id": "h058",
+  "kind": "t12",
+  "place": "cave",
+  "template": "t12",
+  "text": "After 400 before the Fall only Sister Ilse entered the cave, and took the sluice gate.",
+  "year": -400
+ },
+ {
+  "actors": [
+   "npc_deserter"
+  ],
+  "id": "h059",
+  "kind": "t12",
+  "place": "mine",
+  "template": "t12",
+  "text": "After 393 before the Fall only Fenn the deserter entered the mine, and took a broken key.",
+  "year": -393
+ },
+ {
+  "actors": [
+   "npc_warden_prewar"
+  ],
+  "id": "h060",
+  "kind": "t12",
+  "place": "vent",
+  "template": "t12",
+  "text": "After 386 before the Fall only Warden Orsk (before) entered the vent, and took a lantern that never went out.",
+  "year": -386
+ }
+]

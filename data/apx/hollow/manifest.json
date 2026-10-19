@@ -1,0 +1,131 @@
+{
+ "version": 1,
+ "classes": [
+  {
+   "file": "families.json",
+   "min": 17,
+   "schema": "families",
+   "stub": "F6"
+  },
+  {
+   "file": "parts.json",
+   "min": 320,
+   "schema": "parts",
+   "stub": "F6"
+  },
+  {
+   "file": "placed_items.json",
+   "min": 400,
+   "schema": "placed_items",
+   "stub": "F6"
+  },
+  {
+   "file": "ingredients.json",
+   "min": 80,
+   "schema": "ingredients",
+   "stub": "F7"
+  },
+  {
+   "file": "reactions_h1b.json",
+   "min": 28,
+   "schema": "reactions_h1b",
+   "stub": "F7"
+  },
+  {
+   "file": "reaction_discovery.json",
+   "min": 40,
+   "schema": "reaction_discovery",
+   "stub": "F7"
+  },
+  {
+   "file": "consumables.json",
+   "min": 60,
+   "schema": "consumables",
+   "stub": ""
+  },
+  {
+   "file": "spell_parts.json",
+   "min": 37,
+   "schema": "spell_parts",
+   "stub": ""
+  },
+  {
+   "file": "wands.json",
+   "min": 12,
+   "schema": "wands",
+   "stub": ""
+  },
+  {
+   "file": "creatures.json",
+   "min": 128,
+   "schema": "creatures",
+   "stub": ""
+  },
+  {
+   "file": "bosses.json",
+   "min": 3,
+   "schema": "bosses",
+   "stub": ""
+  },
+  {
+   "file": "npcs.json",
+   "min": 14,
+   "schema": "npcs",
+   "stub": ""
+  },
+  {
+   "file": "factions.json",
+   "min": 4,
+   "schema": "factions",
+   "stub": ""
+  },
+  {
+   "file": "quests.json",
+   "min": 8,
+   "schema": "quests",
+   "stub": ""
+  },
+  {
+   "file": "history.json",
+   "min": 60,
+   "schema": "history",
+   "stub": ""
+  },
+  {
+   "file": "history_templates.json",
+   "min": 12,
+   "schema": "history_templates",
+   "stub": ""
+  },
+  {
+   "file": "secrets.json",
+   "min": 12,
+   "schema": "secrets",
+   "stub": ""
+  },
+  {
+   "file": "weather.json",
+   "min": 3,
+   "schema": "weather",
+   "stub": ""
+  },
+  {
+   "file": "ecology.json",
+   "min": 8,
+   "schema": "ecology",
+   "stub": ""
+  },
+  {
+   "file": "merchants.json",
+   "min": 5,
+   "schema": "merchants",
+   "stub": ""
+  },
+  {
+   "file": "set_pieces.json",
+   "min": 10,
+   "schema": "set_pieces",
+   "stub": ""
+  }
+ ]
+}

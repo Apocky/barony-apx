@@ -1,6 +1,7 @@
 **/books/*
 build/*
 **/data/*
+!/data/apx/
 **/fonts/*
 **/images/*
 **/items/*
