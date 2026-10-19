@@ -26,6 +26,7 @@
 #include "ui/Slider.hpp"
 #include "lobbies.hpp"
 #include "ui/MainMenu.hpp"
+#include "apx/props.hpp"
 
 #ifdef NINTENDO
 #include "nintendo/baronynx.hpp"
@@ -4271,7 +4272,8 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 		}
 		else if ( parent->behavior == &actFurniture || parent->behavior == &actMCaxe )
 		{
-			interactText = Language::get(4023); // "Inspect" 
+			const char* apxVerb = apx::props::labelFor(parent); // apx BP1: the prop's verb (D81)
+			interactText = apxVerb ? apxVerb : Language::get(4023); // "Inspect" 
 		}
 		else if ( parent->behavior == &actFloorDecoration )
 		{

@@ -161,10 +161,10 @@ namespace apx_logic
 	}
 
 	// ---------------------------------------------------------------- stations (step 5)
-	enum Station : int { NONE, FORGE, ANVIL, CRUCIBLE, WORKBENCH, ALEMBIC, STATION_MAX };
+	enum Station : int { NONE, FORGE, ANVIL, CRUCIBLE, WORKBENCH, ALEMBIC, FIELD, STATION_MAX }; // FIELD: a table (BP1)
 	inline const char* stationName(int s)
 	{
-		static const char* n[STATION_MAX] = { "none", "Forge", "Anvil", "Crucible", "Workbench", "Alembic" };
+		static const char* n[STATION_MAX] = { "none", "Forge", "Anvil", "Crucible", "Workbench", "Alembic", "Field bench" };
 		return s >= 0 && s < STATION_MAX ? n[s] : "none";
 	}
 	// decoration model index (models/models.txt line - 1) -> station; forge has no base-game model
@@ -188,6 +188,7 @@ namespace apx_logic
 			case CRUCIBLE: return { "Melt", "Cast" };
 			case WORKBENCH: return { "Assemble", "Salvage" };
 			case ALEMBIC: return { "Distil", "Infuse" };
+			case FIELD: return { "Salvage", "Repair" }; // BP1: no crafting at a field bench
 			default: return {};
 		}
 	}

@@ -12,6 +12,7 @@
 //   (alembic) window open, a frame lists the station's operations and an empty Form board (F6).
 // Pure parts (entries, navigation, transfer rule, stations, inspect text) live in apx_inv_logic.hpp.
 #include "apx_inventory.hpp"
+#include "apx/props.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
@@ -149,6 +150,7 @@ static int nearStation(int player)
 		int s = apx_logic::stationOfModel(e->sprite);
 		if ( s != apx_logic::NONE && (e->x - me->x) * (e->x - me->x) + (e->y - me->y) * (e->y - me->y) <= 24.0 * 24.0 ) { return s; }
 	}
+	if ( apx::props::nearFieldBench(player) ) { return apx_logic::FIELD; } // apx BP1: a table used as a field bench
 	return apx_logic::NONE;
 }
 
