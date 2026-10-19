@@ -64,7 +64,9 @@ def run_once(args, n, env_extra):
     env.update(env_extra)
     cmd = [str(Path(args.exe).resolve()), "-quickstart=barbarian", f"-apx-out={out}", f"-apx-seed={args.seed}", "-apx-bf3trial"] + list(args.game_arg)
     if args.mode == "slot":
-        cmd.append("-windowed")   # D70: slot runs are windowed
+        # lane rule 14 (Apocky saw test windows pop up): automated launches are headless (proven identical: same hashes
+        # and lines); --windowed only for a step that needs a screenshot
+        cmd.append("-windowed" if args.windowed else "-apxheadless")
     lock = take_lock(args)
     t0 = time.time()
     finish = "exit"
@@ -520,6 +522,7 @@ def main():
                     help="D71 reference: damage per 20 s arm with limits on at floor 1, 12 skeletons (MEASURED full3, 02:49)")
     ap.add_argument("--env", action="append", default=[], help="extra KEY=VALUE for the game")
     ap.add_argument("--game-arg", action="append", default=[], help="extra command-line switch for the game (e.g. -apxvanilla)")
+    ap.add_argument("--windowed", action="store_true", help="a visible window (only for a step that needs a screenshot; default headless)")
     ap.add_argument("--mode", choices=("slot", "exclusive"), default="slot",
                     help="slot: D70 correctness slot, windowed (damage, counts); exclusive: the whole machine "
                          "(report decide_us / tick_us only from exclusive runs)")
