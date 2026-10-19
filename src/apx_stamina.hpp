@@ -14,6 +14,7 @@
 
 #include "game.hpp"
 #include "net.hpp"
+#include "apx_moves.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -85,7 +86,8 @@ namespace apx
 		// sword
 		int move = MOVE_NONE;           // move of the swing in flight / last released
 		real_t startYaw = 0.0, startPitch = 0.0;
-		int sweepExtras = 0;            // extra targets already hit by the current slash
+		int sweepExtras = 0;            // extra targets already hit by the current sweep
+		int releases = 0;               // melee releases since the press (combo chain)
 		// counters
 		int swings = 0, swingsWhileBlocking = 0, clamped = 0;
 		real_t spentSwing = 0.0, spentBlock = 0.0;
@@ -105,7 +107,28 @@ namespace apx
 
 	inline bool isSword(const Stat* st)
 	{
-		return st && st->weapon && getWeaponSkill(st->weapon) == PRO_SWORD;
+		return st && st->weapon && getWeaponSkill(st->weapon) == PRO_SWORD && st->weapon->type != RAPIER;
+	}
+
+	// The weapon family a player's equipment belongs to (spec 04 section 3.1). Daggers: Barony has no melee dagger
+	// (IRON_DAGGER is thrown), so the light fast blade, the rapier, is the dagger family. No weapon: shield bash with a
+	// shield, fists without. Anything else (bows, tools, spells, thrown) has no moves.
+	inline moves::Family familyOf(const Stat* st)
+	{
+		if ( !st ) { return moves::F_NONE; }
+		const Item* w = st->weapon;
+		if ( !w ) { return (st->shield && !itemTypeIsQuiver(st->shield->type)) ? moves::F_SHIELD : moves::F_UNARMED; }
+		if ( itemCategory(w) != WEAPON || isRangedWeapon(*w) || w->type == TOOL_WHIP || w->type == TOOL_BEARTRAP || w->type == STEEL_FLAIL ) { return moves::F_NONE; }
+		if ( w->type == QUARTERSTAFF ) { return moves::F_STAFF; }
+		if ( w->type == RAPIER ) { return moves::F_DAGGER; }
+		switch ( getWeaponSkill(w) )
+		{
+			case PRO_SWORD: return moves::F_SWORD;
+			case PRO_AXE: return moves::F_AXE;
+			case PRO_MACE: return moves::F_MACE;
+			case PRO_POLEARM: return moves::F_SPEAR;
+			default: return moves::F_NONE;
+		}
 	}
 
 	inline real_t maxStaminaFor(const Stamina_t& s)
@@ -124,37 +147,55 @@ namespace apx
 		return get(player).move;
 	}
 
-	inline real_t reachMult(int player)
+	inline const moves::MoveDef* moveDefFor(int player)
 	{
 		const int m = moveFor(player);
-		return m == SWORD_THRUST ? kThrustReach : (m == SWORD_LUNGE ? kLungeReach : 1.0);
+		return m == MOVE_NONE ? nullptr : moves::find(m);
 	}
 
-	// Damage shaping used by Entity::attack for the sword moves.
+	inline int& extraIndex() { static int k = 0; return k; } // index of the extra target the sweep timer is striking
+
+	inline real_t reachMult(int player)
+	{
+		const moves::MoveDef* d = moveDefFor(player);
+		return d ? d->reach : 1.0;
+	}
+
+	// Damage shaping used by Entity::attack: the move's damage multiple, and the falloff of an extra target.
 	inline int adjustDamage(int player, int damage, int pose)
 	{
-		const int m = moveFor(player);
-		int out = damage;
-		if ( m == SWORD_VERTICAL ) { out = static_cast<int>(damage * kVerticalDamage); }
-		else if ( m == SWORD_SLASH && pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ) { out = static_cast<int>(damage * extraScale); }
-		if ( m != MOVE_NONE && selftestOn() ) { printlog("[apx-hit] adjust move=%d pose=%d in=%d out=%d scale=%.2f", m, pose, damage, out, extraScale); }
+		const moves::MoveDef* d = moveDefFor(player);
+		if ( !d ) { return damage; }
+		const bool isExtra = (pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE);
+		const int out = moves::shapeDamage(*d, damage, isExtra, extraIndex());
+		if ( selftestOn() ) { printlog("[apx-hit] adjust move=%d pose=%d in=%d out=%d scale=%.2f", d->id, pose, damage, out, extraScale); }
 		return out;
 	}
 
-	// Half-angle of the vanilla sweep timer's arc (actmagic.cpp): ours for the sword slash, PI/3 for everything else.
-	inline real_t sweepArc(Entity* parent)
+	// The vanilla sweep timer (actmagic.cpp) strikes extra targets in an arc: ours per move, PI/3 for vanilla swings.
+	inline const moves::MoveDef* sweepDef(Entity* parent)
 	{
-		if ( parent && parent->behavior == &actPlayer && moveFor(parent->skill[2]) == SWORD_SLASH ) { return kSlashArc; }
-		return PI / 3;
+		if ( parent && parent->behavior == &actPlayer && moves::usesSweep(moveFor(parent->skill[2])) ) { return moves::find(moveFor(parent->skill[2])); }
+		return nullptr;
+	}
+	inline real_t sweepArc(Entity* parent) { const moves::MoveDef* d = sweepDef(parent); return d ? d->arcHalf : PI / 3; }
+	inline real_t sweepReach(Entity* parent) { const moves::MoveDef* d = sweepDef(parent); return STRIKERANGE * (d ? d->reach : 1.0); }
+	inline int sweepMaxExtra(Entity* parent) { const moves::MoveDef* d = sweepDef(parent); return d ? d->extra : (1 << 20); }
+	inline real_t sweepFalloff(Entity* parent, int k) { const moves::MoveDef* d = sweepDef(parent); return d ? moves::extraScale(*d, k) : 1.0; }
+
+	// D75 contract for F3: percent (0..100) of stagger the swing in flight resists; 0 when no move is out.
+	inline int heavyPctFor(int player)
+	{
+		return moves::heavyPct(moveFor(player));
 	}
 
-	// Wind-up length for this stat: players with a sword use 18 ticks when the charged attack is on.
+	// Wind-up length for a player's stat: every weapon family has an 18-tick charged attack when the charged attack is on.
 	inline int windupFor(Stat* st, int vanilla)
 	{
 		if ( !charge2Enabled() || !st ) { return vanilla; }
 		for ( int i = 0; i < MAXPLAYERS; ++i )
 		{
-			if ( stats[i] == st ) { return isSword(st) ? std::min(vanilla, kChargedWindupTicks) : vanilla; }
+			if ( stats[i] == st ) { return familyOf(st) != moves::F_NONE ? std::min(vanilla, kChargedWindupTicks) : vanilla; }
 		}
 		return vanilla;
 	}
@@ -308,8 +349,9 @@ namespace apx
 	inline Uint32& selftestClock() { static Uint32 t = 0; return t; }
 	inline bool selftestOn() { static const bool on = std::getenv("APX_SELFTEST") != nullptr; return on; }
 	inline bool selftestMoves() { static const bool on = selftestOn() && std::getenv("APX_SELFTEST_MOVES") != nullptr; return on; }
+	inline bool selftestFamilies() { static const bool on = selftestOn() && std::getenv("APX_SELFTEST_FAMILIES") != nullptr; return on; }
 	inline bool selftestEndurance() { static const bool on = selftestOn() && std::getenv("APX_SELFTEST_ENDURANCE") != nullptr; return on; }
-	struct Win { Uint32 start, len; int move; };
+	struct Win { Uint32 start, len; int move; int aware = 0; };
 	// APX_SELFTEST_NET=host|client : two processes on this PC (lobby autopilot from the F2 branch). The client runs a sword
 	// script against dummies the host spawned around it; the host logs what arrives ('APXS' state, 'ATAK' move byte).
 	inline int netRole() { static const int r = []() { const char* v = std::getenv("APX_SELFTEST_NET"); return v ? (v[0] == 'h' ? 1 : 2) : 0; }(); return r; }
@@ -325,6 +367,43 @@ namespace apx
 		}
 		return v;
 	}
+	// APX_SELFTEST_FAMILIES: for each family a 760-tick block: equip, spawn dummies, then 3 clicks (default, horizontal,
+	// vertical mouse motion) and 2 charged holds, twice (first pass the dummies are unaware, second pass aware).
+	struct FamBlock { moves::Family fam; Uint32 start; };
+	inline const std::vector<FamBlock>& famBlocks()
+	{
+		static std::vector<FamBlock> v;
+		if ( v.empty() )
+		{
+			const moves::Family order[8] = { moves::F_SWORD, moves::F_AXE, moves::F_MACE, moves::F_SPEAR, moves::F_STAFF, moves::F_DAGGER, moves::F_UNARMED, moves::F_SHIELD };
+			Uint32 t = 200;
+			for ( moves::Family f : order ) { v.push_back({ f, t }); t += 760; }
+		}
+		return v;
+	}
+	inline Uint32 famEnd() { return famBlocks().back().start + 760 + 100; }
+	inline const std::vector<Win>& famScript()
+	{
+		static std::vector<Win> v;
+		if ( v.empty() )
+		{
+			int mn = 0; const moves::FamilyMap* fm = moves::familyMaps(mn);
+			for ( const FamBlock& b : famBlocks() )
+			{
+				const moves::FamilyMap* m = nullptr;
+				for ( int i = 0; i < mn; ++i ) { if ( fm[i].fam == b.fam ) { m = &fm[i]; } }
+				Uint32 t = b.start + 60;
+				for ( int rep = 0; rep < 2; ++rep )
+				{
+					const int ids[3] = { m->none, m->horiz, m->vert };
+					for ( int k = 0; k < 3; ++k ) { v.push_back({ t, 4, ids[k], rep }); t += 70; }
+					v.push_back({ t, 50, m->charged, rep }); t += 120;
+				}
+			}
+		}
+		return v;
+	}
+	inline void famSelftestAdvance(Uint32 t); // apx_families.hpp
 	inline bool forceDefend()
 	{
 		if ( selftestOn() && netRole() == 2 ) { const Uint32 t = selftestClock(); return t >= 2000 && t < 2400; }
@@ -359,6 +438,7 @@ namespace apx
 		static const Uint32 stam[][2] = { {800,4}, {950,4}, {1100,4}, {1350,4}, {1500,4}, {1650,4} };
 		if ( netRole() == 2 ) { for ( auto& w : netScript() ) { if ( t >= w.start && t < w.start + w.len ) return true; } return false; }
 		if ( netRole() == 1 ) { return false; }
+		if ( selftestFamilies() ) { for ( auto& w : famScript() ) { if ( t >= w.start && t < w.start + w.len ) return true; } return false; }
 		if ( selftestEndurance() ) { return t >= 100 && t < 4700 && (t - 100) % 70 < 4; }
 		if ( selftestMoves() ) { for ( auto& w : moveScript() ) { if ( t >= w.start && t < w.start + w.len ) return true; } return false; }
 		for ( auto& w : stam ) { if ( t >= w[0] && t < w[0] + w[1] ) return true; }
@@ -369,6 +449,7 @@ namespace apx
 		const Uint32 t = selftestClock();
 		int m = MOVE_NONE;
 		if ( netRole() == 2 ) { for ( auto& w : netScript() ) { if ( t >= w.start ) { m = w.move; } } return m; }
+		if ( selftestFamilies() ) { for ( auto& w : famScript() ) { if ( t >= w.start ) { m = w.move; } } return m; }
 		for ( auto& w : moveScript() ) { if ( t >= w.start ) { m = w.move; } }
 		return m;
 	}
@@ -431,6 +512,7 @@ namespace apx
 		if ( player != 0 ) return;
 		Uint32& t = selftestClock();
 		++t;
+		if ( selftestFamilies() ) { famSelftestAdvance(t); return; }
 		if ( selftestEndurance() )
 		{
 			if ( t == 50 ) { selftestSpawn(2); }
@@ -505,6 +587,7 @@ namespace apx
 			s.swingWhileBlock = false;
 			s.lastDefending = defending;
 			s.move = MOVE_NONE;
+			s.releases = 0;
 		}
 		s.prevChop = chopping;
 
@@ -543,39 +626,47 @@ namespace apx
 		}
 	}
 
-	// Called at the melee release (generic branch of actHudWeapon): picks the sword move, charges the lunge.
+	// Called at every melee release of actHudWeapon (first, second and third swing of a combo; fists included).
+	// Picks the move from the family table, charges its extra stamina, dashes if the move dashes.
 	inline void onMeleeRelease(int player, int charge)
 	{
 		if ( !movesEnabled() ) { return; }
 		Stamina_t& s = get(player);
 		Stat* st = stats[player];
 		Entity* me = players[player] ? players[player]->entity : nullptr;
-		if ( !isSword(st) || !me ) { s.move = MOVE_NONE; return; }
+		const moves::Family fam = familyOf(st);
+		if ( fam == moves::F_NONE || !me ) { s.move = MOVE_NONE; return; }
 		const int maxCharge = Stat::getMaxAttackCharge(st);
 		const bool charged = charge2Enabled() && charge >= maxCharge;
 		real_t dyaw = me->yaw - s.startYaw;
 		while ( dyaw > PI ) { dyaw -= 2 * PI; }
 		while ( dyaw < -PI ) { dyaw += 2 * PI; }
 		const real_t dpitch = me->pitch - s.startPitch;
-		int move = SWORD_THRUST; // default when the mouse did not move: sword thrusts
-		if ( std::fabs(dyaw) > kYawThreshold && std::fabs(dyaw) >= std::fabs(dpitch) ) { move = SWORD_SLASH; }
-		else if ( std::fabs(dpitch) > kPitchThreshold ) { move = SWORD_VERTICAL; }
-		if ( charged ) { move = SWORD_LUNGE; }
-		if ( selftestMoves() || (selftestOn() && netRole() == 2) ) { move = forcedMove(); }
+		int move = moves::classify(fam, dyaw, dpitch, charged);
+		if ( selftestMoves() || (selftestOn() && (netRole() == 2 || selftestFamilies())) ) { move = forcedMove(); }
+		if ( selftestFamilies() && moves::find(move) && moves::find(move)->charged && !charged )
+		{
+			move = moves::classify(fam, 0.0, 0.0, false); // APX_CHARGE2=0: the script's charged hold stays a normal swing
+		}
+		const moves::MoveDef* d = moves::find(move);
 		s.move = move;
 		s.sweepExtras = 0;
-		real_t extra = 0.0;
-		if ( charged ) { extra += kSwingCost * (kChargedCostMult - 1.0) * (s.swingWhileBlock ? kSwingWhileBlockCostMult : 1.0); }
-		if ( move == SWORD_VERTICAL ) { extra += kSwingCost * (kVerticalCost - 1.0); }
+		extraIndex() = 0;
+		// the press spent one swing; a chained swing (second or third of a combo) pays its own, then the move's extra
+		const real_t blockMult = s.swingWhileBlock ? kSwingWhileBlockCostMult : 1.0;
+		real_t extra = (s.releases > 0 ? kSwingCost * blockMult : 0.0);
+		if ( d ) { extra += moves::extraCostSwings(*d) * kSwingCost * blockMult; }
+		++s.releases;
 		if ( extra > 0.0 ) { spend(player, extra, 0); }
-		if ( move == SWORD_LUNGE )
+		else if ( extra < 0.0 ) { s.value = std::min(s.maxValue, s.value - extra); } // a cheap move refunds part of the press
+		if ( d && (d->effects & moves::EF_DASH) )
 		{
 			// short dash along the facing; the player movement code's clipMove stops it at walls
-			me->vel_x += cos(me->yaw) * kLungeImpulse;
-			me->vel_y += sin(me->yaw) * kLungeImpulse;
+			me->vel_x += cos(me->yaw) * d->dash;
+			me->vel_y += sin(me->yaw) * d->dash;
 		}
-		printlog("[apx-move] release p=%d move=%d charged=%d charge=%d max=%d dyaw=%.3f dpitch=%.3f extra_cost=%.2f value=%.2f pos=%.2f,%.2f tick=%u",
-			player, move, charged ? 1 : 0, charge, maxCharge, dyaw, dpitch, extra, s.value, me->x, me->y, ticks);
+		printlog("[apx-move] release p=%d fam=%d move=%d charged=%d charge=%d max=%d dyaw=%.3f dpitch=%.3f extra_cost=%.2f value=%.2f pos=%.2f,%.2f tick=%u",
+			player, (int)fam, move, charged ? 1 : 0, charge, maxCharge, dyaw, dpitch, extra, s.value, me->x, me->y, ticks);
 	}
 
 	// Reset on a new character (called from initClass).
@@ -584,3 +675,5 @@ namespace apx
 		stamina[std::max(0, std::min(player, MAXPLAYERS - 1))] = Stamina_t();
 	}
 }
+
+#include "apx_families.hpp"

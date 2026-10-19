@@ -10495,9 +10495,9 @@ void Entity::attack(int pose, int charge, Entity* target)
 			playSoundEntity(this, 770 + local_rng.rand() % 4, 108); // whoosh noise
 		}
 		else if ( player >= 0 && !shapeshifted && target == nullptr && pose != MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE
-			&& apx::moveFor(player) == apx::SWORD_SLASH )
+			&& apx::moves::usesSweep(apx::moveFor(player)) )
 		{
-			// apx: the sword's horizontal slash reuses the vanilla sweep timer (arc and extra-target cap in actmagic.cpp)
+			// apx: every sweeping move (sword slash, axe chop and cleave, mace swing, spear, staff, shield shove...) reuses the vanilla sweep timer (arc, reach, extra cap, falloff in actmagic.cpp)
 			sweepAttackTimer = createParticleTimer(this, 3, -1);
 			sweepAttackTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SWEEP_ATTACK;
 			playSoundEntity(this, 770 + local_rng.rand() % 4, 108); // whoosh noise
@@ -12807,9 +12807,9 @@ void Entity::attack(int pose, int charge, Entity* target)
 						myAttack += 2 + local_rng.rand() % 3;
 					}
 					int enemyAC = AC(hitstats);
-					if ( player >= 0 && apx::moveFor(player) == apx::SWORD_LUNGE )
+					if ( player >= 0 )
 					{
-						enemyAC = static_cast<int>(enemyAC * (1.0 - apx::kLungeArmourIgnore)); // apx: lunge ignores part of the armour
+						enemyAC = apx::fam::adjustAC(player, hitstats, enemyAC); // apx: armour ignore, shield bonus ignored by hook/cleave
 					}
 					if ( weaponskill == PRO_POLEARM && myStats->weapon && myStats->weapon->type == ARTIFACT_SPEAR && !shapeshifted )
 					{
@@ -13177,9 +13177,17 @@ void Entity::attack(int pose, int charge, Entity* target)
 						printlog("[apx-hit] move=%d pose=%d target=%u damage=%d extra=%d dist=%.1f", apx::moveFor(player), pose, hit.entity->getUID(),
 							damage, pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ? 1 : 0, entityDist(this, hit.entity));
 					}
+					if ( player >= 0 )
+					{
+						damage = apx::fam::beforeHit(player, this, hit.entity, hitstats, damage, previousMonsterState); // apx F4d: sneak and critical moves
+					}
 					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
 					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
+					if ( player >= 0 )
+					{
+						apx::fam::afterHit(player, this, hit.entity, hitstats, damage, pose); // apx F4d: push, knock-down, slam, shield, bleed, throw
+					}
 
 					if ( hitstats )
 					{
