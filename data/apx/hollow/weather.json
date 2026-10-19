@@ -1,0 +1,20 @@
+[
+ {
+  "id": "clear",
+  "light_pct": 100,
+  "note": "the surface pocket at its brightest",
+  "wet_per_step": 0
+ },
+ {
+  "id": "rain",
+  "light_pct": 70,
+  "note": "rain soaks the surface and runs into any hole dug through the roof",
+  "wet_per_step": 2
+ },
+ {
+  "id": "storm",
+  "light_pct": 40,
+  "note": "one lightning strike on the ruin's iron rod per storm (built later by H1a and BF7)",
+  "wet_per_step": 4
+ }
+]

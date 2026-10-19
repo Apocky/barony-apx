@@ -1,0 +1,50 @@
+[
+ {
+  "behavior": "hang in caverns; wake at light",
+  "den_theme": "cave",
+  "id": "eco_bats",
+  "species": "bat"
+ },
+ {
+  "behavior": "myconid den; spreads in damp mine rooms",
+  "den_theme": "cave",
+  "id": "eco_cave_fungus",
+  "species": "fungus"
+ },
+ {
+  "behavior": "roosts in the copse; flees at noise",
+  "den_theme": "surface",
+  "id": "eco_copse_birds",
+  "species": "bird"
+ },
+ {
+  "behavior": "grazes at dusk; bolts when hunted",
+  "den_theme": "surface",
+  "id": "eco_copse_deer",
+  "species": "deer"
+ },
+ {
+  "behavior": "fodder swarms in sewers; flee fire",
+  "den_theme": "sewer",
+  "id": "eco_rats",
+  "species": "rat"
+ },
+ {
+  "behavior": "shoals in the stream; scatters at footsteps",
+  "den_theme": "surface",
+  "id": "eco_stream_fish",
+  "species": "fish"
+ },
+ {
+  "behavior": "kept by the warren for milk and hide",
+  "den_theme": "mine",
+  "id": "eco_warren_goats",
+  "species": "goat"
+ },
+ {
+  "behavior": "a pair that circles the camp at night",
+  "den_theme": "surface",
+  "id": "eco_wolf_pair",
+  "species": "wolf"
+ }
+]

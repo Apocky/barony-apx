@@ -1,0 +1,1234 @@
+[
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_ashen",
+  "kind": "BAT_SMALL",
+  "name": "ashen bat small",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_brute",
+  "kind": "BAT_SMALL",
+  "name": "brute bat small",
+  "theme": "cave",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_feral",
+  "kind": "BAT_SMALL",
+  "name": "feral bat small",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_gaunt",
+  "kind": "BAT_SMALL",
+  "name": "gaunt bat small",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_grim",
+  "kind": "BAT_SMALL",
+  "name": "grim bat small",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_hollow",
+  "kind": "BAT_SMALL",
+  "name": "hollow bat small",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_rusty",
+  "kind": "BAT_SMALL",
+  "name": "rusty bat small",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bat_small_swift",
+  "kind": "BAT_SMALL",
+  "name": "swift bat small",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BONE_SPEAR"
+  ],
+  "faction": "warren",
+  "id": "bugbear_ashen",
+  "kind": "BUGBEAR",
+  "name": "ashen bugbear",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [
+   "BRONZE_SWORD",
+   "CLAYMORE_SWORD",
+   "CRYSTAL_BATTLEAXE"
+  ],
+  "faction": "warren",
+  "id": "bugbear_brute",
+  "kind": "BUGBEAR",
+  "name": "brute bugbear",
+  "theme": "mine",
+  "tier": "champion"
+ },
+ {
+  "equipment": [
+   "BONE_MACE"
+  ],
+  "faction": "warren",
+  "id": "bugbear_feral",
+  "kind": "BUGBEAR",
+  "name": "feral bugbear",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bugbear_gaunt",
+  "kind": "BUGBEAR",
+  "name": "gaunt bugbear",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BRONZE_AXE",
+   "BRONZE_MACE"
+  ],
+  "faction": "warren",
+  "id": "bugbear_grim",
+  "kind": "BUGBEAR",
+  "name": "grim bugbear",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BONE_SWORD"
+  ],
+  "faction": "warren",
+  "id": "bugbear_hollow",
+  "kind": "BUGBEAR",
+  "name": "hollow bugbear",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "bugbear_rusty",
+  "kind": "BUGBEAR",
+  "name": "rusty bugbear",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BRONZE_MACE",
+   "BRONZE_SWORD"
+  ],
+  "faction": "warren",
+  "id": "bugbear_swift",
+  "kind": "BUGBEAR",
+  "name": "swift bugbear",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_ashen",
+  "kind": "CRAB",
+  "name": "ashen crab",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_brute",
+  "kind": "CRAB",
+  "name": "brute crab",
+  "theme": "sewer",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_feral",
+  "kind": "CRAB",
+  "name": "feral crab",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_gaunt",
+  "kind": "CRAB",
+  "name": "gaunt crab",
+  "theme": "sewer",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_grim",
+  "kind": "CRAB",
+  "name": "grim crab",
+  "theme": "sewer",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_hollow",
+  "kind": "CRAB",
+  "name": "hollow crab",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_rusty",
+  "kind": "CRAB",
+  "name": "rusty crab",
+  "theme": "sewer",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "crab_swift",
+  "kind": "CRAB",
+  "name": "swift crab",
+  "theme": "sewer",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_ashen",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "ashen earth elemental",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_brute",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "brute earth elemental",
+  "theme": "mine",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_feral",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "feral earth elemental",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_gaunt",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "gaunt earth elemental",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_grim",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "grim earth elemental",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_hollow",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "hollow earth elemental",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_rusty",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "rusty earth elemental",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "earth_elemental_swift",
+  "kind": "EARTH_ELEMENTAL",
+  "name": "swift earth elemental",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_ashen",
+  "kind": "GHOUL",
+  "name": "ashen ghoul",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_brute",
+  "kind": "GHOUL",
+  "name": "brute ghoul",
+  "theme": "crypt",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_feral",
+  "kind": "GHOUL",
+  "name": "feral ghoul",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_gaunt",
+  "kind": "GHOUL",
+  "name": "gaunt ghoul",
+  "theme": "crypt",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_grim",
+  "kind": "GHOUL",
+  "name": "grim ghoul",
+  "theme": "crypt",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_hollow",
+  "kind": "GHOUL",
+  "name": "hollow ghoul",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_rusty",
+  "kind": "GHOUL",
+  "name": "rusty ghoul",
+  "theme": "crypt",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "ghoul_swift",
+  "kind": "GHOUL",
+  "name": "swift ghoul",
+  "theme": "crypt",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BONE_AXE"
+  ],
+  "faction": "warren",
+  "id": "goblin_ashen",
+  "kind": "GOBLIN",
+  "name": "ashen goblin",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [
+   "BRONZE_AXE",
+   "BRONZE_MACE",
+   "BRONZE_SWORD"
+  ],
+  "faction": "warren",
+  "id": "goblin_brute",
+  "kind": "GOBLIN",
+  "name": "brute goblin",
+  "theme": "mine",
+  "tier": "champion"
+ },
+ {
+  "equipment": [
+   "BLACKIRON_TRIDENT"
+  ],
+  "faction": "warren",
+  "id": "goblin_feral",
+  "kind": "GOBLIN",
+  "name": "feral goblin",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "goblin_gaunt",
+  "kind": "GOBLIN",
+  "name": "gaunt goblin",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BONE_SPEAR",
+   "BONE_SWORD"
+  ],
+  "faction": "warren",
+  "id": "goblin_grim",
+  "kind": "GOBLIN",
+  "name": "grim goblin",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BONE_MACE"
+  ],
+  "faction": "warren",
+  "id": "goblin_hollow",
+  "kind": "GOBLIN",
+  "name": "hollow goblin",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "goblin_rusty",
+  "kind": "GOBLIN",
+  "name": "rusty goblin",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BONE_SWORD",
+   "BRONZE_AXE"
+  ],
+  "faction": "warren",
+  "id": "goblin_swift",
+  "kind": "GOBLIN",
+  "name": "swift goblin",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "CRYSTAL_MACE"
+  ],
+  "faction": "garrison",
+  "id": "human_ashen",
+  "kind": "HUMAN",
+  "name": "ashen human",
+  "theme": "fortress",
+  "tier": "regular"
+ },
+ {
+  "equipment": [
+   "IRON_MACE",
+   "IRON_SPEAR",
+   "IRON_SWORD"
+  ],
+  "faction": "garrison",
+  "id": "human_brute",
+  "kind": "HUMAN",
+  "name": "brute human",
+  "theme": "fortress",
+  "tier": "champion"
+ },
+ {
+  "equipment": [
+   "CRYSTAL_BATTLEAXE"
+  ],
+  "faction": "garrison",
+  "id": "human_feral",
+  "kind": "HUMAN",
+  "name": "feral human",
+  "theme": "fortress",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "garrison",
+  "id": "human_gaunt",
+  "kind": "HUMAN",
+  "name": "gaunt human",
+  "theme": "fortress",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "CRYSTAL_SWORD",
+   "IRON_AXE"
+  ],
+  "faction": "garrison",
+  "id": "human_grim",
+  "kind": "HUMAN",
+  "name": "grim human",
+  "theme": "fortress",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "CRYSTAL_SPEAR"
+  ],
+  "faction": "garrison",
+  "id": "human_hollow",
+  "kind": "HUMAN",
+  "name": "hollow human",
+  "theme": "fortress",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "garrison",
+  "id": "human_rusty",
+  "kind": "HUMAN",
+  "name": "rusty human",
+  "theme": "fortress",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "IRON_AXE",
+   "IRON_MACE"
+  ],
+  "faction": "garrison",
+  "id": "human_swift",
+  "kind": "HUMAN",
+  "name": "swift human",
+  "theme": "fortress",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BONE_MACE"
+  ],
+  "faction": "warren",
+  "id": "kobold_ashen",
+  "kind": "KOBOLD",
+  "name": "ashen kobold",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [
+   "BRONZE_MACE",
+   "BRONZE_SWORD",
+   "CLAYMORE_SWORD"
+  ],
+  "faction": "warren",
+  "id": "kobold_brute",
+  "kind": "KOBOLD",
+  "name": "brute kobold",
+  "theme": "mine",
+  "tier": "champion"
+ },
+ {
+  "equipment": [
+   "BONE_AXE"
+  ],
+  "faction": "warren",
+  "id": "kobold_feral",
+  "kind": "KOBOLD",
+  "name": "feral kobold",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "kobold_gaunt",
+  "kind": "KOBOLD",
+  "name": "gaunt kobold",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BONE_SWORD",
+   "BRONZE_AXE"
+  ],
+  "faction": "warren",
+  "id": "kobold_grim",
+  "kind": "KOBOLD",
+  "name": "grim kobold",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BONE_SPEAR"
+  ],
+  "faction": "warren",
+  "id": "kobold_hollow",
+  "kind": "KOBOLD",
+  "name": "hollow kobold",
+  "theme": "mine",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "kobold_rusty",
+  "kind": "KOBOLD",
+  "name": "rusty kobold",
+  "theme": "mine",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BRONZE_AXE",
+   "BRONZE_MACE"
+  ],
+  "faction": "warren",
+  "id": "kobold_swift",
+  "kind": "KOBOLD",
+  "name": "swift kobold",
+  "theme": "mine",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_ashen",
+  "kind": "MYCONID",
+  "name": "ashen myconid",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_brute",
+  "kind": "MYCONID",
+  "name": "brute myconid",
+  "theme": "cave",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_feral",
+  "kind": "MYCONID",
+  "name": "feral myconid",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_gaunt",
+  "kind": "MYCONID",
+  "name": "gaunt myconid",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_grim",
+  "kind": "MYCONID",
+  "name": "grim myconid",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_hollow",
+  "kind": "MYCONID",
+  "name": "hollow myconid",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_rusty",
+  "kind": "MYCONID",
+  "name": "rusty myconid",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "myconid_swift",
+  "kind": "MYCONID",
+  "name": "swift myconid",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_ashen",
+  "kind": "RAT",
+  "name": "ashen rat",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_brute",
+  "kind": "RAT",
+  "name": "brute rat",
+  "theme": "sewer",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_feral",
+  "kind": "RAT",
+  "name": "feral rat",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_gaunt",
+  "kind": "RAT",
+  "name": "gaunt rat",
+  "theme": "sewer",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_grim",
+  "kind": "RAT",
+  "name": "grim rat",
+  "theme": "sewer",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_hollow",
+  "kind": "RAT",
+  "name": "hollow rat",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_rusty",
+  "kind": "RAT",
+  "name": "rusty rat",
+  "theme": "sewer",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "rat_swift",
+  "kind": "RAT",
+  "name": "swift rat",
+  "theme": "sewer",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_ashen",
+  "kind": "REVENANT_SKULL",
+  "name": "ashen revenant skull",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_brute",
+  "kind": "REVENANT_SKULL",
+  "name": "brute revenant skull",
+  "theme": "crypt",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_feral",
+  "kind": "REVENANT_SKULL",
+  "name": "feral revenant skull",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_gaunt",
+  "kind": "REVENANT_SKULL",
+  "name": "gaunt revenant skull",
+  "theme": "crypt",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_grim",
+  "kind": "REVENANT_SKULL",
+  "name": "grim revenant skull",
+  "theme": "crypt",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_hollow",
+  "kind": "REVENANT_SKULL",
+  "name": "hollow revenant skull",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_rusty",
+  "kind": "REVENANT_SKULL",
+  "name": "rusty revenant skull",
+  "theme": "crypt",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "revenant_skull_swift",
+  "kind": "REVENANT_SKULL",
+  "name": "swift revenant skull",
+  "theme": "crypt",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_ashen",
+  "kind": "SALAMANDER",
+  "name": "ashen salamander",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_brute",
+  "kind": "SALAMANDER",
+  "name": "brute salamander",
+  "theme": "cave",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_feral",
+  "kind": "SALAMANDER",
+  "name": "feral salamander",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_gaunt",
+  "kind": "SALAMANDER",
+  "name": "gaunt salamander",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_grim",
+  "kind": "SALAMANDER",
+  "name": "grim salamander",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_hollow",
+  "kind": "SALAMANDER",
+  "name": "hollow salamander",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_rusty",
+  "kind": "SALAMANDER",
+  "name": "rusty salamander",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "salamander_swift",
+  "kind": "SALAMANDER",
+  "name": "swift salamander",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_ashen",
+  "kind": "SHADOW",
+  "name": "ashen shadow",
+  "theme": "temple",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_brute",
+  "kind": "SHADOW",
+  "name": "brute shadow",
+  "theme": "temple",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_feral",
+  "kind": "SHADOW",
+  "name": "feral shadow",
+  "theme": "temple",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_gaunt",
+  "kind": "SHADOW",
+  "name": "gaunt shadow",
+  "theme": "temple",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_grim",
+  "kind": "SHADOW",
+  "name": "grim shadow",
+  "theme": "temple",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_hollow",
+  "kind": "SHADOW",
+  "name": "hollow shadow",
+  "theme": "temple",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_rusty",
+  "kind": "SHADOW",
+  "name": "rusty shadow",
+  "theme": "temple",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "shadow_swift",
+  "kind": "SHADOW",
+  "name": "swift shadow",
+  "theme": "temple",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BLACKIRON_MACE"
+  ],
+  "faction": "cult",
+  "id": "skeleton_ashen",
+  "kind": "SKELETON",
+  "name": "ashen skeleton",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [
+   "BONE_MACE",
+   "BONE_SPEAR",
+   "BONE_SWORD"
+  ],
+  "faction": "cult",
+  "id": "skeleton_brute",
+  "kind": "SKELETON",
+  "name": "brute skeleton",
+  "theme": "crypt",
+  "tier": "champion"
+ },
+ {
+  "equipment": [
+   "BLACKIRON_AXE"
+  ],
+  "faction": "cult",
+  "id": "skeleton_feral",
+  "kind": "SKELETON",
+  "name": "feral skeleton",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "skeleton_gaunt",
+  "kind": "SKELETON",
+  "name": "gaunt skeleton",
+  "theme": "crypt",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BLACKIRON_TRIDENT",
+   "BONE_AXE"
+  ],
+  "faction": "cult",
+  "id": "skeleton_grim",
+  "kind": "SKELETON",
+  "name": "grim skeleton",
+  "theme": "crypt",
+  "tier": "elite"
+ },
+ {
+  "equipment": [
+   "BLACKIRON_SWORD"
+  ],
+  "faction": "cult",
+  "id": "skeleton_hollow",
+  "kind": "SKELETON",
+  "name": "hollow skeleton",
+  "theme": "crypt",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "skeleton_rusty",
+  "kind": "SKELETON",
+  "name": "rusty skeleton",
+  "theme": "crypt",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [
+   "BONE_AXE",
+   "BONE_MACE"
+  ],
+  "faction": "cult",
+  "id": "skeleton_swift",
+  "kind": "SKELETON",
+  "name": "swift skeleton",
+  "theme": "crypt",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_ashen",
+  "kind": "SLIME",
+  "name": "ashen slime",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_brute",
+  "kind": "SLIME",
+  "name": "brute slime",
+  "theme": "sewer",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_feral",
+  "kind": "SLIME",
+  "name": "feral slime",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_gaunt",
+  "kind": "SLIME",
+  "name": "gaunt slime",
+  "theme": "sewer",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_grim",
+  "kind": "SLIME",
+  "name": "grim slime",
+  "theme": "sewer",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_hollow",
+  "kind": "SLIME",
+  "name": "hollow slime",
+  "theme": "sewer",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_rusty",
+  "kind": "SLIME",
+  "name": "rusty slime",
+  "theme": "sewer",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "cult",
+  "id": "slime_swift",
+  "kind": "SLIME",
+  "name": "swift slime",
+  "theme": "sewer",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_ashen",
+  "kind": "SPIDER",
+  "name": "ashen spider",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_brute",
+  "kind": "SPIDER",
+  "name": "brute spider",
+  "theme": "cave",
+  "tier": "champion"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_feral",
+  "kind": "SPIDER",
+  "name": "feral spider",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_gaunt",
+  "kind": "SPIDER",
+  "name": "gaunt spider",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_grim",
+  "kind": "SPIDER",
+  "name": "grim spider",
+  "theme": "cave",
+  "tier": "elite"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_hollow",
+  "kind": "SPIDER",
+  "name": "hollow spider",
+  "theme": "cave",
+  "tier": "regular"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_rusty",
+  "kind": "SPIDER",
+  "name": "rusty spider",
+  "theme": "cave",
+  "tier": "fodder"
+ },
+ {
+  "equipment": [],
+  "faction": "warren",
+  "id": "spider_swift",
+  "kind": "SPIDER",
+  "name": "swift spider",
+  "theme": "cave",
+  "tier": "elite"
+ }
+]

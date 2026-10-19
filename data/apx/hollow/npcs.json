@@ -1,0 +1,156 @@
+[
+ {
+  "faction": "caravan",
+  "id": "npc_alchemist",
+  "kind": "HUMAN",
+  "name": "Mirel the alchemist",
+  "role": "alchemist",
+  "talk_rows": [
+   "h005",
+   "h006"
+  ]
+ },
+ {
+  "faction": "caravan",
+  "id": "npc_caravan_master",
+  "kind": "HUMAN",
+  "name": "Mother Vey",
+  "role": "caravan_master",
+  "talk_rows": [
+   "h021",
+   "h022"
+  ]
+ },
+ {
+  "faction": "cult",
+  "id": "npc_cultist_defector",
+  "kind": "HUMAN",
+  "name": "Sister Ilse",
+  "role": "cultist_defector",
+  "talk_rows": [
+   "h013",
+   "h014"
+  ]
+ },
+ {
+  "faction": "garrison",
+  "id": "npc_deserter",
+  "kind": "HUMAN",
+  "name": "Fenn the deserter",
+  "role": "deserter",
+  "talk_rows": [
+   "h011",
+   "h012"
+  ]
+ },
+ {
+  "faction": "cult",
+  "id": "npc_ghost",
+  "kind": "REVENANT_SKULL",
+  "name": "the drowned choirmaster",
+  "role": "ghost",
+  "talk_rows": [
+   "h019",
+   "h020"
+  ]
+ },
+ {
+  "faction": "warren",
+  "id": "npc_goblin_envoy",
+  "kind": "GOBLIN",
+  "name": "Grik the envoy",
+  "role": "goblin_envoy",
+  "talk_rows": [
+   "h015",
+   "h016"
+  ]
+ },
+ {
+  "faction": "garrison",
+  "id": "npc_guard_a",
+  "kind": "HUMAN",
+  "name": "Corporal Ames",
+  "role": "guard_a",
+  "talk_rows": [
+   "h023",
+   "h024"
+  ]
+ },
+ {
+  "faction": "garrison",
+  "id": "npc_guard_b",
+  "kind": "HUMAN",
+  "name": "Private Dunne",
+  "role": "guard_b",
+  "talk_rows": [
+   "h025",
+   "h026"
+  ]
+ },
+ {
+  "faction": "caravan",
+  "id": "npc_hermit",
+  "kind": "HUMAN",
+  "name": "old Haskel",
+  "role": "hermit",
+  "talk_rows": [
+   "h017",
+   "h018"
+  ]
+ },
+ {
+  "faction": "caravan",
+  "id": "npc_merchant",
+  "kind": "HUMAN",
+  "name": "Odda the trader",
+  "role": "merchant",
+  "talk_rows": [
+   "h001",
+   "h002"
+  ]
+ },
+ {
+  "faction": "garrison",
+  "id": "npc_prisoner",
+  "kind": "HUMAN",
+  "name": "Cass the prisoner",
+  "role": "prisoner",
+  "talk_rows": [
+   "h009",
+   "h010"
+  ]
+ },
+ {
+  "faction": "caravan",
+  "id": "npc_scholar",
+  "kind": "HUMAN",
+  "name": "Tolly the scholar",
+  "role": "scholar",
+  "talk_rows": [
+   "h007",
+   "h008"
+  ]
+ },
+ {
+  "faction": "garrison",
+  "id": "npc_smith",
+  "kind": "HUMAN",
+  "name": "Brann the smith",
+  "role": "smith",
+  "talk_rows": [
+   "h003",
+   "h004"
+  ]
+ },
+ {
+  "faction": "garrison",
+  "id": "npc_warden_prewar",
+  "kind": "HUMAN",
+  "name": "Warden Orsk (before)",
+  "role": "warden_prewar",
+  "talk_rows": [
+   "h027",
+   "h028"
+  ]
+ }
+]

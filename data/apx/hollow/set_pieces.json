@@ -1,0 +1,146 @@
+[
+ {
+  "id": "sp_camp_fire",
+  "level": "surface",
+  "note": "the caravan camp at the surface; the delivery quest ends here",
+  "parts": [
+   "campfire",
+   "tent",
+   "crate"
+  ],
+  "room_kind": "special-haven-shrine",
+  "station": ""
+ },
+ {
+  "id": "sp_caves_vent_forge",
+  "level": "caves",
+  "note": "crafting depth caves: the vent-forge; the vent cools to basalt",
+  "parts": [
+   "anvil",
+   "rubble",
+   "brazier"
+  ],
+  "room_kind": "cave-lava-vent",
+  "station": "vent_forge"
+ },
+ {
+  "id": "sp_f1_anvil",
+  "level": "floor1",
+  "note": "crafting depth 1: the garrison anvil (gameplay/20 2.1)",
+  "parts": [
+   "anvil",
+   "rack",
+   "brazier",
+   "barrel"
+  ],
+  "room_kind": "fortress-armory-hall",
+  "station": "anvil"
+ },
+ {
+  "id": "sp_f1_cells",
+  "level": "floor1",
+  "note": "the cells where Cass is held (rescue quest)",
+  "parts": [
+   "bed",
+   "chains",
+   "bench"
+  ],
+  "room_kind": "fortress-barracks",
+  "station": ""
+ },
+ {
+  "id": "sp_f1_plaque",
+  "level": "floor1",
+  "note": "the plaque that names the director (play probe)",
+  "parts": [
+   "plaque",
+   "statue"
+  ],
+  "room_kind": "special-nexus-stairhub",
+  "station": ""
+ },
+ {
+  "id": "sp_f2_crucible",
+  "level": "floor2",
+  "note": "crafting depth 2: crucible and bench (gameplay/20 2.1)",
+  "parts": [
+   "altar",
+   "brazier",
+   "shelf"
+  ],
+  "room_kind": "temple-nave",
+  "station": "crucible"
+ },
+ {
+  "id": "sp_f2_sump_wall",
+  "level": "floor2",
+  "note": "the cult room beside the sump wall; breaking it floods the room",
+  "parts": [
+   "rubble",
+   "urn",
+   "chalk_circle"
+  ],
+  "room_kind": "temple-courtyard",
+  "station": ""
+ },
+ {
+  "id": "sp_f3_sluice",
+  "level": "floor3",
+  "note": "the flooded sump drains once a sluice is built (flood quest)",
+  "parts": [
+   "crate",
+   "barrel",
+   "pipes"
+  ],
+  "room_kind": "sewer-cistern",
+  "station": "sluice"
+ },
+ {
+  "id": "sp_f3_transmuter",
+  "level": "floor3",
+  "note": "crafting depth 3: the transmuter (gameplay/20 2.1)",
+  "parts": [
+   "altar",
+   "candle",
+   "book"
+  ],
+  "room_kind": "crypt-tomb-chamber",
+  "station": "transmuter"
+ },
+ {
+  "id": "sp_f4_envoy",
+  "level": "floor4",
+  "note": "the goblin envoy's court (beast quest)",
+  "parts": [
+   "table",
+   "bench",
+   "map_scroll"
+  ],
+  "room_kind": "special-stronghold-hall",
+  "station": ""
+ },
+ {
+  "id": "sp_f4_fungus",
+  "level": "floor4",
+  "note": "fungus that spreads in the mine (living world, 18)",
+  "parts": [
+   "mushrooms",
+   "ore_pile",
+   "pickaxe"
+  ],
+  "room_kind": "mine-ore-cavern",
+  "station": ""
+ },
+ {
+  "id": "sp_ruin_rod",
+  "level": "surface",
+  "note": "the ruin's iron rod: storms strike it (rod built later, BF7)",
+  "parts": [
+   "pillar",
+   "rubble",
+   "plaque"
+  ],
+  "room_kind": "special-nexus-stairhub",
+  "station": ""
+ }
+]

@@ -1,0 +1,50 @@
+[
+ {
+  "id": "t01",
+  "text": "In {year} the {faction} dug into the {place} and found {thing}."
+ },
+ {
+  "id": "t02",
+  "text": "{npc} sealed the {place} in {year}; the key was never named."
+ },
+ {
+  "id": "t03",
+  "text": "The {place} flooded in {year}; the {faction} blamed {npc}."
+ },
+ {
+  "id": "t04",
+  "text": "{thing} left the {place} in {year} and was not seen again."
+ },
+ {
+  "id": "t05",
+  "text": "Fire took the {place} in {year}; only {thing} survived."
+ },
+ {
+  "id": "t06",
+  "text": "{npc} wrote that the {faction} feared {thing} below the {place}."
+ },
+ {
+  "id": "t07",
+  "text": "In {year} the {faction} and {npc} traded {thing} at the {place}."
+ },
+ {
+  "id": "t08",
+  "text": "The {place} fell silent in {year}; {npc} warned of {thing}."
+ },
+ {
+  "id": "t09",
+  "text": "Rats took the {place} in {year}; the {faction} burned {thing}."
+ },
+ {
+  "id": "t10",
+  "text": "{npc} mapped the {place} in {year} and hid {thing} there."
+ },
+ {
+  "id": "t11",
+  "text": "The {faction} swore off {thing} in {year}."
+ },
+ {
+  "id": "t12",
+  "text": "After {year} only {npc} entered the {place}, and took {thing}."
+ }
+]

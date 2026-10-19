@@ -1,0 +1,187 @@
+[
+ {
+  "id": "element_acid",
+  "name": "acid",
+  "pick": "element"
+ },
+ {
+  "id": "element_fire",
+  "name": "fire",
+  "pick": "element"
+ },
+ {
+  "id": "element_ice",
+  "name": "ice",
+  "pick": "element"
+ },
+ {
+  "id": "element_iron",
+  "name": "iron",
+  "pick": "element"
+ },
+ {
+  "id": "element_life",
+  "name": "life",
+  "pick": "element"
+ },
+ {
+  "id": "element_light",
+  "name": "light",
+  "pick": "element"
+ },
+ {
+  "id": "element_lightning",
+  "name": "lightning",
+  "pick": "element"
+ },
+ {
+  "id": "element_shadow",
+  "name": "shadow",
+  "pick": "element"
+ },
+ {
+  "id": "element_stone",
+  "name": "stone",
+  "pick": "element"
+ },
+ {
+  "id": "element_void",
+  "name": "void",
+  "pick": "element"
+ },
+ {
+  "id": "modifier_anchored",
+  "name": "anchored",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_chain2",
+  "name": "chain2",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_echo",
+  "name": "echo",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_inverted",
+  "name": "inverted",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_none",
+  "name": "none",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_silent",
+  "name": "silent",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_timer",
+  "name": "timer",
+  "pick": "modifier"
+ },
+ {
+  "id": "modifier_trigger_on_hit",
+  "name": "trigger on hit",
+  "pick": "modifier"
+ },
+ {
+  "id": "shape_cone",
+  "name": "cone",
+  "pick": "shape"
+ },
+ {
+  "id": "shape_line",
+  "name": "line",
+  "pick": "shape"
+ },
+ {
+  "id": "shape_plane",
+  "name": "plane",
+  "pick": "shape"
+ },
+ {
+  "id": "shape_point",
+  "name": "point",
+  "pick": "shape"
+ },
+ {
+  "id": "shape_ring",
+  "name": "ring",
+  "pick": "shape"
+ },
+ {
+  "id": "shape_sphere",
+  "name": "sphere",
+  "pick": "shape"
+ },
+ {
+  "id": "shape_trail",
+  "name": "trail",
+  "pick": "shape"
+ },
+ {
+  "id": "verb_beam",
+  "name": "beam",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_bind",
+  "name": "bind",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_bolt",
+  "name": "bolt",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_burst",
+  "name": "burst",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_lift",
+  "name": "lift",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_mend",
+  "name": "mend",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_pit",
+  "name": "pit",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_pull",
+  "name": "pull",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_sense",
+  "name": "sense",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_veil",
+  "name": "veil",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_wall",
+  "name": "wall",
+  "pick": "verb"
+ },
+ {
+  "id": "verb_ward",
+  "name": "ward",
+  "pick": "verb"
+ }
+]

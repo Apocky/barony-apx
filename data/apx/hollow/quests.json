@@ -1,0 +1,176 @@
+[
+ {
+  "giver": "npc_goblin_envoy",
+  "id": "q_beast",
+  "kind": "beast",
+  "reward": "TOOL_PICKAXE",
+  "steps": [
+   {
+    "args": [
+     "cave_matriarch"
+    ],
+    "pred": "fled"
+   },
+   {
+    "args": [
+     "npc_goblin_envoy",
+     "matriarch"
+    ],
+    "pred": "talked"
+   }
+  ],
+  "text": "Grik wants the Matriarch driven off, not killed."
+ },
+ {
+  "giver": "npc_scholar",
+  "id": "q_chronicle",
+  "kind": "chronicle",
+  "reward": "SPELLBOOK_LIGHT",
+  "steps": [
+   {
+    "args": [
+     "h001",
+     "h002",
+     "h003",
+     "h004",
+     "h005"
+    ],
+    "pred": "read"
+   }
+  ],
+  "text": "Tolly pays for five true pages of the Hollow's history."
+ },
+ {
+  "giver": "npc_alchemist",
+  "id": "q_cure",
+  "kind": "cure",
+  "reward": "POTION_EXTRAHEALING",
+  "steps": [
+   {
+    "args": [
+     "POTION_CUREAILMENT",
+     "1"
+    ],
+    "pred": "has_item"
+   },
+   {
+    "args": [
+     "npc_alchemist",
+     "cure"
+    ],
+    "pred": "talked"
+   }
+  ],
+  "text": "Mirel needs a brewed cure for the fever in the camp."
+ },
+ {
+  "giver": "npc_merchant",
+  "id": "q_delivery",
+  "kind": "delivery",
+  "reward": "TOOL_LANTERN",
+  "steps": [
+   {
+    "args": [
+     "FOOD_BREAD",
+     "3"
+    ],
+    "pred": "has_item"
+   },
+   {
+    "args": [
+     "npc_caravan_master",
+     "FOOD_BREAD"
+    ],
+    "pred": "gave"
+   }
+  ],
+  "text": "Odda wants three loaves carried to the caravan camp."
+ },
+ {
+  "giver": "npc_scholar",
+  "id": "q_flood",
+  "kind": "flood",
+  "reward": "SCROLL_MAGICMAPPING",
+  "steps": [
+   {
+    "args": [
+     "sluice"
+    ],
+    "pred": "built"
+   },
+   {
+    "args": [
+     "sewer-cistern",
+     "1"
+    ],
+    "pred": "water_below"
+   }
+  ],
+  "text": "Tolly wants the sump drained so the old plaques can be read."
+ },
+ {
+  "giver": "npc_smith",
+  "id": "q_key",
+  "kind": "key",
+  "reward": "TOOL_SKELETONKEY",
+  "steps": [
+   {
+    "args": [
+     "vault_key_found"
+    ],
+    "pred": "flag"
+   },
+   {
+    "args": [
+     "npc_smith",
+     "TOOL_SKELETONKEY"
+    ],
+    "pred": "gave"
+   }
+  ],
+  "text": "Brann lost the vault key somewhere on the second floor."
+ },
+ {
+  "giver": "npc_prisoner",
+  "id": "q_rescue",
+  "kind": "rescue",
+  "reward": "FOOD_RATION",
+  "steps": [
+   {
+    "args": [
+     "special-stronghold-hall"
+    ],
+    "pred": "in_room"
+   },
+   {
+    "args": [
+     "prisoner_freed"
+    ],
+    "pred": "flag"
+   }
+  ],
+  "text": "Cass is held in the garrison cells; walk her out."
+ },
+ {
+  "giver": "npc_hermit",
+  "id": "q_wall",
+  "kind": "wall",
+  "reward": "FOOD_RATION_HERBAL",
+  "steps": [
+   {
+    "args": [
+     "stone_wall"
+    ],
+    "pred": "built"
+   },
+   {
+    "args": [
+     "npc_hermit",
+     "wall"
+    ],
+    "pred": "talked"
+   }
+  ],
+  "text": "Haskel asks for a wall to keep the warren out of his grotto."
+ }
+]

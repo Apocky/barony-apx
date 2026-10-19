@@ -1,0 +1,169 @@
+[
+ {
+  "buy_pct": 33,
+  "buys": "alchemist",
+  "floor": 2,
+  "id": "shop_alchemist",
+  "npc": "npc_alchemist",
+  "purse_gold": 250,
+  "sells": [
+   {
+    "kind": "reagent",
+    "ref": "stub:F7:salt_rock"
+   },
+   {
+    "kind": "reagent",
+    "ref": "stub:F7:herb_bitterleaf"
+   },
+   {
+    "kind": "reagent",
+    "ref": "stub:F7:fungus_glowcap"
+   },
+   {
+    "kind": "service",
+    "ref": "healing"
+   },
+   {
+    "kind": "service",
+    "ref": "cure_curse"
+   },
+   {
+    "kind": "provision",
+    "ref": "FOOD_APPLE"
+   }
+  ],
+  "trade": "alchemist"
+ },
+ {
+  "buy_pct": 25,
+  "buys": "fence",
+  "floor": 3,
+  "id": "shop_fence",
+  "npc": "npc_caravan_master",
+  "purse_gold": 400,
+  "sells": [
+   {
+    "kind": "material",
+    "ref": "GEM_ROCK"
+   },
+   {
+    "kind": "component",
+    "ref": "stub:F6:setting_plain"
+   },
+   {
+    "kind": "service",
+    "ref": "appraisal"
+   },
+   {
+    "kind": "service",
+    "ref": "rumours"
+   }
+  ],
+  "trade": "fence"
+ },
+ {
+  "buy_pct": 33,
+  "buys": "provisioner",
+  "floor": 4,
+  "id": "shop_provisioner",
+  "npc": "npc_merchant",
+  "purse_gold": 200,
+  "sells": [
+   {
+    "kind": "provision",
+    "ref": "FOOD_BREAD"
+   },
+   {
+    "kind": "provision",
+    "ref": "FOOD_RATION"
+   },
+   {
+    "kind": "provision",
+    "ref": "TOOL_TORCH"
+   },
+   {
+    "kind": "provision",
+    "ref": "TOOL_LANTERN"
+   },
+   {
+    "kind": "service",
+    "ref": "follower_hire"
+   },
+   {
+    "kind": "service",
+    "ref": "healing"
+   }
+  ],
+  "trade": "provisioner"
+ },
+ {
+  "buy_pct": 33,
+  "buys": "scribe",
+  "floor": 3,
+  "id": "shop_scribe",
+  "npc": "npc_scholar",
+  "purse_gold": 200,
+  "sells": [
+   {
+    "kind": "material",
+    "ref": "stub:F6:vellum"
+   },
+   {
+    "kind": "component",
+    "ref": "stub:F6:inscription_plain"
+   },
+   {
+    "kind": "service",
+    "ref": "maps"
+   },
+   {
+    "kind": "service",
+    "ref": "rumours"
+   },
+   {
+    "kind": "service",
+    "ref": "appraisal"
+   },
+   {
+    "kind": "provision",
+    "ref": "TOOL_TORCH"
+   }
+  ],
+  "trade": "scribe"
+ },
+ {
+  "buy_pct": 33,
+  "buys": "smith",
+  "floor": 1,
+  "id": "shop_smith",
+  "npc": "npc_smith",
+  "purse_gold": 300,
+  "sells": [
+   {
+    "kind": "material",
+    "ref": "stub:F6:iron_ingot"
+   },
+   {
+    "kind": "material",
+    "ref": "stub:F6:bronze_ingot"
+   },
+   {
+    "kind": "component",
+    "ref": "stub:F6:blade_plain"
+   },
+   {
+    "kind": "component",
+    "ref": "stub:F6:grip_plain"
+   },
+   {
+    "kind": "service",
+    "ref": "repair"
+   },
+   {
+    "kind": "service",
+    "ref": "appraisal"
+   }
+  ],
+  "trade": "smith"
+ }
+]

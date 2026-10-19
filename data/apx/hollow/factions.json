@@ -1,0 +1,46 @@
+[
+ {
+  "id": "caravan",
+  "name": "Lantern Caravan",
+  "seat_room_kind": "special-haven-shrine",
+  "stance": {
+   "caravan": 2,
+   "cult": 1,
+   "garrison": 1,
+   "warren": 1
+  }
+ },
+ {
+  "id": "cult",
+  "name": "Hollow Choir",
+  "seat_room_kind": "temple-rotunda",
+  "stance": {
+   "caravan": 1,
+   "cult": 2,
+   "garrison": -2,
+   "warren": -1
+  }
+ },
+ {
+  "id": "garrison",
+  "name": "Warden's Garrison",
+  "seat_room_kind": "special-stronghold-hall",
+  "stance": {
+   "caravan": 1,
+   "cult": -2,
+   "garrison": 2,
+   "warren": -1
+  }
+ },
+ {
+  "id": "warren",
+  "name": "Deep Warren",
+  "seat_room_kind": "mine-ore-cavern",
+  "stance": {
+   "caravan": 1,
+   "cult": -1,
+   "garrison": -1,
+   "warren": 2
+  }
+ }
+]
