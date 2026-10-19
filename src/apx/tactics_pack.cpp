@@ -472,17 +472,27 @@ namespace tactics
 			if ( hypot(wx - my->x, wy - my->y) <= 6.0 ) { ++s.routeAt; continue; }
 			if ( keepOutOf )
 			{
-				// routes are planned round the reach zone (penaliseZone); a waypoint still inside it (a narrow way) is
-				// never walked into from outside: the creature takes the next one. From inside (a retreat starts in the
-				// fight) the planned way out is followed as it is.
+				// routes are planned round the reach zone (penaliseZone); a waypoint still inside it (a narrow way, or a
+				// goal tile whose centre lies inside: s10-1 route B ended on tile 19,10, centre 32 units out) is not
+				// walked into from outside: the creature takes the next one. From inside (a retreat starts in the fight)
+				// the planned way out is followed as it is. No arc round the zone here: the arc steered at a waypoint's
+				// bearing at the creature's own radius, parked every failed flank of s10-1 at 51.6 units and dithered at
+				// the zone's edge (flank uid 4975 at 33.5 units).
 				double keepR = keepOut(bodyR(keepOutOf));
 				bool meIn = hypot(my->x - keepOutOf->x, my->y - keepOutOf->y) < keepR - 1;
-				if ( !meIn && hypot(wx - keepOutOf->x, wy - keepOutOf->y) < keepR - 1 && s.routeAt + 1 < s.route.size() ) { ++s.routeAt; continue; }
-				if ( !meIn ) { routeAround(keepOutOf, my, wx, wy, false); }
+				if ( !meIn && hypot(wx - keepOutOf->x, wy - keepOutOf->y) < keepR - 1 ) { ++s.routeAt; continue; }
 			}
 			return moveTo(my, s, wx, wy, speed, dist2);
 		}
-		if ( keepOutOf && hypot(my->x - keepOutOf->x, my->y - keepOutOf->y) >= keepOut(bodyR(keepOutOf)) - 1 ) { routeAround(keepOutOf, my, fx, fy, false); }
+		if ( keepOutOf ) // the final point is never inside the zone
+		{
+			double keepR = keepOut(bodyR(keepOutOf));
+			if ( hypot(fx - keepOutOf->x, fy - keepOutOf->y) < keepR )
+			{
+				double a = atan2(fy - keepOutOf->y, fx - keepOutOf->x);
+				fx = keepOutOf->x + cos(a) * (keepR + HOLD_EPS + 1); fy = keepOutOf->y + sin(a) * (keepR + HOLD_EPS + 1);
+			}
+		}
 		return moveTo(my, s, fx, fy, speed, dist2);
 	}
 
@@ -538,6 +548,7 @@ namespace tactics
 				s.routeAt = 0;
 				s.routeKind = ROUTE_HOME;
 			}
+			s.goalX = s.homeX; s.goalY = s.homeY;
 			if ( !followRoute(my, s, speed, dist2, s.homeX, s.homeY, target) ) { stand(my, target, speed); }
 			else { s.faceMove = true; }
 			return true;
@@ -550,7 +561,12 @@ namespace tactics
 		if ( K.packs && s.flank == 1 && s.routeKind == ROUTE_FLANK )
 		{
 			double bx = target->x + 2.5 * TILE * cos(target->yaw + PI), by = target->y + 2.5 * TILE * sin(target->yaw + PI);
-			if ( !followRoute(my, s, speed, dist2, bx, by, target) ) { stand(my, target, speed); }
+			s.goalX = bx; s.goalY = by;
+			if ( !followRoute(my, s, speed, dist2, bx, by, target) )
+			{
+				stand(my, target, speed);
+				if ( hypot(bx - my->x, by - my->y) > HOLD_EPS + 1 ) { ++C.flank_park; }
+			}
 			s.faceTarget = d < 3 * TILE;
 			return true;
 		}

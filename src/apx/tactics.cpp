@@ -294,6 +294,14 @@ namespace tactics
 				++C.route_around;
 				return;
 			}
+			if ( hypot(gx - target->x, gy - target->y) < keepR )
+			{
+				double aIn = atan2(gy - target->y, gx - target->x);
+				gx = target->x + cos(aIn) * (keepR + HOLD_EPS + 1); gy = target->y + sin(aIn) * (keepR + HOLD_EPS + 1);
+				aG = aIn;
+				dA = remainder(aG - aMe, 2 * PI);
+				++C.goal_moved_out;
+			}
 			double sx = gx - my->x, sy = gy - my->y, L2 = sx * sx + sy * sy;
 			double t = L2 > 0 ? std::max(0.0, std::min(1.0, ((target->x - my->x) * sx + (target->y - my->y) * sy) / L2)) : 0;
 			if ( hypot(my->x + t * sx - target->x, my->y + t * sy - target->y) >= keepR ) { return; }

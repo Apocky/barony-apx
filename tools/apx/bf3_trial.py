@@ -218,13 +218,15 @@ def gates(by, base, args):
     mon = [m for m in base["morale"] if m.get("arm_kind") == "morale_on"]
     moff = [m for m in base["morale"] if m.get("arm_kind") == "morale_off_control"]
     if mon and moff:
-        # a retreat must move: every member breaks within 3 s AND the pack's mean distance grows by 1.5 tiles (a
-        # skeleton walks about 5 tiles in 3 s) AND every member gets home (home_moved counts the ones that gave up
-        # after 20 s). The stance alone passed while the members stood at the keep-out edge (s3-grid, s5-route).
+        # a retreat must arrive: every member breaks within 3 s AND every member is home (within 2 tiles of it, or
+        # regrouping) 5 s after the kill AND none gave up after 20 s (home_moved). The stance alone passed while the
+        # members stood at the keep-out edge (s3-grid, s5-route); how far home lies from the fight is the scenario's,
+        # so the distance gain is reported, not gated (s10: a home 4-5 tiles out allows about +20 units).
         gain = [round(m["dist_at_3s"] - m["dist_at_kill"], 1) for m in mon]
-        g["morale_retreat"] = {"pass": all(m["retreating_at_3s"] == m["members_at_kill"] and m["dist_at_3s"] - m["dist_at_kill"] >= 24
-                                           and m["home_moved"] == 0 and m["first_regroup_s"] > 0 for m in mon)
+        g["morale_retreat"] = {"pass": all(m["retreating_at_3s"] == m["members_at_kill"] and m.get("home_at_5s", -1) == m["members_at_kill"]
+                                           and m["home_moved"] == 0 for m in mon)
                                and all(m["retreating_at_3s"] == 0 for m in moff),
+                               "home_at_5s": [f'{m.get("home_at_5s", -1)}/{m["members_at_kill"]}' for m in mon],
                                "retreating_at_3s": [f'{m["retreating_at_3s"]}/{m["members_at_kill"]}' for m in mon],
                                "dist_gain_3s": gain, "home_moved": [m["home_moved"] for m in mon],
                                "first_regroup_s": [m["first_regroup_s"] for m in mon],

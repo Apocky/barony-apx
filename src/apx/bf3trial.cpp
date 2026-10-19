@@ -52,6 +52,7 @@ namespace bf3
 	static Uint32 killTick = 0, firstRegroup = 0;
 	static double distAtKill = 0, distAt3s = 0;
 	static int retreatAt3s = 0, shouldRetreatAt3s = 0, membersAtKill = 0;
+	static int homeAt5s = -1; // members home (within 2 tiles of it, or regrouping) 5 s after the kill
 	static long long inKeys = 0, inButtons = 0, inMotion = 0, inOther = 0;
 	// calls for help (BF3-6b): pack B idles out of sight of pack A; pack A's leader is "hit" by the test character
 	static int helpTest = 1, helpArm = 0, hsX = -1, hsY = -1, hsBfs = -1;
@@ -640,7 +641,7 @@ namespace bf3
 			.i("holder_false_arrive", A.holderFalseArrive)
 			.i("flank_fail_target", C.flank_fail_target).i("flank_fail_progress", C.flank_fail_progress).i("flank_fail_time", C.flank_fail_time)
 			.i("flank_fail_nogoal", C.flank_fail_nogoal).i("flank_fail_noroute", C.flank_fail_noroute)
-			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit)
+			.i("route_blocked_replans", C.route_blocked_replans).i("breakables_hit", C.breakables_hit).i("goal_moved_out", C.goal_moved_out).i("flank_park", C.flank_park)
 			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
 			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
 			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)
@@ -688,7 +689,7 @@ namespace bf3
 		commonFields(r);
 		r.str("trial", "bf3-morale").str("arm_kind", moraleArm == 0 ? "morale_on" : "morale_off_control").str("knobs", knobString())
 			.str("kind", kindName).i("members_at_kill", membersAtKill).i("retreating_at_3s", retreatAt3s)
-			.i("should_retreat_at_3s", shouldRetreatAt3s).d("dist_at_kill", distAtKill).d("dist_at_3s", distAt3s)
+			.i("should_retreat_at_3s", shouldRetreatAt3s).d("dist_at_kill", distAtKill).d("dist_at_3s", distAt3s).i("home_at_5s", homeAt5s)
 			.i("retreats", C.retreats).i("morale_breaks", C.morale_breaks).i("regroups", C.regroups)
 			.d("first_regroup_s", firstRegroup ? (firstRegroup - killTick) / (double)TICKS_PER_SECOND : -1)
 			.i("home_moved", C.home_moved).i("surrenders", C.surrenders_offered).i("morale_events", C.morale_events)
@@ -1012,6 +1013,7 @@ namespace bf3
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
 				spawnPacks(pe, packSize, packSize, false, 3 * packSize);
 				firstRegroup = 0;
+				homeAt5s = -1;
 				go(P_M_SETTLE);
 				break;
 			case P_M_SETTLE:
@@ -1058,6 +1060,17 @@ namespace bf3
 						if ( c->shouldRetreat(*c->getStats()) ) { ++shouldRetreatAt3s; }
 					}
 					distAt3s = meanDist(pe);
+				}
+				if ( ticks - killTick == 5 * TICKS_PER_SECOND )
+				{
+					homeAt5s = 0;
+					for ( Uint32 u : trialUids )
+					{
+						Entity* c = uidToEntity(u);
+						if ( u == leaderUid || !c || !c->getStats() || c->getStats()->HP <= 0 ) { continue; }
+						tactics::TacticsState* ms = tactics::find(c);
+						if ( ms && (ms->stance == tactics::STANCE_REGROUP || hypot(ms->homeX - c->x, ms->homeY - c->y) <= 2 * 16.0) ) { ++homeAt5s; }
+					}
 				}
 				if ( !firstRegroup && tactics::C.regroups > 0 ) { firstRegroup = ticks; }
 				if ( ticks - killTick >= 45 * TICKS_PER_SECOND )
