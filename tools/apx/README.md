@@ -239,5 +239,8 @@ Card: Apockalypsis handovers/tasks/BF6-parts-gear-card.md. Plan and stop rules: 
   salvages by parts. Controls: APX_PARTS=0, APX_IP_CAP=0, APX_SAVE_STRIP=1, APX_NET_STRIP=1,
   APX_SALVAGE_SYMMETRIC=1. Counters in the probe rows.
 - Batched launch (T3): `python tools/apx/gate_f6.py --exe <frozen barony.exe>` (save, net, controls, vanilla).
-- Not in this pass: part visuals (BF6-5), the Formbook, keep-one-part at the station (needs BU1), DROP/EQUI
-  and shop/chest sync blobs (CITM, shop inventory) - the server holds the truth for those paths.
+- Slice 2: DROP, USEI (use/equip), EQUI/EQUS/EQUM and all chest packets (CITM, RCIT) carry the blob;
+  the Formbook (break teaches a Form, mastered at 5; saved in the sidecar; FBOK to the server); keep-one-part
+  salvage for the BU1 bench (src/apx/parts_bench.cpp registers with src/apx_bench_api.hpp when present); palette
+  tint on the held weapon (materials.json "tint", Entity::lightBonus; APX_PARTS_VIS=0 off). Not yet: crafting
+  (next slice), shop sync (shops sell materials per D73), part models (BF6-5, D79 voxel tool).

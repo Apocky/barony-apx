@@ -83,7 +83,7 @@ def run_save(name, exe, out, env_extra, args):
     d = out / "runs" / f"{stamp}-{name}"
     d.mkdir(parents=True)
     rows = d / "probe.jsonl"
-    env = {"APX_BF6_PROBE": "save", "APX_BF6_OUT": str(rows)}
+    env = {"APX_BF6_PROBE": "save,salvage", "APX_BF6_OUT": str(rows)}
     env.update(env_extra)
     lock = acquire(False, args.wait)
     t0 = time.monotonic()
@@ -97,15 +97,57 @@ def run_save(name, exe, out, env_extra, args):
     finally:
         lock.unlink(missing_ok=True)
     text = log_text(d)
-    probe = None
+    probe, salvage = None, None
     if rows.exists():
-        lines = [l for l in rows.read_text().splitlines() if l.strip()]
-        probe = json.loads(lines[-1]) if lines else None
+        for l in rows.read_text().splitlines():
+            if l.strip():
+                j = json.loads(l)
+                if j.get("probe") == "save":
+                    probe = j
+                elif j.get("probe") == "salvage":
+                    salvage = j
     gen = re.findall(r"successfully generated a dungeon with [^\n]*", text)
     sidecars = sorted(str(x) for x in d.rglob("*.apxparts"))
-    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe,
+    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage,
             "generated": gen[-1] if gen else None, "sidecars": sidecars, "run_dir": str(d),
             "data_line": (re.findall(r"apxparts: data [^\n]*", text) or [None])[-1]}
+
+
+def crop_mean(png):
+    """Mean RGB of the first-person blade column (x 60-70 %, y 45-85 % of the view; measured on the 1280x720 shots:
+    the wider 55-98 % box was diluted by background and popups, 2.9 % tinted vs 1.6 % untinted)."""
+    from PIL import Image
+    im = Image.open(png).convert("RGB")
+    w, h = im.size
+    box = im.crop((int(w * 0.60), int(h * 0.45), int(w * 0.70), int(h * 0.85)))
+    px = list(box.get_flattened_data()) if hasattr(box, "get_flattened_data") else list(box.getdata())
+    n = len(px) or 1
+    return [sum(c[i] for c in px) / n for i in range(3)]
+
+
+def run_visual(name, exe, out, env_extra, args):
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    d = out / "runs" / f"{stamp}-{name}"
+    d.mkdir(parents=True)
+    env = {"APX_BF6_PROBE": "visual", "APX_BF6_OUT": str(d / "probe.jsonl")}
+    env.update(env_extra)
+    lock = acquire(False, args.wait)
+    try:
+        p = launch(exe, d, ["-windowed", "-quickstart=barbarian", "-apxfloor=1", f"-apxmapseed={args.mapseed}"], env, args.datadir)
+        try:
+            code = p.wait(args.timeout)
+        except subprocess.TimeoutExpired:
+            pf.stop(p, pf.find_game_window(p.pid))
+            code = "timeout"
+    finally:
+        lock.unlink(missing_ok=True)
+    a, b = d / "visual-a.png", d / "visual-b.png"
+    row = {"name": name, "env": env_extra, "exit": code, "run_dir": str(d), "shots": [str(a), str(b)]}
+    if a.exists() and b.exists():
+        ma, mb = crop_mean(a), crop_mean(b)
+        row.update(mean_iron=[round(x, 1) for x in ma], mean_gold=[round(x, 1) for x in mb],
+                   distance_pct=round(100 * max(abs(x - y) for x, y in zip(ma, mb)) / 255, 2))
+    return row
 
 
 def run_net(name, exe, out, host_env, args):
@@ -122,7 +164,8 @@ def run_net(name, exe, out, host_env, args):
     try:
         procs["host"] = launch(exe, dirs["host"], ["-windowed", "-apxhost"], henv, args.datadir)
         pf.wait_for(dirs["host"] / "log.txt", re.compile(r"apxlobby: hosting"), time.monotonic() + 90, procs["host"])
-        procs["client"] = launch(exe, dirs["client"], ["-windowed", "-apxjoin=127.0.0.1"], {}, args.datadir)
+        procs["client"] = launch(exe, dirs["client"], ["-windowed", "-apxjoin=127.0.0.1"],
+                                 {"APX_BF6_PROBE": "netclient", "APX_BF6_OUT": str(dirs["client"] / "probe.jsonl")}, args.datadir)
         deadline = time.monotonic() + args.timeout
         pf.wait_for(dirs["host"] / "log.txt", re.compile(r"apxprobe: \{\"probe\":\"net\""), deadline, procs["host"])
         # the client logs one "net recv" per ITEM packet; stop once 40 arrived or the budget ends
@@ -131,8 +174,21 @@ def run_net(name, exe, out, host_env, args):
             if len(re.findall(r"apxparts: net recv ", log_text(dirs["client"]))) >= want:
                 break
             time.sleep(0.5)
+        # the client's half: break 3 (FBOK), drop 5 (DROP), equip 1 (EQUI), logged once its 40 items arrived
+        cl_rows = dirs["client"] / "probe.jsonl"
+        while time.monotonic() < deadline and not cl_rows.exists() and not host_env:  # controls: the client gets no parts, so no client half
+            time.sleep(0.5)
+        time.sleep(4)  # the packets the client just sent reach the host
         sent = re.findall(r"apxparts: net sent type (\d+) len (\d+) blob ([0-9a-f]+)", log_text(dirs["host"]))
         recv = re.findall(r"apxparts: net recv type (\d+) len (\d+) blob ([0-9a-f]+|none)", log_text(dirs["client"]))
+        c_sent = re.findall(r"apxparts: net sent type (\d+) len (\d+) blob ([0-9a-f]+)", log_text(dirs["client"]))
+        h_recv = re.findall(r"apxparts: net recv type (\d+) len (\d+) blob ([0-9a-f]+|none)", log_text(dirs["host"]))
+        fb_sent = re.findall(r"apxparts: formbook sent player \d+ forms \d+ hash ([0-9a-f]+)", log_text(dirs["client"]))
+        fb_recv = re.findall(r"apxparts: formbook recv player \d+ forms \d+ hash ([0-9a-f]+)", log_text(dirs["host"]))
+        hr = {(t, b) for t, _, b in h_recv}
+        row.update(client_sent=len(c_sent), client_sent_found_on_host=sum(1 for t, _, b in c_sent if (t, b) in hr),
+                   formbook_sent=fb_sent[-1] if fb_sent else None, formbook_recv=fb_recv[-1] if fb_recv else None,
+                   client_probe=(json.loads(cl_rows.read_text().splitlines()[-1]) if cl_rows.exists() else None))
         hp = [json.loads(l) for l in (dirs["host"] / "probe.jsonl").read_text().splitlines() if l.strip()] if (dirs["host"] / "probe.jsonl").exists() else []
         equal = sum(1 for s, r in zip(sent, recv) if s[0] == r[0] and s[2] == r[2])
         row.update(finish="ok", sent=len(sent), recv=len(recv), equal_blobs=equal, recv_none=sum(r[2] == "none" for r in recv),
@@ -155,7 +211,7 @@ def main():
     ap.add_argument("--mapseed", type=int, default=101)
     ap.add_argument("--timeout", type=float, default=150.0)
     ap.add_argument("--wait", type=float, default=7200.0)
-    ap.add_argument("--only", default="save,save-strip,save-vanilla,net,net-strip,net-vanilla")
+    ap.add_argument("--only", default="save,save-strip,save-vanilla,visual,visual-off,net,net-strip,net-vanilla")
     ap.add_argument("--all", action="store_true", help="do not stop at the first failing gate")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -178,6 +234,18 @@ def main():
         r = results["save"] = run_save("save", args.exe, args.out, {}, args)
         emit(r)
         p = r["probe"] or {}
+        if not gate("data loaded (parts on without APX_PARTS)", p.get("parts_on") == 1, f"parts_on {p.get('parts_on')} ({r.get('data_line')})"):  # a build without data/apx must not pass
+            return 1
+        if not gate("forced 6-part roll in the save", (p.get("six_parts") or 0) >= 1, f"six-part items {p.get('six_parts')}, max parts {p.get('max_parts')}"):
+            return 1
+        if not gate("Formbook: 5 breaks master a Form; survives save/load", p.get("broke") == 5 and p.get("blades_successes") == 5 and p.get("formbook_equal") == 1,
+                    f"broke {p.get('broke')}, successes {p.get('blades_successes')}, book {p.get('formbook_before')} -> {p.get('formbook_after')}"):
+            return 1
+        sv = r.get("salvage") or {}
+        if not gate("salvage live: station 10 + bench keep-part 10", sv.get("pass") is True,
+                    f"station {sv.get('station_ok')}/10, bench {sv.get('bench_ok')}/10, kept one part {sv.get('bench_kept_one_part')}, metal {sv.get('metal_scrap')}, "
+                    f"magic {sv.get('magic_scrap')}, aura gems {sv.get('aura_gems')} (counted {sv.get('aura_counted')})"):
+            return 1
         if not gate("S5 save round trip (parts on)", r["exit"] == 0 and p.get("pass") and p.get("parts_kept") == p.get("parts_items") and p.get("parts_items", 0) > 0 and r["sidecars"],
                     f"exit {r['exit']}, items {p.get('items_equal')}/{p.get('inventory_before')} equal, parts {p.get('parts_kept')}/{p.get('parts_items')}, "
                     f"six-part items {p.get('six_parts')}, max parts {p.get('max_parts')}, save_blob_dropped {p.get('save_blob_dropped')}, sidecars {len(r['sidecars'])}"):
@@ -197,11 +265,31 @@ def main():
         if not gate("P vanilla APX_PARTS=0 (no parts, no sidecar, same floor)", r["exit"] == 0 and p.get("with_parts") == 0 and not r["sidecars"] and same_floor,
                     f"exit {r['exit']}, with_parts {p.get('with_parts')}, sidecars {len(r['sidecars'])}, floor line equal {bool(same_floor)}: {r['generated']}"):
             return 1
+    if "visual" in only:
+        r = results["visual"] = run_visual("visual", args.exe, args.out, {}, args)
+        emit(r)
+        if not gate("V palette tint: iron vs gold blade differ (> 3 % of a channel; measured 6.2 vs 0.5 off)", (r.get("distance_pct") or 0) > 3,
+                    f"exit {r['exit']}, iron {r.get('mean_iron')}, gold {r.get('mean_gold')}, distance {r.get('distance_pct')} %"):
+            return 1
+    if "visual-off" in only:
+        r = results["visual-off"] = run_visual("visual-off", args.exe, args.out, {"APX_PARTS_VIS": "0"}, args)
+        emit(r)
+        if not gate("V control APX_PARTS_VIS=0: no tint (< 1.5 %)", r.get("distance_pct") is not None and r["distance_pct"] < 1.5,
+                    f"exit {r['exit']}, distance {r.get('distance_pct')} %"):
+            return 1
     if "net" in only:
         r = results["net"] = run_net("net", args.exe, args.out, {}, args)
         emit(r)
         if not gate("S5 host -> client parts (40 items)", r.get("finish") == "ok" and r.get("sent") == 40 and r.get("equal_blobs") == 40,
                     f"sent {r.get('sent')}, received {r.get('recv')}, equal {r.get('equal_blobs')}, lens {r.get('recv_lens')}, {r.get('error', '')}"):
+            return 1
+        cp = r.get("client_probe") or {}
+        if not gate("S5 client -> host parts (DROP x5, EQUI x1)", cp.get("dropped") == 5 and cp.get("equipped") == 1 and r.get("client_sent") == 6
+                    and r.get("client_sent_found_on_host") == 6,
+                    f"client sent {r.get('client_sent')} blobs, found on host {r.get('client_sent_found_on_host')}, probe {cp}"):
+            return 1
+        if not gate("Formbook client -> host (FBOK)", cp.get("broke") == 3 and r.get("formbook_sent") and r.get("formbook_sent") == r.get("formbook_recv"),
+                    f"broke {cp.get('broke')}, client hash {r.get('formbook_sent')}, host hash {r.get('formbook_recv')}"):
             return 1
     if "net-strip" in only:
         r = results["net-strip"] = run_net("net-strip", args.exe, args.out, {"APX_NET_STRIP": "1"}, args)

@@ -154,7 +154,13 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 		out.flags = (uint8_t)(sockets | (element << 3));
 		int ip = itemPower(db, out);
 		if ( !capOn || ip <= cap ) { out.power = (uint16_t)std::min(ip, 65535); return; }
-		if ( attempt < 8 ) { ++c.ip_rerolls; continue; }
+		// a reroll cannot help when the required parts alone, at rarity 0, exceed the cap (materials
+		// come from the same depth-allowed list): go straight to the counted clamp
+		// (every rolled slot stays in a reroll; only the clamp drops optional parts, so the test keeps them)
+		ApxItemData floorOnly = out;
+		for ( int k = 0; k < floorOnly.nParts; ++k ) { floorOnly.parts[k].rarity = 0; }
+		const bool hopeless = itemPower(db, floorOnly) > cap;
+		if ( attempt < 8 && !hopeless ) { ++c.ip_rerolls; if ( attempt == 0 ) { ++c.rolls_rerolled; } continue; }
 		// still over: drop the highest optional part, then strip rarity, until under (counted)
 		++c.ip_clamped;
 		while ( ip > cap && out.nParts > nRequired ) { --out.nParts; memset(&out.parts[out.nParts], 0, sizeof(ApxPart)); ip = itemPower(db, out); }

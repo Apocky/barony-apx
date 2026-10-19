@@ -82,8 +82,8 @@ int main(int argc, char** argv)
 	}
 	std::string hist;
 	for ( int k = 0; k <= APX_MAX_PARTS; ++k ) { hist += (k ? "," : "") + std::to_string(partsHist[k]); }
-	gate("S2_cap", overCap == 0 && c1.forms_unmapped == 0 && c1.parts_overflow == 0, join({ kv("rolls", N), kv("over_cap", (double)overCap), kv("max_over", (double)maxOver),
-		kv("ip_rerolls", (double)c1.ip_rerolls), kv("ip_reroll_share", (double)c1.ip_rerolls / N), kv("ip_clamped", (double)c1.ip_clamped),
+	gate("S2_cap", overCap == 0 && c1.ip_rerolls * 20 < N && c1.forms_unmapped == 0 && c1.parts_overflow == 0, join({ kv("rolls", N), kv("over_cap", (double)overCap), kv("max_over", (double)maxOver),
+		kv("ip_rerolls", (double)c1.ip_rerolls), kv("ip_reroll_share", (double)c1.ip_rerolls / N), kv("rolls_rerolled_share", (double)c1.rolls_rerolled / N), kv("ip_clamped", (double)c1.ip_clamped),
 		kv("parts_overflow", (double)c1.parts_overflow), "\"parts_hist\":[" + hist + "]" }));
 	{
 		Counters c;

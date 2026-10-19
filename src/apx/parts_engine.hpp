@@ -15,7 +15,7 @@ extern ApxPartsCounters apxPartsCounters;
 
 bool apxPartsEnabled();                                  // env APX_PARTS (default 1)
 void apxPartsLevelStart();                               // per-floor roll index back to 0 (end of assignActions)
-void apxPartsBind(Item* item, int source);               // roll the parts of a loot item (weapon, armour, tool); no-op when bound
+void apxPartsBind(Item* item, int source, int depthOverride = 0); // roll the parts of a loot item (weapon, armour, tool); no-op when bound; depthOverride: selftest forced roll
 void apxPartsBindInventory(void* list, int source);      // every item of a list_t (chest or monster inventory)
 void apxPartsToFloor(Entity* entity, const Item* item);  // a dropped item's parts ride with its floor entity (server map)
 void apxPartsBindFloorEntity(Entity* entity);            // floor items placed by level generation
@@ -35,4 +35,27 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex);
 // give (GEM_ROCK stand-in). v1 has no keep-one-part choice (that needs the BU1 bench UI): every part
 // returns. False = a vanilla item, the caller keeps its vanilla numbers.
 bool apxPartsSalvageValue(const Item* item, int* metal, int* magic, int* auraCrystals);
+// Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
+// material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
+void apxPartsApplyTint(Entity* entity, const Item* item);
+void apxPartsBenchRegister();                            // F6 provider into the BU1 bench shell (parts_bench.cpp)
+const char* apxPartsShotRequest();                       // the probe's framebuffer shot path, once (game.cpp frame end)
 void apxPartsProbeTick();                                // APX_BF6_PROBE, once floor 1 is up (game loop)
+
+// Formbook (card BF6-6; 05 section 5): per player, Form id (= apx.form, the family) -> successes 0-5;
+// known at 1, mastered at 5. Breaking an item with parts teaches its Form and consumes the item.
+// A new Form needs a free input slot: known Forms < max(1, INT / 2) (Wit stand-in; ASSUMED reading).
+int apxPartsFormSuccesses(int player, uint32_t form);
+int apxPartsFormInputCap(int player);
+bool apxPartsBreak(int player, Item* item, std::string& why);     // consumes the item when it returns true
+void apxPartsFormbookRecv(const uint8_t* packet, int len);        // server: an owner client's FBOK
+void apxPartsFormbookFromSave(int player);                        // loadGame: the book read with the save
+uint64_t apxPartsFormbookHash(int player);
+// Salvage with the keep-one-part choice (the BU1 bench calls this; the vanilla station keeps none):
+// keepPart = part index (0..nParts-1) or -1. Scrap and aura crystals go to the player; the item keeps
+// only the kept part, or is consumed when keepPart is -1.
+bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why);
+const char* apxPartsFamilyName(uint32_t form);
+int apxPartsPartMassGrams(const Item* item, int part);
+const char* apxPartsMaterialName(int material);
+const char* apxPartsSlotName(int slot);

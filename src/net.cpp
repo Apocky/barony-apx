@@ -5775,6 +5775,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		bool forceNewStack = net_packet->data[25] ? true : false;
 		newitem->x = (Sint8)net_packet->data[26];
 		newitem->y = (Sint8)net_packet->data[27];
+		apxPartsNetRead(newitem, net_packet->data, net_packet->len, 28); // apx F6
 		addItemToChestClientside(clientnum, newitem, forceNewStack, nullptr);
 	}},
 
@@ -6948,6 +6949,9 @@ void clientHandleMessages(Uint32 framerateBreakInterval)
 -------------------------------------------------------------------------------*/
 
 static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
+	// apx F6: an owner client's Formbook
+	{'FBOK', [](){ apxPartsFormbookRecv(net_packet->data, net_packet->len); }},
+
 	// keep alive
 	{'KPAL', [](){
 	    const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
@@ -7730,6 +7734,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[player]->inventory);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 26); // apx F6
 		dropItem(item, player);
 	}},
 
@@ -8185,6 +8190,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 26); // apx F6
 		useItem(item, client, nullptr, false, true);
 	}},
 
@@ -8206,6 +8212,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 28); // apx F6
 		EquipItemResult res = equipItem(item, &stats[client]->weapon, client, false);
 		if ( res == EQUIP_ITEM_SUCCESS_UPDATE_QTY
 			|| res == EQUIP_ITEM_FAIL_CANT_UNEQUIP )
@@ -8235,6 +8242,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 28); // apx F6
 		EquipItemResult res = equipItem(item, &stats[client]->shield, client, false);
 		if ( res == EQUIP_ITEM_SUCCESS_UPDATE_QTY
 			|| res == EQUIP_ITEM_FAIL_CANT_UNEQUIP )
@@ -8308,6 +8316,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
+		apxPartsNetRead(item, net_packet->data, net_packet->len, 28); // apx F6
 		
 		int res = -1;
 		switch ( net_packet->data[27] )
@@ -8690,6 +8699,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		newitem->count = SDLNet_Read32(&net_packet->data[17]);
 		newitem->appearance = SDLNet_Read32(&net_packet->data[21]);
 		newitem->identified = net_packet->data[25];
+		apxPartsNetRead(newitem, net_packet->data, net_packet->len, 28); // apx F6
 		bool forceNewStack = net_packet->data[26] ? true : false;
 		if ( net_packet->data[27] == 0 )
 		{

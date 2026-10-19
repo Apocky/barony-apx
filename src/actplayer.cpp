@@ -13309,6 +13309,7 @@ void actPlayer(Entity* my)
 						else
 						{
 							entity->sprite = itemModel(stats[PLAYER_NUM]->weapon);
+							apxPartsApplyTint(entity, stats[PLAYER_NUM]->weapon); // apx F6 palette tint
 							if ( itemCategory(stats[PLAYER_NUM]->weapon) == SPELLBOOK )
 							{
 								entity->flags[INVISIBLE] = true;

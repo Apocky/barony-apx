@@ -33,7 +33,7 @@ enum Source : uint8_t { SRC_CHEST = 0, SRC_MONSTER = 1, SRC_FLOOR = 2, SRC_SHOP 
 enum Role : uint8_t { ROLE_STRIKE = 0, ROLE_STRUCTURAL, ROLE_BALANCE, ROLE_GRIP, ROLE_OTHER };
 constexpr uint8_t FLAG_CRAFTED = 1 << 6, FLAG_LOOTED = 1 << 7;
 
-struct Material { std::string id; int density = 0, hardness = 0, tier = 1, valuePerKg = 0, meltC = 0, flammable = 0, element = 0; std::string salvageClass; };
+struct Material { std::string id; int density = 0, hardness = 0, tier = 1, valuePerKg = 0, meltC = 0, flammable = 0, element = 0; std::string salvageClass; float tint[3] = { 0, 0, 0 }; };
 struct Slot { std::string id; Role role = ROLE_OTHER; int volume = 0; };
 struct OptSlot { int slot = 0, q = 0; };
 struct Family { std::string id; std::vector<int> required; std::vector<OptSlot> optional; };
@@ -61,7 +61,7 @@ struct DB
 // Loads data/apx/{materials,forms,form_map,affixes,salvage}.json. "" = ok, else the error.
 std::string loadDB(const std::string& dataDir, DB& db);
 
-struct Counters { long long rolls = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, forbidden = 0; };
+struct Counters { long long rolls = 0, rolls_rerolled = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, forbidden = 0; };
 
 uint64_t fnv1a64(const void* data, size_t n, uint64_t h = 1469598103934665603ULL);
 uint64_t rollKey(uint32_t realm, uint8_t depth, uint8_t source, uint32_t index);
