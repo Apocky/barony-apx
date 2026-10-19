@@ -36,7 +36,7 @@ struct Mission {
 // A grammar is rows of text (grammar/*.grammar); rows run in order. See grammar/default.grammar.
 struct Grammar { std::vector<std::string> rows; std::string source; };
 bool load_grammar(const std::string& path, Grammar& g, std::string& err);
-bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::string& err);
+bool mission_from_grammar(const Grammar& g, uint64_t seed, Mission& m, std::string& err, int room_cap = -1); // room_cap: the grow row stops there
 std::vector<char> reach(const Mission& m, const std::vector<int>& closed);
 std::string check_mission(const Mission& m);   // "" = ok
 std::vector<uint32_t> regions(const Mission& m); // locks closed between node and entrance
@@ -95,6 +95,11 @@ struct Params {
     bool boss_largest = false;   // true = F3.1 rule: the boss takes the largest cell of its band (far moves)
     bool band_steal = true;
     int corridor_feat_cost = 24; // extra A* cost per lava/chasm/deep tile in a room (0 = the F3 paving behaviour)
+    int min_size = 80;           // floors are clamped to 80..160 tiles a side
+    bool boss_cell_last = false; // measured worse at 96/128 (retries 19, 8 vs 1, 1): off; rotate the band order so the boss band ends on the largest cell
+    int cap_spare = 6;           // spare cells a capped mission leaves (special swaps and steals need them)
+    bool cap_rooms_to_cells = true; // grow the mission only to the cells a small floor has (false = control)
+    bool adaptive_leaf = true;   // re-split with smaller leaves when cells < nodes + 2 (false = the F3 behaviour)
     bool vent = false;           // the cave layer: one room takes a special "vent" program (lava vent)
     int edge_reorders = 4;       // corridor-pass restarts with the failed edge first (0 = control)      // false = control: a special that fits no cell of its band dead-ends           // the boss cell holds at least this many tiles a side inside its margin
     // macro structure grammar (kits/districts.toml): theme -> districts; one district per lock region
@@ -144,7 +149,7 @@ struct Floor {
     std::vector<std::string> region_district; // district per lock region
     std::vector<uint8_t> feat;   // Feat per tile
     int special_rooms = 0, themed_rooms = 0, district_rooms = 0;
-    int vent_rooms = 0, special_swaps = 0, special_merges = 0, band_steals = 0, edge_reorders = 0, special_missed = 0; // missed: a special node on a non-special program
+    int room_capped = 0, leaf_shrinks = 0, vent_rooms = 0, special_swaps = 0, special_merges = 0, band_steals = 0, edge_reorders = 0, special_missed = 0; // missed: a special node on a non-special program
     unsigned special_kinds = 0;  // bit per special kind placed: haven boss vault nexus stronghold
     int boss_w = 0, boss_d = 0;
     std::vector<uint8_t> zone;   // Zone per tile (room floor only)
@@ -229,6 +234,10 @@ struct SiteLink { std::string kind; int from = 0, to = 0, fx = 0, fz = 0, tx = 0
 struct Den { int room = -1, x = 0, z = 0; };
 struct Patrol { int room_a = -1, room_b = -1; std::vector<int> tiles; };
 struct Writing { int room = -1, x = 0, z = 0; std::string id, kind; uint64_t text = 0; };
+// D72 (spec 04 section 2.1): creatures by tier, in SPAWNED packs (placed as a pack at a den or on a
+// patrol, a budgeted share of the floor) or EMERGENT groups (individuals and small groups placed in
+// rooms, which may converge later through AI). Tiers 0 fodder, 1 regular, 2 elite, 3 champion.
+struct Group { bool spawned = false; std::string source; int room = -1; std::vector<int> tiers; };
 struct Level {
     std::string name, faction;
     Result r;
@@ -237,9 +246,19 @@ struct Level {
     std::vector<Writing> writings;
     std::vector<char> room_alive, room_lit;  // per room row
     int alive = 0, lit = 0, rooms = 0, readable_candidates = 0;
+    std::vector<Group> groups;
+    int creatures = 0, spawned_creatures = 0;
 };
 struct SiteParams {
     bool thin = false;         // the control: 1 den, no patrols, no wall dressing -> must fail
+    // D72 population (ASSUMED values, spec 04 sections 2 and 2.1)
+    int creatures_per_room_x10 = 20;   // a floor holds 2.0 creatures per room (bosses apart)
+    int spawned_share_pct = 20;        // spawned packs take at most this share of a floor's creatures
+    int elite_pack_max = 4;            // a pack with an elite or champion has at most 4 members
+    int elites_per_pack_max = 2;       // and 1-2 of them
+    int large_pack = 5;                // a pack of 5 or more is "large": fodder at least 75 percent, no elite
+    int emergent_group_max = 3;        // individuals and small groups
+    bool break_packs = false;          // the control: packs 2-8 of any tiers, half the floor spawned
     int writings_lo = 12, writings_hi = 16; // texts given per floor (seeded in the band)
     int gate_writings_lo = 10, gate_writings_hi = 20; // the Readable gate band
     bool all_legible = false;  // the control: every readable candidate gets a text -> over the band

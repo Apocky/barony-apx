@@ -180,11 +180,11 @@ struct Digger {
 
 std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const std::vector<Program>& progs, const Params& P, Floor& f) {
     f = Floor{};
-    const int S = std::min(160, std::max(48, P.size));
+    const int S = std::min(160, std::max(P.min_size, P.size)); // 80 to 160 (decision 2026-10-19: below 80 is out of scope)
     std::string err;
     if (!mission_from_grammar(gram, seed, f.mission, err)) return err;
     const Mission& m = f.mission;
-    const int N = (int)m.nodes.size();
+    int N = (int)m.nodes.size();
     f.reg = regions(m);
     std::vector<uint32_t> behind = behind_masks(m);
     f.attempt = attempt;
@@ -193,6 +193,33 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
 
     std::vector<Rect> cells;
     bsp(r, {1, 1, S - 1, S - 1}, P, cells);
+    // too few cells (floors near the 80 minimum): first the mission grows only to the cells it has
+    // (cells - 2; kept large so special rooms still fit), counted in f.room_capped; only when that
+    // is under the grammar's grow minimum do the leaves shrink (below)
+    auto cap_rooms = [&]() {
+        if ((int)cells.size() >= N + P.cap_spare || !P.cap_rooms_to_cells) return;
+        Mission capped;
+        std::string e2;
+        if (!mission_from_grammar(gram, seed, capped, e2, (int)cells.size() - P.cap_spare)) return; // under the minimum
+        f.mission = capped;
+        N = (int)m.nodes.size();
+        f.reg = regions(m);
+        behind = behind_masks(m);
+        f.room_capped = N;
+    };
+    cap_rooms();
+    // too few cells for the mission (small floors): split again with a smaller largest leaf, down
+    // to 2 * leaf_min - 1 (the smallest a cut can still halve); counted in f.leaf_shrinks
+    for (int lm = P.leaf_max - 2; (int)cells.size() < N + 2 && P.adaptive_leaf && lm >= 2 * P.leaf_min - 1; lm -= 2) {
+        Params Q = P;
+        Q.leaf_max = lm;
+        cells.clear();
+        Rng r2(hash_words({seed, 0x1EAF, (uint64_t)attempt, (uint64_t)lm}));
+        bsp(r2, {1, 1, S - 1, S - 1}, Q, cells);
+        ++f.leaf_shrinks;
+    }
+    cap_rooms();
+
     f.cells = (int)cells.size();
     if ((int)cells.size() < N) return std::to_string(cells.size()) + " BSP cells for " + std::to_string(N) + " nodes";
 
@@ -217,6 +244,15 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     else
         std::sort(order.begin(), order.end(), [&](int a, int b) {
             return std::make_tuple(hilbert(centre(a).first, centre(a).second), a) < std::make_tuple(hilbert(centre(b).first, centre(b).second), b); });
+    // the deepest region (the boss's band) is the last run of the order: rotate the curve so it ends
+    // on the floor's largest cell, so the boss band always holds it (P.boss_cell_last; a cyclic
+    // shift breaks the curve's locality at one seam only)
+    if (P.boss_cell_last && !P.band_order_x && !order.empty()) {
+        size_t big = 0;
+        auto area = [&](int c) { return (long long)std::min(cells[c][2] - cells[c][0], cells[c][3] - cells[c][1]) * 1000000 + (long long)(cells[c][2] - cells[c][0]) * (cells[c][3] - cells[c][1]); };
+        for (size_t k = 1; k < order.size(); ++k) if (area(order[k]) > area(order[big])) big = k;
+        std::rotate(order.begin(), order.begin() + (big + 1) % order.size(), order.end());
+    }
     std::vector<int> counts(nreg, 0);
     for (auto x : f.reg) counts[x]++;
     int spare = (int)cells.size() - N;

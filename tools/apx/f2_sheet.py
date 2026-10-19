@@ -77,15 +77,22 @@ def main():
     # W2: in-engine on distinct seeds (first verdict per seed)
     first = {}
     for r in normal:
-        first.setdefault(r["seed"], r)
+        first.setdefault(f"{r['seed']}@{r.get('W')}", r)
     w2_pass = [s for s, r in first.items() if r["w2"]["verdict"] == "PASS"]
     w2_fail = {s: r["w2"] for s, r in first.items() if r["w2"]["verdict"] != "PASS"}
     ctrl_fail = [r for r in control if r["w2"]["verdict"] == "FAIL"]
+    d72_rows = [r for r in normal if "d72" in r]
+    d72_bad = {f"{r['seed']}@{r.get('W')}": r["d72"]["why"] for r in d72_rows if r["d72"]["verdict"] != "PASS"}
+    d72_ctrl = [r for r in rows if r["kind"] == "floor" and r.get("d72", {}).get("control") == 2]
+    d72_ctrl_fail = [r for r in d72_ctrl if r["d72"]["verdict"] == "FAIL"]
+    sizes = sorted({r.get("W") for r in normal if r.get("W")})
+    w2_by_size = {sz: (sum(1 for r in first.values() if r.get("W") == sz and r["w2"]["verdict"] == "PASS"),
+                       sum(1 for r in first.values() if r.get("W") == sz)) for sz in sizes}
 
     # W5: every seed seen in two or more launches has one hash
     by_seed = defaultdict(list)
     for r in normal:
-        by_seed[r["seed"]].append((r["run_dir"], r["hash"], r.get("level")))
+        by_seed[f"{r['seed']}@{r.get('W')}"].append((r["run_dir"], r["hash"], r.get("level")))
     repeated = {s: v for s, v in by_seed.items() if len({d for d, _, _ in v}) >= 2}
     w5_bad = {s: v for s, v in repeated.items() if len({h for _, h, _ in v}) != 1}
     hashes = {s: v[0][1] for s, v in by_seed.items()}
@@ -126,6 +133,11 @@ def main():
         ["W5 control: different seeds", "different hashes", f"{len(set(hashes.values()))} hashes / {len(hashes)} seeds",
          pf(w5_control)],
         ["generator failures / fallbacks", "0", str(len(fails)), pf(not fails)],
+        [f"D72 per floor ({len(d72_rows)} floors)", "pack/elite/share rules hold on placed monsters",
+         f"{len(d72_rows) - len(d72_bad)}/{len(d72_rows)} pass", pf(d72_rows and not d72_bad)],
+        ["D72 control (packs broken)", "every floor fails", f"{len(d72_ctrl_fail)}/{len(d72_ctrl)} fail",
+         pf(d72_ctrl and len(d72_ctrl_fail) == len(d72_ctrl))],
+    ] + [[f"W2 at {sz}x{sz}", "all seeds pass", f"{p}/{n}", pf(n and p == n)] for sz, (p, n) in w2_by_size.items()] + [
     ]
     for r in mp:
         n = r.get("net", {})

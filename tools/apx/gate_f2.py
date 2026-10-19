@@ -35,6 +35,8 @@ RE_HASH = re.compile(r"apxgen: hash ([0-9a-f]{16}) apx-floor ([0-9a-f]{16}) apx-
 RE_FLOOR = re.compile(r"apxgen: floor seed (\d+) level (-?\d+) set '([^']*)' size (\d+)x(\d+) theme (\S+) attempt (\d+) "
                       r"rooms (\d+) corridors (\d+) tiles; textures floor (\d+) wall (\d+) ceiling (\d+)")
 RE_ENTS = re.compile(r"apxgen: entities (\d+): (.*)")
+RE_D72 = re.compile(r"apxgen: D72 (PASS|FAIL) groups (\d+) placed (\d+)/(\d+) spawned (\d+) \((\d+)%\) max-group (\d+) "
+                    r"elite-groups (\d+) dens (\d+) untyped (\d+) control (\d+) why (.*)")
 RE_FAIL = re.compile(r"apxgen: (FAILED|FALLBACK).*")
 RE_VANILLA = re.compile(r"apx: vanilla floor (\d+)x(\d+) walk tiles (\d+)")
 RE_FPS = re.compile(r"apxfps: frames (\d+) seconds ([\d.]+) frame-ms p50 ([\d.]+) p99 ([\d.]+) max ([\d.]+) "
@@ -127,6 +129,12 @@ def parse_floor(text):
         row["w2"] = dict(verdict=g[0], connected=int(g[1]), reached=int(g[2]), walk=int(g[3]), locks=int(g[4]),
                          opened=int(g[5]), lock_doors=int(g[6]), exit=int(g[7]), keys_behind_own_lock=int(g[8]), locks_unsealed=int(g[10]),
                          control=int(g[9]))
+    m = RE_D72.search(text)
+    if m:
+        g = m.groups()
+        row["d72"] = dict(verdict=g[0], groups=int(g[1]), placed=int(g[2]), total=int(g[3]), spawned=int(g[4]),
+                          spawned_pct=int(g[5]), max_group=int(g[6]), elite_groups=int(g[7]), dens=int(g[8]),
+                          untyped=int(g[9]), control=int(g[10]), why=g[11].strip())
     m = RE_HASH.search(text)
     if m:
         g = m.groups()
@@ -404,7 +412,8 @@ def main():
             extra = {"env": {}} if s == "vanilla" else {"env": {"APXGEN": "1", "APXGEN_SIZE": s}}
             locked(True, session, f"w1-{s}", args.exe, seeds, extra, args, rows, w1=True)
     ok = sum(r["finish"] == "ok" for r in rows)
-    print(f"[f2] rows {len(rows)} ok {ok}")
+    fallbacks = sum(1 for r in rows if r.get("apx_fail"))
+    print(f"[f2] rows {len(rows)} ok {ok} fallbacks {fallbacks} (gate: 0)")
 
 
 if __name__ == "__main__":

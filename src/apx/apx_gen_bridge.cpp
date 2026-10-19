@@ -19,12 +19,14 @@
 #include "apx_gen_bridge.hpp"
 #include "gen/include/apxgen/apxgen.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <map>
+#include <new>
 #include <set>
 #include <vector>
 #ifdef WINDOWS
@@ -763,12 +765,199 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		}
 		return { -1, -1 };
 	};
-	for ( int i = 0; i < wantMonsters; ++i )
+	// D72 population (DECISIONS-2, spec 04 section 2.1; values ASSUMED until Apocky tunes them):
+	// the band's monster types are ranked by base level into thirds (fodder, regular, elite);
+	// SPAWNED packs sit in dens (the stronghold, rooms dressed as dens, then spread out) and take at
+	// most D72_SPAWN_PCT of the floor's creatures; a pack with an elite has at most 4 members and 1-2
+	// elites; a large pack (5+) is at least 75% fodder with no elite; everything else is EMERGENT:
+	// groups of 1-3 in rooms. Floor-mode Barony has no patrol routes (those are site-only in apx-gen).
+	// APXGEN_CONTROL=2 breaks the rules (packs of 2-8 of any tier, half the floor spawned): must fail.
+	constexpr int D72_SPAWN_PCT = 20, D72_ELITE_PACK_MAX = 4, D72_ELITES_MAX = 2, D72_LARGE = 5, D72_EMERGENT_MAX = 3;
+	const bool breakPacks = apxgen.control == 2;
+	std::vector<int> tierTypes[3];
 	{
-		Placed p = take(); if ( p.x < 0 ) { break; }
-		Entity* m = at(10, p.x, p.y, map.creatures);
-		m->skill[5] = nMonsters++;
+		BaronyRNG saved = map_rng; // sample the band's curve without moving the game's map RNG
+		std::map<int, int> freq;
+		for ( int k = 0; k < 400; ++k ) { ++freq[monsterCurve(currentlevel)]; }
+		map_rng.~BaronyRNG(); // BaronyRNG has no copy-assignment: rebuild it in place from the copy
+		new (&map_rng) BaronyRNG(saved);
+		std::vector<std::pair<std::pair<int, int>, int>> ranked; // ((level, -freq), type)
+		for ( auto& fq : freq )
+		{
+			if ( fq.first <= NOTHING || fq.first >= NUMMONSTERS ) { continue; }
+			Stat st(fq.first + 1000);
+			ranked.push_back({ { st.LVL, -fq.second }, fq.first });
+		}
+		std::sort(ranked.begin(), ranked.end());
+		const size_t n = ranked.size();
+		for ( size_t k = 0; k < n; ++k )
+		{
+			const int tier = n < 2 ? 0 : (int)(k * 3 / n); // bottom third fodder, top third elite
+			tierTypes[tier].push_back(ranked[k].second);
+		}
+		std::string s;
+		for ( int t = 0; t < 3; ++t )
+		{
+			s += t ? " | " : "";
+			for ( int ty : tierTypes[t] ) { s += std::string(monstertypename[ty]) + " "; }
+		}
+		printlog("apxgen: D72 tiers (fodder | regular | elite) level %d: %s\n", currentlevel, s.c_str());
 	}
+	static int typeSprite[NUMMONSTERS] = { 0 };
+	if ( !typeSprite[RAT] )
+	{
+		for ( int sp = 0; sp < 512; ++sp )
+		{
+			const Monster mt = editorSpriteTypeToMonster(sp);
+			if ( mt > NOTHING && mt < NUMMONSTERS && !typeSprite[mt] ) { typeSprite[mt] = sp; }
+		}
+	}
+	apx::Rng pr(apx::hash_words({ (uint64_t)seed, 0xD72 }));
+	auto typeFor = [&](int tier) {
+		int t = std::min(2, tier);
+		while ( t > 0 && tierTypes[t].empty() ) { --t; }
+		while ( t < 2 && tierTypes[t].empty() ) { ++t; }
+		const auto& v = tierTypes[t];
+		return v.empty() ? -1 : v[(size_t)pr.next(v.size())];
+	};
+	auto drawTier = [&]() { int r = (int)pr.next(100); return r < 60 ? 0 : r < 92 ? 1 : 2; };
+	struct D72Group { bool spawned; int room; std::vector<int> tiers; int placed = 0; };
+	std::vector<D72Group> groups;
+	const int total = wantMonsters;
+	int budget = total * (breakPacks ? 50 : D72_SPAWN_PCT) / 100;
+	// dens, apx-gen's rule: the stronghold, rooms dressed as dens, then the room farthest from them
+	std::vector<int> dens;
+	const size_t wantDens = 3 + f.rooms.size() / 12;
+	{
+		const int sh = f.mission.find(apx::Kind::Stronghold);
+		if ( sh >= 0 ) { dens.push_back(sh); }
+		for ( auto& d : f.dress )
+		{
+			if ( dens.size() < wantDens && d.content == "den" && d.room >= 0 && f.mission.nodes[d.room].kind == apx::Kind::Room
+				&& std::find(dens.begin(), dens.end(), d.room) == dens.end() ) { dens.push_back(d.room); }
+		}
+		while ( dens.size() < wantDens )
+		{
+			int best = -1;
+			long long bd = -1;
+			for ( auto& ro : f.rooms )
+			{
+				if ( f.mission.nodes[ro.node].kind != apx::Kind::Room || std::find(dens.begin(), dens.end(), ro.node) != dens.end() ) { continue; }
+				long long dmin = 1LL << 40;
+				for ( int dn : dens )
+				{
+					const apx::RoomRow* dr = roomOf(dn);
+					if ( !dr ) { continue; }
+					const long long dx = (ro.x0 + ro.x1) - (dr->x0 + dr->x1), dy = (ro.z0 + ro.z1) - (dr->z0 + dr->z1);
+					dmin = std::min(dmin, dx * dx + dy * dy);
+				}
+				if ( dmin > bd ) { bd = dmin; best = ro.node; }
+			}
+			if ( best < 0 ) { break; }
+			dens.push_back(best);
+		}
+	}
+	int spawnedCreatures = 0;
+	for ( int den : dens )
+	{
+		if ( budget < 2 ) { break; }
+		D72Group g{ true, den, {} };
+		if ( breakPacks )
+		{
+			const int n = 2 + (int)pr.next(7);
+			for ( int k = 0; k < n; ++k ) { g.tiers.push_back((int)pr.next(3)); }
+		}
+		else
+		{
+			const int kind = (int)pr.next(100);
+			if ( kind < 15 ) // elite-led pack: 2-4, 1-2 elites, the rest fodder or regular
+			{
+				const int n = 2 + (int)pr.next(D72_ELITE_PACK_MAX - 1);
+				const int e = 1 + (int)pr.next(std::min(D72_ELITES_MAX, n - 1));
+				for ( int k = 0; k < e; ++k ) { g.tiers.push_back(2); }
+				while ( (int)g.tiers.size() < n ) { g.tiers.push_back((int)pr.next(2)); }
+			}
+			else if ( kind < 50 ) // fodder swarm: 4-6, at most one regular
+			{
+				const int n = 4 + (int)pr.next(3);
+				for ( int k = 0; k < n; ++k ) { g.tiers.push_back(0); }
+				if ( pr.next(2) ) { g.tiers.back() = 1; }
+			}
+			else // small mixed pack: 2-3, fodder and regular
+			{
+				const int n = 2 + (int)pr.next(2);
+				for ( int k = 0; k < n; ++k ) { g.tiers.push_back((int)pr.next(2)); }
+			}
+		}
+		if ( (int)g.tiers.size() > budget ) { g.tiers.resize(budget); }
+		budget -= (int)g.tiers.size();
+		spawnedCreatures += (int)g.tiers.size();
+		groups.push_back(std::move(g));
+	}
+	{
+		int left = total - spawnedCreatures;
+		std::vector<int> order;
+		for ( auto& ro : f.rooms ) { if ( f.mission.nodes[ro.node].kind == apx::Kind::Room && ro.node != entranceNode ) { order.push_back(ro.node); } }
+		for ( size_t k = order.size(); k > 1; --k ) { std::swap(order[k - 1], order[(size_t)pr.next(k)]); }
+		for ( size_t k = 0; left > 0 && !order.empty(); ++k )
+		{
+			D72Group g{ false, order[k % order.size()], {} };
+			const int n = std::min(left, 1 + (int)pr.next(D72_EMERGENT_MAX));
+			int elites = 0;
+			for ( int j = 0; j < n; ++j )
+			{
+				int t = drawTier();
+				if ( t >= 2 && elites >= D72_ELITES_MAX && !breakPacks ) { t = 0; }
+				elites += t >= 2;
+				g.tiers.push_back(t);
+			}
+			left -= n;
+			groups.push_back(std::move(g));
+		}
+	}
+	// place each group around its room's centre, members on free tiles of that room
+	int monsterNoType = 0;
+	for ( auto& g : groups )
+	{
+		const apx::RoomRow* ro = roomOf(g.room);
+		if ( !ro ) { continue; }
+		auto spots = nearFree((ro->x0 + ro->x1) / 2, (ro->z0 + ro->z1) / 2, (int)g.tiers.size() * 3);
+		size_t si = 0;
+		for ( int t : g.tiers )
+		{
+			while ( si < spots.size() && (!inRoom(ro, spots[si].x, spots[si].y) || used[(size_t)spots[si].y * W + spots[si].x]) ) { ++si; }
+			if ( si >= spots.size() ) { break; }
+			const int ty = typeFor(t);
+			const int sprite = ty >= 0 && typeSprite[ty] ? typeSprite[ty] : 10;
+			monsterNoType += sprite == 10;
+			Entity* m = at(sprite, spots[si].x, spots[si].y, map.creatures);
+			m->skill[5] = nMonsters++;
+			++g.placed;
+			++si;
+		}
+	}
+	// D72 gate on what was placed (the same predicates as apx-gen's site_critic)
+	std::string d72why;
+	int d72Placed = 0, d72Spawned = 0, d72MaxGroup = 0, d72EliteGroups = 0;
+	for ( auto& g : groups )
+	{
+		const int size = g.placed;
+		int elites = 0, fodder = 0;
+		for ( int k = 0; k < size; ++k ) { elites += g.tiers[k] >= 2; fodder += g.tiers[k] == 0; }
+		d72Placed += size;
+		d72Spawned += g.spawned ? size : 0;
+		d72MaxGroup = std::max(d72MaxGroup, size);
+		d72EliteGroups += elites > 0;
+		if ( d72why.empty() && elites > 0 && size > D72_ELITE_PACK_MAX ) { d72why = "elite pack of " + std::to_string(size); }
+		if ( d72why.empty() && elites > D72_ELITES_MAX ) { d72why = std::to_string(elites) + " elites in one group"; }
+		if ( d72why.empty() && size >= D72_LARGE && (elites > 0 || fodder * 4 < size * 3) ) { d72why = "large pack not mostly fodder " + std::to_string(fodder) + "/" + std::to_string(size); }
+		if ( d72why.empty() && !g.spawned && size > D72_EMERGENT_MAX ) { d72why = "emergent group of " + std::to_string(size); }
+	}
+	if ( d72why.empty() && d72Placed && d72Spawned * 100 > d72Placed * D72_SPAWN_PCT ) { d72why = "spawned share " + std::to_string(d72Spawned) + "/" + std::to_string(d72Placed); }
+	if ( d72why.empty() && d72Placed < total * 9 / 10 ) { d72why = "placed " + std::to_string(d72Placed) + " of " + std::to_string(total); }
+	printlog("apxgen: D72 %s groups %d placed %d/%d spawned %d (%d%%) max-group %d elite-groups %d dens %d untyped %d control %d why %s\n",
+		d72why.empty() ? "PASS" : "FAIL", (int)groups.size(), d72Placed, total, d72Spawned, d72Placed ? d72Spawned * 100 / d72Placed : 0,
+		d72MaxGroup, d72EliteGroups, (int)dens.size(), monsterNoType, apxgen.control, d72why.empty() ? "-" : d72why.c_str());
 	for ( int i = 0; i < wantItems; ++i )
 	{
 		Placed p = take(); if ( p.x < 0 ) { break; }

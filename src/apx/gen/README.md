@@ -311,6 +311,78 @@ Not done / not checked (H1a):
 - Spec rows not built here: Vertical (30 percent with a second level, pit, shaft or balcony),
   interactive materials, the director's three-candidate pick, decay stages, crafting depth.
 
+## D72 -- group composition (spec 04 section 2.1)
+
+Measured 2026-10-19 06:25-06:28 -0700. Every level of a site gets 2.0 creatures per plain room
+(bosses apart). SPAWNED packs go to dens, then patrol starts, while the floor's spawned budget lasts
+(20 percent of its creatures). A pack is an elite-led pack (2-4 members, 1-2 elites or champions,
+the rest fodder or regular; 15 percent of draws), a fodder swarm (4-6, fodder, at most one
+regular; 35 percent) or a small mixed pack (2-3, fodder and regular). The rest are EMERGENT: groups
+of 1-3 in plain rooms, tiers drawn from spec 04 section 2's shares (fodder 60, regular 30, elite 8,
+champion 2 percent), at most 2 elites in a group. Every count here is ASSUMED.
+
+Gates per level (`site_critic`): a group with an elite has at most 4 members and 1-2 elites; a
+group of 5 or more has no elite and at least 75 percent fodder; emergent groups at most 3; the
+spawned share at most 20 percent; every creature is counted once.
+
+| measure, sites 1-1000 (5000 levels) | value |
+|---|---|
+| sites passing every gate | 1000 / 1000 |
+| spawned packs / with an elite | 18,894 / 2,853 |
+| largest pack / largest pack with an elite | 6 / 4 |
+| most elites in a pack | 2 |
+| fodder share in large packs (5 or more), minimum | 80 percent |
+| largest emergent group | 3 |
+| spawned share per level, max / mean | 20.0 / 18.8 percent |
+
+Control `--break-packs` (packs of 2-8 of any tiers, half the floor spawned): 0 / 100 sites pass
+(largest elite pack 8, 8 elites in a pack, large-pack fodder minimum 0 percent, spawned share 50
+percent); ctest d72_control_break_packs (WILL_FAIL). Not done: creatures are counts per group and
+room, not placed entities; the emergent convergence itself is AI work (spec 03).
+
+## Small floor sizes (F2-integration report)
+
+MEASURED 2026-10-19, seeds 3001-3050, `--size N`: every failure below 128 was "N BSP cells for N
+nodes", fewer BSP cells than mission rooms. Fix: when cells < nodes + 2 the BSP splits again with a
+smaller largest leaf (24, 22, ... down to 2 * leaf_min - 1), `Params::adaptive_leaf`,
+`--no-adaptive-leaf` is the control.
+
+| size | before (adaptive off) | after |
+|---|---|---|
+| 48 | 0 / 50 | 0 / 50 |
+| 64 | 0 / 50 | 0 / 50 |
+| 80 | 8 / 50 | 35 / 50 |
+| 96 | 48 / 50 | 50 / 50 |
+| 128 | 1000 / 1000 | 1000 / 1000 (retried 1; sites 200 / 200) |
+
+48 and 64 cannot hold the mission: a 62-tile interior with 10-tile minimum cells holds at most 36
+cells, the mission has 24-40 rooms, and two bosses need cells of 16 or more. That needs a design
+decision (floor size at least 96, a mission scaled to the floor, or smaller rooms), not a patch.
+
+Decision 2026-10-19 (relayed from the parent session): 80 is the minimum floor size; targets are
+96-128; 48 and 64 are out of scope. `Params::min_size` = 80 clamps every floor to 80-160. To make
+80 pass:
+- room cap: when a floor has fewer cells than rooms + 6, the mission's grow row stops at cells - 6
+  (`Params::cap_rooms_to_cells`, `cap_spare` = 6; never under the grammar's 24); cells stay large
+  so special rooms still fit, and the 6 spares feed the special swaps and band steals. The
+  adaptive leaf shrink runs only when that cap would go under 24.
+- a GUARANTEED wall fixture may stand free when door bands leave no wall tile (counted relaxed).
+- tried and rejected: rotating the band order so the boss band ends on the largest cell made 96 and
+  128 worse (retries 19 and 8 against 1 and 1); it stays off (`boss_cell_last`).
+
+MEASURED, seeds 1-1000 per size:
+
+| size | pass | retried | rooms mean | GUARANTEED misses | clearance |
+|---|---|---|---|---|---|
+| 80 | 1000 | 242 | 27.3 | 0 | 0 |
+| 96 | 1000 | 1 | 28.8 | 0 | 0 |
+| 128 | 1000 | 1 | 32.5 | 0 | 0 |
+
+Control at 80 with `--no-room-cap`: 620 / 1000 pass. ctest: size80_gate (300 seeds, retries at
+most 90) and size80_control_no_room_cap (WILL_FAIL); 14 / 14 pass; sites 200 / 200.
+Open: at 80, 24 percent of floors need a second sub-seed (mostly "no cell in band fits special
+boss"), and one presence row (fortress card-game vignette, LIKELY) measures 56 percent, under 60.
+
 ## Not done / not checked (F3)
 
 - ASSUMED: 1 tile = 1 m^2 for the density rule (`DressLib::m2_per_tile`); no spec gives Barony's

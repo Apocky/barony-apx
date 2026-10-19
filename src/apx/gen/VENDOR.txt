@@ -1,3 +1,4 @@
-apx-gen vendored from https://github.com/Apocky/barony-apx.git refs/heads/apx-gen/f3-architecture-dress commit 7057f3d9 (H1a.1).
+apx-gen vendored from https://github.com/Apocky/barony-apx.git refs/heads/apx-gen/f3-architecture-dress commit fc30a151 (adaptive leaf, size 80, D72 site groups).
 kits/rooms-apockalypsis = Apockalypsis kits/rooms at 3fb516d.
 Update: git archive <commit> include src kits grammar README.md into this folder, re-add rooms-apockalypsis, bump these lines; never edit vendored files here without upstreaming.
+TRAP: git archive/tar keep the commit's mtime, older than existing .obj files, so MSBuild silently keeps stale objects (mixed struct layouts, crash 0xC0000409 at fc30a151). After extracting: Get-ChildItem src\apx\gen -Recurse -File | % { $_.LastWriteTime = Get-Date }
