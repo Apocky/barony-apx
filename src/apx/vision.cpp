@@ -19,7 +19,7 @@ namespace vision
 			return !(v && v[0] == '0');
 		}
 		constexpr float kTail = 1.6f;   // the curve reaches zero at kTail x the old radius
-		constexpr float kKnee = 1.9f;   // 1 / (1 + kKnee (d/R)^2): about the old linear curve's level at R/2
+		constexpr float kKnee = 2.4f;   // 1 / (1 + kKnee (d/R)^2) x window: 0.51 at R/2 (old linear 0.5); 1.9 lifted near views by 10.4-10.7%
 	} // namespace
 
 	void setVanilla() { g_vanilla = true; }
