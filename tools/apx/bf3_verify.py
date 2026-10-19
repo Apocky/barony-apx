@@ -106,6 +106,63 @@ def d74_chain(args, bh, py, out, save):
     golden_step(args, out, save)
 
 
+# D75 (--d75): physical poise arms (robed vs armoured x fodder skeletons, wild rats, regular skeletons) and jam arms
+D75_POISE_ARMS = [f"on:12:{crowd}:{kit}" for _ in range(2) for crowd in ("skeleton:fodder", "rat:wild") for kit in ("robed", "armoured")] \
+    + ["on:12:skeleton:regular:robed", "on:12:skeleton:regular:armoured"]
+D75_JAM_ARMS = ["vanilla:12:skeleton", "on:12:skeleton", "vcollide:12:skeleton", "oncollide:12:skeleton"] * 2 + ["vanilla:12:rat", "vcollide:12:rat"]
+D75_CORRIDOR_ARMS = ["vanilla:12:skeleton", "on:12:skeleton", "vcollide:12:skeleton", "oncollide:12:skeleton"] * 2
+D75_GATES = ("d75_armour_staggers_less", "d75_control_restores_lock", "d75_floor1_rats_fodder")
+F2_OLD = Path(r"C:\Apocrypha\diagnostics\barony-f2")
+
+
+def d75_chain(args, bh, py, out, save):
+    code = subprocess.call([py, "tools/apx/gen_strength.py", "--check"], cwd=REPO)
+    out["steps"].append({"step": "strength-table-current", "exit": code, "wall_s": 0, "pass": code == 0})
+    save()
+    common = ["--exe", args.exe, "--runs", "1", "--mode", "slot", "--env", "APX_BF3_MORALE=0", "--env", "APX_BF3_HELP=0",
+              "--timeout", "3600", "--poll", "3", "--build-hash", bh]
+    launches = [(args.tag, D75_POISE_ARMS + D75_JAM_ARMS, []),
+                (args.tag + "-f4c", D75_POISE_ARMS, ["--env", "APX_POISE_PHYSICAL=0"]),
+                (args.tag + "-corridor", D75_CORRIDOR_ARMS, ["--env", "APX_BF3_ARENA=corridor"])]
+    dirs = []
+    for tag, arms, extra in launches:
+        code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--tag", tag, "--arms", ",".join(arms)] + extra + common, RUNS / f"bf3-{tag}.out.txt")
+        d = run_dir_of(tag)
+        dirs += [d] if d else []
+        out["steps"].append({"step": f"d75-{tag}", "exit": code, "wall_s": wall, "run_dir": d})
+        save()
+    comb = DIAG / f"bf3-{args.tag}-d75.jsonl"
+    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--regate"] + dirs + ["--regate-out", str(comb)], RUNS / f"bf3-{args.tag}-d75-regate.out.txt")
+    rows = rows_of(comb)
+    base = rows[-1] if rows and rows[-1].get("kind") == "baseline" else {}
+    g = base.get("gates", {})
+    out["steps"].append({"step": "d75-gates", "exit": code, "wall_s": wall, "runs": dirs, "combined": str(comb),
+                         "pass": {k: (g.get(k) or {}).get("pass") for k in D75_GATES},
+                         "gates": {k: v for k, v in g.items() if k.startswith("d75")}, "d75": base.get("d75")})
+    save()
+    # the new apx-gen baseline: F2's own gate matrix on this build (W2 + D72 at three sizes, controls, W5, W1, host+client)
+    fout = DIAG / f"barony-f2-{args.tag}"
+    fout.mkdir(parents=True, exist_ok=True)
+    (fout / "REASON.txt").write_text(
+        "apx-gen baseline re-recorded for D75 (Apocky, 2026-10-19): band tiers are strength-ordered (weakest types up to\n"
+        "about 60 percent of a floor's spawns are fodder; the strongest of two or more left elite), src/apx/tier_rules.hpp\n"
+        "bandTiers with apx/monster_strength.inc; the band is sampled 4000 times instead of 400. D72 placement picks types\n"
+        "by tier, so floors whose band changed hash differently (floor 1: rats move from regular to fodder). The previous\n"
+        f"baseline is {F2_OLD} (build a90e21c3). Build under test: {bh}.\n", encoding="ascii")
+    code, wall = run(["pwsh", "-NoProfile", "-File", "tools/apx/gates_f2.ps1", "-Exe", str(Path(args.exe).resolve()), "-Out", str(fout)],
+                     RUNS / f"bf3-{args.tag}-f2gates.out.txt")
+    logs = {p.name: [l for l in p.read_text(encoding="utf-8", errors="replace").splitlines() if "rows " in l and " ok " in l][-1:]
+            for p in sorted(fout.glob("gates-*.log"))}
+    old = f2_floors(rows_of(F2_OLD / "f2.jsonl"), since="2026-10-19T08:40")
+    new = f2_floors(rows_of(fout / "f2.jsonl"))
+    same = sum(1 for k, h in new.items() if old.get(k) == h)
+    out["steps"].append({"step": "f2-gates-new-baseline", "exit": code, "wall_s": wall, "out": str(fout), "logs": logs,
+                         "floors_new": len(new), "floors_same_hash_as_old": same,
+                         "floors_changed": sorted(f"{s}/{l}" for (s, l), h in new.items() if (s, l) in old and old[(s, l)] != h)[:20]})
+    save()
+    golden_step(args, out, save)
+
+
 def golden_step(args, out, save):
     """Vanilla floors unchanged: golden parity against the F0 lines recorded from Steam vanilla (its own slot)."""
     code, wall = run(["pwsh", "-NoProfile", "-File", "tools/apx/golden_parity.ps1", "-Exe", str(Path(args.exe).resolve()), "-Tag", f"bf3-{args.tag}"],
@@ -172,6 +229,8 @@ def main():
     ap.add_argument("--skip-parity", action="store_true")
     ap.add_argument("--exe", default="build/vs2022/Release/barony.exe", help="the build under test (build.ps1 -Cache ccache: build/ninja-ccache/barony.exe)")
     ap.add_argument("--d74", action="store_true", help="D74 tier damage: fodder vs both vanilla controls, F2 hashes, golden parity")
+    ap.add_argument("--d75", action="store_true", help="D75: physical poise (robed vs armoured, F4c control), jam arms (open, corridor,"
+                    " bodies colliding), F2's gate matrix as the new apx-gen baseline, golden parity")
     ap.add_argument("--skip-golden", action="store_true", help="with --merge-gates: golden parity already ran on this build")
     ap.add_argument("--merge-gates", action="store_true",
                     help="after the slot run: F4c's in-game gate (f4c_selftest.py) and golden parity on this build (F4c merged in)")
@@ -184,8 +243,8 @@ def main():
     def save():
         report.write_text(json.dumps(out, indent=1), encoding="utf-8")
 
-    if args.d74:
-        d74_chain(args, bh, py, out, save)
+    if args.d74 or args.d75:
+        (d75_chain if args.d75 else d74_chain)(args, bh, py, out, save)
         out["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
         save()
         for s in out["steps"]:

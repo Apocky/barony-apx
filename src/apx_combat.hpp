@@ -21,6 +21,9 @@
 #include "monster.hpp"
 #include "apx_combat_units.hpp"
 #include "apx/tiers.hpp"
+#include "apx/poise_rules.hpp"
+#include "apx_stamina.hpp"
+#include "items.hpp"
 #include <cstdlib>
 #include <cmath>
 #include <unordered_map>
@@ -42,6 +45,8 @@ namespace combat_glue
 	inline bool downedOn() { static const bool on = envFlag("APX_DOWNED", true); return on; }
 	inline bool forceCoop() { static const bool on = envFlag("APX_DOWNED_FORCE_COOP", false); return on; }
 	inline bool selftestOn() { static const bool on = envFlag("APX_F4C_SELFTEST", false); return on; }
+	// D75: a player's poise is physical (apx/poise_rules.hpp); 0 = F4c's flat pool (the control)
+	inline bool physicalOn() { static const bool on = envFlag("APX_POISE_PHYSICAL", true); return on; }
 
 	struct Rec
 	{
@@ -51,6 +56,14 @@ namespace combat_glue
 		Uint32 lastTick = 0;
 		bool hitThisTick = false;
 		int staggers = 0;
+		// D75, players: the physical pool, and stagger locks timed the same way for either model
+		apx::poise::State phys;
+		bool physInit = false;
+		double physMaxLogged = -1.0;
+		bool wasStaggered = false;
+		Uint32 lastStaggerEnd = 0;
+		bool staggerEnded = false;
+		long long locks = 0, staggeredTicks = 0;
 	};
 	inline std::unordered_map<Uint32, Rec>& table()
 	{
@@ -98,6 +111,78 @@ namespace combat_glue
 		return n;
 	}
 
+	// ------------------------------------------------------------------ D75 physical poise (players)
+	// An armour item's D66 material (apx/combat/impact_materials.inc order). Unlisted armour is soft cloth.
+	inline int armourMaterial(int type)
+	{
+		using namespace apx::poise;
+		switch ( type )
+		{
+			case IRON_HELM: case IRON_BREASTPIECE: case IRON_BOOTS: case IRON_BOOTS_WATERWALKING: case IRON_SHIELD: case IRON_KNUCKLES:
+			case STEEL_HELM: case STEEL_BREASTPIECE: case STEEL_BOOTS: case STEEL_BOOTS_FEATHER: case STEEL_BOOTS_LEVITATION:
+			case STEEL_SHIELD: case STEEL_SHIELD_RESISTANCE: case BRONZE_SHIELD: case MIRROR_SHIELD:
+			case BLACKIRON_HELM: case BLACKIRON_BREASTPIECE: case BLACKIRON_BOOTS: case BLACKIRON_GAUNTLETS: case BLACKIRON_SHIELD:
+			case SILVER_HELM: case SILVER_BREASTPIECE: case SILVER_BOOTS: case SILVER_GAUNTLETS: case SILVER_SHIELD:
+			case ARTIFACT_HELM: case ARTIFACT_BREASTPIECE: case ARTIFACT_BOOTS: case ARTIFACT_GLOVES:
+			case GAUNTLETS: case GAUNTLETS_STRENGTH: case SPIKED_GAUNTLETS: case BRASS_KNUCKLES: case CHAIN_BOOTS: case CHAIN_GLOVES:
+			case HELM_MINING: case HAT_CROWNED_HELM: case MASK_STEEL_VISOR: case MASK_ARTIFACT_VISOR: case MASK_GOLDEN:
+				return M_METAL;
+			case CRYSTAL_HELM: case CRYSTAL_BREASTPIECE: case CRYSTAL_BOOTS: case CRYSTAL_GLOVES: case CRYSTAL_SHIELD: case MASK_CRYSTAL_VISOR:
+				return M_STONE;
+			case BONE_HELM: case BONE_BREASTPIECE: case BONE_BOOTS: case BONE_BRACERS: case BONE_SHIELD:
+				return M_BONE;
+			case LEATHER_HELM: case LEATHER_BREASTPIECE: case LEATHER_BOOTS: case LEATHER_BOOTS_SPEED: case BRACERS: case BRACERS_CONSTITUTION:
+			case GLOVES: case GLOVES_DEXTERITY: case SUEDE_BOOTS: case SUEDE_GLOVES: case CLEAT_BOOTS: case BANDIT_BREASTPIECE:
+			case MACHINIST_APRON: case HAT_BEAR_HOOD: case HAT_WOLF_HOOD: case HAT_STAG_HOOD:
+				return M_HIDE;
+			case WOODEN_SHIELD:
+				return M_PLANT;
+			default:
+				return M_UNIFORM;
+		}
+	}
+	struct PoiseInputs { double armour = 0.0; int con = 0, endurance = 0, pieces = 0; };
+	inline PoiseInputs playerPoiseInputs(Entity* e, Stat* s)
+	{
+		PoiseInputs in;
+		apx::poise::Piece p[8];
+		Item* slots[7] = { s->helmet, s->breastplate, s->gloves, s->shoes, s->cloak, s->mask, s->shield };
+		for ( Item* it : slots )
+		{
+			if ( !it || it->type < 0 || it->type >= NUMITEMS ) continue;
+			if ( it == s->shield && itemCategory(it) != ARMOR ) continue; // a torch, lantern or tome in the off hand is no armour
+			p[in.pieces++] = { items[it->type].weight, armourMaterial((int)it->type) };
+		}
+		in.armour = apx::poise::armourPoise(p, in.pieces);
+		in.con = s->CON;
+		const int pn = e->skill[2];
+		in.endurance = (apx::enduranceEnabled() && pn >= 0 && pn < MAXPLAYERS) ? apx::stamina[pn].endurance : 0;
+		return in;
+	}
+	inline double playerMaxPoise(Entity* e, Stat* s)
+	{
+		const PoiseInputs in = playerPoiseInputs(e, s);
+		return apx::poise::maxPoise(in.con, in.armour, in.endurance);
+	}
+	// blocking or bracing (F4a stamina left) times the player's own heavy swing in flight
+	inline double playerStanceMult(Entity* e, Stat* s)
+	{
+		const int pn = e->skill[2];
+		const bool local = pn >= 0 && pn < MAXPLAYERS && apx::staminaEnabled();
+		const bool staminaLeft = !local || apx::stamina[pn].value > 0.5;
+		const bool shield = s->shield && itemCategory(s->shield) == ARMOR;
+		const bool swinging = local && apx::stamina[pn].prevChop; // F4a: a melee swing in flight (local players)
+		return apx::poise::guardMult(s->defending, shield, staminaLeft) * apx::poise::swingMult(swinging, weaponClassOf(s));
+	}
+	inline bool physicalPlayer(Entity* e) { return physicalOn() && isPlayer(e); }
+	inline void ensurePhys(Entity* e, Stat* s, Rec& r)
+	{
+		if ( r.physInit ) return;
+		r.physInit = true;
+		r.phys.init(playerMaxPoise(e, s));
+	}
+	inline bool staggeredRec(Entity* e, Rec& r) { return physicalPlayer(e) ? r.phys.staggered() : r.poise.staggered(); }
+
 	// The zone a strike lands on: a player's by camera pitch, a creature's on a player by its size,
 	// creature on creature by medium-size weights.
 	inline Zone strikeZone(Entity* attacker, Entity* target)
@@ -131,15 +216,24 @@ namespace combat_glue
 		if ( !target || !tStats ) return damage;
 		Rec& r = rec(target, tStats);
 		r.hitThisTick = true;
-		bool wasStaggered = poiseOn() && r.poise.staggered();
+		if ( physicalPlayer(target) ) ensurePhys(target, tStats, r);
+		bool wasStaggered = poiseOn() && staggeredRec(target, r);
 		int out = damage;
 		if ( zonesOn() ) out = hitDamage(damage, z, wasStaggered);
 		else if ( wasStaggered ) out = hitDamage(damage, Zone::Torso, true);
 		if ( zonesOn() && out > 0 ) r.zones.damage(z, out);
 		// apx D74: a hostile creature's poise hit on a player or follower by its tier (fodder a third; apx/tiers.hpp)
-		if ( poiseOn() && r.poise.hit(apx::tierdmg::poiseForHit(attacker, target, poiseHit(w))) ) startStagger(target, r);
-		printlog("[apx-f4c] hit uid=%u type=%d zone=%s base=%d dmg=%d poise=%.0f/%d staggered=%d legs=%d/%d arms=%d/%d", target->getUID(),
-			(int)tStats->type, zoneName(z), damage, out, r.poise.value, r.poise.max, (int)r.poise.staggered(),
+		const int poiseIn = apx::tierdmg::poiseForHit(attacker, target, poiseHit(w));
+		if ( poiseOn() && physicalPlayer(target) )
+		{
+			// apx D75: physical poise; the stance and a heavy swing in flight divide the blow's poise damage
+			if ( r.phys.hit(poiseIn / playerStanceMult(target, tStats), kStaggerTicks) ) startStagger(target, r);
+		}
+		else if ( poiseOn() && r.poise.hit(poiseIn) ) startStagger(target, r);
+		const bool phys = physicalPlayer(target);
+		printlog("[apx-f4c] hit uid=%u type=%d zone=%s base=%d dmg=%d poise=%.0f/%.0f%s staggered=%d legs=%d/%d arms=%d/%d", target->getUID(),
+			(int)tStats->type, zoneName(z), damage, out, phys ? r.phys.value : r.poise.value, phys ? r.phys.max : (double)r.poise.max,
+			phys ? " physical" : "", (int)staggeredRec(target, r),
 			r.zones.hp[(int)Zone::Legs], r.zones.max[(int)Zone::Legs], r.zones.hp[(int)Zone::Arms], r.zones.max[(int)Zone::Arms]);
 		(void)atkStats;
 		return out;
@@ -155,7 +249,7 @@ namespace combat_glue
 	{
 		if ( !e || !poiseOn() ) return false;
 		auto it = table().find(e->getUID());
-		return it != table().end() && it->second.poise.staggered();
+		return it != table().end() && staggeredRec(e, it->second);
 	}
 
 	// arms disabled or downed: no attack (a staggered entity is already paralysed by the engine)
@@ -207,6 +301,35 @@ namespace combat_glue
 		{
 			r.lastTick = ::ticks;
 			r.poise.tick();
+			if ( physicalPlayer(e) )
+			{
+				// D75: the pool follows gear, CON and Endurance; it recovers slowly while the player attacks or moves
+				ensurePhys(e, s, r);
+				const double m = playerMaxPoise(e, s);
+				r.phys.setMax(m);
+				if ( std::fabs(m - r.physMaxLogged) >= 1.0 )
+				{
+					const PoiseInputs in = playerPoiseInputs(e, s);
+					printlog("[apx-poise] player %d max %.1f (body %.1f: CON %d; armour %.1f from %d pieces; Endurance %d) value %.1f",
+						e->skill[2], m, apx::poise::table().base + apx::poise::table().perCON * in.con, in.con, in.armour, in.pieces,
+						in.endurance, r.phys.value);
+					r.physMaxLogged = m;
+				}
+				const int pn = e->skill[2];
+				const bool swinging = pn >= 0 && pn < MAXPLAYERS && apx::staminaEnabled() && apx::stamina[pn].prevChop;
+				const bool moving = std::hypot(e->vel_x, e->vel_y) > 0.05;
+				r.phys.tick(swinging || moving);
+			}
+			if ( isPlayer(e) && poiseOn() )
+			{
+				// stagger locks, timed the same way for either model: a stagger starting within lockGapS of the last end
+				const bool now = staggeredRec(e, r);
+				if ( now ) ++r.staggeredTicks;
+				if ( now && !r.wasStaggered && r.staggerEnded
+					&& ::ticks - r.lastStaggerEnd < (Uint32)(apx::poise::table().lockGapS * kTicksPerSecond) ) ++r.locks;
+				if ( !now && r.wasStaggered ) { r.lastStaggerEnd = ::ticks; r.staggerEnded = true; }
+				r.wasStaggered = now;
+			}
 		}
 		if ( isPlayer(e) )
 		{

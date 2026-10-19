@@ -84,7 +84,7 @@ namespace tiers
 		setBand(level, mapName, b, true);
 	}
 
-	// Not an apx-gen floor: the same rank (spec 04 section 2.1) from 400 draws of this floor's monster curve, with
+	// Not an apx-gen floor: the same rank (spec 04 section 2.1) from kBandSamples draws of this floor's monster curve, with
 	// the map RNG seeded by the floor and put back (the game's map RNG does not move; same answer every time).
 	static void ensureBand()
 	{
@@ -93,7 +93,7 @@ namespace tiers
 		const Uint32 seed[2] = { 0xD74D74u, (Uint32)currentlevel };
 		map_rng.seedBytes(seed, sizeof(seed));
 		std::map<int, int> freq;
-		for ( int k = 0; k < 400; ++k ) { ++freq[monsterCurve(currentlevel)]; }
+		for ( int k = 0; k < apx::tierrules::kBandSamples; ++k ) { ++freq[monsterCurve(currentlevel)]; } // D75: 4000 draws, the shares sit far from the cut
 		map_rng.~BaronyRNG(); // BaronyRNG has no copy-assignment: rebuilt in place from the copy (as apx_gen_bridge.cpp)
 		new (&map_rng) BaronyRNG(saved);
 		std::vector<std::pair<int, int>> counts;

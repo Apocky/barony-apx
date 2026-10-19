@@ -41,6 +41,7 @@ namespace tactics
 		K.packs = envOn("APX_PACKS", true);
 		K.morale = envOn("APX_MORALE", true);
 		K.astardiag = envOn("APX_ASTAR_DIAG", true);
+		K.collide = envOn("APX_CROWD_COLLIDE", false);
 		const char* e = getenv("APX_ELBOW");
 		if ( e && *e ) { gElbow = atof(e); }
 		e = getenv("APX_TACTICS_PROBE_US");
@@ -55,10 +56,10 @@ namespace tactics
 
 	std::string knobString()
 	{
-		char buf[176];
-		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d,astardiag=%d",
+		char buf[192];
+		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d,astardiag=%d,collide=%d",
 			K.tactics ? 1 : 0, K.reach ? 1 : 0, K.interleave ? 1 : 0, K.allyavoid ? 1 : 0, K.ring ? 1 : 0,
-			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0, K.astardiag ? 1 : 0);
+			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0, K.astardiag ? 1 : 0, K.collide ? 1 : 0);
 		return buf;
 	}
 

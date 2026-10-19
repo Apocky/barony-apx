@@ -19,22 +19,53 @@ namespace tierrules
 {
 	using apx::combat::Tier;
 
-	// ------------------------------------------------------------------ band rank (spec 04 section 2.1, F2)
-	// A band's monster types rank by their share of the band's monster curve: the commonest third is fodder, the
-	// middle third regular, the rarest third elite; ties by type id; a band of one type is all fodder.
-	// counts: (type, draws from the curve). out[0] fodder, out[1] regular, out[2] elite, each in rank order.
-	// One function for the generator's placement (apx_gen_bridge.cpp) and the runtime tier (tiers.cpp).
+	// ------------------------------------------------------------------ band rank (spec 04 section 2.1; D72, D75)
+	// D75 (Apocky, 2026-10-19): tiers by strength. A band's types are ordered weakest first: base LVL, then MAXHP,
+	// then type id (monster_strength.inc, generated from the engine's setDefaultMonsterStats: constants, the same on
+	// the host, every client and the generator). A type is fodder while the band's spawns weaker than it are under
+	// kFodderBeforePct of the band ("the weakest types up to about 60 percent"): the type that crosses the line is
+	// fodder too, so floor 1 (rat 40 percent, skeleton 60) is all fodder. Of the types left, the strongest is elite
+	// when two or more are left; the rest are regular. Floors 2-4 (rat 40, skeleton 40, spider 10, troll 10): rat and
+	// skeleton fodder, spider regular, troll elite. The curves' shares come in 10-percent steps: 55 sits between them,
+	// so sampling noise cannot move a type across the line (the rule is "about 60" without the coin toss at 60).
+	struct ApxStrength { int lvl, maxhp, str, estimated; };
+#include "monster_strength.inc"
+	constexpr int kFodderBeforePct = 55;
+	constexpr int kBandSamples = 4000;   // draws of a floor's monster curve per rank (generator and run time)
+
+	inline const ApxStrength& strengthOf(int type)
+	{
+		static const ApxStrength none = { 1, 0, 0, 1 };
+		return (type >= 0 && type < kApxStrengthTypes) ? kApxStrength[type] : none;
+	}
+	inline bool weakerThan(int a, int b) // strictly weaker: LVL, then MAXHP, then id
+	{
+		const ApxStrength& x = strengthOf(a);
+		const ApxStrength& y = strengthOf(b);
+		if ( x.lvl != y.lvl ) { return x.lvl < y.lvl; }
+		if ( x.maxhp != y.maxhp ) { return x.maxhp < y.maxhp; }
+		return a < b;
+	}
+
+	// counts: (type, draws from the band's curve). out[0] fodder, out[1] regular, out[2] elite, weakest first.
+	// One function for the generator's placement (apx_gen_bridge.cpp) and the run-time tier (tiers.cpp).
 	inline void bandTiers(const std::vector<std::pair<int, int>>& counts, std::vector<int> out[3])
 	{
-		std::vector<std::pair<int, int>> ranked; // (-draws, type): commonest first
-		ranked.reserve(counts.size());
-		for ( const auto& c : counts ) { ranked.push_back({ -c.second, c.first }); }
-		std::sort(ranked.begin(), ranked.end());
-		const size_t n = ranked.size();
-		for ( size_t k = 0; k < n; ++k )
+		std::vector<std::pair<int, int>> v(counts.begin(), counts.end());
+		std::sort(v.begin(), v.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) { return weakerThan(a.first, b.first); });
+		long long total = 0;
+		for ( const auto& c : v ) { total += c.second; }
+		std::vector<int> tier(v.size(), 1);
+		long long before = 0;
+		size_t left = 0;
+		for ( size_t k = 0; k < v.size(); ++k )
 		{
-			out[n < 2 ? 0 : (int)(k * 3 / n)].push_back(ranked[k].second); // bottom third fodder, top third elite
+			if ( before * 100 < (long long)kFodderBeforePct * total ) { tier[k] = 0; }
+			else { ++left; }
+			before += v[k].second;
 		}
+		if ( left >= 2 ) { tier[v.size() - 1] = 2; } // the strongest of the types left
+		for ( size_t k = 0; k < v.size(); ++k ) { out[tier[k]].push_back(v[k].first); }
 	}
 
 	// ------------------------------------------------------------------ damage per hit by tier (D74)

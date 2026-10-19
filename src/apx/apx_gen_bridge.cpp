@@ -780,7 +780,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	{
 		BaronyRNG saved = map_rng; // sample the band's curve without moving the game's map RNG
 		std::map<int, int> freq;
-		for ( int k = 0; k < 400; ++k ) { ++freq[monsterCurve(currentlevel)]; }
+		for ( int k = 0; k < apx::tierrules::kBandSamples; ++k ) { ++freq[monsterCurve(currentlevel)]; } // D75: 4000 draws, the shares sit far from the cut
 		map_rng.~BaronyRNG(); // BaronyRNG has no copy-assignment: rebuild it in place from the copy
 		new (&map_rng) BaronyRNG(saved);
 		std::vector<std::pair<int, int>> counts; // (type, draws)
@@ -789,9 +789,11 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 			if ( fq.first <= NOTHING || fq.first >= NUMMONSTERS ) { continue; }
 			counts.push_back({ fq.first, fq.second });
 		}
-		// rank by the curve alone: rarer = stronger, ties by type id. (Stat base levels are only filled on the
-		// host, so ranking by them gave the client another tier order and hash.) One rule with the run-time tier:
-		// apx/tier_rules.hpp bandTiers (unit-tested); the D74 damage rule reads this floor's rank via apx::tiers.
+		// D75: tiers by strength, weakest first (the weakest types up to about 60 percent of the spawns are fodder,
+		// the strongest of the rest elite). Strength is the engine's default LVL and MAXHP as constants generated into
+		// apx/monster_strength.inc, so host and client rank alike (live Stat base levels are host-only: an earlier
+		// rank by them gave the client another tier order and hash). One rule with the run-time tier: apx/tier_rules.hpp
+		// bandTiers (unit-tested); the D74 damage rule reads this floor's rank via apx::tiers.
 		apx::tierrules::bandTiers(counts, tierTypes);
 		apx::tiers::recordBand(currentlevel, map.name, tierTypes);
 		std::string s;

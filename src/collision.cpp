@@ -24,6 +24,7 @@
 #include "prng.hpp"
 #include "player.hpp"
 #include "mod_tools.hpp"
+#include "apx/tactics.hpp"
 #ifdef __ARM_NEON__
 #include <arm_neon.h>
 #endif
@@ -1358,6 +1359,11 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 							|| entity->behavior == &actPlayer && myStats->monsterForceAllegiance == Stat::MONSTER_FORCE_PLAYER_ENEMY )
 						{
 							// forced enemies.
+						}
+						else if ( apx::tactics::K.collide && multiplayer != CLIENT && my->behavior == &actMonster && entity->behavior == &actMonster
+							&& !myStats->leader_uid && !yourStats->leader_uid )
+						{
+							// apx D75 jam experiment (APX_CROWD_COLLIDE, BF3 trial arms): hostile allied creatures block each other
 						}
 						else
 						{

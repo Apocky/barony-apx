@@ -103,52 +103,67 @@ int main()
 		}
 	}
 
-	// band rank (spec 04 section 2.1, F2): commonest third fodder, rarest third elite, ties by type id
+	// band rank, D75: weakest types first (the engine's default LVL, then MAXHP), fodder while the weaker spawns
+	// are under 55 percent of the band, the strongest of two or more left elite. Real Monster ids (monster.hpp).
 	{
-		std::vector<int> t[3];
-		bandTiers({ { 7, 160 }, { 11, 240 } }, t); // floor 1, the Mines: rat 40 pct, skeleton 60 pct (ids illustrative)
-		CHECK(t[0].size() == 1 && t[0][0] == 11 && t[1].size() == 1 && t[1][0] == 7 && t[2].empty(), "floor 1: skeleton fodder, rat regular");
-	}
-	{
-		std::vector<int> t[3];
-		bandTiers({ { 7, 160 }, { 11, 160 }, { 3, 40 }, { 9, 40 } }, t); // floors 2-4: rat, skeleton, spider, troll
-		CHECK(t[0].size() == 2 && t[0][0] == 7 && t[0][1] == 11, "floors 2-4: the two commonest are fodder, tie by id");
-		CHECK(t[1].size() == 1 && t[1][0] == 3 && t[2].size() == 1 && t[2][0] == 9, "floors 2-4: rarer pair split regular | elite by id");
-	}
-	{
-		std::vector<int> t[3];
-		bandTiers({ { 5, 10 } }, t);
-		CHECK(t[0].size() == 1 && t[1].empty() && t[2].empty(), "a band of one type is fodder");
-		std::vector<int> u[3];
-		bandTiers({ { 1, 6 }, { 2, 5 }, { 3, 4 }, { 4, 3 }, { 5, 2 }, { 6, 1 } }, u);
-		CHECK(u[0].size() == 2 && u[1].size() == 2 && u[2].size() == 2 && u[0][0] == 1 && u[2][1] == 6, "six types split in thirds by share");
-	}
-
-	// the generator's own rank as it stood inline in apx_gen_bridge.cpp (F2, a90e21c3 .. eb834ccd) and bandTiers,
-	// which replaced it: the same tiers for 20,000 random bands (1-9 types, many ties), so placement is unchanged
-	{
-		std::mt19937 rng(0xD74);
-		int differ = 0;
-		for ( int trial = 0; trial < 20000; ++trial )
+		enum { HUMAN = 1, RAT = 2, GOBLIN = 3, SLIME = 4, TROLL = 5, SPIDER = 7, GHOUL = 8, SKELETON = 9 };
+		CHECK(strengthOf(RAT).lvl == 1 && strengthOf(SKELETON).lvl == 2 && strengthOf(SPIDER).lvl == 5 && strengthOf(TROLL).lvl == 12,
+			"generated strengths: rat %d skeleton %d spider %d troll %d", strengthOf(RAT).lvl, strengthOf(SKELETON).lvl,
+			strengthOf(SPIDER).lvl, strengthOf(TROLL).lvl);
+		CHECK(strengthOf(SLIME).estimated == 1 && strengthOf(GOBLIN).estimated == 0, "slime's LVL is the estimated one");
+		// the pre-D75 rank (F2 a90e21c3: commonest third fodder), the control's rule
+		auto oldRank = [](std::vector<std::pair<int, int>> counts, std::vector<int> out[3]) {
+			std::vector<std::pair<std::pair<int, int>, int>> r;
+			for ( auto& c : counts ) { r.push_back({ { -c.second, c.first }, c.first }); }
+			std::sort(r.begin(), r.end());
+			for ( size_t k = 0; k < r.size(); ++k ) { out[r.size() < 2 ? 0 : (int)(k * 3 / r.size())].push_back(r[k].second); }
+		};
+		auto band = [&](std::vector<std::pair<int, int>> counts, std::vector<int> out[3]) {
+			if ( control ) { oldRank(counts, out); } else { bandTiers(counts, out); }
+		};
 		{
-			std::map<int, int> freq; // type -> draws, iterated by type as the generator's std::map
-			const int types = 1 + (int)(rng() % 9);
-			for ( int k = 0; k < types; ++k ) { freq[1 + (int)(rng() % 40)] = 1 + (int)(rng() % 6) * (1 + (int)(rng() % 70)); }
-			std::vector<int> old[3];
-			{
-				std::vector<std::pair<std::pair<int, int>, int>> ranked;
-				for ( auto& fq : freq ) { ranked.push_back({ { -fq.second, fq.first }, fq.first }); }
-				std::sort(ranked.begin(), ranked.end());
-				const size_t n = ranked.size();
-				for ( size_t k = 0; k < n; ++k ) { old[n < 2 ? 0 : (int)(k * 3 / n)].push_back(ranked[k].second); }
-			}
-			std::vector<std::pair<int, int>> counts(freq.begin(), freq.end());
-			std::vector<int> now[3];
-			bandTiers(counts, now);
-			if ( control ) { std::reverse(now[0].begin(), now[0].end()); if ( now[0].size() > 1 ) { now[1].push_back(now[0].back()); now[0].pop_back(); } }
-			differ += !(old[0] == now[0] && old[1] == now[1] && old[2] == now[2]);
+			std::vector<int> t[3];
+			band({ { SKELETON, 2400 }, { RAT, 1600 } }, t); // floor 1, the Mines: rat 40 pct, skeleton 60 pct
+			CHECK(t[0] == std::vector<int>({ RAT, SKELETON }) && t[1].empty() && t[2].empty(), "floor 1: rats and skeletons fodder (D75)");
 		}
-		CHECK(differ == 0, "bandTiers differs from the generator's inline rank in %d of 20000 bands", differ);
+		{
+			std::vector<int> t[3];
+			band({ { TROLL, 400 }, { RAT, 1600 }, { SPIDER, 400 }, { SKELETON, 1600 } }, t); // floors 2-4
+			CHECK(t[0] == std::vector<int>({ RAT, SKELETON }) && t[1] == std::vector<int>({ SPIDER }) && t[2] == std::vector<int>({ TROLL }),
+				"floors 2-4: rat and skeleton fodder, spider regular, troll elite");
+		}
+		{
+			std::vector<int> t[3];
+			band({ { SPIDER, 800 }, { GOBLIN, 1200 }, { SLIME, 1200 }, { GHOUL, 800 } }, t); // the swamp
+			CHECK(t[0] == std::vector<int>({ SPIDER, GOBLIN, SLIME }) && t[1] == std::vector<int>({ GHOUL }) && t[2].empty(),
+				"swamp: spider, goblin, slime fodder (weaker share 0, 20, 50 pct); one type left is regular, not elite");
+		}
+		{
+			std::vector<int> t[3];
+			band({ { HUMAN, 10 } }, t);
+			CHECK(t[0].size() == 1 && t[1].empty() && t[2].empty(), "a band of one type is fodder");
+		}
+		// sampling noise: 4000 draws of the floors 2-4 curve, 2000 times, never move a type across the cut
+		{
+			std::mt19937 rng(0xD75);
+			int moved = 0;
+			for ( int trial = 0; trial < 2000; ++trial )
+			{
+				int n[4] = { 0, 0, 0, 0 };
+				for ( int k = 0; k < kBandSamples; ++k ) { const int r = (int)(rng() % 10); ++n[r < 4 ? 0 : r < 8 ? 1 : r == 8 ? 2 : 3]; }
+				std::vector<int> t[3];
+				band({ { RAT, n[0] }, { SKELETON, n[1] }, { SPIDER, n[2] }, { TROLL, n[3] } }, t);
+				moved += !(t[0] == std::vector<int>({ RAT, SKELETON }) && t[1] == std::vector<int>({ SPIDER }) && t[2] == std::vector<int>({ TROLL }));
+			}
+			CHECK(moved == 0, "sampled floors 2-4 bands changed tiers in %d of 2000", moved);
+		}
+		// the input order does not matter
+		{
+			std::vector<int> t[3], u[3];
+			band({ { RAT, 1600 }, { SKELETON, 1600 }, { SPIDER, 400 }, { TROLL, 400 } }, t);
+			band({ { SPIDER, 400 }, { TROLL, 400 }, { SKELETON, 1600 }, { RAT, 1600 } }, u);
+			CHECK(t[0] == u[0] && t[1] == u[1] && t[2] == u[2], "band tiers depend on the input order");
+		}
 	}
 
 	std::printf("%s: %d checks, %d failed%s\n", fails ? "FAIL" : "PASS", checks, fails, control ? " (control APX_TIER_UNITS_BREAK=1)" : "");
