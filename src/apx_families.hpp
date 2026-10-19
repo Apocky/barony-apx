@@ -83,11 +83,11 @@ namespace fam
 		const bool stag = vstats->getEffectActive(EFF_PARALYZED) != 0;
 		if ( d->effects & EF_CRIT_BLEED )
 		{
-			if ( unaware(attacker, victim) || stag ) { out = static_cast<int>(damage * d->sneakMult); ++counters().crits; }
+			if ( lastUnaware() || stag ) { out = static_cast<int>(damage * d->sneakMult); ++counters().crits; }
 		}
 		else if ( d->effects & EF_SNEAK )
 		{
-			if ( unaware(attacker, victim) ) { out = static_cast<int>(damage * d->sneakMult); ++counters().sneaks; }
+			if ( lastUnaware() ) { out = static_cast<int>(damage * d->sneakMult); ++counters().sneaks; }
 		}
 		return out;
 	}

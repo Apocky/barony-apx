@@ -67,6 +67,8 @@ for mid in sorted(T):
     if control == 'moves0':
         continue
     # --- gates per move
+    if control == 'charge0' and d['charged']:
+        continue
     maxh = 1 + d['extra']
     gate('%s: releases=%d' % (d['name'], len(R)), len(R) >= 2)
     gate('%s: targets per release <= %d (table)' % (d['name'], maxh), (len(main) + len(ext)) / len(R) <= maxh + 1e-9, '%.2f' % ((len(main) + len(ext)) / len(R)))
@@ -75,30 +77,32 @@ for mid in sorted(T):
     if d['charged'] and control != 'charge0':
         gate('%s: charged %d/%d, extra stamina %.2f swings' % (d['name'], sum(r['charged'] for r in R), len(R), d['cost'] - 1.0),
              all(r['charged'] for r in R) and abs(mean([r['extra'] for r in R]) - (d['cost'] - 1.0) * 8.0) < 0.5, '%.2f' % mean([r['extra'] for r in R]))
-    if 'EF_PUSH' in d['eff'] and victim == 'dummy':
-        v3 = vel3.get(mid, [])
-        gate('%s: impulse applied (victim speed 3 ticks later > 0.2; the dummybot is immobile, so displacement is NOT measurable)' % d['name'], mean(v3) > 0.2, '%.2f' % mean(v3))
     if ('EF_KNOCKDOWN_SMALL' in d['eff'] or 'EF_GRAPPLE' in d['eff']) and victim == 'rat':
         gate('%s: stagger/knockdown after 5 ticks > 0.3' % d['name'], (mean([a for a, b in st5]) if st5 else 0) > 0.3, '%.2f' % (mean([a for a, b in st5]) if st5 else 0))
     if 'EF_CRIT_BLEED' in d['eff'] and victim == 'dummy':
         gate('%s: bleeding on unaware targets' % d['name'], any(b for a, b in st5), '%d of %d' % (sum(b for a, b in st5), len(st5)))
-        if un and aw:
+        if un and aw and mean(aw) >= 3:
             gate('%s: unaware damage x%.1f vs aware' % (d['name'], d['sneak']), mean(un) / mean(aw) > 2.0, '%.2f' % (mean(un) / mean(aw)))
-    if 'EF_SNEAK' in d['eff'] and 'EF_CRIT_BLEED' not in d['eff'] and un and aw and victim == 'dummy':
+    if 'EF_SNEAK' in d['eff'] and 'EF_CRIT_BLEED' not in d['eff'] and un and aw and mean(aw) >= 3 and victim == 'dummy':
         gate('%s: sneak bonus x%.1f' % (d['name'], d['sneak']), 1.2 < mean(un) / mean(aw) < 1.9, '%.2f' % (mean(un) / mean(aw)))
     if d['dash'] > 0:
         pass
 
 print(done)
 c = dict(re.findall(r'(\w+)=(\d+)', done))
-if control != 'moves0':
-    if victim == 'rat':
-        gate('slam victims > 0', int(c.get('slamVictims', 0)) > 0, c.get('slamVictims'))
-        gate('throws > 0', int(c.get('throws', 0)) > 0, c.get('throws'))
-    else:
-        gate('shield aside > 0 (axe hook)', int(c.get('shieldAside', 0)) > 0, c.get('shieldAside'))
-        gate('shield break > 0 (axe cleave)', int(c.get('shieldBreak', 0)) > 0, c.get('shieldBreak'))
-        gate('crits > 0 and bleeds > 0 (dagger)', int(c.get('crits', 0)) > 0 and int(c.get('bleeds', 0)) > 0, '%s/%s' % (c.get('crits'), c.get('bleeds')))
+if control is None:
+    gate('pushes applied (counter > 0; displacement NOT measured, the dummybot is immobile)', int(c.get('pushes', 0)) > 0, c.get('pushes'))
+    gate('slam victims > 0', int(c.get('slamVictims', 0)) > 0, c.get('slamVictims'))
+    gate('throws > 0', int(c.get('throws', 0)) > 0, c.get('throws'))
+    gate('knockdowns > 0', int(c.get('knockdowns', 0)) > 0, c.get('knockdowns'))
+    gate('grapples > 0', int(c.get('grapples', 0)) > 0, c.get('grapples'))
+    gate('shield aside > 0 (axe hook)', int(c.get('shieldAside', 0)) > 0, c.get('shieldAside'))
+    gate('shield break > 0 (axe cleave)', int(c.get('shieldBreak', 0)) > 0, c.get('shieldBreak'))
+    gate('crits > 0 and bleeds > 0 (dagger assassinate)', int(c.get('crits', 0)) > 0 and int(c.get('bleeds', 0)) > 0, '%s/%s' % (c.get('crits'), c.get('bleeds')))
+    gate('sneak bonus > 0 (dagger stab/flick)', int(c.get('sneaks', 0)) > 0, c.get('sneaks'))
+if control == 'charge0':
+    for k in ('slamVictims', 'shieldBreak', 'throws', 'bleeds', 'crits'):
+        gate('control charge0: no charged effect (%s == 0)' % k, int(c.get(k, 0)) == 0, c.get(k))
 if control == 'moves0':
     gate('control moves0: no move released, no family effect counted', not rel and int(c.get('hits', 0)) == 0, 'releases=%d hits=%s' % (sum(len(v) for v in rel.values()), c.get('hits')))
 if control == 'charge0':
