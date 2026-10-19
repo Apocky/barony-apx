@@ -215,6 +215,20 @@ def gates(by, base, args):
                                     "holder_in_share": round(mean([a.get("holder_in", 0) / max(1, a.get("holder_in", 0) + a.get("holder_out", 0)) for a in on]), 3),
                                     "false_arrive": sum(a.get("holder_false_arrive", 0) for a in on),
                                     "flank_arrived": sum(a.get("flank_arrived", 0) for a in on), "flank_failed": sum(a.get("flank_failed", 0) for a in on)}
+    mon = [m for m in base["morale"] if m.get("arm_kind") == "morale_on"]
+    moff = [m for m in base["morale"] if m.get("arm_kind") == "morale_off_control"]
+    if mon and moff:
+        # a retreat must move: every member breaks within 3 s AND the pack's mean distance grows by 1.5 tiles (a
+        # skeleton walks about 5 tiles in 3 s) AND every member gets home (home_moved counts the ones that gave up
+        # after 20 s). The stance alone passed while the members stood at the keep-out edge (s3-grid, s5-route).
+        gain = [round(m["dist_at_3s"] - m["dist_at_kill"], 1) for m in mon]
+        g["morale_retreat"] = {"pass": all(m["retreating_at_3s"] == m["members_at_kill"] and m["dist_at_3s"] - m["dist_at_kill"] >= 24
+                                           and m["home_moved"] == 0 and m["first_regroup_s"] > 0 for m in mon)
+                               and all(m["retreating_at_3s"] == 0 for m in moff),
+                               "retreating_at_3s": [f'{m["retreating_at_3s"]}/{m["members_at_kill"]}' for m in mon],
+                               "dist_gain_3s": gain, "home_moved": [m["home_moved"] for m in mon],
+                               "first_regroup_s": [m["first_regroup_s"] for m in mon],
+                               "control_retreating": [m["retreating_at_3s"] for m in moff]}
     hon = [h for h in base["help"] if h.get("arm_kind") == "help_on"]
     hoff = [h for h in base["help"] if h.get("arm_kind") == "help_off_nopacks"]
     if hon and hoff:

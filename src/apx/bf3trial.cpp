@@ -1021,6 +1021,20 @@ namespace bf3
 				}
 				break;
 			case P_M_OBSERVE:
+				if ( dumpCreatures && ticks != killTick && (ticks - killTick) % TICKS_PER_SECOND == 0 && ticks - killTick <= 4 * TICKS_PER_SECOND )
+				{
+					for ( Uint32 u : trialUids )
+					{
+						Entity* c = uidToEntity(u);
+						if ( u == leaderUid || !c || !c->getStats() || c->getStats()->HP <= 0 ) { continue; }
+						tactics::TacticsState* s = tactics::find(c);
+						printlog("[apx] bf3 dump morale %d t %u uid %u d %.1f ang %.2f st %d tgt %d stance %d morale %d steer %d home_d %.1f route %d/%d kind %d moved %.2f bump %d steered_ago %d at %.1f,%.1f",
+							moraleArm, ticks - killTick, u, hypot(c->x - pe->x, c->y - pe->y), atan2(c->y - pe->y, c->x - pe->x), (int)c->monsterState,
+							(Uint32)c->monsterTarget == pe->getUID() ? 1 : 0, s ? (int)s->stance : -9, s ? (int)s->morale : -999, s ? (int)s->lastSteer : -9,
+							s ? hypot(s->homeX - c->x, s->homeY - c->y) : -1.0, s ? (int)s->routeAt : -9, s ? (int)s->route.size() : -9,
+							s ? (int)s->routeKind : -9, s ? s->lastMoved : -1.0, s ? s->lastBump : -9, s ? (int)(ticks - s->steeredTick) : -9, c->x, c->y);
+					}
+				}
 				if ( ticks - killTick == 3 * TICKS_PER_SECOND )
 				{
 					retreatAt3s = shouldRetreatAt3s = 0;
