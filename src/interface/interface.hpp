@@ -2029,7 +2029,9 @@ enum ItemContextMenuPrompts {
 	PROMPT_UNEQUIP_FOR_DROP,
 	PROMPT_CLEAR_HOTBAR_SLOT,
 	PROMPT_COOK,
-	PROMPT_SCEPTER_CHARGE
+	PROMPT_SCEPTER_CHARGE,
+	PROMPT_APX_BREAK,   // apx U1: break the item (its Form is learned when F6 lands)
+	PROMPT_APX_INSPECT  // apx U1: the inspect panel
 };
 
 std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int player, Item* item);

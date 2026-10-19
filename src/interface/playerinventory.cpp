@@ -20,6 +20,7 @@
 #include "../magic/magic.hpp"
 #include "../menu.hpp"
 #include "../player.hpp"
+#include "../apx_inventory.hpp"
 #include "interface.hpp"
 #include "consolecommand.hpp"
 #include "../ui/GameUI.hpp"
@@ -11388,6 +11389,10 @@ const char* getContextMenuLangEntry(const int player, const ItemContextMenuPromp
 			return Language::get(4040);
 		case PROMPT_SCEPTER_CHARGE:
 			return Language::get(6834);
+		case PROMPT_APX_INSPECT:
+			return "Inspect"; // apx U1 (lang entries come with the U1 text pass)
+		case PROMPT_APX_BREAK:
+			return "Break";
 		default:
 			return "Invalid";
 	}
@@ -11769,6 +11774,11 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 	}
 #endif // NDEBUG
 
+	if ( playerOwnedItem && !apx_inv::vanillaGrid() && itemCategory(item) != SPELL_CAT )
+	{
+		options.push_back(PROMPT_APX_INSPECT); // apx U1: our row actions
+		options.push_back(PROMPT_APX_BREAK);
+	}
 	return options;
 }
 
