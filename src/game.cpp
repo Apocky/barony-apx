@@ -89,6 +89,7 @@ static void apxRunImpactSelfTest()
 
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
+#include "apx/visshots.hpp"
 static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
@@ -990,6 +991,7 @@ static real_t drunkextend[MAXPLAYERS] = { (real_t)0.0 };
 void gameLogic(void)
 {
 	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
+	apx::vis::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx BVIS1
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -7364,6 +7366,10 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strcmp(argv[c], "-apxvisshots") )
+					{
+						apx::vis::arm(); // apx BVIS1: far and near screenshots on the test floor, then quit
+					}
 					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
 					{
 						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
@@ -8331,7 +8337,9 @@ int main(int argc, char** argv)
 			GO_SwapBuffers(screen);
 
 			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
-			if ( const char* apxShot = apx_inv::takeShotRequest() )
+			const char* apxShot = apx_inv::takeShotRequest(); // U1 self-test, else BVIS1 vision shots
+			if ( !apxShot ) { apxShot = apx::vis::takeShot(); }
+			if ( apxShot )
 			{
 				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }
 				takeScreenshot(apxShot);
