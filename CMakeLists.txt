@@ -49,3 +49,7 @@ set_tests_properties(size80_control_no_room_cap PROPERTIES WILL_FAIL TRUE)
 # spawned share at most 20 percent; the control breaks them and must fail
 add_test(NAME d72_control_break_packs COMMAND apxgen_cli --site 20 --quiet --break-packs)
 set_tests_properties(d72_control_break_packs PROPERTIES WILL_FAIL TRUE)
+# H1b: D75 tiers by strength order (floor 1 rats and skeletons fodder, 50-70 percent fodder per
+# level), D73 haven merchants, set pieces; control: kinds drawn ignoring tiers must fail
+add_test(NAME h1b_control_flat_tiers COMMAND apxgen_cli --site 20 --quiet --flat-tiers)
+set_tests_properties(h1b_control_flat_tiers PROPERTIES WILL_FAIL TRUE)

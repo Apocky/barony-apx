@@ -237,7 +237,11 @@ struct Writing { int room = -1, x = 0, z = 0; std::string id, kind; uint64_t tex
 // D72 (spec 04 section 2.1): creatures by tier, in SPAWNED packs (placed as a pack at a den or on a
 // patrol, a budgeted share of the floor) or EMERGENT groups (individuals and small groups placed in
 // rooms, which may converge later through AI). Tiers 0 fodder, 1 regular, 2 elite, 3 champion.
-struct Group { bool spawned = false; std::string source; int room = -1; std::vector<int> tiers; };
+struct Group { bool spawned = false; std::string source; int room = -1; std::vector<int> tiers; std::vector<std::string> kinds; };
+// kits/hollow.toml: per-level encounter tables (D75), haven trades (D73), set pieces
+struct EncounterLevel { std::string name; std::vector<std::string> kinds; std::vector<int> weights, tier; std::vector<std::string> trades; };
+struct SetPiece { std::string id, level, room_kind, station; };
+struct PlacedPiece { std::string id; int room = -1; bool exact = false; };
 struct Level {
     std::string name, faction;
     Result r;
@@ -248,6 +252,10 @@ struct Level {
     int alive = 0, lit = 0, rooms = 0, readable_candidates = 0;
     std::vector<Group> groups;
     int creatures = 0, spawned_creatures = 0;
+    std::string merchant_trade;     // D73: the haven merchant's one trade ("" = no haven merchant)
+    int merchant_room = -1;
+    bool general_store = false;     // D73: about half the floors from floor 2 (Barony's vanilla shop)
+    std::vector<PlacedPiece> pieces;
 };
 struct SiteParams {
     bool thin = false;         // the control: 1 den, no patrols, no wall dressing -> must fail
@@ -259,6 +267,9 @@ struct SiteParams {
     int large_pack = 5;                // a pack of 5 or more is "large": fodder at least 75 percent, no elite
     int emergent_group_max = 3;        // individuals and small groups
     bool break_packs = false;          // the control: packs 2-8 of any tiers, half the floor spawned
+    std::vector<EncounterLevel> encounters; // kits/hollow.toml
+    std::vector<SetPiece> pieces;
+    bool flat_tiers = false;           // the D75 control: kinds drawn ignoring the strength order
     int writings_lo = 12, writings_hi = 16; // texts given per floor (seeded in the band)
     int gate_writings_lo = 10, gate_writings_hi = 20; // the Readable gate band
     bool all_legible = false;  // the control: every readable candidate gets a text -> over the band
@@ -278,5 +289,6 @@ struct SiteVerdict { std::vector<std::string> fails; bool pass() const { return 
 bool build_site(uint64_t seed, const std::vector<Grammar>& g, const std::vector<Program>& progs, const DressLib& lib,
                 const Params& P, const SiteParams& SP, Site& s, std::string& err);
 SiteVerdict site_critic(const Site& s, const SiteParams& SP);
+bool load_hollow(const std::string& path, SiteParams& SP, std::string& err);
 
 } // namespace apx

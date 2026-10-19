@@ -107,6 +107,8 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
                      const DressLib& lib, const Params& P, const SiteParams& SP) {
     long long pass = 0, nondet = 0;
     std::map<std::string, long long> why;
+    long long fod_n = 0, cr_n = 0, merchants = 0, merchant_floors = 0, stores = 0, pieces = 0, pieces_exact = 0; double fod_min = 100;
+    std::map<std::string, long long> trade_count;
     int pk_elite_max = 0, pk_elites_max = 0, pk_large_fodder_min = 100, pk_max = 0, emergent_max = 0; double share_max = 0, share_sum = 0; long long share_n = 0, packs = 0, elite_packs = 0;
     double wr_max = 0, cand_sum = 0, alive_min = 1e9, lit_min = 1e9, wr_min = 1e9, ms_sum = 0, ms_max = 0;
     long long dens = 0, patrols = 0, writings = 0, floors = 0;
@@ -144,6 +146,14 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
                         if (e) { pk_elite_max = std::max(pk_elite_max, sz); pk_elites_max = std::max(pk_elites_max, e); }
                         if (sz >= SP.large_pack) pk_large_fodder_min = std::min(pk_large_fodder_min, 100 * fo / sz);
                     } else emergent_max = std::max(emergent_max, sz);
+                }
+                {
+                    long long f0 = 0, c0 = 0;
+                    for (auto& g : L.groups) for (int t : g.tiers) { ++c0; f0 += t == 0; }
+                    fod_n += f0; cr_n += c0;
+                    if (c0) fod_min = std::min(fod_min, 100.0 * f0 / c0);
+                    if (i < 4) { ++merchant_floors; merchants += !L.merchant_trade.empty(); stores += L.general_store; if (!L.merchant_trade.empty()) trade_count[L.merchant_trade]++; }
+                    for (auto& pp : L.pieces) { ++pieces; pieces_exact += pp.exact; }
                 }
                 if (L.creatures) { double sh = 100.0 * L.spawned_creatures / L.creatures; share_max = std::max(share_max, sh); share_sum += sh; ++share_n; }
                 char buf[400];
@@ -183,9 +193,9 @@ static int site_mode(long long first, long long n, const std::string& dump_dir, 
     for (auto& [k, c] : why) ws += (ws.empty() ? "\"" : ",\"") + esc(k) + "\":" + std::to_string(c);
     bool gate = pass == n && nondet == 0;
     std::printf("{\"site_summary\":true,\"thin\":%s,\"sites\":%lld,\"pass\":%lld,\"nondeterministic\":%lld,\"alive_min_pct\":%.1f,\"lit_min_pct\":%.1f,\"writings_min\":%.0f,\"writings_max\":%.0f,\"readable_candidates_per_floor\":%.1f,"
-                "\"packs\":%lld,\"elite_packs\":%lld,\"pack_max\":%d,\"elite_pack_size_max\":%d,\"elites_per_pack_max\":%d,\"large_pack_fodder_min_pct\":%d,\"emergent_group_max\":%d,\"spawned_share_max_pct\":%.1f,\"spawned_share_mean_pct\":%.1f,\"break_packs\":%s,\"dens_per_floor\":%.2f,\"patrols_per_floor\":%.2f,\"writings_per_floor\":%.2f,\"ms_mean\":%.1f,\"ms_max\":%.1f,\"fail_kinds\":{%s},\"gate\":\"%s\"}\n",
+                "\"fodder_share_pct\":%.1f,\"fodder_share_min_pct\":%.1f,\"floors_with_haven_merchant\":%lld,\"floors\":%lld,\"general_store_floors\":%lld,\"set_pieces\":%lld,\"set_pieces_exact\":%lld,\"flat_tiers\":%s,\"packs\":%lld,\"elite_packs\":%lld,\"pack_max\":%d,\"elite_pack_size_max\":%d,\"elites_per_pack_max\":%d,\"large_pack_fodder_min_pct\":%d,\"emergent_group_max\":%d,\"spawned_share_max_pct\":%.1f,\"spawned_share_mean_pct\":%.1f,\"break_packs\":%s,\"dens_per_floor\":%.2f,\"patrols_per_floor\":%.2f,\"writings_per_floor\":%.2f,\"ms_mean\":%.1f,\"ms_max\":%.1f,\"fail_kinds\":{%s},\"gate\":\"%s\"}\n",
                 SP.thin ? "true" : "false", n, pass, nondet, alive_min > 1e8 ? 0 : alive_min, lit_min > 1e8 ? 0 : lit_min, wr_min > 1e8 ? 0 : wr_min, wr_max, floors ? cand_sum / floors : 0,
-                packs, elite_packs, pk_max, pk_elite_max, pk_elites_max, pk_large_fodder_min, emergent_max, share_max, share_n ? share_sum / share_n : 0, SP.break_packs ? "true" : "false",
+                cr_n ? 100.0 * fod_n / cr_n : 0, fod_min, merchants, merchant_floors, stores, pieces, pieces_exact, SP.flat_tiers ? "true" : "false", packs, elite_packs, pk_max, pk_elite_max, pk_elites_max, pk_large_fodder_min, emergent_max, share_max, share_n ? share_sum / share_n : 0, SP.break_packs ? "true" : "false",
                 floors ? (double)dens / floors : 0, floors ? (double)patrols / floors : 0, floors ? (double)writings / floors : 0, ms_sum / std::max(1LL, n), ms_max,
                 ws.c_str(), gate ? "PASS" : "FAIL");
     return gate ? 0 : 1;
@@ -224,6 +234,7 @@ int main(int argc, char** argv) {
         else if (a == "--thin") SP.thin = true;
         else if (a == "--all-legible") SP.all_legible = true;
         else if (a == "--break-packs") SP.break_packs = true;
+        else if (a == "--flat-tiers") SP.flat_tiers = true;
         else if (a == "--no-adaptive-leaf") P.adaptive_leaf = false;
         else if (a == "--no-room-cap") P.cap_rooms_to_cells = false;
         else if (a == "--min-size") P.min_size = std::stoi(nxt());
@@ -252,6 +263,7 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "%s\n", err.c_str());
             return 2;
         }
+        if (!load_hollow(APXGEN_ROOT "/kits/hollow.toml", SP, err)) { std::fprintf(stderr, "%s\n", err.c_str()); return 2; }
         return site_mode(first, site_n, site_dump, gs, progs, lib, P, SP);
     }
 

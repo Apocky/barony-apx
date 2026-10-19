@@ -311,6 +311,33 @@ Not done / not checked (H1a):
 - Spec rows not built here: Vertical (30 percent with a second level, pit, shaft or balcony),
   interactive materials, the director's three-candidate pick, decay stages, crafting depth.
 
+## H1b -- encounter tables (D75), haven merchants (D73), set pieces
+
+Measured 2026-10-19 15:09-15:14 -0700. `kits/hollow.toml` holds per-level encounter tables (Barony
+monster kinds WEAKEST FIRST with spawn weights), the haven trades and the set pieces; content rows
+(names, text, the merchant stock) live in barony-apx `data/apx/hollow` (branch apx/h1b), ids match.
+- D75: a kind's tier is the band its cumulative share starts in (under 60 percent fodder, to 90
+  regular, to 98 elite, then champion). Floor 1: RAT and SKELETON are the first 60 percent, so they
+  are fodder. Each creature (D72 tiers as before) takes a kind of its tier, weighted. Emergent draws
+  steer the level to 60 percent fodder.
+- D73: each floor's HAVEN room holds a merchant with one trade from the level's list (floor 1 smith,
+  2 alchemist, 3 scribe or fence, 4 provisioner); Barony's general store on about half the floors
+  from floor 2.
+- Set pieces: the room running the named program, else the largest plain room (counted).
+
+| measure, sites 1-1000 | value |
+|---|---|
+| sites passing every gate | 1000 / 1000 |
+| fodder share per level, mean / min (gate 50-70) | 59.4 / 58.6 percent |
+| floors 1-4 with a haven merchant of the level's trade | 4000 / 4000 |
+| floors with a general store (floors 2-4) | 1469 / 3000 |
+| set pieces placed / in their named room program | 10000 / 8269 (82.7 percent) |
+
+Gates (`site_critic`): kinds in strength order have non-decreasing tiers; a fodder kind is never
+placed above fodder; floor 1 RAT and SKELETON are fodder; fodder 50-70 percent per level; a haven
+merchant of the level's trade in the haven room; every set piece placed. Control `--flat-tiers`
+(kinds drawn ignoring tiers): 0 / 100 sites pass; ctest h1b_control_flat_tiers (WILL_FAIL).
+
 ## D72 -- group composition (spec 04 section 2.1)
 
 Measured 2026-10-19 06:25-06:28 -0700. Every level of a site gets 2.0 creatures per plain room

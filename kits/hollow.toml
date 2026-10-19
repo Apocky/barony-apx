@@ -1,0 +1,87 @@
+# kits/hollow.toml (apx-gen H1b): per-level encounter tables (D75), haven trades (D73) and set
+# pieces (gameplay/20 sections 2.1 and 6). Kinds are Barony monster types listed WEAKEST FIRST;
+# weights are spawn shares. A kind's tier is the band its cumulative share starts in: under 60
+# percent fodder, then regular to 90, elite to 98, champion (D75: the weakest types, about 60
+# percent of a floor's spawns, are fodder; floor 1 rats and skeletons are fodder).
+# Content rows (names, text) live in barony-apx data/apx/hollow; the ids match.
+
+[[level]]
+name = "floor1"
+kinds = ["RAT", "SKELETON", "HUMAN", "GOBLIN", "BUGBEAR", "SHADOW"]
+weights = [30, 30, 22, 10, 6, 2]
+trades = ["smith"]
+
+[[level]]
+name = "floor2"
+kinds = ["RAT", "BAT_SMALL", "SKELETON", "SHADOW", "GHOUL", "HUMAN", "REVENANT_SKULL"]
+weights = [20, 20, 20, 15, 15, 8, 2]
+trades = ["alchemist"]
+
+[[level]]
+name = "floor3"
+kinds = ["RAT", "SLIME", "SKELETON", "CRAB", "GHOUL", "REVENANT_SKULL", "SHADOW"]
+weights = [25, 20, 15, 15, 15, 8, 2]
+trades = ["scribe", "fence"]
+
+[[level]]
+name = "floor4"
+kinds = ["KOBOLD", "GOBLIN", "SPIDER", "BUGBEAR", "EARTH_ELEMENTAL", "SALAMANDER"]
+weights = [30, 30, 15, 15, 8, 2]
+trades = ["provisioner"]
+
+[[level]]
+name = "caves"
+kinds = ["BAT_SMALL", "SPIDER", "MYCONID", "SALAMANDER", "CRAB", "EARTH_ELEMENTAL"]
+weights = [30, 30, 15, 15, 8, 2]
+trades = []
+
+[[piece]]
+id = "sp_f1_anvil"
+level = "floor1"
+room_kind = "fortress-armory-hall"
+station = "anvil"
+[[piece]]
+id = "sp_f1_cells"
+level = "floor1"
+room_kind = "fortress-barracks"
+station = ""
+[[piece]]
+id = "sp_f1_plaque"
+level = "floor1"
+room_kind = "special-nexus-stairhub"
+station = ""
+[[piece]]
+id = "sp_f2_crucible"
+level = "floor2"
+room_kind = "temple-nave"
+station = "crucible"
+[[piece]]
+id = "sp_f2_sump_wall"
+level = "floor2"
+room_kind = "temple-courtyard"
+station = ""
+[[piece]]
+id = "sp_f3_transmuter"
+level = "floor3"
+room_kind = "crypt-tomb-chamber"
+station = "transmuter"
+[[piece]]
+id = "sp_f3_sluice"
+level = "floor3"
+room_kind = "sewer-cistern"
+station = "sluice"
+[[piece]]
+id = "sp_f4_fungus"
+level = "floor4"
+room_kind = "mine-ore-cavern"
+station = ""
+[[piece]]
+id = "sp_f4_envoy"
+level = "floor4"
+room_kind = "special-stronghold-hall"
+station = ""
+[[piece]]
+id = "sp_caves_vent_forge"
+level = "caves"
+room_kind = "cave-lava-vent"
+station = "vent_forge"

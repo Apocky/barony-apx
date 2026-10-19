@@ -340,6 +340,18 @@ void populate(Level& L, uint64_t seed, const SiteParams& SP) {
             L.groups.push_back(std::move(g));
         }
         int left = total - L.spawned_creatures;
+        // D75: the floor's fodder share is steered to 60 percent: an emergent draw is fodder with the
+        // probability that brings the level to the target over the remaining slots (packs first)
+        int fodder_so_far = 0;
+        for (auto& g : L.groups) for (int t : g.tiers) fodder_so_far += t == 0;
+        auto steered = [&](int remaining) {
+            if (SP.break_packs || SP.flat_tiers) return draw();
+            int need = total * 60 / 100 - fodder_so_far;
+            int pf = remaining > 0 ? std::max(0, std::min(1000, need * 1000 / remaining)) : 600;
+            int t = (int)pr.next(1000) < pf ? 0 : [&]() { int r = (int)pr.next(40); return r < 30 ? 1 : r < 38 ? 2 : 3; }();
+            fodder_so_far += t == 0;
+            return t;
+        };
         std::vector<int> order;
         for (auto& ro : f.rooms) if (m.nodes[ro.node].kind == Kind::Room) order.push_back(ro.node);
         for (size_t k = order.size(); k > 1; --k) std::swap(order[k - 1], order[pr.next(k)]);
@@ -350,8 +362,8 @@ void populate(Level& L, uint64_t seed, const SiteParams& SP) {
             int n = std::min(left, 1 + (int)pr.next(SP.emergent_group_max));
             int elites = 0;
             for (int j = 0; j < n; ++j) {
-                int t = draw();
-                if (t >= 2 && elites >= SP.elites_per_pack_max && !SP.break_packs) t = 0; // D72: 1-2 elites in any group
+                int t = steered(left - j);
+                if (t >= 2 && elites >= SP.elites_per_pack_max && !SP.break_packs) { t = 0; ++fodder_so_far; } // D72: 1-2 elites in any group
                 elites += t >= 2;
                 g.tiers.push_back(t);
             }
@@ -360,8 +372,81 @@ void populate(Level& L, uint64_t seed, const SiteParams& SP) {
         }
         L.creatures = total;
     }
+    // KINDS (D75): each creature's kind from the level's encounter table, among the kinds of its tier
+    // (weighted); a tier with no kind takes the nearest lower tier, then higher. --flat-tiers is the
+    // control: any kind of the table, ignoring tiers.
+    {
+        const EncounterLevel* E = nullptr;
+        for (auto& e : SP.encounters) if (e.name == L.name) E = &e;
+        Rng kr(hash_words({seed, 0xD75}));
+        for (auto& g : L.groups) {
+            g.kinds.clear();
+            for (int t : g.tiers) {
+                if (!E) { g.kinds.push_back(""); continue; }
+                std::vector<int> cand;
+                for (int d = 0; d < 4 && cand.empty(); ++d)
+                    for (int tt : {t - d, t + d})
+                        for (size_t k = 0; k < E->kinds.size(); ++k)
+                            if (SP.flat_tiers || E->tier[k] == tt) cand.push_back((int)k);
+                int tw = 0;
+                for (int k : cand) tw += E->weights[k];
+                int r = tw ? (int)kr.next((uint64_t)tw) : 0, pick = cand.empty() ? 0 : cand[0];
+                for (int k : cand) { if (r < E->weights[k]) { pick = k; break; } r -= E->weights[k]; }
+                g.kinds.push_back(E->kinds[pick]);
+            }
+        }
+        // HAVEN MERCHANT (D73): the haven room's merchant has one trade from the level's list
+        int haven = m.find(Kind::Haven);
+        if (E && !E->trades.empty() && haven >= 0) {
+            L.merchant_trade = E->trades[hash_words({seed, 0x7EAD}) % E->trades.size()];
+            L.merchant_room = haven;
+        }
+        // Barony's general store: about half the floors from floor 2 (vanilla rate, D73 rule 1)
+        L.general_store = L.name != "floor1" && L.name != "caves" && hash_words({seed, 0x5709}) % 2 == 0;
+        // SET PIECES: the room running the named program, else the largest plain room (counted)
+        std::set<int> used;
+        for (auto& sp : SP.pieces) {
+            if (sp.level != L.name) continue;
+            PlacedPiece pp{sp.id, -1, false};
+            for (auto& ro : f.rooms)
+                if (ro.program == sp.room_kind && !used.count(ro.node)) { pp.room = ro.node; pp.exact = true; break; }
+            if (pp.room < 0) {
+                long long best = -1;
+                for (auto& ro : f.rooms) {
+                    if (m.nodes[ro.node].kind != Kind::Room || used.count(ro.node)) continue;
+                    long long a = (long long)(ro.x1 - ro.x0) * (ro.z1 - ro.z0);
+                    if (a > best) { best = a; pp.room = ro.node; }
+                }
+            }
+            if (pp.room >= 0) used.insert(pp.room);
+            L.pieces.push_back(pp);
+        }
+    }
 }
 } // namespace
+
+bool load_hollow(const std::string& path, SiteParams& SP, std::string& err) {
+    Val* doc = nullptr;
+    if (!parse_toml_file(path, doc, err)) return false;
+    for (auto* l : toml_arr(doc, "level")) {
+        EncounterLevel e;
+        e.name = toml_str(l, "name");
+        e.kinds = toml_strs(l, "kinds");
+        e.trades = toml_strs(l, "trades");
+        for (auto* w : toml_arr(l, "weights")) { long long v = 0; toml_expr(w, {}, v); e.weights.push_back((int)v); }
+        if (e.name.empty() || e.kinds.empty() || e.kinds.size() != e.weights.size()) { err = path + ": level " + e.name + " needs kinds and weights of one length"; return false; }
+        int total = 0, acc = 0;
+        for (int w : e.weights) total += w;
+        for (int w : e.weights) { // D75: the band a kind's cumulative share starts in
+            int start = total ? acc * 100 / total : 0;
+            e.tier.push_back(start < 60 ? 0 : start < 90 ? 1 : start < 98 ? 2 : 3);
+            acc += w;
+        }
+        SP.encounters.push_back(e);
+    }
+    for (auto* pc : toml_arr(doc, "piece")) SP.pieces.push_back({toml_str(pc, "id"), toml_str(pc, "level"), toml_str(pc, "room_kind"), toml_str(pc, "station")});
+    return true;
+}
 
 bool build_site(uint64_t seed, const std::vector<Grammar>& g, const std::vector<Program>& progs, const DressLib& lib0,
                 const Params& P, const SiteParams& SP, Site& s, std::string& err) {
@@ -521,6 +606,44 @@ SiteVerdict site_critic(const Site& s, const SiteParams& SP) {
         for (auto& w : L.writings) if (w.kind.empty()) { fail(n + "a writing without a text kind"); break; }
     }
     if (factions.size() != 4) fail("factions on the floors: " + std::to_string(factions.size()));
+    // D75 tiers by strength order; D73 haven merchants; set pieces
+    for (const Level& L : s.levels) {
+        const std::string n = L.name + ": ";
+        const EncounterLevel* E = nullptr;
+        for (auto& e : SP.encounters) if (e.name == L.name) E = &e;
+        if (!E) { if (!SP.encounters.empty()) fail(n + "no encounter table"); continue; }
+        std::map<std::string, int> tier_of;
+        for (size_t k = 0; k < E->kinds.size(); ++k) {
+            tier_of[E->kinds[k]] = E->tier[k];
+            if (k && E->tier[k] < E->tier[k - 1]) fail(n + "tiers not in strength order at " + E->kinds[k]);
+        }
+        int fod = 0, all = 0;
+        for (auto& g : L.groups)
+            for (size_t i = 0; i < g.kinds.size(); ++i) {
+                ++all;
+                fod += g.tiers[i] == 0;
+                // a creature's kind must belong to its tier (the nearest-tier fallback aside, the
+                // weakest kinds are always fodder: D75 floor 1 rats and skeletons)
+                auto it = tier_of.find(g.kinds[i]);
+                if (it == tier_of.end()) { fail(n + "kind " + g.kinds[i] + " not in the table"); break; }
+                if (it->second == 0 && g.tiers[i] != 0) { fail(n + g.kinds[i] + " (a fodder kind) placed as tier " + std::to_string(g.tiers[i])); break; }
+            }
+        if (L.name == "floor1")
+            for (const char* k : {"RAT", "SKELETON"})
+                if (tier_of.count(k) && tier_of[k] != 0) fail(n + k + " is not fodder (D75)");
+        if (all && (fod * 100 < all * 50 || fod * 100 > all * 70)) fail(n + "fodder " + std::to_string(fod) + "/" + std::to_string(all) + " outside 50-70 percent (D75)");
+        if (!E->trades.empty()) {
+            if (L.merchant_trade.empty() || L.merchant_room < 0) fail(n + "no haven merchant (D73)");
+            else if (std::find(E->trades.begin(), E->trades.end(), L.merchant_trade) == E->trades.end()) fail(n + "merchant trade " + L.merchant_trade + " not this level's");
+            else if (L.r.floor.mission.nodes[L.merchant_room].kind != Kind::Haven) fail(n + "merchant not in the haven");
+        }
+        for (auto& sp : SP.pieces)
+            if (sp.level == L.name) {
+                bool placed = false;
+                for (auto& pp : L.pieces) placed |= pp.id == sp.id && pp.room >= 0;
+                if (!placed) fail(n + "set piece " + sp.id + " not placed");
+            }
+    }
     // D72 pack rules on every level (floors and caves)
     for (const Level& L : s.levels) {
         const std::string n = L.name + ": ";
