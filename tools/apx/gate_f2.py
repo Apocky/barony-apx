@@ -330,44 +330,70 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     seeds = list(range(args.first, args.first + args.count)) if args.count else [int(s) for s in args.seeds.split(",")]
     rows = []
-    def wait_free(limit_s):
-        """Poll every second (other lanes relaunch within seconds; a 10 s poll misses the gap)."""
+    # Locks per specs/barony-fork/11-MASTER-PLAN.md rule 1 (D70), taken around EACH launch:
+    #  correctness runs (sweep, one): a free slot C:/Apocrypha/locks/barony-slots/slotN.LOCK, only while
+    #    C:/Apocrypha/locks/barony is empty;
+    #  timing runs (w1) and the host+client pair (mp): exclusive C:/Apocrypha/locks/barony/f2-integrate.LOCK,
+    #    only while no slot file and no barony.exe exist;
+    #  before every launch: wait while any C:/Apocrypha/locks/barony-want/*.WANT exists.
+    LOCKS = Path(r"C:\Apocrypha\locks")
+    EXCL, SLOTS, WANT = LOCKS / "barony", LOCKS / "barony-slots", LOCKS / "barony-want"
+    for d in (EXCL, SLOTS, WANT):
+        d.mkdir(parents=True, exist_ok=True)
+    stamp = lambda: datetime.datetime.now().astimezone().isoformat(timespec="seconds") + " f2-integrate gate_f2.py\n"
+
+    def acquire(exclusive):
         t0 = time.monotonic()
-        while pf.barony_running() or pf.foreign_locks(args.lock_dir):
-            if time.monotonic() - t0 > limit_s:
-                sys.exit(f"Barony stayed busy for {limit_s:.0f} s")
+        while True:
+            if time.monotonic() - t0 > args.wait_foreign:
+                sys.exit(f"no Barony slot for {args.wait_foreign:.0f} s")
+            busy = any(WANT.glob("*.WANT")) or any(EXCL.glob("*.LOCK"))
+            if exclusive:
+                busy = busy or any(SLOTS.glob("slot*.LOCK")) or bool(pf.barony_running())
+            if not busy:
+                if exclusive:
+                    p = EXCL / "f2-integrate.LOCK"
+                    p.write_text(stamp(), encoding="ascii")
+                    time.sleep(1)
+                    others = [q for q in EXCL.glob("*.LOCK") if q != p] + list(SLOTS.glob("slot*.LOCK"))
+                    if not others:
+                        return p
+                    p.unlink()
+                else:
+                    for n in (1, 2, 3):
+                        p = SLOTS / f"slot{n}.LOCK"
+                        try:
+                            with open(p, "x", encoding="ascii") as fh:
+                                fh.write(stamp())
+                            if not any(EXCL.glob("*.LOCK")):
+                                return p
+                            p.unlink()
+                            break
+                        except FileExistsError:
+                            continue
             time.sleep(1)
 
-    for attempt in range(20):
-        wait_free(args.wait_foreign)
-        pf.hold_lock(args.lock_dir, True)
-        time.sleep(2)
-        if not pf.foreign_locks(args.lock_dir) and not pf.barony_running():
-            break
-        pf.hold_lock(args.lock_dir, False)  # someone else took Barony at the same moment: back off
-        print(f"[f2] collision {attempt + 1}; waiting again", flush=True)
-        time.sleep(20)
+    def locked(exclusive, fn, *a, **k):
+        p = acquire(exclusive)
+        try:
+            return fn(*a, **k)
+        finally:
+            p.unlink(missing_ok=True)
+
+    if args.mode in ("sweep", "one"):
+        env = {"APXGEN": "1", "APXGEN_SIZE": str(args.size)}
+        if args.control:
+            env["APXGEN_CONTROL"] = str(args.control)
+        for i in range(0, len(seeds), args.per_process):
+            locked(False, session, f"apx{args.size}-c{args.control}-{seeds[i]}", args.exe, seeds[i:i + args.per_process],
+                   {"env": env}, args, rows)
+    elif args.mode == "mp":
+        for s in args.sizes.split(","):
+            locked(True, mp_session, args.exe, seeds[0], s, args)
     else:
-        sys.exit("never got Barony to myself")
-    try:
-        if False:
-            pass
-        if args.mode in ("sweep", "one"):
-            env = {"APXGEN": "1", "APXGEN_SIZE": str(args.size)}
-            if args.control:
-                env["APXGEN_CONTROL"] = str(args.control)
-            for i in range(0, len(seeds), args.per_process):
-                session(f"apx{args.size}-c{args.control}-{seeds[i]}", args.exe, seeds[i:i + args.per_process],
-                        {"env": env}, args, rows)
-        elif args.mode == "mp":
-            for s in args.sizes.split(","):
-                mp_session(args.exe, seeds[0], s, args)
-        else:
-            for s in args.sizes.split(","):
-                extra = {"env": {}} if s == "vanilla" else {"env": {"APXGEN": "1", "APXGEN_SIZE": s}}
-                session(f"w1-{s}", args.exe, seeds, extra, args, rows, w1=True)
-    finally:
-        pf.hold_lock(args.lock_dir, False)
+        for s in args.sizes.split(","):
+            extra = {"env": {}} if s == "vanilla" else {"env": {"APXGEN": "1", "APXGEN_SIZE": s}}
+            locked(True, session, f"w1-{s}", args.exe, seeds, extra, args, rows, w1=True)
     ok = sum(r["finish"] == "ok" for r in rows)
     print(f"[f2] rows {len(rows)} ok {ok}")
 
