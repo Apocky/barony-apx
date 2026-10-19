@@ -18,6 +18,7 @@
 #include "../net.hpp"
 #include "apx_gen_bridge.hpp"
 #include "combat/impact.hpp" // -apxvanilla turns the impact rule off too
+#include "vision.hpp" // and the BVIS1 vision changes
 #include "gen/include/apxgen/apxgen.hpp"
 #include "tier_rules.hpp"
 #include "tiers.hpp"
@@ -60,7 +61,7 @@ void apxgenReadEnvironment()
 bool apxgenParseArgument(const char* a)
 {
 	if ( !strcmp(a, "-apxgen") ) { apxgen.enabled = true; return true; }
-	if ( !strcmp(a, "-apxvanilla") ) { apxgen.enabled = false; apx::combat::setEnabled(false); apxVanillaMode = true; return true; } // controls and parity
+	if ( !strcmp(a, "-apxvanilla") ) { apxgen.enabled = false; apx::combat::setEnabled(false); apxVanillaMode = true; apx::vision::setVanilla(); return true; } // controls and parity
 	if ( !strncmp(a, "-apxgen-size=", 13) ) { apxgen.enabled = true; apxgen.size = atoi(a + 13); return true; }
 	if ( !strncmp(a, "-apxgen-pop=", 12) ) { apxgen.populationPct = atoi(a + 12); return true; }
 	if ( !strncmp(a, "-apxgen-root=", 13) ) { apxgen.kitsRoot = a + 13; return true; }

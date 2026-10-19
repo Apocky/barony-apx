@@ -1802,7 +1802,7 @@ void raycast(const view_t& camera, Sint8 (*minimap)[MINIMAP_MAX_DIMENSION], bool
 
         const real_t wfov = (fov * camera.winw / camera.winh) * PI / 180.f;
         constexpr real_t dstart = CLIPNEAR / 16.0;
-        constexpr real_t dend = CLIPFAR / 16;
+        const real_t dend = CLIPFAR / 16;
         
         for (int sx = ins.sx; sx < ins.sx + NumRaysPerJob; ++sx) {
             int inx = posx;

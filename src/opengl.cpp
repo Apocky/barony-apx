@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/vision.hpp"
 #include "draw.hpp"
 #include "entity.hpp"
 #include "files.hpp"
@@ -695,6 +696,53 @@ static void loadLightmapTexture(int which, map_t& map) {
         }
     }
     
+    // apx BVIS1 (D84): ambient bounce. Each open tile gains k * max(0, average of the open tiles around it - its
+    // own light): shadowed and fall-off edges near light pick up some of their neighbourhood so shapes read; tiles
+    // already as bright as their surroundings gain nothing (no lift of lit areas, no gamma change) and areas far
+    // from any light stay dark. Separable box over a (2R+1)^2 window, open tiles only. APX_VIS_BOUNCE=0: off.
+#ifndef EDITOR
+    const float bounceK = apx::vision::bounceStrength();
+#else
+    const float bounceK = 0.f;
+#endif
+    if (!fullbright && bounceK > 0.f) {
+        const int W = map.width, H = map.height, R = 3; // tiles
+        static std::vector<float> sum, cnt, sum2, cnt2;
+        sum.assign(W * H * 3, 0.f); cnt.assign(W * H, 0.f); sum2.assign(W * H * 3, 0.f); cnt2.assign(W * H, 0.f);
+        const int xoff = MAPLAYERS * map.height, yoff = MAPLAYERS;
+        auto open = [&](int x, int y) { return !testTileOccludes(map, y * yoff + x * xoff); };
+        for (int y = 0; y < H; ++y) { // horizontal pass
+            for (int x = 0; x < W; ++x) {
+                for (int k = std::max(0, x - R); k <= std::min(W - 1, x + R); ++k) {
+                    if (!open(k, y)) { continue; }
+                    const float* px = &pixels[(y * W + k) * 4];
+                    float* s3 = &sum[(y * W + x) * 3];
+                    s3[0] += px[0]; s3[1] += px[1]; s3[2] += px[2];
+                    cnt[y * W + x] += 1.f;
+                }
+            }
+        }
+        for (int x = 0; x < W; ++x) { // vertical pass
+            for (int y = 0; y < H; ++y) {
+                for (int k = std::max(0, y - R); k <= std::min(H - 1, y + R); ++k) {
+                    const float* s3 = &sum[(k * W + x) * 3];
+                    float* d3 = &sum2[(y * W + x) * 3];
+                    d3[0] += s3[0]; d3[1] += s3[1]; d3[2] += s3[2];
+                    cnt2[y * W + x] += cnt[k * W + x];
+                }
+            }
+        }
+        for (int y = 0; y < H; ++y) {
+            for (int x = 0; x < W; ++x) {
+                const float c = cnt2[y * W + x];
+                if (c <= 0.f || !open(x, y)) { continue; }
+                float* px = &pixels[(y * W + x) * 4];
+                const float* s3 = &sum2[(y * W + x) * 3];
+                for (int ch = 0; ch < 3; ++ch) { px[ch] += bounceK * std::max(0.f, s3[ch] / c - px[ch]); }
+            }
+        }
+    }
+
     // load lightmap texture data
     GL_CHECK_ERR(glActiveTexture(GL_TEXTURE1));
     lightmapTexture[which]->loadFloat(pixels.data(), map.width, map.height, true, false);
@@ -2294,7 +2342,7 @@ static bool shouldDrawClouds(const map_t& map, int* cloudtile = nullptr, bool fo
 
 std::vector<Chunk> chunks;
 
-constexpr float sky_size = CLIPFAR * 16.f;
+constexpr float sky_size = 4000 * 16.f; // apx BVIS1: a static mesh, so the old CLIPFAR (4000) * 16; CLIPFAR is now per map
 constexpr float sky_htex_size = sky_size / 64.f;
 constexpr float sky_ltex_size = sky_size / 32.f;
 Mesh skyMesh = {

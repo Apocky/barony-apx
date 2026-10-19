@@ -668,7 +668,12 @@ typedef struct door_t
 } door_t;
 
 #define CLIPNEAR 2
+#ifdef EDITOR
 #define CLIPFAR 4000
+#else
+namespace apx { namespace vision { float clipFar(); } } // apx BVIS1 (D84): the whole floor, was 4000
+#define CLIPFAR (apx::vision::clipFar())
+#endif
 #define TEXTURESIZE 32
 #define TEXTUREPOWER 5 // power of 2 that texture size is, ie pow(2,TEXTUREPOWER) = TEXTURESIZE
 #ifdef BARONY_SUPER_MULTIPLAYER
