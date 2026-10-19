@@ -83,9 +83,12 @@ def run_once(args, n, env_extra):
     arms = read_rows(out / "bf3-arms.jsonl")
     morale = read_rows(out / "bf3-morale.jsonl")
     runrow = read_rows(out / "bf3-run.jsonl")
-    print(f"[bf3] run {n}: code {code} ({finish}), {wall:.0f} s, {len(arms)} arm rows, {len(morale)} morale rows", flush=True)
+    helprows = read_rows(out / "bf3-help.jsonl")
+    flowtest = read_rows(out / "bf3-flowtest.jsonl")
+    print(f"[bf3] run {n}: code {code} ({finish}), {wall:.0f} s, {len(arms)} arm rows, {len(morale)} morale rows, "
+          f"{len(helprows)} help rows, {len(flowtest)} flowtest rows", flush=True)
     return {"run_dir": str(run_dir), "code": code, "finish": finish, "wall_s": round(wall, 1), "lock": lock.name,
-            "mode": args.mode, "arms": arms, "morale": morale, "run": runrow}
+            "mode": args.mode, "arms": arms, "morale": morale, "run": runrow, "help": helprows, "flowtest": flowtest}
 
 
 def mean(v):
@@ -131,7 +134,10 @@ def summarise(results, args):
               "creature_dmg", "dmg_foreign", "tactics_calls", "population_x", "stuck_episodes", "reach_slots_mean",
               "jitter_mean", "swing_resets_jittered", "feints", "player_moved", "reach_assign", "ring_assign",
               "st_wait", "st_attack", "st_path", "st_hunt", "targeting_player_mean", "dist_mean", "overlap_ticks",
-              "pack_reacquire", "friendly_fire_dmg", "player_attack_ticks", "creatures_lost_ticks"]
+              "pack_reacquire", "friendly_fire_dmg", "player_attack_ticks", "creatures_lost_ticks",
+              "contact_attackers", "blocked_share", "waiters_nn_mean", "waiters_overlap_share", "route_around",
+              "flow_builds", "flow_paths", "flow_fallback_astar", "astar_paths", "astar_null", "flow_path_us_mean",
+              "astar_path_us_mean", "flow_build_us_p99"]
     for kind, rows in sorted(by.items()):
         base[kind] = {"n": len(rows)}
         for f in fields:
@@ -155,7 +161,74 @@ def summarise(results, args):
         base["ratio_control_over_on"] = round(mc / mo, 3) if mo else None
     base["flagged_rows"] = len(flagged)
     base["morale"] = [m for r in results for m in r["morale"]]
+    base["help"] = [h for r in results for h in r.get("help", [])]
+    base["flowtest"] = [f for r in results for f in r.get("flowtest", [])]
+    base["gates"] = gates(by, base, args)
     return base
+
+
+def gates(by, base, args):
+    """D71 (Apockalypsis DECISIONS-2.md) and card BF3 gates. A gate with no rows is 'no data', never a pass."""
+    g = {}
+    on = [a for a in by.get("on", []) if a.get("creatures") == 12]
+    off = [a for a in by.get("off", []) if a.get("creatures") == 12]
+    if on:
+        dm = mean([a["dmg"] for a in on])
+        att = mean([a["attackers_mean"] for a in on])
+        blk = mean([a.get("blocked_share", 0) for a in on])
+        g["damage_on_within_20pct_of_ref"] = {"pass": abs(dm - args.ref_dmg) <= 0.2 * args.ref_dmg and att >= 6.0 and blk <= 0.1,
+                                              "dmg_mean": round(dm, 1), "ref": args.ref_dmg, "attackers_mean": round(att, 2),
+                                              "blocked_share": round(blk, 3), "n": len(on)}
+        ov = sum(a["reach_overflow"] for a in on)
+        mx = max(a["attackers_max_per_target"] - a["reach_slots"] for a in on)
+        g["reach_overflow_zero"] = {"pass": ov == 0 and mx <= 0, "overflow_ticks": ov, "max_over_slots": mx, "n": len(on)}
+    else:
+        g["damage_on_within_20pct_of_ref"] = {"pass": None, "why": "no 12-creature on arms"}
+    if off and on:
+        blk = mean([a.get("blocked_share", 0) for a in off])
+        con_off = mean([a.get("contact_attackers", 0) for a in off])
+        con_on = mean([a.get("contact_attackers", 0) for a in on])
+        g["control_native_jam"] = {"pass": blk >= 0.5 and con_off <= con_on / 2, "off_blocked_share": round(blk, 3),
+                                   "off_contact_attackers": round(con_off, 2), "on_contact_attackers": round(con_on, 2),
+                                   "off_dmg_mean": round(mean([a["dmg"] for a in off]), 1), "n": len(off)}
+    noring = [a for a in by.get("noring", []) if a.get("creatures") == 12]
+    if noring and on:
+        nn_on = mean([a.get("waiters_nn_mean", 0) for a in on])
+        nn_off = mean([a.get("waiters_nn_mean", 0) for a in noring])
+        g["ring_control_bunching"] = {"pass": nn_on > 0 and nn_off <= 0.7 * nn_on, "nn_ring": round(nn_on, 2),
+                                      "nn_noring": round(nn_off, 2),
+                                      "overlap_ring": round(mean([a.get("waiters_overlap_share", 0) for a in on]), 3),
+                                      "overlap_noring": round(mean([a.get("waiters_overlap_share", 0) for a in noring]), 3),
+                                      "stuck_ring": sum(a.get("stuck", 0) for a in on), "stuck_noring": sum(a.get("stuck", 0) for a in noring)}
+    hon = [h for h in base["help"] if h.get("arm_kind") == "help_on"]
+    hoff = [h for h in base["help"] if h.get("arm_kind") == "help_off_nopacks"]
+    if hon and hoff:
+        g["calls_for_help"] = {"pass": all(h["calls_answered"] >= 1 and h["b_within4_end"] >= 3 for h in hon)
+                               and all(h["b_within4_end"] == 0 for h in hoff),
+                               "on_within4": [h["b_within4_end"] for h in hon], "off_within4": [h["b_within4_end"] for h in hoff],
+                               "on_first_arrival_s": [h["b_first_arrival_s"] for h in hon], "spot_steps": [h["spot_steps"] for h in hon]}
+    fl = [a for k, rows in by.items() if k.startswith("flow:") for a in rows]
+    nf = [a for k, rows in by.items() if k.startswith("noflow:") for a in rows]
+    if fl and nf:
+        fpm = mean([a["flow_path_us_mean"] for a in fl if a.get("flow_paths")])
+        apm = mean([a["astar_path_us_mean"] for a in nf if a.get("astar_paths")])
+        tick = max(a["tick_us_p99"] for a in fl)
+        g["flow_cost"] = {"astar_over_flow_per_path": round(apm / fpm, 2) if fpm else None, "flow_path_us_mean": round(fpm, 1),
+                          "astar_path_us_mean": round(apm, 1), "pass_ratio": bool(fpm and apm / fpm >= 3.0),
+                          "flow_tick_us_p99": round(tick, 1), "pass_tick": (tick < 2000) if args.mode == "exclusive" else None,
+                          "timing_valid": args.mode == "exclusive", "creatures": fl[0].get("creatures")}
+    ft = base["flowtest"]
+    if ft:
+        both = sum(r["both_ok"] for r in ft)
+        g["flow_field_vs_astar"] = {"pairs": sum(r["pairs"] for r in ft), "both_ok": both,
+                                    "steps_equal": sum(r["steps_equal"] for r in ft), "steps_within1": sum(r["steps_within1"] for r in ft),
+                                    "field_dearer": sum(r["cost_field_dearer"] for r in ft), "astar_only": sum(r["astar_only"] for r in ft),
+                                    "door_pairs": sum(r["door_pairs"] for r in ft), "door_within1": sum(r["door_within1"] for r in ft),
+                                    "chase_astar_fail": sum(r["chase_astar_fail"] for r in ft),
+                                    "build_us_p99_max": max(r["build_us_p99"] for r in ft),
+                                    "pass": sum(r["cost_field_dearer"] for r in ft) == 0 and sum(r["astar_only"] for r in ft) == 0
+                                    and max(r["build_us_p99"] for r in ft) < 500 if args.mode == "exclusive" else None}
+    return g
 
 
 def main():
@@ -165,7 +238,9 @@ def main():
     ap.add_argument("--tag", default="limits3x")
     ap.add_argument("--seed", type=int, default=1514995713)
     ap.add_argument("--arms", default=None, help="APX_BF3_ARMS for the game (default: off,on,on,off,off,on,on,off)")
-    ap.add_argument("--control", default="off", help="arm kind that must take more damage than 'on'")
+    ap.add_argument("--control", default="off", help="arm kind paired with 'on' in the pair table")
+    ap.add_argument("--ref-dmg", type=float, default=268.3,
+                    help="D71 reference: damage per 20 s arm with limits on at floor 1, 12 skeletons (MEASURED full3, 02:49)")
     ap.add_argument("--env", action="append", default=[], help="extra KEY=VALUE for the game")
     ap.add_argument("--mode", choices=("slot", "exclusive"), default="slot",
                     help="slot: D70 correctness slot, windowed (damage, counts); exclusive: the whole machine "
@@ -187,20 +262,23 @@ def main():
     out = DIAG / f"bf3-{args.tag}.jsonl"
     with out.open("w", encoding="ascii") as f:
         for r in results:
-            for row in r["arms"] + r["morale"] + r["run"]:
+            for row in r["arms"] + r["morale"] + r.get("help", []) + r.get("flowtest", []) + r["run"]:
                 row = dict(row)
                 row["run_dir"] = r["run_dir"]
                 f.write(json.dumps(row, ensure_ascii=True) + "\n")
         f.write(json.dumps(base, ensure_ascii=True) + "\n")
-    print(json.dumps({k: v for k, v in base.items() if k != "morale"}, indent=1)[:6000])
+    print(json.dumps({k: v for k, v in base.items() if k not in ("morale", "help", "flowtest", "gates")}, indent=1)[:4000])
+    print("[bf3] gates:")
+    for name, gate in base["gates"].items():
+        print(f"  {name}: {json.dumps(gate)}")
     for m in base["morale"]:
         print("morale", m.get("arm_kind"), "retreating_at_3s", m.get("retreating_at_3s"), "of", m.get("members_at_kill"),
               "dist", m.get("dist_at_kill"), "->", m.get("dist_at_3s"), "regroups", m.get("regroups"), "first_regroup_s", m.get("first_regroup_s"))
     print(f"[bf3] rows + baseline: {out}")
     bad = [r for r in results if r["code"] != 0 or r["finish"] != "exit"]
-    ok_control = base.get("pairs", 0) > 0 and base.get("pairs_on_lower", 0) == base.get("pairs", 0)
-    if bad or base["flagged_rows"] or (base.get("pairs", 0) and not ok_control):
-        print(f"[bf3] NOT CLEAN: failed runs {len(bad)}, flagged rows {base['flagged_rows']}, control ok {ok_control}")
+    failed = [n for n, gate in base["gates"].items() if gate.get("pass") is False or gate.get("pass_ratio") is False or gate.get("pass_tick") is False]
+    if bad or base["flagged_rows"] or failed:
+        print(f"[bf3] NOT CLEAN: failed runs {len(bad)}, flagged rows {base['flagged_rows']}, failed gates {failed}")
         return 1
     return 0
 

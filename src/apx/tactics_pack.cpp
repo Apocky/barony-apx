@@ -110,6 +110,74 @@ namespace tactics
 		return best ? uidToEntity(best) : nullptr;
 	}
 
+	// BF3-6b calls for help. The engine's own alert (Entity::alertAlliesOnBeingHit) wakes only friends in WAIT that
+	// the victim can see. The call goes further: the nearest idle friendly pack within HELP_R (one call per pack per
+	// 2 s) walks to the victim's tile through the engine's own path (monsterSetPathToLocation) and takes up the
+	// attacker when it arrives or sees it.
+	static std::unordered_map<Uint32, Uint32> gLastCall;
+
+	void onCallForHelp(Entity* victim, Entity* attacker)
+	{
+		if ( !active || !K.packs || multiplayer == CLIENT || !victim || !attacker || victim->behavior != &actMonster ) { return; }
+		TacticsState* vs = find(victim);
+		if ( !vs || !vs->packId ) { return; }
+		Uint32& last = gLastCall[vs->packId];
+		if ( last && ticks - last < (Uint32)(2 * TICKS_PER_SECOND) ) { return; }
+		last = ticks;
+		++C.calls_for_help;
+		struct Pk { double sx = 0, sy = 0; std::vector<Entity*> m; };
+		std::unordered_map<Uint32, Pk> packs;
+		for ( auto& kv : S )
+		{
+			TacticsState& o = kv.second;
+			if ( !o.packId || o.packId == vs->packId || o.stance != STANCE_NORMAL || o.helpTarget ) { continue; }
+			Entity* m = uidToEntity(kv.first);
+			Stat* ms = m ? m->getStats() : nullptr;
+			if ( !m || o.self != m || !ms || ms->HP <= 0 || m->monsterTarget || !m->checkFriend(victim) ) { continue; }
+			Pk& p = packs[o.packId];
+			p.sx += m->x; p.sy += m->y;
+			p.m.push_back(m);
+		}
+		Uint32 best = 0;
+		double bestD = HELP_R;
+		for ( auto& kv : packs )
+		{
+			double d = hypot(kv.second.sx / kv.second.m.size() - victim->x, kv.second.sy / kv.second.m.size() - victim->y);
+			if ( d < bestD || (d == bestD && kv.first < best) ) { bestD = d; best = kv.first; }
+		}
+		if ( !best ) { return; }
+		++C.calls_answered;
+		HitSave hs;
+		int tx = (int)floor(victim->x / 16), ty = (int)floor(victim->y / 16);
+		for ( Entity* m : packs[best].m )
+		{
+			if ( !m->monsterSetPathToLocation(tx, ty, 2, GeneratePathTypes::GENERATE_PATH_DEFAULT) ) { continue; }
+			m->monsterState = MONSTER_STATE_HUNT;
+			serverUpdateEntitySkill(m, 0);
+			TacticsState* o = find(m);
+			o->helpTarget = attacker->getUID();
+			o->helpSince = ticks;
+			o->helpX = victim->x; o->helpY = victim->y;
+			++C.helpers_sent;
+		}
+	}
+
+	// a helper takes up the attacker when it reaches the call, when its walk ends, or after 30 s
+	void helpTick(Entity* my, TacticsState& s)
+	{
+		if ( !s.helpTarget ) { return; }
+		Entity* a = uidToEntity(s.helpTarget);
+		Stat* as = a ? a->getStats() : nullptr;
+		bool arrived = hypot(s.helpX - my->x, s.helpY - my->y) <= 4 * TILE;
+		if ( !a || !as || as->HP <= 0 || ticks - s.helpSince > (Uint32)(30 * TICKS_PER_SECOND) ) { s.helpTarget = 0; return; }
+		if ( arrived || my->monsterState == MONSTER_STATE_WAIT || (Uint32)my->monsterTarget == s.helpTarget )
+		{
+			if ( arrived ) { ++C.helpers_arrived; }
+			if ( (Uint32)my->monsterTarget != s.helpTarget ) { my->monsterAcquireAttackTarget(*a, MONSTER_STATE_PATH); }
+			s.helpTarget = 0;
+		}
+	}
+
 	void moraleEvent(Entity* e, TacticsState& s, int delta)
 	{
 		(void)e;
@@ -214,7 +282,7 @@ namespace tactics
 				serverUpdateEntitySkill(my, 0);
 				++C.promoted;
 			}
-			if ( d <= 2 * TILE && inBackArc(my, target) )
+			if ( d <= 3 * TILE && inBackArc(my, target) ) // goal 2.25-2.75 tiles out: outside reach until it holds a slot
 			{
 				s.flank = 2;
 				++C.flank_arrived;
@@ -241,7 +309,7 @@ namespace tactics
 		s.flankTarget = tuid;
 		// goal: an open tile in the back arc, 1.5 to 2.5 tiles out, in clear sight of the target
 		static const double offs[] = { 0, 0.35, -0.35, 0.7, -0.7, 0.95, -0.95 };
-		static const double rads[] = { 2.0, 1.5, 2.5 };
+		static const double rads[] = { 2.5, 2.25, 2.75 };   // outside reach (trace 24 + body): no overflow on arrival
 		double back = target->yaw + PI;
 		int gx = -1, gy = -1;
 		for ( double r : rads )
@@ -286,6 +354,7 @@ namespace tactics
 	void packDecide(Entity* my, Stat& st, TacticsState& s, Entity* target)
 	{
 		if ( K.packs && !s.packId ) { formPack(my, st); }
+		if ( K.packs ) { helpTick(my, s); }
 		if ( K.morale )
 		{
 			if ( my->flags[BURNING] ) { if ( !s.burning ) { s.burning = true; moraleEvent(my, s, -10); } }
@@ -402,7 +471,7 @@ namespace tactics
 		}
 		if ( K.packs && s.flank == 1 && s.routeKind == ROUTE_FLANK )
 		{
-			double bx = target->x + 1.5 * TILE * cos(target->yaw + PI), by = target->y + 1.5 * TILE * sin(target->yaw + PI);
+			double bx = target->x + 2.5 * TILE * cos(target->yaw + PI), by = target->y + 2.5 * TILE * sin(target->yaw + PI);
 			if ( !followRoute(my, s, speed, dist2, bx, by) ) { stand(my, target, speed); }
 			s.faceTarget = d < 3 * TILE;
 			return true;

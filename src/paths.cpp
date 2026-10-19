@@ -319,13 +319,73 @@ Uint32 heuristic(int x1, int y1, int x2, int y2)
 
 -------------------------------------------------------------------------------*/
 
+// apx BF3-5: split into a tile rule and a per-entity rule so the flow-field builder (apx/flow.cpp) marks its
+// walk grid with the very same rules, one pass over the entities instead of one per tile. Behaviour unchanged.
+bool pathTileBlocked(int u, int v)
+{
+	const int index = v * MAPLAYERS + u * MAPLAYERS * map.height;
+	return map.tiles[OBSTACLELAYER + index] || !map.tiles[index] || lavatiles[map.tiles[index]];
+}
+
+bool pathEntityBlocksTile(Entity* entity, int u, int v)
+{
+	if ( entity->sprite == 179 ) // collider
+	{
+		if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
+		{
+			if ( entity->colliderHasCollision != 0 || entity->colliderDiggable != 0 )
+			{
+				return true;
+			}
+			auto find = EditorEntityData_t::colliderData.find(entity->colliderDamageTypes);
+			if ( find != EditorEntityData_t::colliderData.end() )
+			{
+				auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[find->second.damageCalculationType];
+				if ( !colliderDmgType.allowNPCPathing )
+				{
+					return true;
+				}
+			}
+		}
+	}
+	else if ( entity->sprite == 14		// fountain
+		|| entity->sprite == 15		// sink
+		|| (entity->sprite == 19 && !entity->flags[PASSABLE]) // gate
+		|| (entity->sprite == 20 && !entity->flags[PASSABLE]) // gate 2
+		|| entity->sprite == 39		// head stone
+		|| entity->sprite == 44		// boulder?
+		|| entity->sprite == 106 	// power crystal
+		|| entity->sprite == 108	// stalag column
+		|| entity->sprite == 109	// stalagmite
+		|| entity->sprite == 110	// stalagmite
+		|| entity->sprite == 116	// pedestal
+		|| entity->sprite == 124	// column
+		|| entity->sprite == 126	// piston
+		|| entity->sprite == 169	// statue
+		|| entity->sprite == 177	// shrine
+		|| entity->sprite == 178	// spell shrine
+		|| entity->sprite == 1481	// daedalus shrine
+		|| entity->sprite == 217	// iron door
+		|| entity->sprite == 218	// iron door
+		|| entity->sprite == 300	// cauldron
+		|| entity->sprite == 301	// workbench
+		|| entity->sprite == 302	// mailbox
+		|| entity->sprite == 303	// mailbox
+		)
+	{
+		if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 int pathCheckObstacle(int x, int y, Entity* my, Entity* target)
 {
 	const int u = std::min(std::max(0, x >> 4), (int)map.width - 1);
 	const int v = std::min(std::max(0, y >> 4), (int)map.height - 1);
-	const int index = v * MAPLAYERS + u * MAPLAYERS * map.height;
-
-	if ( map.tiles[OBSTACLELAYER + index] || !map.tiles[index] || lavatiles[map.tiles[index]] )
+	if ( pathTileBlocked(u, v) )
 	{
 		return 1;
 	}
@@ -338,54 +398,9 @@ int pathCheckObstacle(int x, int y, Entity* my, Entity* target)
 		{
 			continue;
 		}
-		if ( entity->sprite == 179 ) // collider
+		if ( pathEntityBlocksTile(entity, u, v) )
 		{
-			if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
-			{
-				if ( entity->colliderHasCollision != 0 || entity->colliderDiggable != 0 )
-				{
-					return 1;
-				}
-				auto find = EditorEntityData_t::colliderData.find(entity->colliderDamageTypes);
-				if ( find != EditorEntityData_t::colliderData.end() )
-				{
-					auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[find->second.damageCalculationType];
-					if ( !colliderDmgType.allowNPCPathing )
-					{
-						return 1;
-					}
-				}
-			}
-		}
-		else if ( entity->sprite == 14		// fountain
-			|| entity->sprite == 15		// sink
-			|| (entity->sprite == 19 && !entity->flags[PASSABLE]) // gate
-			|| (entity->sprite == 20 && !entity->flags[PASSABLE]) // gate 2
-			|| entity->sprite == 39		// head stone
-			|| entity->sprite == 44		// boulder?
-			|| entity->sprite == 106 	// power crystal
-			|| entity->sprite == 108	// stalag column
-			|| entity->sprite == 109	// stalagmite
-			|| entity->sprite == 110	// stalagmite
-			|| entity->sprite == 116	// pedestal
-			|| entity->sprite == 124	// column
-			|| entity->sprite == 126	// piston
-			|| entity->sprite == 169	// statue
-			|| entity->sprite == 177	// shrine
-			|| entity->sprite == 178	// spell shrine
-			|| entity->sprite == 1481	// daedalus shrine
-			|| entity->sprite == 217	// iron door
-			|| entity->sprite == 218	// iron door
-			|| entity->sprite == 300	// cauldron
-			|| entity->sprite == 301	// workbench
-			|| entity->sprite == 302	// mailbox
-			|| entity->sprite == 303	// mailbox
-			)
-		{
-			if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
-			{
-				return 1;
-			}
+			return 1;
 		}
 	}
 

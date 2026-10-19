@@ -22,6 +22,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics_pack.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/bf3trial.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/flow.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actmonster.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actitem.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/acthudweapon.cpp"

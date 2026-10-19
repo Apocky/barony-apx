@@ -49,4 +49,6 @@ void generatePathMaps();
 // return true if an entity is blocks pathing
 bool isPathObstacle(Entity* entity);
 int pathCheckObstacle(int x, int y, Entity* my, Entity* target);
+bool pathTileBlocked(int u, int v);                         // apx BF3-5: the map-tile part of pathCheckObstacle
+bool pathEntityBlocksTile(Entity* entity, int u, int v);     // apx BF3-5: one entity's part of pathCheckObstacle
 void updateGatePath(Entity& entity);

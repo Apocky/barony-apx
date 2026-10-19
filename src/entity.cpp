@@ -31579,6 +31579,7 @@ void Entity::alertAlliesOnBeingHit(Entity* attacker, std::unordered_set<Entity*>
 		}
 	}
 	hit.entity = ohitentity;
+	apx::tactics::onCallForHelp(this, attacker); // apx BF3-6b: the nearest idle friendly pack out of sight walks to the call
 }
 
 void Entity::seedEntityRNG(Uint32 seed)

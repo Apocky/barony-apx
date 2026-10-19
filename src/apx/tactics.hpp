@@ -14,7 +14,8 @@
 //   PACKS      packs and roles (leader, flanker); FLANK = route B with route A's tiles penalised in A*.
 //   MORALE     leader dies -40, ally dies in sight -8, HP under 30 percent -15, burning -10, outnumbering
 //              2:1 +5; below break the engine's own retreat (shouldRetreat) walks it away; regroup at home.
-//   FLOW       flow fields (BF3-5): NOT BUILT in this slice; the knob is reported as 0.
+//   FLOW       flow fields (BF3-5, apx/flow.hpp): far chasers descend a per-target field; knob APX_FLOW.
+//   HELP       calls for help (BF3-6b): the nearest idle friendly pack out of the victim's sight answers.
 //
 // Knobs (env, read once at start; default ON, "0" = off): APX_TACTICS (master), APX_REACH, APX_INTERLEAVE,
 // APX_ALLYAVOID, APX_RING, APX_PACKS, APX_MORALE. With a knob off its hook returns before touching game
@@ -56,6 +57,7 @@ namespace tactics
 	bool moraleBroken(Entity* my);                                // OR-ed into Entity::shouldRetreat
 	void onHPChange(Entity* e, int oldHP, int newHP);             // end of Entity::modHP
 	int pathPenalty(int x, int y);                                // extra A* cost for a tile (route A of a flank)
+	void onCallForHelp(Entity* victim, Entity* attacker);         // end of Entity::alertAlliesOnBeingHit
 
 	// pack assignment (the BF3 trial and the level-wide pass use it)
 	void assignPack(Entity* e, Uint32 packId, uint8_t role, double homeX, double homeY);
@@ -75,6 +77,8 @@ namespace tactics
 		long long retreats = 0, regroups = 0, morale_breaks = 0, morale_events = 0, surrenders_offered = 0, home_moved = 0;
 		long long swing_resets = 0, jitter_sum = 0;
 		long long packs_formed = 0, pack_reacquire = 0;
+		long long calls_for_help = 0, calls_answered = 0, helpers_sent = 0, helpers_arrived = 0;
+		long long route_around = 0;
 	};
 	extern Counters C;
 	void resetCounters();
@@ -82,6 +86,7 @@ namespace tactics
 	void timingPercentiles(double& decideP50, double& decideP99, double& moveP50, double& moveP99, double& tickP99);
 	void timingReset();
 	void endOfGameTick();      // closes the per-game-tick sum used for tick_us_p99
+	void addPathUs(double us); // a PATH-state path (flow descent or the engine's A*) joins this tick's cost
 
 	// read-only views for the trial sampler
 	int reachSlotsFor(Entity* target, Entity* attackerType); // valid reach slots round target for this body size

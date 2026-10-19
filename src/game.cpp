@@ -18,6 +18,7 @@
 #include "files.hpp"
 #include "apx/telemetry.hpp"
 #include "apx/tactics.hpp"
+#include "apx/flow.hpp"
 static std::string apxOutDir;
 #include "menu.hpp"
 #include "classdescriptions.hpp"
@@ -7369,6 +7370,7 @@ int main(int argc, char** argv)
 
 		apx::init(apxOutDir.c_str(), !apxOutDir.empty());
 		apx::tactics::init();
+		apx::flow::init();
 		apx::bf3::init(argc, argv);
 
 		// initialize map

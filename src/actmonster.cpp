@@ -28,6 +28,7 @@
 #include "scores.hpp"
 #include "mod_tools.hpp"
 #include "apx/tactics.hpp"
+#include "apx/flow.hpp"
 #include "ui/MainMenu.hpp"
 #include "menu.hpp"
 
@@ -7067,8 +7068,7 @@ timeToGoAgain:
 			}
 			x = ((int)floor(my->monsterTargetX)) >> 4;
 			y = ((int)floor(my->monsterTargetY)) >> 4;
-			path = generatePath( (int)floor(my->x / 16), (int)floor(my->y / 16), x, y, my, uidToEntity(my->monsterTarget),
-				GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
+			path = apx::flow::chasePath(my, uidToEntity(my->monsterTarget), x, y); // apx BF3-5: flow descent when far, else this same generatePath call (timed)
 			if ( my->children.first != nullptr )
 			{
 				list_RemoveNode(my->children.first);

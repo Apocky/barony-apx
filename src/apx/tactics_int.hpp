@@ -35,6 +35,9 @@ namespace tactics
 	static const double FEINT_HOP = 8.0;
 	static const int MORALE_START = 70, MORALE_BREAK = 40, MORALE_RETURN = 60; // ASSUMED (no pack templates yet)
 	static const int FLANK_PENALTY = 40;       // A* cost added per route-A tile (4 straight steps)
+	static const double HELP_R = 20 * 16.0;    // a call for help reaches the nearest idle friendly pack within 20 tiles
+	// outside reach: a creature without a reach slot keeps at least this far from its target (trace reach 24 + body)
+	inline double keepOut(double rTarget) { return rTarget + STRIKERANGE + 6; }
 
 	enum RouteKind : uint8_t { ROUTE_NONE = 0, ROUTE_FLANK = 1, ROUTE_HOME = 2 };
 
@@ -59,6 +62,7 @@ namespace tactics
 		uint8_t routeKind = ROUTE_NONE; std::vector<int> route; size_t routeAt = 0;
 		bool lowHp = false, burning = false, outnumbered = false, surrendered = false;
 		Uint32 retreatStart = 0, lastRecover = 0, lastHomePath = 0;
+		Uint32 helpTarget = 0, helpSince = 0; double helpX = 0, helpY = 0;   // answering a call for help
 		double lastThreatDist = 1e9;
 	};
 	extern std::unordered_map<Uint32, TacticsState> S;   // by creature uid
@@ -95,6 +99,7 @@ namespace tactics
 	void packDecide(Entity* my, Stat& st, TacticsState& s, Entity* target);
 	bool packSteer(Entity* my, Stat& st, TacticsState& s, Entity* target, double d, double speed, double& dist2);
 	void moraleEvent(Entity* e, TacticsState& s, int delta);
+	void helpTick(Entity* my, TacticsState& s);
 	void packsReset();
 	Entity* packTarget(Entity* my, TacticsState& s); // the most common live target among packmates within 10 tiles
 }

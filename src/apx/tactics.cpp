@@ -1,6 +1,7 @@
 // apx/tactics.cpp -- BF3 core: knobs, per-creature state, reach slots, ring, wind-up interleave, ally
 // avoidance, steering in the ATTACK state and the timing probe. Design and knobs: tactics.hpp.
 #include "tactics_int.hpp"
+#include "flow.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -52,9 +53,9 @@ namespace tactics
 	std::string knobString()
 	{
 		char buf[160];
-		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=0,morale=%d,packs=%d",
+		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d",
 			K.tactics ? 1 : 0, K.reach ? 1 : 0, K.interleave ? 1 : 0, K.allyavoid ? 1 : 0, K.ring ? 1 : 0,
-			K.morale ? 1 : 0, K.packs ? 1 : 0);
+			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0);
 		return buf;
 	}
 
@@ -63,12 +64,14 @@ namespace tactics
 		S.clear();
 		T.clear();
 		packsReset();
+		flow::onLevelChange();
 	}
 
 	void resetCounters() { C = Counters(); }
 
 	void addDecideUs(double us) { if ( gDecideUs.size() < SAMPLE_CAP ) { gDecideUs.push_back((float)us); } gTickAcc += us; }
 	void addMoveUs(double us) { if ( gMoveUs.size() < SAMPLE_CAP ) { gMoveUs.push_back((float)us); } gTickAcc += us; }
+	void addPathUs(double us) { gTickAcc += us; }
 	void endOfGameTick() { if ( gTickUs.size() < SAMPLE_CAP ) { gTickUs.push_back((float)gTickAcc); } gTickAcc = 0; }
 	void timingReset() { gDecideUs.clear(); gMoveUs.clear(); gTickUs.clear(); gTickAcc = 0; }
 
@@ -200,6 +203,42 @@ namespace tactics
 		}
 		else { s.stillSince = 0; s.stuckCounted = false; }
 		return true;
+	}
+
+	// The reach zone holds slot holders only: a creature without a reach slot walks round it at keepOut() and leaves it
+	// radially; a slot holder at the wrong angle steps out, walks round and enters radially at its own slot angle.
+	static void routeAround(Entity* target, Entity* my, double& gx, double& gy, bool ownSlot)
+	{
+		double keepR = keepOut(bodyR(target));
+		double mx = my->x - target->x, myy = my->y - target->y, dMe = hypot(mx, myy);
+		double aMe = atan2(myy, mx), aG = atan2(gy - target->y, gx - target->x);
+		double dA = remainder(aG - aMe, 2 * PI);
+		if ( ownSlot )
+		{
+			if ( fabs(dA) <= 0.35 ) { return; }   // in line with its slot: straight in
+			if ( dMe < keepR - 1 )
+			{
+				gx = target->x + cos(aMe) * keepR; gy = target->y + sin(aMe) * keepR;
+				++C.route_around;
+				return;
+			}
+		}
+		else
+		{
+			if ( dMe < keepR - 1 )
+			{
+				gx = target->x + cos(aMe) * (keepR + 2); gy = target->y + sin(aMe) * (keepR + 2);
+				++C.route_around;
+				return;
+			}
+			double sx = gx - my->x, sy = gy - my->y, L2 = sx * sx + sy * sy;
+			double t = L2 > 0 ? std::max(0.0, std::min(1.0, ((target->x - my->x) * sx + (target->y - my->y) * sy) / L2)) : 0;
+			if ( hypot(my->x + t * sx - target->x, my->y + t * sy - target->y) >= keepR ) { return; }
+		}
+		double step = std::min(fabs(dA), 0.6) * (dA < 0 ? -1 : 1);
+		double r = std::max(dMe, keepR);
+		gx = target->x + cos(aMe + step) * r; gy = target->y + sin(aMe + step) * r;
+		++C.route_around;
 	}
 
 	// ---------------------------------------------------------------- reach slots and ring
@@ -500,6 +539,7 @@ namespace tactics
 			{
 				double a = ts.base + s.reachIdx * 2 * PI / ts.n;
 				gx = target->x + ts.R * cos(a); gy = target->y + ts.R * sin(a);
+				routeAround(target, my, gx, gy, true);
 				s.faceTarget = d < 2 * TILE;
 			}
 			else if ( K.ring && s.ringIdx >= 0 && s.ringIdx < ts.k )
@@ -512,11 +552,12 @@ namespace tactics
 				}
 				if ( ticks < s.feintUntil ) { r -= FEINT_HOP; } // feint: a hop in and back
 				gx = target->x + r * cos(a); gy = target->y + r * sin(a);
+				routeAround(target, my, gx, gy, false);
 				s.faceTarget = true;
 			}
 			else
 			{
-				double waitR = bodyR(target) + STRIKERANGE + 8; // no room and no ring: wait behind, outside reach
+				double waitR = keepOut(bodyR(target)) + 2; // no room and no ring: wait behind, outside reach
 				if ( d >= waitR ) { hold = true; }
 				else
 				{
