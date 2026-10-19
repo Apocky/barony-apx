@@ -1,0 +1,72 @@
+# kits/rooms/cavern-grotto.toml (apx-gen F2): a natural cave by noise threshold and cellular
+# open/close (02 section 4.2), the largest piece kept, its rim worn by dilate/erode.
+[meta]
+id = "cavern-grotto"
+level = "MICRO"
+fits = { min = [10, 4, 10], max = [20, 6, 20] }
+tags = ["cave", "natural"]
+
+[[op]]  # the bounding void
+kind = "stamp"
+shape = "box"
+mask = "inner"
+from = [2, 0, 2]
+to = ["w-2", "h", "d-2"]
+[[op]]  # a disc at the centre keeps the core open
+kind = "stamp"
+shape = "disc"
+mask = "core"
+center = ["w/2", "d/2"]
+radius = "w/4"
+[[op]]
+kind = "noise"
+mask = "cave"
+seed = "cave"
+scale_cells = 3
+threshold_1024 = 560
+[[op]]
+kind = "union"
+dst = "cave"
+src = "core"
+[[op]]
+kind = "intersect"
+dst = "cave"
+src = "inner"
+[[op]]  # cellular smoothing: close the pockets, open the spurs
+kind = "close"
+mask = "cave"
+k = 1
+[[op]]
+kind = "open"
+mask = "cave"
+k = 1
+[[op]]
+kind = "components"
+mask = "cave"
+keep = "largest"
+[[op]]  # a worn rim: the cave grown by one, minus the cave eroded twice
+kind = "dilate"
+mask = "rim"
+src = "cave"
+k = 1
+[[op]]
+kind = "erode"
+mask = "deep"
+src = "cave"
+k = 2
+[[op]]
+kind = "subtract"
+dst = "rim"
+src = "deep"
+[[op]]
+kind = "intersect"
+dst = "rim"
+src = "inner"
+[[op]]
+kind = "union"
+dst = "cave"
+src = "rim"
+[[op]]
+kind = "assign"
+material = "cave_rock"
+mask = "!cave"

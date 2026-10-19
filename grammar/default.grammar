@@ -1,0 +1,37 @@
+# apx-gen default mission grammar (02 section 3): 3 keys, 3 locks, 2 secrets, 2 treasures, haven,
+# nexus, stronghold, boss, exit; cycles A and B (2 independent cycles); grown to 24-40 rooms.
+# Rows run in order; see src/mission.cpp for the row forms. Skeleton first, then the leaves.
+add  E  entrance
+add  N0 nexus
+link E  N0
+add  H0 room
+link N0 H0
+add  J0 room
+cycle H0 J0 A 2 1
+add  L1 lock:1
+link J0 L1
+add  H1 haven
+link L1 H1
+add  J1 room
+cycle H1 J1 B 1 2
+add  L2 lock:2
+link J1 L2
+add  F2 stronghold
+link L2 F2
+add  R2 room
+link F2 R2
+add  L3 lock:3
+link R2 L3
+add  B  boss
+link L3 B
+add  X  exit
+link B  X
+# leaves: each key in the region before its lock
+hang K1 key:1 Aa1 Aa2 Ab1
+hang K2 key:2 Ba1 Bb1 Bb2
+hang K3 key:3 F2 R2
+hang T0 treasure H0 J0 Aa1 Ab1
+hang T1 treasure F2 R2
+hang S0 secret H0 Aa2 Ab1
+hang S1 secret J1 Bb1
+grow 24 40
