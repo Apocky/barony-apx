@@ -107,6 +107,7 @@ namespace bf3
 	bool absorbPlayerDamage(Entity* player, int amount); // top of Entity::modHP for players: true = count and negate
 	void onGameTick();                             // after ++ticks
 	void onSwingAttempt(Entity* my, Entity* target, double dist); // swing timer reset (both arms)
+	const char* screenshotWanted();                // after the buffer swap: a file name once, else nullptr
 	extern int exitCode;
 }
 }

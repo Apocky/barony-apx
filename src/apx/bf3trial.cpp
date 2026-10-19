@@ -78,6 +78,7 @@ namespace bf3
 		std::unordered_map<Uint32, std::pair<int, int>> swing;   // per creature: swing attempts, swings stopped by a body
 		double nnSum = 0; long long nnN = 0, waiterSamples = 0, waiterOverlaps = 0;
 		long long contactSum = 0, contactSamples = 0, contactMax = 0;
+		long long traceAlly = 0, traceNone = 0, traceOther = 0, traceOtherPlayerOwned = 0;
 		int slots = 0, spawned = 0;
 	};
 	static Arm A;
@@ -468,6 +469,13 @@ namespace bf3
 				if ( d >= STRIKERANGE + tactics::bodyR(pe) ) { continue; }
 				lineTrace(c, c->x, c->y, atan2(pe->y - c->y, pe->x - c->x), STRIKERANGE + 8, LINETRACE_ATK_CHECK_FRIENDLYFIRE, false);
 				if ( hit.entity == pe ) { ++contact; }
+				else if ( !hit.entity ) { ++A.traceNone; }
+				else if ( hit.entity->behavior == &actMonster ) { ++A.traceAlly; }
+				else
+				{
+					++A.traceOther;
+					if ( hit.entity->parent == pe->getUID() ) { ++A.traceOtherPlayerOwned; } // a limb or held item of the target
+				}
 			}
 			hit = saved;
 			A.contactSum += contact; ++A.contactSamples;
@@ -559,6 +567,7 @@ namespace bf3
 			.d("waiters_nn_mean", A.nnN ? A.nnSum / A.nnN : 0).d("waiters_overlap_share", A.waiterSamples ? (double)A.waiterOverlaps / A.waiterSamples : 0)
 			.i("contact_attackers", contactAttackers()).d("blocked_share", A.attempts ? (double)(A.thin + A.wide) / A.attempts : 0)
 			.d("contact_mean", A.contactSamples ? (double)A.contactSum / A.contactSamples : 0).i("contact_max", A.contactMax)
+			.i("trace_ally", A.traceAlly).i("trace_none", A.traceNone).i("trace_other", A.traceOther).i("trace_other_player_owned", A.traceOtherPlayerOwned)
 			.i("flank_started", C.flank_started).i("flank_arrived", C.flank_arrived).i("flank_failed", C.flank_failed)
 			.i("retreats", C.retreats).i("regroups", C.regroups).i("morale_breaks", C.morale_breaks).i("morale_events", C.morale_events)
 			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("route_around", C.route_around).i("reach_full", C.reach_full).i("surrenders", C.surrenders_offered).i("packs_formed", C.packs_formed)
@@ -614,6 +623,17 @@ namespace bf3
 	}
 
 	static void go(Phase p) { ph = p; phT = ticks; }
+
+	// one frame per arm kind ("on", "noring", "off") at the middle of its first measured window
+	static std::string shotWanted, shotGiven;
+	static std::vector<std::string> shotKinds;
+	const char* screenshotWanted()
+	{
+		if ( shotWanted.empty() ) { return nullptr; }
+		shotGiven = shotWanted;
+		shotWanted.clear();
+		return shotGiven.c_str();
+	}
 
 	// BF3-5a: the field against the engine's A* on random pairs of walkable tiles of this floor
 	static void flowTestFloor(Entity* pe, int floorNo)
@@ -838,6 +858,17 @@ namespace bf3
 				break;
 			case P_MEASURE:
 				sample(pe);
+				if ( ticks - phT == (Uint32)(measureTicks / 2) )
+				{
+					std::string k = armKind(arms[armI]);
+					if ( (k == "on" || k == "noring" || k == "off") && armN(arms[armI]) == nCreatures
+						&& std::find(shotKinds.begin(), shotKinds.end(), k) == shotKinds.end() )
+					{
+						shotKinds.push_back(k);
+						shotWanted = "bf3-shot-" + k + ".png";
+						printlog("[apx] bf3 screenshot %s (arm %d)", shotWanted.c_str(), (int)armI);
+					}
+				}
 				if ( ticks - phT >= (Uint32)measureTicks )
 				{
 					measuring = false;

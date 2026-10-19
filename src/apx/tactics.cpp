@@ -572,10 +572,17 @@ namespace tactics
 			}
 			else
 			{
-				// no room and no ring: wait behind the front line, just outside reach on its own bearing
+				// no room and no ring: wait behind the reach slot nearest its own bearing, just outside reach (card
+				// BF3-3: "keeps pathing toward a free slot or waits behind"); creatures from one side queue together
 				double waitR = keepOut(bodyR(target)) + 2;
-				gx = target->x + (my->x - target->x) / std::max(d, 1.0) * waitR;
-				gy = target->y + (my->y - target->y) / std::max(d, 1.0) * waitR;
+				double bear = atan2(my->y - target->y, my->x - target->x), bestA = 1e9, a = bear;
+				for ( int i = 0; i < ts.n; ++i )
+				{
+					double ai = ts.base + i * 2 * PI / ts.n;
+					if ( ts.valid[i] && angDiff(ai, bear) < bestA ) { bestA = angDiff(ai, bear); a = ai; }
+				}
+				gx = target->x + cos(a) * waitR;
+				gy = target->y + sin(a) * waitR;
 				routeAround(target, my, gx, gy, false);
 				s.faceTarget = true;
 			}

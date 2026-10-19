@@ -8254,13 +8254,14 @@ int main(int argc, char** argv)
 			GO_SwapBuffers(screen);
 
 			// screenshots
-			if (Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||
+			const char* apxShot = apx::bf3::screenshotWanted(); // apx BF3 trial: a frame on request (its input is dropped)
+			if (apxShot || Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||
 			    (inputs.hasController(clientnum) && Input::inputs[clientnum].consumeBinaryToggle("GamepadScreenshot")))
 			{
                 if (!hdrEnabled) {
                     main_framebuffer.unbindForWriting();
                 }
-				takeScreenshot();
+				takeScreenshot(apxShot);
                 if (!hdrEnabled) {
                     main_framebuffer.bindForWriting();
                 }
