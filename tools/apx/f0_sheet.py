@@ -14,6 +14,7 @@ Usage:
 import argparse
 import datetime
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -66,11 +67,31 @@ def main():
     sheet.mkdir(parents=True, exist_ok=True)
     seeds = summary["seeds"]
 
-    def pick(build, mode, seed, rep=1):
-        for r in rows:
-            if (r["build"], r["mode"], r["seed"], r["repeat"]) == (build, mode, seed, rep) and r.get("screenshot"):
-                return r
-        return None
+    def disturbance(r):
+        """Why a run's picture is not a fair floor-1 view, from its own log: anything typed that was
+        not one of our commands shows up as 'You say: ...' (keys pressed on the real keyboard while the
+        window had focus), and a missing /pos answer means the chat did not take our command."""
+        text = Path(r["run_dir"], "log.txt").read_text(errors="replace")
+        after = text[text.find("successfully generated a dungeon"):]
+        reasons = []
+        if "You say:" in after:
+            reasons.append("stray keyboard input reached the game window")
+        if not r.get("camera_after_shot"):
+            reasons.append("camera position not logged")
+        return reasons
+
+    excluded = []
+    for r in rows:
+        if r.get("screenshot"):
+            why = disturbance(r)
+            if why:
+                excluded.append(f"{r['build']}:{r['mode']} seed {r['seed']} repeat {r['repeat']}: {'; '.join(why)}")
+
+    def pick(build, mode, seed):
+        """The cleanest picture of this config and seed: an undisturbed run first, lowest repeat."""
+        cands = [r for r in rows if (r["build"], r["mode"], r["seed"]) == (build, mode, seed) and r.get("screenshot")]
+        cands.sort(key=lambda r: (bool(disturbance(r)), r["repeat"]))
+        return cands[0] if cands else None
 
     measured, pairs = {}, {}
     for r in rows:
@@ -81,7 +102,11 @@ def main():
         a, b = pick("ours", "datadir", s), pick("vanilla", "mirror", s)
         if a and b:
             pairs[str(s)] = pixel_compare(a["screenshot"], b["screenshot"], sheet / f"diff-s{s}.png")
-    (sheet / "measurements.json").write_text(json.dumps({"eye": measured, "pairs": pairs}, indent=2))
+            pairs[str(s)].update({"ours_repeat": a["repeat"], "vanilla_repeat": b["repeat"],
+                                  "ours_camera": a.get("camera_after_shot"),
+                                  "vanilla_camera": b.get("camera_after_shot")})
+    (sheet / "measurements.json").write_text(json.dumps({"eye": measured, "pairs": pairs,
+                                                         "excluded_pictures": excluded}, indent=2))
 
     a0, b0 = pick("ours", "datadir", seeds[0]), pick("vanilla", "mirror", seeds[0])
     line = {str(s): (summary["lines_per_seed"].get(str(s)) or ["(none)"]) for s in seeds}
@@ -89,10 +114,19 @@ def main():
     def short(l):
         return l.replace("successfully generated a dungeon with ", "").rstrip(".")
 
+    def start_map_root(r):
+        """Where the run read its maps from: the game's own LoadMap line for the start map."""
+        m = re.search(r"LoadMap (.*?)[/\\]*maps[/\\]start\.lmp", Path(r["run_dir"], "log.txt").read_text(errors="replace"))
+        if not m:
+            return "?"
+        return "./ (the run's mirror of the install)" if m.group(1) in (".", "./", ".\\") else m.group(1)
+
     def cap(r, what):
         m = measured.get(f"{r['build']}:{r['mode']}:s{r['seed']}:r{r['repeat']}", {})
+        cam = r.get("camera_after_shot")
         return (f"{what}, seed {r['seed']}: {short(r['generated_line'])}. eye.py: luma {m.get('luma_mean')}"
-                f" +/- {m.get('luma_std')}, edges {m.get('edge_energy')}, {m.get('objects')} objects")
+                f" +/- {m.get('luma_std')}, edges {m.get('edge_energy')}, {m.get('objects')} objects"
+                + (f"; camera {cam}" if cam else "") + f"; maps read from {start_map_root(r)}")
 
     def pf(ok):
         return "PASS" if ok else "FAIL"
@@ -115,8 +149,7 @@ def main():
     p0 = pairs.get(str(seeds[0]), {})
     # the spec asks for the pair and a measurement, not for pixel identity (player looks, torches and
     # monsters are randomised outside the map seed), so the gate is "both pictures exist and were read"
-    pair_ok = bool(p0.get("same_size")) and all(
-        f"{b}:{m}:s{seeds[0]}:r1" in measured for b, m in (("ours", "datadir"), ("vanilla", "mirror")))
+    pair_ok = bool(p0.get("same_size")) and bool(a0) and bool(b0) and not disturbance(a0) and not disturbance(b0)
     gates.append([f"floor 1 picture pair, seed {seeds[0]}", "both taken (F6) and read by eye.py",
                   f"{p0.get('identical_frac', 0) * 100:.1f}% px identical, PSNR {p0.get('psnr_db')} dB", pf(pair_ok)])
 
@@ -140,7 +173,11 @@ def main():
             "The game reports identical room, monster, gold, item and decoration counts for each seed.",
         ],
         "measured": [f"seed {s}: " + " | ".join(line[str(s)]) for s in seeds]
-                    + [f"runs {summary['runs']}, ok {summary['ok']}, gate {summary['gate']}"],
+                    + [f"seed {s} pair: ours r{p['ours_repeat']} camera {p['ours_camera']} vs vanilla "
+                       f"r{p['vanilla_repeat']} camera {p['vanilla_camera']}: {p['identical_frac'] * 100:.1f}% px "
+                       f"identical, PSNR {p['psnr_db']} dB" for s, p in pairs.items()]
+                    + [f"runs {summary['runs']}, ok {summary['ok']}, gate {summary['gate']}"]
+                    + [f"picture not used: {e}" for e in excluded],
         "next": ["F1: instruments (floor and encounter JSONL, floor hash, headless sim, screenshot hook)."],
     }
     (sheet / "F0.json").write_text(json.dumps(spec, indent=2))

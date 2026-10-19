@@ -63,3 +63,20 @@ M monsters, G gold, I items, D decorations" plus an F6 screenshot. Ours runs wit
 `barony_vanilla.exe` runs in a mirror folder (junctions to the install's images/music/sound/themes,
 a private copy of the rest) so the install is only read. Rows go to
 `C:\Apocrypha\diagnostics\barony-f0\parity.jsonl`; `summary.json` holds the gate.
+
+### F0 result (2026-10-18, MEASURED; driver and build at ccce8244, exe sha256 5c423b5c...)
+
+| seed | our build (BARONY_DATADIR) | barony_vanilla.exe (Steam v5.0.2) |
+|---|---|---|
+| 1234567 | 13 rooms, 12 monsters, 21 gold, 18 items, 4 decorations | same |
+| 7654321 | 14 rooms, 13 monsters, 20 gold, 19 items, 2 decorations | same |
+
+Seven runs per matrix (both seeds, a repeat of the first, our build also in the mirror folder);
+three matrices. The third, with this driver, passed every check: parity per seed, the control
+(the two seeds differ), repeats agree, no data-load error that vanilla lacks, 0 of 13,871 install
+data files changed. The game's /pos put the camera at the same place in both builds per seed
+([25, 24, -4] and [26, 15, -4]); the floor-1 picture pairs measure PSNR 28.8 and 30.6 dB (vanilla
+against itself across repeats: 28.4 dB). The second matrix failed one run (a dropped key press:
+the key-hold fix in ccce8244). One picture of the third matrix is excluded from the sheet because
+keys pressed on the real keyboard reached that game window (logged as "You say: wwwwwwwwwa/pos").
+Sheet: `C:\Apocrypha\diagnostics\barony-f0\sheet\sheet.png` (game art, so outside the repository).
