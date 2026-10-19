@@ -275,28 +275,31 @@ def d75_gates(base, args):
     P = d.get("poise") or {}
     if not P and not d.get("jam"):
         return g
+    # the cells the D76 plan runs: physical robed and armoured per crowd; the control's armoured cells (F4c's flat pool
+    # has no armour term, so its robed cell would only repeat the armoured one); a gate without its cells = no data
     crowds = [c for c in ("skeleton/fodder", "rat/wild") if c in P]
     rows = {}
-    ok_phys, ok_ctl, have_ctl = True, True, False
+    phys_seen = ctl_seen = 0
+    ok_phys = ok_ctl = True
     for c in crowds:
         ph, f4 = P[c].get("physical", {}), P[c].get("f4c", {})
         if "robed" in ph and "armoured" in ph:
+            phys_seen += 1
             r, a = ph["robed"]["staggers"], ph["armoured"]["staggers"]
             ok_phys = ok_phys and r > 0 and a <= 0.5 * r
-        else:
-            ok_phys = False
-        if "robed" in f4 and "armoured" in f4 and "armoured" in ph:
-            have_ctl = True
-            fr, fa, pa = f4["robed"]["staggers"], f4["armoured"]["staggers"], ph["armoured"]["staggers"]
-            ok_ctl = ok_ctl and fa >= 1.5 * max(pa, 0.5) and abs(fa - fr) <= 0.35 * max(fr, 1.0)
+        if "armoured" in f4 and "armoured" in ph:
+            ctl_seen += 1
+            ok_ctl = ok_ctl and f4["armoured"]["staggers"] >= 1.5 * max(ph["armoured"]["staggers"], 0.5)
         rows[c] = {mo: {kit: [P[c][mo][kit]["staggers"], P[c][mo][kit]["locks"], P[c][mo][kit]["poise_max"]] for kit in P[c][mo]}
                    for mo in P[c]}
-    g["d75_armour_staggers_less"] = {"pass": ok_phys if crowds else None, "rule": "physical: armoured <= 1/2 robed staggers",
-                                     "staggers_locks_poisemax": rows}
+    g["d75_armour_staggers_less"] = {"pass": ok_phys if phys_seen == len(crowds) and crowds else None,
+                                     "rule": "physical: armoured <= 1/2 robed staggers", "staggers_locks_poisemax": rows}
     reg = P.get("skeleton/regular", {})
     reg_lock = (reg.get("f4c", {}).get("armoured") or {}).get("locks")
-    g["d75_control_restores_lock"] = {"pass": (ok_ctl and (reg_lock is None or reg_lock >= 5)) if have_ctl else None,
-                                      "rule": "F4c: armoured >= 1.5x its physical staggers and within 35 pct of robed; regular crowd locks >= 5",
+    reg_phys = (reg.get("physical", {}).get("armoured") or {}).get("locks")
+    have = ctl_seen == len(crowds) and crowds and reg_lock is not None
+    g["d75_control_restores_lock"] = {"pass": (ok_ctl and reg_lock >= 5 and (reg_phys is None or reg_lock > reg_phys)) if have else None,
+                                      "rule": "APX_POISE_PHYSICAL=0: armoured staggers >= 1.5x physical; regular crowd locks >= 5 per 20 s",
                                       "regular_crowd": {mo: {kit: [reg[mo][kit]["staggers"], reg[mo][kit]["locks"]] for kit in reg[mo]} for mo in reg}}
     rats = P.get("rat/wild", {})
     infos = sorted(set(i for mo in rats.values() for kit in mo.values() for i in kit["tier_info"]))
