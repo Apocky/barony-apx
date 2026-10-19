@@ -64,6 +64,8 @@ namespace tactics
 		double homeX = 0, homeY = 0;
 		uint8_t flank = 0;               // 0 never, 1 active, 2 arrived, 3 failed
 		Uint32 flankTarget = 0, flankStart = 0, progressTick = 0;
+		Uint32 queueSince = 0;     // D80: holding in a queue behind a packmate's body since (0 = not queued)
+		bool loopFlank = false;    // D80: this flank goes round a loop (APX_LOOP_FLANK): longer limits
 		double progressX = 0, progressY = 0;
 		uint8_t routeKind = ROUTE_NONE; std::vector<int> route; size_t routeAt = 0;
 		bool routeOk = false; int routeGoal = -1; Uint32 routeBuilt = 0;   // ROUTE_GOAL: a path was found, its goal tile, when planned

@@ -42,6 +42,7 @@ namespace tactics
 		K.morale = envOn("APX_MORALE", true);
 		K.astardiag = envOn("APX_ASTAR_DIAG", true);
 		K.collide = envOn("APX_CROWD_COLLIDE", true);
+		K.loopflank = envOn("APX_LOOP_FLANK", false);
 		const char* e = getenv("APX_ELBOW");
 		if ( e && *e ) { gElbow = atof(e); }
 		e = getenv("APX_TACTICS_PROBE_US");
@@ -56,10 +57,10 @@ namespace tactics
 
 	std::string knobString()
 	{
-		char buf[192];
-		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d,astardiag=%d,collide=%d",
+		char buf[208];
+		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d,astardiag=%d,collide=%d,loopflank=%d",
 			K.tactics ? 1 : 0, K.reach ? 1 : 0, K.interleave ? 1 : 0, K.allyavoid ? 1 : 0, K.ring ? 1 : 0,
-			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0, K.astardiag ? 1 : 0, K.collide ? 1 : 0);
+			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0, K.astardiag ? 1 : 0, K.collide ? 1 : 0, K.loopflank ? 1 : 0);
 		return buf;
 	}
 
@@ -288,7 +289,7 @@ namespace tactics
 				MONSTER_VELX = 0; MONSTER_VELY = 0;
 				s.stillSince = 0; s.stuckCounted = false;
 				if ( hypot(blocker->x - gx, blocker->y - gy) < bodyR(blocker) + bodyR(my) ) { ++C.body_goal_holds; }
-				else { ++C.body_queue_holds; }
+				else { ++C.body_queue_holds; if ( !s.queueSince ) { s.queueSince = ticks; } }
 				return false;
 			}
 		}
@@ -331,7 +332,7 @@ namespace tactics
 				++C.stuck; // ticks stuck (no movement for 1 s while steering toward a goal)
 			}
 		}
-		else { s.stillSince = 0; s.stuckCounted = false; }
+		else { s.stillSince = 0; s.stuckCounted = false; s.queueSince = 0; }
 		return true;
 	}
 

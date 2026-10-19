@@ -60,6 +60,7 @@ namespace bf3
 	static bool pinned = false;
 	static int pTX = -1, pTY = -1;
 	static bool arenaCorridor = false;   // D75 jam: APX_BF3_ARENA=corridor
+	static std::string arenaName = "open"; // D80: open, corridor or loopcorridor (the row's arena)
 	static std::vector<std::pair<int, int>> spawnTiles;   // angle-sorted ring 4..7 tiles out
 	static std::vector<Uint32> trialUids;
 	static Uint32 leaderUid = 0;
@@ -434,21 +435,75 @@ namespace bf3
 		return best;
 	}
 
+	// D80: the axis of a straight 1-tile corridor through (x, y) (0 along x, 1 along y), -1 if none
+	static int corridorAxis(int x, int y)
+	{
+		for ( int axis = 0; axis < 2; ++axis )
+		{
+			const int ax = axis ? 0 : 1, ay = axis ? 1 : 0, sx = ay, sy = ax;
+			bool ok = tactics::walkable(x, y);
+			for ( int k = -3; k <= 3 && ok; ++k )
+			{
+				const int cx = x + ax * k, cy = y + ay * k;
+				ok = tactics::walkable(cx, cy) && !tactics::walkable(cx + sx, cy + sy) && !tactics::walkable(cx - sx, cy - sy);
+			}
+			if ( ok ) { return axis; }
+		}
+		return -1;
+	}
+	// D80 loop flank: the walk from one end of the corridor (3 tiles out) to the other with the corridor's middle 5 tiles
+	// blocked, in tiles (BFS over walkable tiles); 0 when the ends do not connect another way
+	static int loopLength(int x, int y, int axis)
+	{
+		const int ax = axis ? 0 : 1, ay = axis ? 1 : 0;
+		const int W = (int)map.width, H = (int)map.height;
+		std::vector<int> dist((size_t)W * H, -1);
+		auto blocked = [&](int tx, int ty) { for ( int k = -2; k <= 2; ++k ) { if ( tx == x + ax * k && ty == y + ay * k ) { return true; } } return false; };
+		const int sx = x - ax * 3, sy = y - ay * 3, ex = x + ax * 3, ey = y + ay * 3;
+		std::queue<std::pair<int, int>> q;
+		q.push({ sx, sy });
+		dist[(size_t)sy * W + sx] = 0;
+		while ( !q.empty() )
+		{
+			auto c = q.front(); q.pop();
+			const int d = dist[(size_t)c.second * W + c.first];
+			if ( c.first == ex && c.second == ey ) { return d; }
+			if ( d > 120 ) { continue; }
+			static const int dx[4] = { 1, -1, 0, 0 }, dy[4] = { 0, 0, 1, -1 };
+			for ( int k = 0; k < 4; ++k )
+			{
+				const int nx = c.first + dx[k], ny = c.second + dy[k];
+				if ( nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1 || dist[(size_t)ny * W + nx] >= 0 || blocked(nx, ny) || !tactics::walkable(nx, ny) ) { continue; }
+				dist[(size_t)ny * W + nx] = d + 1;
+				q.push({ nx, ny });
+			}
+		}
+		return 0;
+	}
+
 	// D80: both arenas are found at the start, the open one (most open 3x3 floor) and the corridor (the longest straight
 	// 1-tile corridor); an arm picks one with a "!open" / "!corridor" suffix, else APX_BF3_ARENA (default open)
 	static int openTX = -1, openTY = -1, openN = -1, corrTX = -1, corrTY = -1, corrN = 0;
+	static int loopTX = -1, loopTY = -1, loopN = 0, loopLen = 0;   // D80: a corridor with a loop round it (shortest loop)
 	static bool envCorridor = false;
 
-	static void useArena(Entity* pe, bool corridor)
+	static void useArena(Entity* pe, bool corridor, bool loop = false)
 	{
+		if ( loop && loopN <= 0 )
+		{
+			printlog("[apx] bf3 arena: no looped corridor on this floor, the plain corridor stands in");
+			loop = false;
+		}
 		if ( corridor && corrN <= 0 )
 		{
 			printlog("[apx] bf3 arena: no straight corridor on this floor, the open arena stays");
 			corridor = false;
 		}
-		const int tx = corridor ? corrTX : openTX, ty = corridor ? corrTY : openTY;
-		if ( pinned && tx == pTX && ty == pTY && arenaCorridor == corridor ) { return; }
-		arenaCorridor = corridor;
+		const int tx = loop ? loopTX : corridor ? corrTX : openTX, ty = loop ? loopTY : corridor ? corrTY : openTY;
+		const std::string name = loop ? "loopcorridor" : corridor ? "corridor" : "open";
+		if ( pinned && tx == pTX && ty == pTY && arenaName == name ) { return; }
+		arenaCorridor = corridor || loop;
+		arenaName = name;
 		pTX = tx; pTY = ty;
 		pinX = pTX * 16.0 + 8; pinY = pTY * 16.0 + 8; pinYaw = 0;
 		pe->x = pinX; pe->y = pinY; pe->yaw = pinYaw;
@@ -493,12 +548,19 @@ namespace bf3
 			{
 				const int c = corridorAt(x, y);
 				if ( c > corrN ) { corrN = c; corrTX = x; corrTY = y; }
+				if ( c >= 7 )
+				{
+					const int axis = corridorAxis(x, y);
+					const int L = axis >= 0 ? loopLength(x, y, axis) : 0;
+					if ( L > 0 && (loopN <= 0 || L < loopLen) ) { loopN = c; loopLen = L; loopTX = x; loopTY = y; }
+				}
 				if ( !clear3(x, y) ) { continue; }
 				int n = openCount(x, y, 5, nullptr);
 				if ( n > openN ) { openN = n; openTX = x; openTY = y; }
 			}
 		}
-		printlog("[apx] bf3 arenas: open %d,%d (%d tiles), corridor %d,%d (length %d)", openTX, openTY, openN, corrTX, corrTY, corrN);
+		printlog("[apx] bf3 arenas: open %d,%d (%d tiles), corridor %d,%d (length %d), looped corridor %d,%d (loop %d tiles)", openTX, openTY,
+			openN, corrTX, corrTY, corrN, loopTX, loopTY, loopLen);
 		pinned = false;
 		useArena(pe, envCorridor);
 	}
@@ -630,6 +692,7 @@ namespace bf3
 		if ( a == "off" ) { tactics::K.reach = tactics::K.interleave = tactics::K.allyavoid = tactics::K.ring = false; }
 		else if ( a == "vanilla" ) { tactics::K.tactics = false; tactics::K.collide = false; } // vanilla: no apx crowd physics
 		else if ( a == "nocollide" ) { tactics::K.collide = false; }                      // D80: the control, bodies pass
+		else if ( a == "loopflank" ) { tactics::K.loopflank = true; }                     // D80: queued creatures go round a loop
 		else if ( a == "nomorale" ) { tactics::K.morale = false; }
 		else if ( a == "nopacks" ) { tactics::K.packs = false; }   // control for calls for help and flanks
 		else if ( a == "noring" ) { tactics::K.ring = false; }        // control for BF3-4: waiters bunch
@@ -1093,7 +1156,7 @@ namespace bf3
 			.i("player_staggers_arm", (players[0] && players[0]->entity && apx::combat_glue::table().count(players[0]->entity->getUID()))
 				? apx::combat_glue::table()[players[0]->entity->getUID()].staggers : 0)
 			// D75: over the measured window; locks = a stagger starting within 1 s of the previous one's end
-			.str("kit", armKit.empty() ? std::string("quickstart") : armKit).str("arena", arenaCorridor ? "corridor" : "open")
+			.str("kit", armKit.empty() ? std::string("quickstart") : armKit).str("arena", arenaName).i("loop_tiles", arenaName == "loopcorridor" ? loopLen : 0)
 			.str("poise_model", apx::combat_glue::physicalOn() ? "physical" : "f4c")
 			.i("player_staggers", stagDelta(0)).i("player_locks", stagDelta(1))
 			.d("staggered_share", A.ticks ? (double)stagDelta(2) / std::max<long long>(1, (long long)measureTicks) : 0.0)
@@ -1113,7 +1176,7 @@ namespace bf3
 			.i("target_dropped_by_tactics", C.target_dropped_by_tactics).i("target_lost_ticks", A.targetLostTicks)
 			.i("ring_holds", C.ring_holds).i("ring_assign", C.ring_assign).i("ring_slot_fail", C.ring_slot_fail).i("feints", C.feints)
 			.i("stuck", C.stuck).i("stuck_episodes", C.stuck_episodes).i("steer_ticks", C.steer_ticks).i("steer_holds", C.steer_holds)
-			.i("body_sidesteps", C.body_sidesteps).i("body_goal_holds", C.body_goal_holds).i("body_queue_holds", C.body_queue_holds).i("wall_holds", C.wall_holds).i("collide_on", tactics::collideOn() ? 1 : 0).i("apx_vanilla", apxVanillaMode ? 1 : 0)
+			.i("body_sidesteps", C.body_sidesteps).i("body_goal_holds", C.body_goal_holds).i("body_queue_holds", C.body_queue_holds).i("wall_holds", C.wall_holds).i("loop_flanks", C.loop_flanks).i("flank_arrived_n", C.flank_arrived).i("collide_on", tactics::collideOn() ? 1 : 0).i("apx_vanilla", apxVanillaMode ? 1 : 0)
 			.d("waiters_pair_dist_mean", A.waitPairN ? A.waitPairSum / A.waitPairN : 0)
 			.d("waiters_nn_mean", A.nnN ? A.nnSum / A.nnN : 0).d("waiters_overlap_share", A.waiterSamples ? (double)A.waiterOverlaps / A.waiterSamples : 0)
 			.i("contact_attackers", contactAttackers()).d("blocked_share", A.attempts ? (double)(A.thin + A.wide) / A.attempts : 0)
@@ -1416,7 +1479,7 @@ namespace bf3
 			case P_SPAWN:
 				{
 					const std::string ar = armArena(arms[armI]);
-					useArena(pe, ar.empty() ? envCorridor : ar == "corridor");
+					useArena(pe, ar.empty() ? envCorridor : ar == "corridor", ar == "loopcorridor");
 				}
 				setArmKnobs(arms[armI]);
 				setArmMonster(arms[armI]);

@@ -43,6 +43,9 @@ namespace tactics
 		// skipped monsterally[][] pairs: a same-kind crowd stood inside itself, D75 rule 3). APX_CROWD_COLLIDE=0 is the
 		// control; -apxvanilla / APX_VANILLA=1 turn it off with the other apx features (collideOn()).
 		bool collide = true;
+		// D80 corridors (default OFF, APX_LOOP_FLANK=1): a creature waiting in a queue it cannot pass takes the flank route
+		// round the floor's loops to the target's far side (flankDecide, longer limits)
+		bool loopflank = false;
 	};
 	extern Knobs K;           // live knob set (the BF3 trial switches it between arms)
 	bool collideOn();         // K.collide and not a vanilla control (-apxvanilla, APX_VANILLA=1)
@@ -87,6 +90,7 @@ namespace tactics
 		long long body_sidesteps = 0, body_goal_holds = 0;   // D80: slid round a packmate's body; waited for a place it holds
 		long long body_queue_holds = 0;                     // D80: no room to slide round a body (corridor): waited in line
 		long long wall_holds = 0;                           // D80: a make-room move (out, arc) a wall blocks: held in place
+		long long loop_flanks = 0;                          // D80: queued creatures sent round a loop (APX_LOOP_FLANK)
 		long long ring_holds = 0, ring_assign = 0, ring_slot_fail = 0, feints = 0, stuck = 0, stuck_episodes = 0, steer_ticks = 0;
 		long long flank_started = 0, flank_arrived = 0, flank_failed = 0;
 		long long retreats = 0, regroups = 0, morale_breaks = 0, morale_events = 0, surrenders_offered = 0, home_moved = 0;
