@@ -67,7 +67,8 @@ def render():
 def main():
     text = render()
     if "--check" in sys.argv:
-        ok = OUT.exists() and OUT.read_text(encoding="ascii") == text
+        # line endings aside (git may check the file out with CRLF)
+        ok = OUT.exists() and OUT.read_bytes().decode("ascii").replace("\r\n", "\n") == text
         print("monster_strength.inc", "current" if ok else "STALE: run python tools/apx/gen_strength.py")
         return 0 if ok else 1
     OUT.write_text(text, encoding="ascii", newline="\n")
