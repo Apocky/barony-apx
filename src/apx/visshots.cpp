@@ -4,6 +4,9 @@
 #include "../entity.hpp"
 #include "../player.hpp"
 #include "visshots.hpp"
+#include "vision.hpp"
+#include <cstdio>
+#include <cstdlib>
 
 #include <cmath>
 #include <string>
@@ -15,6 +18,8 @@ namespace vis
 	namespace
 	{
 		bool g_armed = false;
+		bool g_probe = false;          // -apxlightprobe
+		int g_probeTicks = 0;
 		int g_ticks = 0;
 		int g_phase = 0;               // 0 settle, 1 far view, 2 near view, 3 done
 		int g_mark = 0;
@@ -51,9 +56,47 @@ namespace vis
 
 	void arm() { g_armed = true; }
 	bool armed() { return g_armed; }
+	void armProbe() { g_probe = true; }
+
+	// -apxlightprobe: the light monsters see (entityLightAt) on every open tile of the test floor, written as one
+	// JSON row of per-tile values, then quit. Two launches (APX_VIS_FALLOFF=0 vs on) give the change in how far
+	// a monster notices the player: notice distance = min(sight range, light after reductions) in world units.
+	static void probeTick(bool ready)
+	{
+		if ( !g_probe || !ready ) { return; }
+		if ( ++g_probeTicks < 100 ) { return; } // lights placed and the floor settled
+		g_probe = false;
+		// the floor's own lights only: player 0's light goes wherever the player stands (and is the same at the
+		// player's own tile under either curve), so it is taken out before sampling; it comes back next tick
+		if ( players[0] && players[0]->entity && players[0]->entity->light )
+		{
+			list_RemoveNode(players[0]->entity->light->node);
+			players[0]->entity->light = nullptr;
+		}
+		const char* d = std::getenv("APX_DIAG_DIR");
+		const std::string path = std::string(d && d[0] ? d : ".") + "/lightprobe.json";
+		FILE* f = fopen(path.c_str(), "w");
+		int open = 0; long long sum = 0; int lit = 0;
+		if ( f ) { fprintf(f, "{\"map\":[%u,%u],\"floor\":%d,\"falloff\":%d,\"tiles\":[", map.width, map.height, currentlevel, apx::vision::falloffOn() ? 1 : 0); }
+		for ( int x = 0; x < (int)map.width; ++x )
+		{
+			for ( int y = 0; y < (int)map.height; ++y )
+			{
+				if ( solid(x, y) || !map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height] ) { continue; } // walls and pits
+				const int L = entityLightAt(x, y);
+				if ( f ) { fprintf(f, "%s[%d,%d,%d]", open ? "," : "", x, y, L); }
+				++open; sum += L; lit += L > 0;
+			}
+		}
+		if ( f ) { fprintf(f, "]}\n"); fclose(f); }
+		printlog("[apx-vis] lightprobe: %d open tiles, mean light %.2f, lit %d, falloff %d, file %s", open, open ? (double)sum / open : 0.0, lit,
+			apx::vision::falloffOn() ? 1 : 0, path.c_str());
+		mainloop = 0;
+	}
 
 	void tick(bool ready)
 	{
+		probeTick(ready);
 		if ( !g_armed || g_phase >= 3 ) { return; }
 		if ( !ready ) { g_ticks = 0; return; }
 		++g_ticks;

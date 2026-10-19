@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "light.hpp" // apx BVIS1: lightmapGameplayDelta
 #include <new>
 #include "entity.hpp"
 #include "messages.hpp"
@@ -154,6 +155,20 @@ void lightDeconstructor(void* data)
 				}
 			}
 			free(light->tiles);
+			if (light->tilesDelta) { // apx BVIS1: take this light's old-curve delta back out
+				const auto mapsize2 = map.width * map.height;
+				const auto w = light->radius * 2 + 1;
+				for (int x = 0; x < w; ++x) {
+					for (int y = 0; y < w; ++y) {
+						const auto doff = (y + light->y - light->radius) + (x + light->x - light->radius) * map.height;
+						if (y + light->y - light->radius < 0 || x + light->x - light->radius < 0 || doff < 0 || doff >= mapsize2 || (size_t)doff >= lightmapGameplayDelta.size()) { continue; }
+						const auto& s = light->tilesDelta[y + x * w];
+						auto& d = lightmapGameplayDelta[doff];
+						d.x -= s.x; d.y -= s.y; d.z -= s.z; d.w -= s.w;
+					}
+				}
+				free(light->tilesDelta);
+			}
 		}
 		free(data);
 	}
@@ -330,6 +345,7 @@ light_t* newLight(int index, Sint32 x, Sint32 y, Sint32 radius)
 	light->x = x;
 	light->y = y;
 	light->radius = radius;
+	light->tilesDelta = nullptr;
 	if (light->radius > 0) {
         const auto size = sizeof(vec4_t) * (radius * 2 + 1) * (radius * 2 + 1);
 		light->tiles = (vec4_t*)malloc(size);

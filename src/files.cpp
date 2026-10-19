@@ -3252,6 +3252,8 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
             }
         }
 
+		lightmapGameplayDeltaReset(); // apx BVIS1: the old-curve delta map starts empty with the new lightmaps
+
 		// reset minimap
 		for ( x = 0; x < MINIMAP_MAX_DIMENSION; x++ )
 		{
