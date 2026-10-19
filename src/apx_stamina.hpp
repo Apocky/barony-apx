@@ -134,9 +134,11 @@ namespace apx
 	inline int adjustDamage(int player, int damage, int pose)
 	{
 		const int m = moveFor(player);
-		if ( m == SWORD_VERTICAL ) { return static_cast<int>(damage * kVerticalDamage); }
-		if ( m == SWORD_SLASH && pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ) { return static_cast<int>(damage * extraScale); }
-		return damage;
+		int out = damage;
+		if ( m == SWORD_VERTICAL ) { out = static_cast<int>(damage * kVerticalDamage); }
+		else if ( m == SWORD_SLASH && pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ) { out = static_cast<int>(damage * extraScale); }
+		if ( m != MOVE_NONE && selftestOn() ) { printlog("[apx-hit] adjust move=%d pose=%d in=%d out=%d scale=%.2f", m, pose, damage, out, extraScale); }
+		return out;
 	}
 
 	// Half-angle of the vanilla sweep timer's arc (actmagic.cpp): ours for the sword slash, PI/3 for everything else.
@@ -205,6 +207,7 @@ namespace apx
 				const real_t dx = e->x - me->x, dy = e->y - me->y;
 				if ( dx * dx + dy * dy < kCombatRadius * kCombatRadius && me->checkEnemy(e) )
 				{
+					if ( s.combatSeenTick == 0 ) { printlog("[apx-stamina] combat begins p=%d monster_type=%d dist=%.1f", player, (int)(e->getStats() ? e->getStats()->type : -1), sqrt(dx * dx + dy * dy)); }
 					s.combatSeenTick = ticks;
 					break;
 				}
@@ -381,6 +384,13 @@ namespace apx
 			return d;
 		};
 		if ( phase == 0 ) { farDummy() = put(0.0, 33.0); } // beyond vanilla reach (24 + body), inside thrust reach (31 + body)
+		if ( phase == 2 )
+		{
+			// a real hostile within the combat radius, and a player who cannot die while the script swings
+			stats[0]->HP = stats[0]->MAXHP = 9999;
+			Entity* r = summonMonster(RAT, me->x + cos(me->yaw) * 80.0, me->y + sin(me->yaw) * 80.0, true);
+			printlog("[apx-stamina] selftest hostile rat spawned ok=%d", r ? 1 : 0);
+		}
 		if ( phase == 1 ) { const real_t a[5] = { -0.7, -0.35, 0.0, 0.35, 0.7 }; for ( real_t x : a ) put(x, STRIKERANGE * 0.6); }
 		printlog("[apx-move] selftest_spawn phase=%d yaw=%.3f pos=%.1f,%.1f", phase, me->yaw, me->x, me->y);
 	}
@@ -423,7 +433,7 @@ namespace apx
 		++t;
 		if ( selftestEndurance() )
 		{
-			if ( t == 50 ) { selftestSpawn(0); }
+			if ( t == 50 ) { selftestSpawn(2); }
 			if ( t == 4800 )
 			{
 				const Stamina_t& s = get(0);
