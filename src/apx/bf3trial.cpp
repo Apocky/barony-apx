@@ -41,6 +41,17 @@ namespace bf3
 	static Uint32 phT = 0;
 	static std::vector<std::string> arms;
 	static size_t armI = 0;
+	// D76 (Apocky, protocol rule 12): run until the critical numbers are in. APX_BF3_STOP="min=2,max=4" turns the arm
+	// list into CELLS (each distinct spec, an optional "@metric" suffix): cells run round-robin, a cell is done when it
+	// has min arms and the 95 percent half-width of its metric is under its tolerance, or at max arms (the hard cap).
+	struct StopCell { std::string spec, metric; std::vector<double> v; bool done = false; };
+	static std::vector<StopCell> cells;
+	static bool stopMode = false;
+	static int stopMin = 2, stopMax = 4;
+	static size_t cellI = 0;
+	// APX_BF3_EXPECT_TIERS="rat=fodder,skeleton=fodder": a deterministic check at the first spawn of each untagged
+	// arm; a creature of a listed type with another tier ends the run at once (exit 3: the first decisive failure)
+	static std::vector<std::pair<std::string, std::string>> expectTiers;
 	static int nCreatures = 12, packSize = 4, settleTicks = 100, measureTicks = 1000, floorWanted = 1, moraleTest = 1;
 	static std::string kindName = "skeleton";
 	static Monster kind = SKELETON;
@@ -129,6 +140,43 @@ namespace bf3
 			if ( q == std::string::npos ) { q = spec.size(); }
 			if ( q > p ) { arms.push_back(spec.substr(p, q - p)); }
 			p = q + 1;
+		}
+		{
+			const char* st = getenv("APX_BF3_STOP");
+			if ( st && *st )
+			{
+				stopMode = true;
+				const char* mn = strstr(st, "min=");
+				const char* mx = strstr(st, "max=");
+				if ( mn ) { stopMin = std::max(1, atoi(mn + 4)); }
+				if ( mx ) { stopMax = std::max(stopMin, atoi(mx + 4)); }
+				const char* dm = getenv("APX_BF3_STOP_METRIC");
+				const std::string defMetric = (dm && *dm) ? dm : "dmg";
+				for ( const std::string& a : arms )
+				{
+					const size_t at = a.find('@');
+					StopCell c;
+					c.spec = a.substr(0, at);
+					c.metric = at == std::string::npos ? defMetric : a.substr(at + 1);
+					bool seen = false;
+					for ( auto& o : cells ) { seen = seen || (o.spec == c.spec && o.metric == c.metric); }
+					if ( !seen ) { cells.push_back(c); }
+				}
+				arms.clear();
+				if ( !cells.empty() ) { arms.push_back(cells[0].spec); }
+			}
+			const char* ex = getenv("APX_BF3_EXPECT_TIERS");
+			std::string es = (ex && *ex) ? ex : "";
+			size_t q0 = 0;
+			while ( q0 < es.size() )
+			{
+				size_t q1 = es.find(',', q0);
+				if ( q1 == std::string::npos ) { q1 = es.size(); }
+				const std::string kv = es.substr(q0, q1 - q0);
+				const size_t eq = kv.find('=');
+				if ( eq != std::string::npos ) { expectTiers.push_back({ kv.substr(0, eq), kv.substr(eq + 1) }); }
+				q0 = q1 + 1;
+			}
 		}
 		nCreatures = envInt("APX_BF3_N", 12);
 		packSize = std::max(1, envInt("APX_BF3_PACK", 4));
@@ -883,6 +931,80 @@ namespace bf3
 		return (double)n / v.size();
 	}
 
+	// D76: a cell's metric for the arm just measured, and the stop rule's tolerance for it (ASSUMED, stated in the
+	// plan file before the run): the 95 percent half-width must be under max(abs, rel x |mean|)
+	static long long stagDelta(int k);
+	static double armMetric(const std::string& m)
+	{
+		if ( m == "staggers" ) { return (double)stagDelta(0); }
+		if ( m == "locks" ) { return (double)stagDelta(1); }
+		if ( m == "attackers" ) { return A.ticks ? (double)A.attackersSum / A.ticks : 0.0; }
+		return (double)A.dmg;
+	}
+	static void stopTolerance(const std::string& m, double& abs, double& rel)
+	{
+		if ( m == "staggers" ) { abs = 1.5; rel = 0.20; }
+		else if ( m == "locks" ) { abs = 1.0; rel = 0.25; }
+		else if ( m == "attackers" ) { abs = 0.3; rel = 0.05; }
+		else { abs = 25.0; rel = 0.12; } // dmg per 20 s
+	}
+	static double halfWidth95(const std::vector<double>& v, double& mean)
+	{
+		static const double t975[10] = { 0, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262 };
+		const size_t n = v.size();
+		mean = 0.0;
+		for ( double x : v ) { mean += x; }
+		mean = n ? mean / n : 0.0;
+		if ( n < 2 ) { return 1e18; }
+		double ss = 0.0;
+		for ( double x : v ) { ss += (x - mean) * (x - mean); }
+		const double sd = sqrt(ss / (n - 1));
+		return (n - 1 < 10 ? t975[n - 1] : 2.228) * sd / sqrt((double)n);
+	}
+	// after an arm: book its metric in its cell; queue the next unfinished cell (round-robin) as the next arm
+	static void stopAfterArm()
+	{
+		if ( !stopMode || cells.empty() ) { return; }
+		StopCell& c = cells[cellI];
+		c.v.push_back(armMetric(c.metric));
+		double mean = 0.0, abs = 0.0, rel = 0.0;
+		const double hw = halfWidth95(c.v, mean);
+		stopTolerance(c.metric, abs, rel);
+		const double tol = std::max(abs, rel * fabs(mean));
+		c.done = (int)c.v.size() >= stopMin && (hw <= tol || (int)c.v.size() >= stopMax);
+		printlog("[apx] bf3 stop cell %s metric %s n %d value %.2f mean %.2f hw95 %.2f tol %.2f %s", c.spec.c_str(), c.metric.c_str(),
+			(int)c.v.size(), c.v.back(), mean, hw >= 1e17 ? -1.0 : hw, tol, c.done ? ((int)c.v.size() >= stopMax && hw > tol ? "DONE (cap)" : "DONE") : "more");
+		for ( size_t k = 1; k <= cells.size(); ++k )
+		{
+			const size_t j = (cellI + k) % cells.size();
+			if ( !cells[j].done ) { cellI = j; arms.push_back(cells[j].spec); return; }
+		}
+	}
+	// a deterministic check at spawn (D76: gates stop at the first decisive failure)
+	static bool expectationsHold()
+	{
+		if ( expectTiers.empty() || (!armTier.empty() && armTier != "wild") ) { return true; }
+		for ( Uint32 u : trialUids )
+		{
+			Entity* c = uidToEntity(u);
+			Stat* cs = c ? c->getStats() : nullptr;
+			if ( !c || !cs ) { continue; }
+			for ( auto& e : expectTiers )
+			{
+				if ( _stricmp(monstertypename[cs->type], e.first.c_str()) ) { continue; }
+				tiers::Source w = tiers::Source::NotMonster;
+				const char* got = combat::tierName(tiers::tierOf(c, &w));
+				if ( e.second != got )
+				{
+					printlog("[apx] bf3 EXPECT FAIL arm %s: %s is %s/%s, expected %s", arms[armI].c_str(), e.first.c_str(), got, tiers::sourceName(w), e.second.c_str());
+					return false;
+				}
+			}
+		}
+		printlog("[apx] bf3 expect tiers OK arm %s", arms[armI].c_str());
+		return true;
+	}
+
 	// D75: the character's staggers (0), stagger locks (1) and staggered ticks (2) since the measured window began
 	static long long stagDelta(int k)
 	{
@@ -1275,6 +1397,7 @@ namespace bf3
 				else { spawnPacks(pe, armN(arms[armI]), packSize, true); }
 				flow::resetStats();
 				armTierInfo = tierInfo();
+				if ( !expectationsHold() ) { finish(3); break; }
 				A.spawned = (int)trialUids.size();
 				A.slots = trialUids.empty() ? 0 : tactics::reachSlotsFor(pe, uidToEntity(trialUids[0]));
 				go(P_SETTLE);
@@ -1337,6 +1460,7 @@ namespace bf3
 				{
 					measuring = false;
 					writeArmRow(arms[armI]);
+					stopAfterArm();
 					cleanup();
 					++armI;
 					go(P_CLEAN);

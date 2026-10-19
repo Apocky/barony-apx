@@ -106,61 +106,103 @@ def d74_chain(args, bh, py, out, save):
     golden_step(args, out, save)
 
 
-# D75 (--d75): physical poise arms (robed vs armoured x fodder skeletons, wild rats, regular skeletons) and jam arms
-D75_POISE_ARMS = [f"on:12:{crowd}:{kit}" for _ in range(2) for crowd in ("skeleton:fodder", "rat:wild") for kit in ("robed", "armoured")] \
-    + ["on:12:skeleton:regular:robed", "on:12:skeleton:regular:armoured"]
-D75_JAM_ARMS = ["vanilla:12:skeleton", "on:12:skeleton", "vcollide:12:skeleton", "oncollide:12:skeleton"] * 2 + ["vanilla:12:rat", "vcollide:12:rat"]
-D75_CORRIDOR_ARMS = ["vanilla:12:skeleton", "on:12:skeleton", "vcollide:12:skeleton", "oncollide:12:skeleton"] * 2
+# D75 (--d75) under D76 (protocol rule 12: run until the critical numbers are in). Each launch lists CELLS; the game
+# repeats them round-robin until each cell's 95 percent half-width is under its tolerance (2 arms at least, 4 at most;
+# tolerances in bf3trial.cpp stopTolerance and the plan file handovers/plans/bf3-d75.md). Only the cells a decision needs:
+#   A physical poise: robed vs armoured under fodder skeletons and wild rats (staggers), armoured under regular
+#     skeletons (locks); the jam in the open arena: vanilla, bodies colliding, limits on with bodies colliding (dmg).
+#     Floor-1 wild rats and skeletons must be fodder (a deterministic check at spawn: exit 3 stops the chain).
+#   B the control APX_POISE_PHYSICAL=0: the armoured cells again (does the lock come back).
+#   C the jam in a corridor: vanilla, bodies colliding, limits on (dmg).
+D75_A = ["on:12:skeleton:fodder:robed", "on:12:skeleton:fodder:armoured", "on:12:rat:wild:robed", "on:12:rat:wild:armoured",
+         "on:12:skeleton:regular:armoured@locks", "vanilla:12:skeleton@dmg", "vcollide:12:skeleton@dmg", "oncollide:12:skeleton@dmg"]
+D75_B = ["on:12:skeleton:fodder:armoured", "on:12:rat:wild:armoured", "on:12:skeleton:regular:armoured@locks"]
+D75_C = ["vanilla:12:skeleton@dmg", "vcollide:12:skeleton@dmg", "on:12:skeleton@dmg"]
 D75_GATES = ("d75_armour_staggers_less", "d75_control_restores_lock", "d75_floor1_rats_fodder")
 F2_OLD = Path(r"C:\Apocrypha\diagnostics\barony-f2")
+STOP = ["--env", "APX_BF3_STOP=min=2,max=4", "--env", "APX_BF3_STOP_METRIC=staggers"]
+
+
+def regate_gates(dirs, outpath, tag, py):
+    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--regate"] + dirs + ["--regate-out", str(outpath)], RUNS / f"bf3-{tag}-regate.out.txt")
+    rows = rows_of(outpath)
+    base = rows[-1] if rows and rows[-1].get("kind") == "baseline" else {}
+    return code, wall, base
 
 
 def d75_chain(args, bh, py, out, save):
+    def stop(why):
+        out["stopped"] = why
+        save()
     code = subprocess.call([py, "tools/apx/gen_strength.py", "--check"], cwd=REPO)
     out["steps"].append({"step": "strength-table-current", "exit": code, "wall_s": 0, "pass": code == 0})
     save()
+    if code != 0:
+        return stop("monster_strength.inc stale")
     common = ["--exe", args.exe, "--runs", "1", "--mode", "slot", "--env", "APX_BF3_MORALE=0", "--env", "APX_BF3_HELP=0",
-              "--timeout", "3600", "--poll", "3", "--build-hash", bh]
-    launches = [(args.tag, D75_POISE_ARMS + D75_JAM_ARMS, []),
-                (args.tag + "-f4c", D75_POISE_ARMS, ["--env", "APX_POISE_PHYSICAL=0"]),
-                (args.tag + "-corridor", D75_CORRIDOR_ARMS, ["--env", "APX_BF3_ARENA=corridor"])]
+              "--timeout", "3600", "--poll", "3", "--build-hash", bh] + STOP
     dirs = []
-    for tag, arms, extra in launches:
-        code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--tag", tag, "--arms", ",".join(arms)] + extra + common, RUNS / f"bf3-{tag}.out.txt")
+
+    def launch(tag, cells, extra):
+        code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--tag", tag, "--arms", ",".join(cells)] + extra + common, RUNS / f"bf3-{tag}.out.txt")
         d = run_dir_of(tag)
-        dirs += [d] if d else []
+        if d:
+            dirs.append(d)
         out["steps"].append({"step": f"d75-{tag}", "exit": code, "wall_s": wall, "run_dir": d})
         save()
+        return code
+    # A, then the first decisive check: the tiers (exit 3) and the armour gate
+    if launch(args.tag, D75_A, ["--env", "APX_BF3_EXPECT_TIERS=rat=fodder,skeleton=fodder"]) == 3:
+        return stop("floor-1 tier expectation failed at spawn (exit 3)")
+    _, _, baseA = regate_gates(list(dirs), DIAG / f"bf3-{args.tag}-d75-A.jsonl", args.tag + "-A", py)
+    gA = (baseA.get("gates") or {}).get("d75_armour_staggers_less") or {}
+    out["steps"].append({"step": "d75-gate-A", "exit": 0, "wall_s": 0, "armour_gate": gA})
+    save()
+    if gA.get("pass") is False:
+        return stop("armoured not at most half the robed staggers: decisive failure after launch A")
+    launch(args.tag + "-f4c", D75_B, ["--env", "APX_POISE_PHYSICAL=0"])
+    launch(args.tag + "-corridor", D75_C, ["--env", "APX_BF3_ARENA=corridor"])
     comb = DIAG / f"bf3-{args.tag}-d75.jsonl"
-    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--regate"] + dirs + ["--regate-out", str(comb)], RUNS / f"bf3-{args.tag}-d75-regate.out.txt")
-    rows = rows_of(comb)
-    base = rows[-1] if rows and rows[-1].get("kind") == "baseline" else {}
+    code, wall, base = regate_gates(list(dirs), comb, args.tag, py)
     g = base.get("gates", {})
     out["steps"].append({"step": "d75-gates", "exit": code, "wall_s": wall, "runs": dirs, "combined": str(comb),
                          "pass": {k: (g.get(k) or {}).get("pass") for k in D75_GATES},
                          "gates": {k: v for k, v in g.items() if k.startswith("d75")}, "d75": base.get("d75")})
     save()
-    # the new apx-gen baseline: F2's own gate matrix on this build (W2 + D72 at three sizes, controls, W5, W1, host+client)
+    # the apx-gen recheck, deterministic, once: floors 1-4 at size 128 (W2, D72 and the new hashes), then host and client
     fout = DIAG / f"barony-f2-{args.tag}"
     fout.mkdir(parents=True, exist_ok=True)
     (fout / "REASON.txt").write_text(
         "apx-gen baseline re-recorded for D75 (Apocky, 2026-10-19): band tiers are strength-ordered (weakest types up to\n"
         "about 60 percent of a floor's spawns are fodder; the strongest of two or more left elite), src/apx/tier_rules.hpp\n"
         "bandTiers with apx/monster_strength.inc; the band is sampled 4000 times instead of 400. D72 placement picks types\n"
-        "by tier, so floors whose band changed hash differently (floor 1: rats move from regular to fodder). The previous\n"
-        f"baseline is {F2_OLD} (build a90e21c3). Build under test: {bh}.\n", encoding="ascii")
-    code, wall = run(["pwsh", "-NoProfile", "-File", "tools/apx/gates_f2.ps1", "-Exe", str(Path(args.exe).resolve()), "-Out", str(fout)],
-                     RUNS / f"bf3-{args.tag}-f2gates.out.txt")
-    logs = {p.name: [l for l in p.read_text(encoding="utf-8", errors="replace").splitlines() if "rows " in l and " ok " in l][-1:]
-            for p in sorted(fout.glob("gates-*.log"))}
+        "by tier, so floors whose band changed hash differently (floor 1: rats move from regular to fodder).\n"
+        "D76 (run until the critical numbers are in): floors 1-4 at size 128 (seeds 2001-2004) and host+client at seed\n"
+        "3001 size 128 are re-recorded once; other seeds and sizes of the previous baseline are re-recorded when needed.\n"
+        f"Previous baseline: {F2_OLD} (build a90e21c3). Build under test: {bh}.\n", encoding="ascii")
+    code, wall = run([py, "-u", "tools/apx/gate_f2.py", "sweep", "--exe", str(Path(args.exe).resolve()), "--size", "128", "--first", "2001",
+                      "--count", "4", "--per-process", "4", "--out", str(fout), "--wait-foreign", "7200"], RUNS / f"bf3-{args.tag}-f2sweep.out.txt")
+    rows = [r for r in rows_of(fout / "f2.jsonl") if r.get("kind") == "floor"]
+    bad = [f'{r.get("seed_asked")}/{r.get("level")}' for r in rows if r.get("finish") != "ok" or any("FAIL" in str(f) for f in r.get("flags", []))]
     old = f2_floors(rows_of(F2_OLD / "f2.jsonl"), since="2026-10-19T08:40")
     new = f2_floors(rows_of(fout / "f2.jsonl"))
-    same = sum(1 for k, h in new.items() if old.get(k) == h)
-    out["steps"].append({"step": "f2-gates-new-baseline", "exit": code, "wall_s": wall, "out": str(fout), "logs": logs,
-                         "floors_new": len(new), "floors_same_hash_as_old": same,
-                         "floors_changed": sorted(f"{s}/{l}" for (s, l), h in new.items() if (s, l) in old and old[(s, l)] != h)[:20]})
+    out["steps"].append({"step": "f2-sweep-floors-1-4", "exit": code, "wall_s": wall, "floors": len(rows), "bad": bad,
+                         "hashes": {f"{s_}/{l_}": {"old": old.get((s_, l_)), "new": h} for (s_, l_), h in sorted(new.items())},
+                         "pass": code == 0 and len(rows) == 4 and not bad})
+    save()
+    if bad or len(rows) != 4:
+        return stop("apx-gen floors failed W2/D72 or did not generate: decisive failure")
+    code, wall = run([py, "-u", "tools/apx/gate_f2.py", "mp", "--exe", str(Path(args.exe).resolve()), "--seeds", "3001", "--sizes", "128",
+                      "--out", str(fout), "--wait-foreign", "7200"], RUNS / f"bf3-{args.tag}-f2mp.out.txt")
+    mp = [r for r in rows_of(fout / "f2.jsonl") if r.get("kind") == "mp"]
+    last = mp[-1] if mp else {}
+    out["steps"].append({"step": "f2-host-client", "exit": code, "wall_s": wall, "same_hash": last.get("same_hash"),
+                         "same_counts": last.get("same_counts"), "host": (last.get("host") or {}).get("hash"),
+                         "client": (last.get("client") or {}).get("hash"),
+                         "pass": bool(last) and last.get("same_hash") is True and last.get("same_counts") is True})
     save()
     golden_step(args, out, save)
+    f4c_step(args, py, out, save)  # apx_combat.hpp changed (player poise): F4c's own in-game gate, once
 
 
 def golden_step(args, out, save):
