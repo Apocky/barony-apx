@@ -36,3 +36,7 @@ controls in the same job: APX_SAVE_STRIP=1, APX_NET_STRIP=1, APX_PARTS=0.
 | T3 net controls | 2 + 2 processes | APX_NET_STRIP: 40/40 without blob; APX_PARTS=0 host: ITEM 29 bytes, 0 blobs |
 Not covered: a 6-part item in-engine (floor-1 quality allows 2-3 parts; offline round trips cover 0-12 parts), the
 tinkering station in a live game (T2 hook, no launch yet), DROP/EQUI/CITM/shop blobs, BF6-5 visuals, Formbook.
+
+## Slice 2 results 2026-10-19 16:36 (build 8fc5dafa; rows C:\Apocrypha\diagnostics\bf6\matrix-20261019-162916.jsonl): 14/14 gates pass
+T1: rerolls 4.04 % of rolls (was 6.8 %; 0.71 % of rolls need any), over_cap 0. T3/T2 one batch: forced 6-part item (max 8); Formbook 5 breaks -> mastered, equal after save/load; salvage live 10/10 station + 10/10 bench keep-part (metal 41, aura 1 = counted); save 51/51, parts 42/42; strip 0/42; vanilla floor equal; tint blade column 6.1 % vs 0.52 % off; host->client 40/40; client->host DROP x5 + USEI x1 = 6/6; FBOK hash equal; net strip 40/40 none; vanilla ITEM 29 bytes. 0 stray key presses.
+
