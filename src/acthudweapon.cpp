@@ -2049,6 +2049,7 @@ void actHudWeapon(Entity* my)
 					{
 						if ( !bearTrap )
 						{
+							apx::onMeleeRelease(HUDWEAPON_PLAYERNUM, static_cast<int>(HUDWEAPON_CHARGE)); // apx: sword move, charged lunge
 							players[HUDWEAPON_PLAYERNUM]->entity->attack(1, HUDWEAPON_CHARGE, nullptr);
 						}
 						if ( stats[HUDWEAPON_PLAYERNUM]->weapon

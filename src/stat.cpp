@@ -21,6 +21,7 @@
 #include "prng.hpp"
 #include "mod_tools.hpp"
 #include "collision.hpp"
+#include "apx_stamina.hpp"
 
 Stat* stats[MAXPLAYERS];
 
@@ -2181,7 +2182,7 @@ int Stat::getMaxAttackCharge(Stat* myStats)
 		real_t mult = (100.0 - myStats->getEnsembleEffectBonus(ENSEMBLE_FLUTE_TIER)) / 100.0;
 		charge *= mult;
 	}
-	return std::max(5, charge); // failsafe min 5
+	return std::max(5, apx::windupFor(myStats, charge)); // failsafe min 5 (apx: 18 ticks for a player with a sword)
 }
 
 real_t Stat::MonsterRangedAccuracy::getAccuracy(Uint32 target)
