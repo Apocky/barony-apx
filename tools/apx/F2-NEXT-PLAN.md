@@ -3,10 +3,10 @@
 State: apx/f2-integrate 9a49387f, merge-ready on apx-main 96c0830a (gates green, goldens-6714a4df.json).
 Waiting on: the parent's call on apx-gen ec69fc1 (adaptive leaf: 96 -> 50/50, 80 -> 35/50; 48/64 infeasible).
 
-## Step A: apx-gen ec69fc1 (only on the parent's yes)
-1. Offline: vendor ec69fc1; build its CLI; seeds 2001-2050 at 128 and 96 must pass in the CLI.
+## Step A: apx-gen fc30a151 (ec69fc1 + 2aec4ea size 80 + fc30a15 D72 site groups; only on the parent's yes)
+1. Offline: vendor fc30a151 (sizes clamp to 80-160: 80 minimum, 96-128 target, decided); build its CLI; seeds 2001-2050 at 128 and 96 must pass in the CLI.
 2. Incremental build of barony (build\vs2022-f2).
-3. One batched background job (gates_f2.ps1): W2 50, control, W5 12x2, W1, mp.
+3. One batched background job (gates_f2.ps1): W2 50 at 128 and at 80/96, control, W5 12x2, W1 (128/96/80 vs vanilla), mp.
 4. New goldens with the reason; sheet; mark merge-ready on the board (no rebase per apx-main move).
 
 ## Step B: D72 population (DECISIONS-2.md)
