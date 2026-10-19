@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """tools/apx/bf3_trial.py -- run the BF3 natural-limits trial under the machine's Barony lock and summarise it.
 
-Each run: wait until no *.LOCK is in the lock dir and no Barony process runs (checked every 60 s), take
-<lock-dir>/barony-bf3.LOCK, launch barony.exe from an EMPTY run folder with BARONY_DATADIR set at run time
-(never at configure time), wait for it to exit (kill on timeout), delete the lock. The game itself runs
+Each run takes the machine's Barony run protocol (D70, apx_locks.py): --mode slot (default) holds a free
+C:/Apocrypha/locks/barony-slots/slotN.LOCK and runs windowed; --mode exclusive writes a .WANT, then takes
+C:/Apocrypha/locks/barony/barony-bf3.LOCK (use it when decide_us / tick_us are reported). It launches
+barony.exe from an EMPTY run folder with BARONY_DATADIR set at run time (never at configure time), waits for
+it to exit (kill on timeout) and releases the lock. The game itself runs
 the trial (-apx-bf3trial, see src/apx/bf3trial.cpp) and rejects human input (dropped and counted).
 
 Output: every row of every run plus one baseline row to C:/Apocrypha/diagnostics/bf3-<tag>.jsonl, and a
@@ -21,52 +23,21 @@ import sys
 import time
 from pathlib import Path
 
+import apx_locks   # D70 run protocol (slots, exclusive lock, .WANT fairness)
+
 STEAM = Path(r"C:\Program Files (x86)\Steam\steamapps\common\Barony")
-LOCK_DIR = Path(r"C:\Apocrypha\locks\barony")
 RUNS = Path(r"C:\Apocrypha\runs")
 DIAG = Path(r"C:\Apocrypha\diagnostics")
 LOCK_NAME = "barony-bf3.LOCK"
 
 
-def barony_running():
-    out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True).stdout.lower()
-    return [n for n in ("barony.exe", "barony_vanilla.exe", "editor.exe") if f'"{n}"' in out]
-
-
-# Lanes on this machine use more than one lock folder: the shared C:/Apocrypha/locks/barony, its parent
-# (barony-f2-gate.LOCK lives there) and the side-session notes folder of the S-track era. Honour them all.
-EXTRA_LOCK_DIRS = [Path(r"C:\Apocrypha\locks"),
-                   Path(r"C:\Users\Apocky\AppData\Roaming\Claude\side-session-notes\local_72659dda-e45a-46f2-b952-7b8cbf18fac8")]
-
-
-def other_locks(lock_dir):
-    found = []
-    for d in [lock_dir] + EXTRA_LOCK_DIRS:
-        if d.exists():
-            found += [f"{d.name}/{p.name}" for p in d.glob("*.LOCK") if not (d == lock_dir and p.name.startswith("barony-bf3"))]
-    return found
-
-
-def take_lock(lock_dir, limit_s, poll_s=10.0):
-    t0 = time.time()
-    while True:
-        busy = barony_running() + other_locks(lock_dir)
-        if not busy:
-            lock_dir.mkdir(parents=True, exist_ok=True)
-            lock = lock_dir / LOCK_NAME
-            lock.write_text(f"{time.strftime('%Y-%m-%d %H:%M:%S')} pid {os.getpid()} barony-bf3: "
-                            f"barony-apx tools/apx/bf3_trial.py\n", encoding="ascii")
-            time.sleep(1.0)
-            busy = barony_running() + other_locks(lock_dir)
-            if not busy:
-                return lock
-            lock.unlink(missing_ok=True)
-        if time.time() - t0 > limit_s:
-            sys.exit(f"Barony busy ({', '.join(busy)}) for {limit_s:.0f} s; giving up")
-        if busy != getattr(take_lock, "last", None):
-            print(f"[bf3] waiting: {', '.join(busy)}", flush=True)
-            take_lock.last = busy
-        time.sleep(poll_s)  # default 10 s like tools/apx/parity_f0.py; a 60 s poll lost every gap to it
+def take_lock(args):
+    """D70 (apx_locks.py): slot mode for damage comparisons (tick-based correctness), exclusive mode when the
+    run's timing numbers (decide_us, tick_us) are to be reported. Returns the path to release."""
+    log = lambda t: print(t, flush=True)
+    if args.mode == "exclusive":
+        return apx_locks.take_exclusive(LOCK_NAME, args.wait_limit, args.poll, log)
+    return apx_locks.take_slot("barony-bf3 trial", args.wait_limit, args.poll, log)
 
 
 def read_rows(p):
@@ -92,7 +63,9 @@ def run_once(args, n, env_extra):
     env["APX_BUILD_HASH"] = args.build_hash
     env.update(env_extra)
     cmd = [str(Path(args.exe).resolve()), "-quickstart=barbarian", f"-apx-out={out}", f"-apx-seed={args.seed}", "-apx-bf3trial"]
-    lock = take_lock(Path(args.lock_dir), args.wait_limit, args.poll)
+    if args.mode == "slot":
+        cmd.append("-windowed")   # D70: slot runs are windowed
+    lock = take_lock(args)
     t0 = time.time()
     finish = "exit"
     try:
@@ -111,8 +84,8 @@ def run_once(args, n, env_extra):
     morale = read_rows(out / "bf3-morale.jsonl")
     runrow = read_rows(out / "bf3-run.jsonl")
     print(f"[bf3] run {n}: code {code} ({finish}), {wall:.0f} s, {len(arms)} arm rows, {len(morale)} morale rows", flush=True)
-    return {"run_dir": str(run_dir), "code": code, "finish": finish, "wall_s": round(wall, 1),
-            "arms": arms, "morale": morale, "run": runrow}
+    return {"run_dir": str(run_dir), "code": code, "finish": finish, "wall_s": round(wall, 1), "lock": lock.name,
+            "mode": args.mode, "arms": arms, "morale": morale, "run": runrow}
 
 
 def mean(v):
@@ -146,7 +119,8 @@ def summarise(results, args):
     main_n = max(pairs_by_n, key=lambda n: len(pairs_by_n[n])) if pairs_by_n else None
     pairs = pairs_by_n.get(main_n, [])
     flagged = [a for a in arms if any(f.startswith("CONTAMINATED") or f == "SPAWN_SHORT" for f in a.get("flags", "").split(";"))]
-    base = {"tag": args.tag, "kind": "baseline", "control": args.control, "runs": len(results),
+    base = {"tag": args.tag, "kind": "baseline", "control": args.control, "runs": len(results), "mode": args.mode,
+            "timing_valid": args.mode == "exclusive",
             "codes": [r["code"] for r in results], "wall_s": [r["wall_s"] for r in results]}
     fields = ["dmg", "dmg_pm", "hits", "burst_share", "swing_attempts", "standoff_mean", "attackers_mean",
               "attackers_max_per_target", "in_reach_mean", "near6_mean", "reach_slots", "reach_overflow",
@@ -193,7 +167,9 @@ def main():
     ap.add_argument("--arms", default=None, help="APX_BF3_ARMS for the game (default: off,on,on,off,off,on,on,off)")
     ap.add_argument("--control", default="off", help="arm kind that must take more damage than 'on'")
     ap.add_argument("--env", action="append", default=[], help="extra KEY=VALUE for the game")
-    ap.add_argument("--lock-dir", default=str(LOCK_DIR))
+    ap.add_argument("--mode", choices=("slot", "exclusive"), default="slot",
+                    help="slot: D70 correctness slot, windowed (damage, counts); exclusive: the whole machine "
+                         "(report decide_us / tick_us only from exclusive runs)")
     ap.add_argument("--timeout", type=float, default=1500)
     ap.add_argument("--wait-limit", type=float, default=4 * 3600)
     ap.add_argument("--poll", type=float, default=10.0, help="seconds between lock checks")

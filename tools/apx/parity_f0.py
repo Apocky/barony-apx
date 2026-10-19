@@ -41,6 +41,8 @@ import sys
 import time
 from pathlib import Path
 
+import apx_locks   # D70 run protocol (slots, exclusive lock, .WANT fairness)
+
 STEAM_DIR = Path(r"C:\Program Files (x86)\Steam\steamapps\common\Barony")
 STEAM_APPID = "371970"
 
@@ -400,7 +402,7 @@ def run_once(build, mode, exe, seed, rep, out_root, datadir, shared, args):
     run_dir.mkdir(parents=True)
     env = os.environ.copy()
     env.pop("BARONY_DATADIR", None)
-    cmd = [str(exe), "-quickstart=barbarian"]
+    cmd = [str(exe), "-quickstart=barbarian"] + list(args.exe_arg)
     if mode == "datadir":
         env["BARONY_DATADIR"] = str(datadir)
     else:
@@ -540,6 +542,12 @@ def main():
                          f"them exists; hold {LOCK_NAME} in the first while the matrix runs. Default: {SHARED_LOCK_DIR}")
     ap.add_argument("--lock-name", default=LOCK_NAME,
                     help="name of our lock file; give each lane its own, ending in .LOCK")
+    ap.add_argument("--slot", action="store_true",
+                    help="D70 correctness mode: every launch holds a free C:/Apocrypha/locks/barony-slots/slotN.LOCK, "
+                         "taken only while C:/Apocrypha/locks/barony is empty and no barony-want/*.WANT exists, and "
+                         "released when the launch ends; other slots' Barony processes are expected (no process wait)")
+    ap.add_argument("--exe-arg", action="append", default=[],
+                    help="extra argument for every launch, e.g. --exe-arg=-windowed (D70 slot runs are windowed)")
     ap.add_argument("--input", choices=("post", "send"), default="post",
                     help="post: messages straight to the game window (no focus); send: SendInput with focus checks")
     args = ap.parse_args()
@@ -579,24 +587,38 @@ def main():
     rows = []
     try:
         for (b, m, s, r) in plan:
-            # wait for other sessions' locks and Barony processes, then take our lock (other
-            # sessions honour *.LOCK files in the shared notes folder the same way)
-            waited = wait_until_no_barony(args.wait_foreign, args.lock_dir)
-            hold_lock(args.lock_dir, True)
-            if barony_running():                  # someone launched between our check and our lock
-                hold_lock(args.lock_dir, False)
-                waited += wait_until_no_barony(args.wait_foreign, args.lock_dir)
+            slot = None
+            if args.slot:
+                # D70: one slot per launch, released after it, so an exclusive run that wants the machine
+                # only waits for running launches
+                t_wait = time.monotonic()
+                slot = apx_locks.take_slot(f"parity {LOCK_NAME[:-5]}", args.wait_foreign, log=lambda t: print(t, flush=True))
+                waited = round(time.monotonic() - t_wait, 1)
+            else:
+                # wait for other sessions' locks and Barony processes, then take our lock (other
+                # sessions honour *.LOCK files in the shared notes folder the same way)
+                waited = wait_until_no_barony(args.wait_foreign, args.lock_dir)
                 hold_lock(args.lock_dir, True)
-            print(f"[parity] {b}:{m} seed={s} repeat={r} ...", flush=True)
-            row = run_once(b, m, exes[b], s, r, args.out, args.datadir, shared, args)
+                if barony_running():                  # someone launched between our check and our lock
+                    hold_lock(args.lock_dir, False)
+                    waited += wait_until_no_barony(args.wait_foreign, args.lock_dir)
+                    hold_lock(args.lock_dir, True)
+            print(f"[parity] {b}:{m} seed={s} repeat={r} {slot.name if slot else ''} ...", flush=True)
+            try:
+                row = run_once(b, m, exes[b], s, r, args.out, args.datadir, shared, args)
+            finally:
+                if slot:
+                    slot.unlink(missing_ok=True)
             row["waited_for_other_barony_s"] = waited
+            row["slot"] = slot.name if slot else None
             rows.append(row)
             with open(jsonl, "a", encoding="ascii") as f:
                 f.write(json.dumps(row) + "\n")
             print(f"[parity]   {row['finish']} {row.get('generated_line', row.get('error'))} "
                   f"(load errors {row['load_errors']}, {row['t_total_s']} s)", flush=True)
     finally:
-        hold_lock(args.lock_dir, False)
+        if not args.slot:   # in slot mode no lock of ours lives in the shared folder (never delete another lane's)
+            hold_lock(args.lock_dir, False)
     snap_after = snapshot(args.datadir, SNAPSHOT_DIRS)
     changed = sorted(k for k in set(snap_before) | set(snap_after) if snap_before.get(k) != snap_after.get(k))
     if not args.keep_mirror and shared.exists():
