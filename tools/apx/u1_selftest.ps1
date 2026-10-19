@@ -11,7 +11,9 @@ param(
     [string]$LockRoot = 'C:\Apocrypha\locks',
     [string]$RunRoot = 'C:\Apocrypha\runs',
     [int]$WaitMinutes = 120,
-    [switch]$Slot
+    [switch]$Slot,
+    [switch]$Shots,  # also one windowed apx run for the screenshots (gates run headless)
+    [string[]]$Runs  # override the run list, e.g. -Runs apx
 )
 $ErrorActionPreference = 'Stop'
 $Exe = (Resolve-Path $Exe).Path
@@ -49,7 +51,10 @@ function Take-Lock {
 
 $env:BARONY_DATADIR = 'C:\Program Files (x86)\Steam\steamapps\common\Barony'
 try {
-    foreach ($mode in @('apx', 'vanilla')) {
+    $runs = @('apx', 'vanilla')
+    if ($Shots) { $runs += 'apx-shots' }
+    if ($Runs) { $runs = $Runs }
+    foreach ($mode in $runs) {
         $lock = Take-Lock
         "lock $lock taken $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')"
         try {
@@ -57,9 +62,11 @@ try {
             $run = Join-Path $RunRoot "u1-$mode-$stamp"
             New-Item -ItemType Directory -Path $run | Out-Null
             if ($mode -eq 'vanilla') { $env:APX_GRID = '1' } else { Remove-Item Env:APX_GRID -ErrorAction SilentlyContinue }
+            # gates run headless (no window while Apocky uses the PC); only the screenshot run opens one
+            $view = if ($mode -eq 'apx-shots') { @('-windowed', '-size=1280x720') } else { @('-apxheadless') }
             $t0 = Get-Date
-            $p = Start-Process -FilePath $Exe -ArgumentList '-windowed', '-size=1280x720', '-quickstart=barbarian', '-apxfloor=1', '-apxmapseed=1234567', '-apxselftest=inventory' -WorkingDirectory $run -PassThru
-            if (-not $p.WaitForExit(300000)) { Stop-Process -Id $p.Id -Force; "run $mode TIMEOUT" }
+            $p = Start-Process -FilePath $Exe -ArgumentList (@('-quickstart=barbarian', '-apxfloor=1', '-apxmapseed=1234567', '-apxselftest=inventory') + $view) -WorkingDirectory $run -PassThru
+            if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id -Force; "run $mode TIMEOUT" }
             "run $mode exit $($p.ExitCode) in $([int]((Get-Date) - $t0).TotalSeconds) s at $run"
         } finally {
             Remove-Item $lock -ErrorAction SilentlyContinue

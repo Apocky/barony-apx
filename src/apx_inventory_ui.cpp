@@ -509,8 +509,12 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 	return drawn;
 }
 
+static unsigned g_uiFrames = 0;
+unsigned uiFrames() { return g_uiFrames; }
+
 void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backpackSlots)
 {
+	if ( player == 0 ) { ++g_uiFrames; }
 	if ( vanillaGrid() || !inventoryFrame || !invSlots || player < 0 || player >= MAXPLAYERS ) { return; }
 	Frame* list = inventoryFrame->findFrame("apx list");
 	if ( !list )

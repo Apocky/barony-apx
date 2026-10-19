@@ -49,6 +49,7 @@ namespace apx_inv
 	void listUpdate(int player, ::Frame* inventoryFrame, ::Frame* invSlots, ::Frame* backpackSlots);
 	bool listHandleMove(int player);
 	const ListState& listState(int player);
+	unsigned uiFrames();         // list updates so far (the self-test paces its UI phases on it when headless)
 	void listTestPad(bool on);
 	void listTestPadPress();    // self-test only: one D-pad-down press, set in the binding just before the list reads it
 
