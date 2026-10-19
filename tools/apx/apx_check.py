@@ -30,65 +30,15 @@ P.LOCK_NAME = "barony-f1-instruments.LOCK"
 LOCK_ROOT = Path(r"C:\Apocrypha\locks")             # f2 keeps barony-f2-gate.LOCK here: honour and hold both folders
 
 
-SLOT_DIR = Path(r"C:\Apocrypha\locks\barony-slots")
+import apx_locks  # noqa: E402  (shared D70 rules: slots for correctness runs, exclusive lock for timing, .WANT fairness)
 _held = []
 
 
-def acquire(exclusive=False):
-    """D70 run rule. Correctness runs (hashes, gates, bot smoke) take a free slot file slot1..3.LOCK in barony-slots while
-    C:\\Apocrypha\\locks\\barony is empty (up to 3 at once). Timing measurements pass exclusive=True: they take
-    barony\\barony-f1-instruments.LOCK only when no slot file and no barony.exe exist. Polls every second."""
-    t0 = time.monotonic()
-    announced = None
-    SLOT_DIR.mkdir(parents=True, exist_ok=True)
-    while True:
-        excl_dir = [x.name for x in LOCK_DIR.glob("*.LOCK")] if LOCK_DIR.exists() else []
-        slots = [x for x in SLOT_DIR.glob("slot*.LOCK")]
-        busy = []
-        if exclusive:
-            busy = P.barony_running() + excl_dir + [x.name for x in slots] + P.foreign_locks([LOCK_ROOT])
-            if not busy:
-                P.hold_lock([LOCK_DIR], True)
-                time.sleep(1.5)
-                again = P.barony_running() + [x.name for x in SLOT_DIR.glob("slot*.LOCK")]
-                if not again:
-                    _held.append(LOCK_DIR / P.LOCK_NAME)
-                    return
-                P.hold_lock([LOCK_DIR], False)
-                busy = again
-        else:
-            busy = excl_dir + P.foreign_locks([LOCK_ROOT])
-            if not busy:
-                for n in (1, 2, 3):
-                    f = SLOT_DIR / f"slot{n}.LOCK"
-                    try:
-                        with open(f, "x", encoding="ascii") as fh:      # atomic create: fails if another lane took it
-                            fh.write(f"{datetime.datetime.now().astimezone().isoformat(timespec=chr(115))} barony-f1-instruments {os.getpid()}\n")
-                        _held.append(f)
-                        time.sleep(1.0)
-                        if [x for x in LOCK_DIR.glob("*.LOCK")]:         # an exclusive holder appeared meanwhile: back off
-                            f.unlink(missing_ok=True)
-                            _held.remove(f)
-                            busy = ["exclusive holder appeared"]
-                            break
-                        return
-                    except FileExistsError:
-                        continue
-                else:
-                    busy = ["all 3 slots taken"]
-        if time.monotonic() - t0 > 86400:
-            sys.exit("Barony stayed busy for 24 h; giving up.")
-        if busy and busy != announced:
-            print(f"[apx] waiting for {chr(44).join(busy)} ...", flush=True)
-            announced = busy
-        time.sleep(1.0)
-
-
-def release():
-    for f in list(_held):
-        f.unlink(missing_ok=True)
-        _held.remove(f)
-    time.sleep(5)
+def acquire(exclusive=False, tag="f1-instruments"):
+    """Correctness runs take a slot (up to 3 at once); timing measurements take the machine (exclusive)."""
+    lk = apx_locks.take_exclusive("f1-instruments.LOCK", 86400) if exclusive else apx_locks.take_slot(tag, 86400)
+    _held.append(lk)
+    return lk
 
 
 def launch(exe, seed, floors, tag, telem="1", datadir=P.STEAM_DIR, extra=(), settle=4.0, timeout=240, env_extra=None, after=None):
@@ -273,7 +223,7 @@ def run_sim(exe, scenario, tag, env_extra=None, wall_s=1800, datadir=P.STEAM_DIR
     env["APX_SIM_WALL_S"] = str(wall_s)
     env.setdefault("APX_BUILD_HASH", git_head())
     env.update(env_extra or {})
-    cmd = [str(exe), f"-quickstart={cls}", f"-apx-out={out_dir}", f"-apx-scenario={scenario}", "-nosound"] + list(extra)
+    cmd = [str(exe), f"-quickstart={cls}", f"-apx-out={out_dir}", f"-apx-scenario={scenario}", "-nosound", "-apxheadless"] + list(extra)
     t0 = time.monotonic()
     proc = subprocess.Popen(cmd, cwd=run_dir, env=env)
     try:

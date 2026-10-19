@@ -44,11 +44,11 @@ def cell(exe, floor, party, runs, skill, cls, out_root, seed, wall_s, tag_suffix
     sc.parent.mkdir(parents=True, exist_ok=True)
     sc.write_text(json.dumps({"name": f"walk-f{floor}-p{party}{tag_suffix}", "mode": "walk", "party": party, "floor": floor,
                               "seed": seed, "runs": runs, "bot": {"skill": skill}}), encoding="ascii")
-    A.acquire()
+    lk = A.acquire()
     try:
         r = A.run_sim(exe, str(sc), f"base-f{floor}-p{party}{tag_suffix}", wall_s=wall_s, cls=cls)
     finally:
-        A.release()
+        A.release(lk)
     enc = r["rows"]
     runsr = read_jsonl(r["out_dir"] / "runs.jsonl")
     floors = read_jsonl(r["out_dir"] / "floors.jsonl")
@@ -110,16 +110,22 @@ def main():
                   "bots, not humans: bands are for these bots (skill recorded); calibrate against one human run before trusting absolutes",
                   "sim mode runs with buddha mode: a lethal hit is counted as a death and the run ends, the player never actually dies",
                   "steam barony_vanilla.exe cannot host the instruments: only the floor generator line is comparable (F0 parity)"]}
-    for fl in range(lo, hi + 1):
-        for pt in parties:
-            cls = CLASSES[(fl - 1) % len(CLASSES)]
-            r, enc, runsr, floors = cell(exe, fl, pt, a.runs, a.skill, cls, out_root, a.seed + fl, a.wall_s)
-            c = summarise(fl, pt, r, enc, runsr, floors, a.min_encounters)
-            c["class"] = cls
-            c["raw"] = str(r["run_dir"])
-            result["cells"].append(c)
-            print(json.dumps({k: c[k] for k in ("floor", "party", "status", "runs", "encounters", "deaths_per_floor", "wall_s")}), flush=True)
-            (out_root / "baseline.json").write_text(json.dumps(result, indent=1), encoding="ascii")
+    from concurrent.futures import ThreadPoolExecutor
+    jobs = [(fl, pt) for fl in range(lo, hi + 1) for pt in parties]
+
+    def one(fp):
+        fl, pt = fp
+        cls = CLASSES[(fl - 1) % len(CLASSES)]
+        r, enc, runsr, floors = cell(exe, fl, pt, a.runs, a.skill, cls, out_root, a.seed + fl, a.wall_s)
+        c = summarise(fl, pt, r, enc, runsr, floors, a.min_encounters)
+        c["class"] = cls
+        c["raw"] = str(r["run_dir"])
+        print(json.dumps({k: c[k] for k in ("floor", "party", "status", "runs", "encounters", "deaths_per_floor", "wall_s")}), flush=True)
+        return c
+
+    with ThreadPoolExecutor(max_workers=3) as ex:           # each cell takes its own D70 slot
+        result["cells"] = sorted(ex.map(one, jobs), key=lambda c: (c["floor"], c["party"]))
+    (out_root / "baseline.json").write_text(json.dumps(result, indent=1), encoding="ascii")
     for key, kw in (("repeat_cell", a.repeat_cell), ("control_cell", a.control_cell)):
         if not kw:
             continue
