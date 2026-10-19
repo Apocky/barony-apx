@@ -43,6 +43,7 @@ namespace flow
 	{
 		bool fieldOk = false, astarOk = false; int fieldSteps = 0, astarSteps = 0, fieldCost = 0, astarCost = 0; bool door = false; double buildUs = 0;
 		int fieldDiag = 0, astarDiag = 0, astarDiagNeg = 0, astarCornerCut = 0; // diagonal steps; A* diagonals to -x; A* diagonals past a blocked side
+		bool upOk = false; int upSteps = 0, upCost = 0, upDiag = 0;            // the same A* with upstream's diagonal test (control)
 	};
 	Compare compare(Entity* probe, int sx, int sy, int gx, int gy);
 }

@@ -316,6 +316,7 @@ namespace bf3
 		else if ( a == "noreach" ) { tactics::K.reach = false; tactics::K.ring = false; }
 		else if ( a == "noally" ) { tactics::K.allyavoid = false; }
 		else if ( a == "nojitter" ) { tactics::K.interleave = false; }
+		else if ( a == "nodiag" ) { tactics::K.astardiag = false; }   // control for the A* diagonal fix: upstream's test
 		flow::enabled = a != "noflow";                             // control for flow fields: the engine's A* for every path
 		tactics::setElbow(a == "slots5" ? 16.0 : -1.0);          // slots5: two body widths of swing room -> 5 slots
 		tactics::refresh();
@@ -715,6 +716,7 @@ namespace bf3
 		int pairs = 0, fieldOk = 0, astarOk = 0, bothOk = 0, stepsEqual = 0, stepsWithin1 = 0, stepsDiffMax = 0, costEqual = 0;
 		int fieldCheaper = 0, fieldDearer = 0, doorPairs = 0, doorWithin1 = 0, chaseFail = 0, astarOnly = 0, fieldOnly = 0;
 		long long fieldDiag = 0, astarDiag = 0, astarDiagNeg = 0, astarCornerCut = 0, fieldSteps = 0, astarSteps = 0;
+		long long upOk = 0, upDiag = 0, upSteps = 0, upCost = 0, fixCost = 0, upBoth = 0;
 		std::vector<double> build;
 		// the walker: one of the trial's own kind (the A*'s rules depend on who walks: a player walker skips different
 		// entities). The floor's monsters were removed at load (P_FT_WAIT), so none blocks either side.
@@ -728,6 +730,9 @@ namespace bf3
 			++pairs;
 			build.push_back(c.buildUs);
 			fieldOk += c.fieldOk; astarOk += c.astarOk;
+			upOk += c.upOk;
+			if ( c.upOk ) { upDiag += c.upDiag; }
+			if ( c.upOk && c.astarOk ) { ++upBoth; upSteps += c.upSteps; upCost += c.upCost; fixCost += c.astarCost; }
 			if ( c.astarOk && !c.fieldOk ) { ++astarOnly; }
 			if ( c.fieldOk && !c.astarOk ) { ++fieldOnly; }
 			list_t* chase = generatePath(s.first, s.second, g.first, g.second, probe, nullptr, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
@@ -754,7 +759,9 @@ namespace bf3
 			.i("door_pairs", doorPairs).i("door_within1", doorWithin1).i("chase_astar_fail", chaseFail)
 			.i("field_only", fieldOnly).i("field_steps", fieldSteps).i("astar_steps", astarSteps).i("field_diag_steps", fieldDiag)
 			.i("astar_diag_steps", astarDiag).i("astar_diag_neg_x", astarDiagNeg).i("astar_corner_cuts", astarCornerCut)
-			.str("probe", probe == pe ? "character" : "monster")
+			.str("probe", probe == pe ? "character" : "monster").i("astar_diag_fix", tactics::astarDiagOn ? 1 : 0)
+			.i("upstream_ok", upOk).i("upstream_diag_steps", upDiag).i("upstream_both_ok", upBoth)
+			.i("upstream_steps", upSteps).i("upstream_cost", upCost).i("fixed_cost_same_pairs", fixCost)
 			.d("build_us_p50", b50).d("build_us_p99", b99);
 		write("bf3-flowtest.jsonl", r);
 		printlog("[apx] bf3 flowtest floor %d: %d pairs, both ok %d, steps equal %d within1 %d (max diff %d), field dearer %d, "

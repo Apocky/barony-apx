@@ -36,9 +36,11 @@ namespace tactics
 	struct Knobs
 	{
 		bool tactics = true, reach = true, interleave = true, allyavoid = true, ring = true, packs = true, morale = true;
+		bool astardiag = true;   // APX_ASTAR_DIAG: the engine A*'s diagonal side test fixed (paths.cpp generatePath)
 	};
 	extern Knobs K;           // live knob set (the BF3 trial switches it between arms)
 	extern bool active;       // K.tactics && !client: the master guard every hook tests first
+	extern bool astarDiagOn;  // K.tactics && K.astardiag: read by paths.cpp generatePath on every diagonal
 	std::string knobString(); // "tactics=1,reach=1,..." for telemetry rows
 
 	void init();                                  // read env knobs (after argv parsing)

@@ -15,6 +15,7 @@ namespace tactics
 {
 	Knobs K;
 	bool active = false;
+	bool astarDiagOn = false;
 	Counters C;
 	std::unordered_map<Uint32, TacticsState> S;
 	std::unordered_map<Uint32, TargetSlots> T;
@@ -40,6 +41,7 @@ namespace tactics
 		K.ring = envOn("APX_RING", true);
 		K.packs = envOn("APX_PACKS", true);
 		K.morale = envOn("APX_MORALE", true);
+		K.astardiag = envOn("APX_ASTAR_DIAG", true);
 		const char* e = getenv("APX_ELBOW");
 		if ( e && *e ) { gElbow = atof(e); }
 		e = getenv("APX_TACTICS_PROBE_US");
@@ -48,16 +50,16 @@ namespace tactics
 		printlog("[apx] tactics knobs: %s elbow=%.1f probe_us=%.0f", knobString().c_str(), gElbow, gProbeUs);
 	}
 
-	void refresh() { active = K.tactics; }
+	void refresh() { active = K.tactics; astarDiagOn = K.tactics && K.astardiag; }
 	void setProbeUs(double us) { gProbeUs = us; }
 	void setElbow(double units) { gElbow = units; }
 
 	std::string knobString()
 	{
-		char buf[160];
-		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d",
+		char buf[176];
+		snprintf(buf, sizeof(buf), "tactics=%d,reach=%d,interleave=%d,allyavoid=%d,ring=%d,flow=%d,morale=%d,packs=%d,astardiag=%d",
 			K.tactics ? 1 : 0, K.reach ? 1 : 0, K.interleave ? 1 : 0, K.allyavoid ? 1 : 0, K.ring ? 1 : 0,
-			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0);
+			flow::enabled ? 1 : 0, K.morale ? 1 : 0, K.packs ? 1 : 0, K.astardiag ? 1 : 0);
 		return buf;
 	}
 

@@ -292,6 +292,15 @@ namespace flow
 		c.astarOk = ap != nullptr;
 		astarCost(ap, sx, sy, c.astarSteps, c.astarCost, c.astarDiag, c.astarDiagNeg, c.astarCornerCut);
 		if ( ap ) { list_FreeAll(ap); free(ap); }
+		// the control: upstream's diagonal side test (APX_ASTAR_DIAG off for this one call)
+		bool saved = tactics::astarDiagOn;
+		tactics::astarDiagOn = false;
+		list_t* up = generatePath(sx, sy, gx, gy, probe, nullptr, GeneratePathTypes::GENERATE_PATH_ACHIEVEMENT);
+		tactics::astarDiagOn = saved;
+		c.upOk = up != nullptr;
+		int upNeg = 0, upCut = 0;
+		astarCost(up, sx, sy, c.upSteps, c.upCost, c.upDiag, upNeg, upCut);
+		if ( up ) { list_FreeAll(up); free(up); }
 		return c;
 	}
 }

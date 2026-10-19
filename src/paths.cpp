@@ -861,7 +861,12 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 						if (!pathMap[index]) {
 							z++;
 						}
-						index = newy + x * map.height;
+						// apx BF3: the second side of a diagonal step is tile (pathnode.x, newy), as the loading branch
+						// below tests it (pathCheckObstacle at (pathnode.x << 4) + 8, (newy << 4) + 8). Upstream reads
+						// (x, newy) with x the step (-1 or +1): tile (0,0) after clamping, or column 1, both walls on
+						// almost every map, so almost every diagonal is refused. Fixed only with the tactics layer on
+						// (APX_ASTAR_DIAG, default on); with the layer off this is upstream's test.
+						index = newy + (apx::tactics::astarDiagOn ? pathnode.x : x) * map.height;
 						index = std::min(std::max(0, index),
                             (int)map.width * (int)map.height - 1);
 						if (!pathMap[index]) {
