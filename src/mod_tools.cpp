@@ -1498,11 +1498,11 @@ void ItemTooltips_t::readItemLocalizationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir("/lang/item_names.json");
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readItemLocalizationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -1652,11 +1652,11 @@ void ItemTooltips_t::readBookLocalizationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir("/lang/book_names.json");
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readBookLocalizationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -1734,11 +1734,11 @@ void ItemTooltips_t::readTooltipsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir("/items/item_tooltips.json");
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readTooltipsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -13423,11 +13423,11 @@ void Compendium_t::readItemsTranslationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readItemsTranslationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -13488,11 +13488,11 @@ void Compendium_t::readItemsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readItemsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -13749,11 +13749,11 @@ void Compendium_t::readMagicTranslationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readMagicTranslationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -13814,11 +13814,11 @@ void Compendium_t::readMagicFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readItemsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -14259,11 +14259,11 @@ void Compendium_t::readCodexTranslationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readCodexTranslationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -14384,11 +14384,11 @@ void Compendium_t::readCodexFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readCodexFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -14609,11 +14609,11 @@ void Compendium_t::readWorldTranslationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readWorldTranslationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -14734,11 +14734,11 @@ void Compendium_t::readWorldFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readWorldFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -15023,11 +15023,11 @@ void Compendium_t::readMonstersTranslationsFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readMonstersTranslationsFromFile(true); // force load the base directory first, then modded paths later.
 		}
@@ -15098,11 +15098,11 @@ void Compendium_t::readMonstersFromFile(bool forceLoadBaseDirectory)
 	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
 	if ( forceLoadBaseDirectory )
 	{
-		inputPath = BASE_DATA_DIR;
+		inputPath = datadir;
 	}
 	else
 	{
-		if ( inputPath != BASE_DATA_DIR )
+		if ( inputPath != datadir )
 		{
 			readMonstersFromFile(true); // force load the base directory first, then modded paths later.
 		}

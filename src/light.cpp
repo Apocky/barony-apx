@@ -191,11 +191,11 @@ bool loadLights(bool forceLoadBaseDirectory) {
     std::string inputPath = PHYSFS_getRealDir("/data/lights.json");
     if ( forceLoadBaseDirectory )
     {
-        inputPath = BASE_DATA_DIR;
+        inputPath = datadir;
     }
     else
     {
-        if ( inputPath != BASE_DATA_DIR )
+        if ( inputPath != datadir )
         {
             loadLights(true); // force load the base directory first, then modded paths later.
         }

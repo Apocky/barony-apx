@@ -7188,6 +7188,7 @@ int main(int argc, char** argv)
 		size_t datadirsz = std::min(sizeof(datadir) - 1, strlen(BASE_DATA_DIR));
 		strncpy(datadir, BASE_DATA_DIR, datadirsz);
 		datadir[datadirsz] = '\0';
+		bool datadirFromCommandLine = false;
 #ifdef WINDOWS
 		strcpy(outputdir, "./");
 #else
@@ -7265,6 +7266,7 @@ int main(int argc, char** argv)
 						datadirsz = std::min(sizeof(datadir) - 1, strlen(argv[c] + 9));
 						strncpy(datadir, argv[c] + 9, datadirsz);
 						datadir[datadirsz] = '\0';
+						datadirFromCommandLine = true;
 					}
 					else if ( !strcmp(argv[c], "-nosound") )
 					{
@@ -7279,6 +7281,21 @@ int main(int argc, char** argv)
 				}
 			}
 		}
+#ifndef NINTENDO
+		// apx: without -datadir=, BARONY_DATADIR (the asset folder variable from INSTALL.md) selects the
+		// data folder at run time, so a build can run from any working directory against the Steam assets
+		// while its log, config and saves stay in that working directory (the output folder on Windows).
+		if ( !datadirFromCommandLine )
+		{
+			const char* envDatadir = getenv("BARONY_DATADIR");
+			if ( envDatadir && envDatadir[0] != '\0' )
+			{
+				datadirsz = std::min(sizeof(datadir) - 1, strlen(envDatadir));
+				strncpy(datadir, envDatadir, datadirsz);
+				datadir[datadirsz] = '\0';
+			}
+		}
+#endif
 		printlog("Data path is %s", datadir);
 		printlog("Output path is %s", outputdir);
         

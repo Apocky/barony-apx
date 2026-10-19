@@ -854,7 +854,7 @@ int Language::loadLanguage(char const * const lang, bool forceLoadBaseDirectory)
 #ifdef NINTENDO
 		langFilepath = std::string(BASE_DATA_DIR) + filename;
 #else
-		langFilepath = std::string(BASE_DATA_DIR) + filename;
+		langFilepath = std::string(datadir) + filename;
 #endif
 	}
 
@@ -1059,7 +1059,7 @@ int Language::reloadLanguage()
 	if ( PHYSFS_isInit() && PHYSFS_getRealDir("lang/en.txt") != NULL )
 	{
 		std::string langRealDir = PHYSFS_getRealDir("lang/en.txt");
-		if ( langRealDir != BASE_DATA_DIR )
+		if ( langRealDir != datadir )
 		{
 			loadLanguage("en", true); // force load the base directory first, then modded paths later.
 		}
