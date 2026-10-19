@@ -324,6 +324,8 @@ monster kinds WEAKEST FIRST with spawn weights), the haven trades and the set pi
   2 alchemist, 3 scribe or fence, 4 provisioner); Barony's general store on about half the floors
   from floor 2.
 - Set pieces: the room running the named program, else the largest plain room (counted).
+- NPCs: the 14 rows of barony-apx npcs.json are placed the same way (station "npc"): 100 sites,
+  2400 pieces placed (set pieces and NPCs), 1931 in their named room program; 100 / 100 pass.
 
 | measure, sites 1-1000 | value |
 |---|---|

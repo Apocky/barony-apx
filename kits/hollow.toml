@@ -85,3 +85,76 @@ id = "sp_caves_vent_forge"
 level = "caves"
 room_kind = "cave-lava-vent"
 station = "vent_forge"
+
+# NPCs (barony-apx data/apx/hollow/npcs.json): each to a room of its level running the program,
+# else the largest free plain room; placed like set pieces (station = "npc")
+[[piece]]
+id = "npc_merchant"
+level = "floor4"
+room_kind = "special-haven-shrine"
+station = "npc"
+[[piece]]
+id = "npc_smith"
+level = "floor1"
+room_kind = "special-haven-shrine"
+station = "npc"
+[[piece]]
+id = "npc_alchemist"
+level = "floor2"
+room_kind = "special-haven-shrine"
+station = "npc"
+[[piece]]
+id = "npc_scholar"
+level = "floor3"
+room_kind = "special-haven-shrine"
+station = "npc"
+[[piece]]
+id = "npc_prisoner"
+level = "floor1"
+room_kind = "fortress-barracks"
+station = "npc"
+[[piece]]
+id = "npc_deserter"
+level = "floor1"
+room_kind = "fortress-guardroom"
+station = "npc"
+[[piece]]
+id = "npc_cultist_defector"
+level = "floor2"
+room_kind = "temple-chapel"
+station = "npc"
+[[piece]]
+id = "npc_goblin_envoy"
+level = "floor4"
+room_kind = "special-stronghold-hall"
+station = "npc"
+[[piece]]
+id = "npc_hermit"
+level = "caves"
+room_kind = "cave-crystal-grotto"
+station = "npc"
+[[piece]]
+id = "npc_ghost"
+level = "floor3"
+room_kind = "crypt-ossuary-niches"
+station = "npc"
+[[piece]]
+id = "npc_caravan_master"
+level = "floor3"
+room_kind = "special-nexus-stairhub"
+station = "npc"
+[[piece]]
+id = "npc_guard_a"
+level = "floor1"
+room_kind = "fortress-gatehouse"
+station = "npc"
+[[piece]]
+id = "npc_guard_b"
+level = "floor1"
+room_kind = "fortress-gatehouse"
+station = "npc"
+[[piece]]
+id = "npc_warden_prewar"
+level = "floor2"
+room_kind = "special-nexus-stairhub"
+station = "npc"
