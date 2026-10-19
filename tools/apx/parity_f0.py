@@ -55,6 +55,7 @@ RE_START_MAP = re.compile(r"LoadMap .*maps[/\\]start\.lmp")
 RE_GENERATING = re.compile(r"generating a dungeon from level set '([^']*)'.*\(seed (\d+)\)")
 RE_GENERATED = re.compile(
     r"successfully generated a dungeon with (\d+) rooms, (\d+) monsters, (\d+) gold, (\d+) items, (\d+) decorations\.")
+RE_CAMERA = re.compile(r"Camera at (-?\d+), (-?\d+), (-?\d+)")
 RE_LOAD_ERROR = re.compile(r"(unable to (load|locate) language file|Could not (open|locate) json file|"
                            r"failed to load|unable to (open|load|locate))", re.I)
 # a fresh profile has no saves, config or scores yet; those misses are expected in every run
@@ -186,6 +187,20 @@ def type_text(hwnd, text):
 
 WM_KEYDOWN, WM_KEYUP, WM_CHAR = 0x0100, 0x0101, 0x0102
 user32.PostMessageW.argtypes = (wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
+HWND_TOPMOST = wt.HWND(-1)
+SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE, SWP_SHOWWINDOW = 0x0001, 0x0002, 0x0010, 0x0040
+user32.SetWindowPos.argtypes = (wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wt.UINT)
+# Barony samples key state once per frame (Input::update reads Input::keys, which SDL_KEYDOWN sets and
+# SDL_KEYUP clears, game.cpp:4494). A press whose down and up land in the same frame is never seen,
+# which happened when a covered, throttled game window ran slow frames. Hold keys across many frames.
+KEY_HOLD_S = 0.35
+
+
+def keep_visible(hwnd):
+    """Keep the game window on top of other windows without giving it the keyboard: an uncovered
+    window is not throttled, and its framebuffer is what F6 saves."""
+    return bool(user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW))
 
 
 def post_key(hwnd, vk, sc):
@@ -193,9 +208,9 @@ def post_key(hwnd, vk, sc):
     the desktop can mix in, and the user's own typing stays in their window. SDL 2.0.22 reads the
     scancode from lParam bits 16-23."""
     user32.PostMessageW(hwnd, WM_KEYDOWN, vk, 1 | (sc << 16))
-    time.sleep(0.06)
+    time.sleep(KEY_HOLD_S)
     user32.PostMessageW(hwnd, WM_KEYUP, vk, 1 | (sc << 16) | (1 << 30) | (1 << 31))
-    time.sleep(0.06)
+    time.sleep(KEY_HOLD_S)
 
 
 def post_text(hwnd, text):
@@ -411,10 +426,13 @@ def run_once(build, mode, exe, seed, rep, out_root, datadir, shared, args):
             time.sleep(0.25)
         if hwnd is None:
             raise TimeoutError("no SDL window for the game process")
-        if args.input == "post" and prev_fg and user32.GetForegroundWindow() == hwnd:
-            # posted input needs no focus: hand the keyboard back to whatever the user was using
-            if bring_to_front(prev_fg):
-                row["flags"].append("returned_focus")
+        if args.input == "post":
+            if prev_fg and user32.GetForegroundWindow() == hwnd:
+                # posted input needs no focus: hand the keyboard back to whatever the user was using
+                if bring_to_front(prev_fg):
+                    row["flags"].append("returned_focus")
+            if not keep_visible(hwnd):
+                row["flags"].append("topmost_failed")
         time.sleep(args.settle)                      # fade-in after the start map loads
         # each step is checked in the log and retried, so a lost or garbled line cannot pass silently
         re_seed_set = re.compile(rf"Set next map seed to: {seed}\b")
@@ -460,6 +478,14 @@ def run_once(build, mode, exe, seed, rep, out_root, datadir, shared, args):
             row["screenshot"] = str(shot)
         else:
             row["flags"].append("no_screenshot")
+        # where the camera stood (logged by the game's own /pos; issued after the picture so its
+        # message is not in the frame), so a view difference between two pictures is measured
+        chat_command(hwnd, "/pos", args.input)
+        try:
+            cm, _ = wait_for(log, RE_CAMERA, min(deadline, time.monotonic() + 6), proc, off2)
+            row["camera_after_shot"] = [int(v) for v in cm.groups()]
+        except TimeoutError:
+            row["flags"].append("no_camera_pos")
         row["finish"] = "ok"
     except Exception as e:                            # noqa: BLE001 -- every failure becomes a row
         row["error"] = f"{type(e).__name__}: {e}"
