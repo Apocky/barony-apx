@@ -401,6 +401,7 @@ def run_once(build, mode, exe, seed, rep, out_root, datadir, shared, args):
     run_dir = out_root / "runs" / f"{stamp}-{build}-{mode}-s{seed}-r{rep}"
     run_dir.mkdir(parents=True)
     env = os.environ.copy()
+    env["APX_VANILLA"] = "1"  # apx-gen floors and the impact rule are ON by default; parity measures vanilla
     env.pop("BARONY_DATADIR", None)
     cmd = [str(exe), "-quickstart=barbarian"] + list(args.exe_arg)
     if mode == "datadir":

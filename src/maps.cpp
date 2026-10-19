@@ -32,6 +32,7 @@
 #include "apx/lua_layer.hpp"
 #ifndef EDITOR
 #include "apx/apx_gen_bridge.hpp"
+#include "apx/combat/impact.hpp" // [apx] features line
 #endif
 
 int startfloor = 0;
@@ -1307,6 +1308,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 	// generate a custom monster curve if file exists
 	monsterCurveCustomManager.readFromFile(mapseed);
+	printlog("[apx] features: apxgen=%d impact=%d (on by default; -apxvanilla or APX_VANILLA=1 = vanilla)", apxgen.enabled ? 1 : 0, apx::combat::enabled() ? 1 : 0);
 
 #ifndef EDITOR
 	// apx-gen (spec 02): -apxgen / APXGEN=1. Off = this vanilla generator, the CONTROL.

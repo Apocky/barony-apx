@@ -6,7 +6,7 @@
 
 struct ApxGenConfig
 {
-	bool enabled = false;      // -apxgen or APXGEN=1
+	bool enabled = true;       // ON by default (Apocky 2026-10-19); APXGEN=0, APX_VANILLA=1 or -apxvanilla = vanilla generator
 	int size = 128;            // -apxgen-size=N (tiles per side, 48..160)
 	int populationPct = 100;   // -apxgen-pop=N (percent of the 1x density)
 	std::string kitsRoot;      // -apxgen-root=DIR or APXGEN_ROOT; default: the vendored copy

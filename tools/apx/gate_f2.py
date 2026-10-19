@@ -247,7 +247,7 @@ def mp_session(exe, seed, size, args):
     """Host + client on this PC (two processes, both ours, under our one lock). The host drives;
     both logs must show the same apxgen hash; the host's /apxnet gives bytes/s sent per client."""
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    env = {"APXGEN": "1", "APXGEN_SIZE": str(size)} if size != "vanilla" else {}
+    env = {"APXGEN": "1", "APXGEN_SIZE": str(size)} if size != "vanilla" else {"APXGEN": "0"}  # apx-gen is ON by default
     dirs, procs, logs = {}, {}, {}
     row = {"ts": datetime.datetime.now().astimezone().isoformat(timespec="seconds"), "kind": "mp", "seed_asked": seed,
            "size": size, "env": env, "finish": "error", "flags": []}
@@ -416,7 +416,7 @@ def main():
             locked(True, mp_session, args.exe, seeds[0], s, args)
     else:
         for s in args.sizes.split(","):
-            extra = {"env": {}} if s == "vanilla" else {"env": {"APXGEN": "1", "APXGEN_SIZE": s}}
+            extra = {"env": {"APXGEN": "0"}} if s == "vanilla" else {"env": {"APXGEN": "1", "APXGEN_SIZE": s}}
             locked(True, session, f"w1-{s}", args.exe, seeds, extra, args, rows, w1=True)
     ok = sum(r["finish"] == "ok" for r in rows)
     fallbacks = sum(1 for r in rows if r.get("apx_fail"))

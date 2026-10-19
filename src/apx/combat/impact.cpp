@@ -1,6 +1,7 @@
 // apx F4b: the impact rule (spec 04 section 4). See impact.hpp.
 #include "impact.hpp"
 #include <cstring>
+#include <cstdlib>
 
 namespace apx { namespace combat {
 
@@ -69,7 +70,12 @@ float multiplierFor(int t, int c, float fallback)
 	return mm.level * materialMultiplier(m, material(mm.material));
 }
 
-namespace { bool gEnabled = false; unsigned long long gUses = 0; }
+// ON by default (Apocky 2026-10-19); APX_IMPACT=0, APX_VANILLA=1 or -apxvanilla turn it off for controls.
+namespace {
+bool envZero(const char* n) { const char* v = std::getenv(n); return v && v[0] == '0'; }
+bool envOne(const char* n) { const char* v = std::getenv(n); return v && v[0] == '1'; }
+bool gEnabled = !envZero("APX_IMPACT") && !envOne("APX_VANILLA"); unsigned long long gUses = 0;
+}
 void setEnabled(bool on) { gEnabled = on; }
 bool enabled() { return gEnabled; }
 unsigned long long uses() { return gUses; }

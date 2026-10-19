@@ -15,7 +15,7 @@ try {
   $env:BARONY_DATADIR = 'C:\Program Files (x86)\Steam\steamapps\common\Barony'
   foreach ($seed in @('1234567', '7654321', '1234567')) {
     $dir = "C:\Apocrypha\runs\$Tag-$seed-$(Get-Random)"; New-Item -ItemType Directory -Force $dir | Out-Null
-    $p = Start-Process -FilePath $Exe -WorkingDirectory $dir -ArgumentList "-windowed -size=640x400 -quickstart=barbarian -apxfloor=1 -apxmapseed=$seed" -PassThru
+    $p = Start-Process -FilePath $Exe -WorkingDirectory $dir -ArgumentList "-windowed -size=640x400 -quickstart=barbarian -apxvanilla -apxfloor=1 -apxmapseed=$seed" -PassThru
     $line = $null; $deadline = (Get-Date).AddSeconds(90)
     while ((Get-Date) -lt $deadline -and -not $line) { Start-Sleep 2; $l = Select-String -Path "$dir\log.txt" -Pattern 'successfully generated a dungeon with (.*)\.' -EA SilentlyContinue | Select-Object -First 1; if ($l) { $line = $l.Matches[0].Groups[1].Value } }
     if (-not $p.HasExited) { $p.Kill() }
