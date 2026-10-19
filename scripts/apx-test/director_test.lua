@@ -5,6 +5,7 @@ local function check(name, cond, extra)
   else fail = fail + 1; apx.log("DTEST FAIL " .. name .. (extra and (" [" .. extra .. "]") or "")) end
 end
 local D = apx.shared.director
+D.events_off = true   -- this test reads tension only; no events may move the numbers
 -- 1. identity: deterministic, spread across seeds
 do
   local seen, n = {}, 0

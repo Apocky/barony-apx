@@ -15,6 +15,7 @@
 #include "../net.hpp"
 #include "../player.hpp"
 #include "../collision.hpp"
+#include "../paths.hpp"
 #include "../items.hpp"
 #include "lua_layer.hpp"
 
@@ -43,6 +44,7 @@ namespace {
 constexpr size_t kMemCap = 64u * 1024u * 1024u;
 constexpr int kInstrBudget = 5000000;   // VM instructions per handler call
 constexpr int kMaxHandlerErrors = 5;
+constexpr int kSpawnBudgetPerSecond = 40; // apx.spawn calls accepted per second (BLUA-3 budget)
 constexpr int kMaxDepth = 4;            // nested event dispatch (a handler spawns, which fires an event)
 
 struct Handler { int ref; std::string script; int errors; bool disabled; };
@@ -66,6 +68,7 @@ struct Layer {
 	fs::file_time_type stamp{};
 	// counters, written to the log at shutdown and on request (rule: every decline is visible)
 	bool hadMonsters = false;
+	int nSpawnRefused = 0;
 	int nErrors = 0, nDisabled = 0, nDropped = 0, nEvents = 0, nLoaded = 0, nScriptFail = 0;
 };
 Layer G;
@@ -203,10 +206,35 @@ int api_spawn(lua_State* L) {
 	int k = monsterByName(kind);
 	if ( k < 0 ) { lua_pushnil(L); lua_pushfstring(L, "unknown monster '%s'", kind); return 2; }
 	if ( x < 1 || y < 1 || x >= (lua_Number)map.width - 1 || y >= (lua_Number)map.height - 1 ) { lua_pushnil(L); lua_pushstring(L, "outside the map"); return 2; }
+	// per-second spawn budget (counted, visible in apx.stats().budget_refused_spawn); APX_LUA_NOBUDGET=1 is the test-mode control
+	static Uint32 windowStart = 0; static int inWindow = 0;
+	if ( ticks - windowStart >= TICKS_PER_SECOND ) { windowStart = ticks; inWindow = 0; }
+	if ( inWindow >= kSpawnBudgetPerSecond && !(G.test && getenv("APX_LUA_NOBUDGET")) ) { G.nSpawnRefused++; lua_pushnil(L); lua_pushstring(L, "budget"); return 2; }
 	Entity* e = summonMonster((Monster)k, (long)(x * 16.0), (long)(y * 16.0), false);
 	if ( !e ) { lua_pushnil(L); lua_pushstring(L, "no room"); return 2; }
+	inWindow++;
 	lua_pushinteger(L, e->getUID());
 	return 1;
+}
+// Make a monster hunt a player (or any entity). Wakes sleepers: sets its target and the PATH state.
+int api_set_target(lua_State* L) {
+	Entity* m = entityByUid(luaL_checkinteger(L, 1)); Entity* t = entityByUid(luaL_checkinteger(L, 2));
+	if ( multiplayer == CLIENT || !m || !t || m->behavior != &actMonster ) { lua_pushboolean(L, 0); return 1; }
+	m->monsterAcquireAttackTarget(*t, MONSTER_STATE_PATH);
+	lua_pushboolean(L, 1); return 1;
+}
+// Send a monster walking to a tile (idle patrol): path generation by the engine's own pathfinder.
+int api_path_to(lua_State* L) {
+	Entity* m = entityByUid(luaL_checkinteger(L, 1)); lua_Integer x = luaL_checkinteger(L, 2), y = luaL_checkinteger(L, 3);
+	if ( multiplayer == CLIENT || !m || m->behavior != &actMonster || x < 1 || y < 1 || x >= (lua_Integer)map.width - 1 || y >= (lua_Integer)map.height - 1 ) { lua_pushboolean(L, 0); return 1; }
+	bool ok = m->monsterSetPathToLocation((int)x, (int)y, 2, GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
+	if ( ok ) { m->monsterState = MONSTER_STATE_PATH; }
+	lua_pushboolean(L, ok); return 1;
+}
+int api_monster_state(lua_State* L) {
+	Entity* m = entityByUid(luaL_checkinteger(L, 1));
+	if ( !m || m->behavior != &actMonster ) { lua_pushnil(L); return 1; }
+	lua_pushinteger(L, m->monsterState); return 1;
 }
 int api_set_tile(lua_State* L) {
 	lua_Integer x = luaL_checkinteger(L, 1), y = luaL_checkinteger(L, 2), z = luaL_checkinteger(L, 3), v = luaL_checkinteger(L, 4);
@@ -358,7 +386,7 @@ int api_stats(lua_State* L) {
 	auto put = [&](const char* k, int v) { lua_pushinteger(L, v); lua_setfield(L, -2, k); };
 	put("errors", G.nErrors); put("disabled", G.nDisabled); put("dropped", G.nDropped);
 	put("events", G.nEvents); put("scripts_loaded", G.nLoaded); put("scripts_failed", G.nScriptFail);
-	put("mem_bytes", (int)G.used);
+	put("mem_bytes", (int)G.used); put("budget_refused_spawn", G.nSpawnRefused);
 	return 1;
 }
 
@@ -366,7 +394,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };
