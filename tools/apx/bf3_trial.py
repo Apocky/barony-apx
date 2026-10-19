@@ -264,7 +264,7 @@ def d75_summary(arms):
                      "friendly_fire": m(v, "friendly_fire_dmg", 1), "body_overlap": m(v, "body_overlap_mean", 2),
                      "body_overlap_max": max(x.get("body_overlap_max", 0) for x in v), "stuck": sum(x.get("stuck", 0) for x in v),
                      "stuck_mean": m(v, "stuck", 1), "steer_ticks": sum(x.get("steer_ticks", 0) for x in v),
-                     "sidesteps": m(v, "body_sidesteps", 1), "goal_holds": m(v, "body_goal_holds", 1), "queue_holds": m(v, "body_queue_holds", 1),
+                     "sidesteps": m(v, "body_sidesteps", 1), "goal_holds": m(v, "body_goal_holds", 1), "queue_holds": m(v, "body_queue_holds", 1), "wall_holds": m(v, "wall_holds", 1),
                      "collide_on": sorted(set(x.get("collide_on", -1) for x in v)), "vanilla_run": sorted(set(x.get("apx_vanilla", 0) for x in v)),
                      "spawned": sorted(set(x.get("creatures", 0) for x in v)), "flags": sorted(set(x.get("flags", "") for x in v))}
                  for b, v in sorted(bases.items())} for k, bases in sorted(jam.items())}
@@ -317,7 +317,7 @@ def d75_gates(base, args):
         g["d80_stuck_near_zero"] = {"pass": all(r["stuck_mean"] <= 25 and r["stuck"] <= 0.005 * max(1, r["steer_ticks"]) for r in cells.values())
                                     if cells else None, "rule": "colliding bodies, limits on: stuck <= 25 ticks per 20 s and <= 0.5 pct of steer ticks",
                                     **{k: {"stuck_mean": r["stuck_mean"], "steer_ticks": r["steer_ticks"], "sidesteps": r["sidesteps"],
-                                           "goal_holds": r["goal_holds"], "queue_holds": r.get("queue_holds"), "n": r["n"],
+                                           "goal_holds": r["goal_holds"], "queue_holds": r.get("queue_holds"), "wall_holds": r.get("wall_holds"), "n": r["n"],
                                            "dmg": r["dmg"], "attackers": r["attackers"]} for k, r in cells.items()}}
     return g
 

@@ -292,6 +292,16 @@ namespace tactics
 				return false;
 			}
 		}
+		// D80: a make-room move (stepping out of the reach zone, arcing round it to a ring place) that a wall blocks: there
+		// is no room here (a 1-tile corridor), so hold in place instead of pressing into the wall. d80-s2: every remaining
+		// corridor stuck episode was one of these (bump none, steer OUT or ARC). Routes and straight moves still count.
+		if ( collideOn() && !hit.entity && (s.lastSteer == STEER_OUT || s.lastSteer == STEER_ARC) && hypot(my->x - ox, my->y - oy) < 0.3 * v )
+		{
+			MONSTER_VELX = 0; MONSTER_VELY = 0;
+			s.stillSince = 0; s.stuckCounted = false;
+			++C.wall_holds;
+			return false;
+		}
 		// the engine's own bump rules (actmonster.cpp monsterChaseBump: doors open, locked wooden doors, furniture and
 		// breakable colliders are bashed); working on a breakable is not being stuck
 		bool working = false;
