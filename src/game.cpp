@@ -17,6 +17,7 @@
 #include "entity.hpp"
 #include "files.hpp"
 #include "apx/telemetry.hpp"
+#include "apx/tactics.hpp"
 static std::string apxOutDir;
 #include "menu.hpp"
 #include "classdescriptions.hpp"
@@ -2261,6 +2262,7 @@ void gameLogic(void)
 		            loading = false;
 	                int result = loading_task.get();
 	                apx::onFloorLoaded();
+	                apx::tactics::onLevelChange();
 
                     for (int c = 0; c < MAXPLAYERS; ++c) {
                         auto& camera = players[c]->camera();
@@ -4334,6 +4336,7 @@ bool handleEvents(void)
 
 	while ( SDL_PollEvent(&event) )   // poll SDL events
 	{
+		if ( apx::bf3::swallowInput(event) ) { continue; } // apx BF3 trial: human input is dropped and counted
 #ifdef USE_IMGUI
 		if ( ImGui_t::isInit )
 		{
@@ -5333,6 +5336,7 @@ bool handleEvents(void)
 			gameLogic();
 			++ticks;
 			if ( apx::enabled ) { apx::onTick(); }
+			if ( apx::bf3::on ) { apx::bf3::onGameTick(); }
 		}
 		else
 		{
@@ -7364,6 +7368,8 @@ int main(int argc, char** argv)
 		}
 
 		apx::init(apxOutDir.c_str(), !apxOutDir.empty());
+		apx::tactics::init();
+		apx::bf3::init(argc, argv);
 
 		// initialize map
 		map.tiles = nullptr;

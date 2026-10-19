@@ -10,6 +10,7 @@ See LICENSE for details.
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/tactics.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
@@ -3255,6 +3256,10 @@ void Entity::modHP(int amount)
 
 	if ( this->behavior == &actPlayer )
 	{
+		if ( apx::bf3::absorbPlayerDamage(this, amount) ) // apx BF3 trial: count, then negate (test character only)
+		{
+			amount = 0;
+		}
 		if ( godmode && amount < 0 )
 		{
 			amount = 0;
@@ -3334,6 +3339,7 @@ void Entity::modHP(int amount)
 			Compendium_t::Events_t::eventUpdateCodex(skill[2], Compendium_t::CPDM_HP_LOST_TOTAL, "hp", oldHP - entitystats->HP);
 		}
 	}
+	apx::tactics::onHPChange(this, oldHP, entitystats->HP); // apx BF3: morale events (leader down, ally down, HP under 30 percent)
 }
 
 /*-------------------------------------------------------------------------------
@@ -25935,6 +25941,10 @@ bool Entity::shouldRetreat(Stat& myStats)
 	// retreating monsters will not try path when losing sight of target
 
 	if ( myStats.getEffectActive(EFF_PACIFY) || myStats.getEffectActive(EFF_FEAR) || myStats.getEffectActive(EFF_COWARDICE) )
+	{
+		return true;
+	}
+	if ( apx::tactics::moraleBroken(this) ) // apx BF3: morale below break; the engine's own retreat code walks it away
 	{
 		return true;
 	}

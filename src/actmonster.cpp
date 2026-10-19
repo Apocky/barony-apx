@@ -27,6 +27,7 @@
 #include "colors.hpp"
 #include "scores.hpp"
 #include "mod_tools.hpp"
+#include "apx/tactics.hpp"
 #include "ui/MainMenu.hpp"
 #include "menu.hpp"
 
@@ -5188,6 +5189,7 @@ void actMonster(Entity* my)
 			}
 		}
 
+		apx::tactics::tick(my); // apx BF3: tactics decide (every 10 ticks per creature); no-op with APX_TACTICS=0
 		if ( my->monsterState == MONSTER_STATE_WAIT )
 		{
 			myStats->monsterRangedAccuracy.accuracy = 0.0;
@@ -6258,7 +6260,7 @@ void actMonster(Entity* my)
 							dist = sqrt( pow(my->x - entity->x, 2) + pow(my->y - entity->y, 2) );
 						}
 
-						if ( hit.entity != entity && myReflex )
+						if ( hit.entity != entity && myReflex && !apx::tactics::keepEngaged(my, entity, dist) ) // apx BF3
 						{
 							// if I currently lost sight of my target in a straight line in front of me
 							// decide whether or not to path or retreat (stay put).
@@ -6367,7 +6369,8 @@ timeToGoAgain:
 								chaseRange = TOUCHRANGE;
 							}
 
-							if ( monsterIsImmobileTurret(my, myStats) || myStats->getEffectActive(EFF_ROOTED) )
+							if ( apx::tactics::steer(my, *myStats, entity, dist, weightratio, dist2) ) {} // apx BF3: reach slot, ring, flank, retreat
+							else if ( monsterIsImmobileTurret(my, myStats) || myStats->getEffectActive(EFF_ROOTED) )
 							{
 								// this is just so that the monster rotates. it doesn't actually move
 								if ( !myStats->getEffectActive(EFF_KNOCKBACK) )
@@ -6814,6 +6817,7 @@ timeToGoAgain:
 								dir = my->yaw - atan2( MONSTER_VELY, MONSTER_VELX );
 							}
 
+							apx::tactics::face(my, dir); // apx BF3
 							if ( myStats->getEffectActive(EFF_SPIN) )
 							{
 								dir += my->monsterLookDir;
@@ -10585,7 +10589,7 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			}
 
 			// reset the hit timer
-			this->monsterHitTime = 0;
+			this->monsterHitTime = apx::tactics::swingReset(this, target, dist); // apx BF3: 0, or -(0..11) with APX_INTERLEAVE
 			int tracedist = 0;
 			if ( lichRangeCheckOverride )
 			{
@@ -10614,7 +10618,8 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			{
 				lineTrace(this, this->x, this->y, newTangent, tracedist, LINETRACE_ATK_CHECK_FRIENDLYFIRE, false);
 			}
-			if ( hit.entity != nullptr && hit.entity == target )
+			apx::tactics::onSwingTrace(this, target, hit.entity); // apx BF3: counts thin-ray ally blocks
+			if ( hit.entity != nullptr && hit.entity == target && !apx::tactics::swingLineBlocked(this, target) ) // apx BF3: APX_ALLYAVOID
 			{
 				// found the target in range
 				hitstats = hit.entity->getStats();

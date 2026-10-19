@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/tactics.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
@@ -867,6 +868,7 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 					}
 				}
 				if (!z) {
+                    const Uint32 apxExtra = (Uint32)apx::tactics::pathPenalty(newx, newy); // apx BF3: flank route B avoids route A (0 otherwise)
                     const auto key = pairtype{newx, newy};
 					bool alreadyadded = closedSet.find(key) != closedSet.end();
                     auto find = openSet.find(key);
@@ -874,16 +876,16 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
                         alreadyadded = true;
 						auto& childnode = find->second;
                         if (x && y) {
-                            if (childnode.g > pathnode.g + DIAGONALCOST) {
+                            if (childnode.g > pathnode.g + DIAGONALCOST + apxExtra) {
                                 childnode.px = pathnode.x;
                                 childnode.py = pathnode.y;
-                                childnode.g = pathnode.g + DIAGONALCOST;
+                                childnode.g = pathnode.g + DIAGONALCOST + apxExtra;
                             }
                         } else {
-                            if (childnode.g > pathnode.g + STRAIGHTCOST) {
+                            if (childnode.g > pathnode.g + STRAIGHTCOST + apxExtra) {
                                 childnode.px = pathnode.x;
                                 childnode.py = pathnode.y;
-                                childnode.g = pathnode.g + STRAIGHTCOST;
+                                childnode.g = pathnode.g + STRAIGHTCOST + apxExtra;
                             }
                         }
 					}
@@ -899,7 +901,7 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 							particle->scalez = 2.0;
 						}
                         const auto newNode = pathnode_t{newx, newy,
-                            (x && y) ? (pathnode.g + DIAGONALCOST) : (pathnode.g + STRAIGHTCOST),
+                            (x && y) ? (pathnode.g + DIAGONALCOST + apxExtra) : (pathnode.g + STRAIGHTCOST + apxExtra),
                             heuristic(newx, newy, x2, y2), pathnode.x, pathnode.y};
                         openSet.insert({pairtype{newx, newy}, newNode});
                         queue.push({newx, newy, openSet});
