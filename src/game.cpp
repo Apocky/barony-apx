@@ -41,6 +41,8 @@
 #include "paths.hpp"
 #include "player.hpp"
 #include "mod_tools.hpp"
+
+static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
 #include "lobbies.hpp"
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
@@ -7268,6 +7270,12 @@ int main(int argc, char** argv)
 						datadir[datadirsz] = '\0';
 						datadirFromCommandLine = true;
 					}
+					else if ( !strncmp(argv[c], "-apxloadmod=", 12) )
+					{
+						// apx: mount this mod folder and run Mods::loadMods() once at startup, without the menu
+						// (load-time measurement and headless mod tests; see Apockalypsis BL-load-card.md).
+						apxLoadModPath = argv[c] + 12;
+					}
 					else if ( !strcmp(argv[c], "-nosound") )
 					{
 						no_sound = true;
@@ -7412,6 +7420,18 @@ int main(int argc, char** argv)
 		int indev_timer = 0;
 
 		// main loop
+
+		if ( !apxLoadModPath.empty() )
+		{
+			std::string modName = apxLoadModPath;
+			const size_t slash = modName.find_last_of("/\\");
+			if ( slash != std::string::npos ) { modName = modName.substr(slash + 1); }
+			Mods::mountedFilepaths.push_back(std::make_pair(apxLoadModPath, modName));
+			Mods::mountAllExistingPaths();
+			const Uint32 modStart = SDL_GetTicks();
+			Mods::loadMods();
+			printlog("[apx] loadMods for -apxloadmod=%s in %u ms", apxLoadModPath.c_str(), SDL_GetTicks() - modStart);
+		}
 
 		printlog("running main loop.\n");
 		while (mainloop)
