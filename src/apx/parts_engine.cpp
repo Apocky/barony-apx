@@ -467,14 +467,39 @@ void apxPartsProbeTick()
 			useItem(it, 0);
 			return it->apx.nParts;
 		};
-		if ( step == 0 ) { equipMaterial("iron"); t0 = ticks; step = 1; return; }
+		if ( step == 0 )
+		{
+			// the hand weapon is hidden in water (actHudWeapon): stand on the nearest dry floor tile first
+			Entity* pe = players[0]->entity;
+			const int px = (int)(pe->x / 16), py = (int)(pe->y / 16);
+			int best = -1, bx = px, by = py;
+			for ( int y = 1; y < (int)map.height - 1; ++y )
+			{
+				for ( int x = 1; x < (int)map.width - 1; ++x )
+				{
+					const Sint32* t = &map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height];
+					if ( t[1] || !t[0] || (swimmingtiles && swimmingtiles[t[0]]) || (lavatiles && lavatiles[t[0]]) ) { continue; }
+					const int dd = (x - px) * (x - px) + (y - py) * (y - py);
+					if ( best < 0 || dd < best ) { best = dd; bx = x; by = y; }
+				}
+			}
+			pe->x = bx * 16 + 8;
+			pe->y = by * 16 + 8;
+			equipMaterial("iron"); t0 = ticks; step = 1; return;
+		}
 		if ( step == 1 && ticks - t0 > TICKS_PER_SECOND * 2 ) { shotRequest = outDir + "visual-a.png"; t0 = ticks; step = 2; return; }
 		if ( step == 2 && ticks - t0 > TICKS_PER_SECOND ) { equipMaterial("gold"); t0 = ticks; step = 3; return; }
 		if ( step == 3 && ticks - t0 > TICKS_PER_SECOND * 2 ) { shotRequest = outDir + "visual-b.png"; t0 = ticks; step = 4; return; }
 		if ( step == 4 && ticks - t0 > TICKS_PER_SECOND )
 		{
 			const bool vis = !(getenv("APX_PARTS_VIS") && *getenv("APX_PARTS_VIS") == '0');
-			snprintf(buf, sizeof(buf), "{\"probe\":\"visual\",\"parts_on\":%d,\"vis\":%d,\"a\":\"iron\",\"b\":\"gold\",\"shots\":[\"visual-a.png\",\"visual-b.png\"]}", on ? 1 : 0, vis ? 1 : 0);
+			const Entity* hw = players[0]->hud.weapon;
+			const Item* wpn = stats[0]->weapon;
+			snprintf(buf, sizeof(buf), "{\"probe\":\"visual\",\"parts_on\":%d,\"vis\":%d,\"a\":\"iron\",\"b\":\"gold\",\"shots\":[\"visual-a.png\",\"visual-b.png\"],"
+				"\"hud_weapon\":%d,\"hud_invisible\":%d,\"hud_sprite\":%d,\"hud_light\":[%.2f,%.2f,%.2f],\"weapon_parts\":%d,\"weapon_material\":\"%s\"}",
+				on ? 1 : 0, vis ? 1 : 0, hw ? 1 : 0, hw ? (int)hw->flags[INVISIBLE] : -1, hw ? (int)hw->sprite : -1,
+				hw ? hw->lightBonus.x : -1.f, hw ? hw->lightBonus.y : -1.f, hw ? hw->lightBonus.z : -1.f,
+				wpn ? (int)wpn->apx.nParts : -1, wpn && wpn->apx.nParts ? apxPartsMaterialName(wpn->apx.parts[0].material) : "-");
 			probeRow(buf);
 			exit(0);
 		}

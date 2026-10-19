@@ -114,12 +114,13 @@ def run_save(name, exe, out, env_extra, args):
 
 
 def crop_mean(png):
-    """Mean RGB of the first-person weapon region (lower right of the view; ASSUMED box)."""
+    """Mean RGB of the first-person blade column (x 60-70 %, y 45-85 % of the view; measured on the 1280x720 shots:
+    the wider 55-98 % box was diluted by background and popups, 2.9 % tinted vs 1.6 % untinted)."""
     from PIL import Image
     im = Image.open(png).convert("RGB")
     w, h = im.size
-    box = im.crop((int(w * 0.55), int(h * 0.45), int(w * 0.98), int(h * 0.92)))
-    px = list(box.getdata())
+    box = im.crop((int(w * 0.60), int(h * 0.45), int(w * 0.70), int(h * 0.85)))
+    px = list(box.get_flattened_data()) if hasattr(box, "get_flattened_data") else list(box.getdata())
     n = len(px) or 1
     return [sum(c[i] for c in px) / n for i in range(3)]
 
@@ -267,13 +268,13 @@ def main():
     if "visual" in only:
         r = results["visual"] = run_visual("visual", args.exe, args.out, {}, args)
         emit(r)
-        if not gate("V palette tint: iron vs gold sword differ (> 8 % of a channel)", (r.get("distance_pct") or 0) > 8,
+        if not gate("V palette tint: iron vs gold blade differ (> 3 % of a channel; measured 6.2 vs 0.5 off)", (r.get("distance_pct") or 0) > 3,
                     f"exit {r['exit']}, iron {r.get('mean_iron')}, gold {r.get('mean_gold')}, distance {r.get('distance_pct')} %"):
             return 1
     if "visual-off" in only:
         r = results["visual-off"] = run_visual("visual-off", args.exe, args.out, {"APX_PARTS_VIS": "0"}, args)
         emit(r)
-        if not gate("V control APX_PARTS_VIS=0: no tint (< 2 %)", r.get("distance_pct") is not None and r["distance_pct"] < 2,
+        if not gate("V control APX_PARTS_VIS=0: no tint (< 1.5 %)", r.get("distance_pct") is not None and r["distance_pct"] < 1.5,
                     f"exit {r['exit']}, distance {r.get('distance_pct')} %"):
             return 1
     if "net" in only:
