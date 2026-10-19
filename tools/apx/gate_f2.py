@@ -330,8 +330,16 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     seeds = list(range(args.first, args.first + args.count)) if args.count else [int(s) for s in args.seeds.split(",")]
     rows = []
+    def wait_free(limit_s):
+        """Poll every second (other lanes relaunch within seconds; a 10 s poll misses the gap)."""
+        t0 = time.monotonic()
+        while pf.barony_running() or pf.foreign_locks(args.lock_dir):
+            if time.monotonic() - t0 > limit_s:
+                sys.exit(f"Barony stayed busy for {limit_s:.0f} s")
+            time.sleep(1)
+
     for attempt in range(20):
-        pf.wait_until_no_barony(args.wait_foreign, args.lock_dir)
+        wait_free(args.wait_foreign)
         pf.hold_lock(args.lock_dir, True)
         time.sleep(2)
         if not pf.foreign_locks(args.lock_dir) and not pf.barony_running():

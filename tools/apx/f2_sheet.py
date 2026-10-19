@@ -152,12 +152,12 @@ def main():
         if not r:
             return f"{size}: not run"
         f = r.get("fps", {})
-        sav = sum(r.get("saves", {}).values())
+        sav = r.get("saves", {}).get("savegame0.baronysave")
         return (f"{size}: map {r.get('W', '-')}x{r.get('H', '-')}, rooms {r.get('generated', {}).get('rooms')}, "
                 f"monsters {r.get('generated', {}).get('monsters')}, items {r.get('generated', {}).get('items')}, "
                 f"gen {r.get('ms_gen', '-')} ms + load {r.get('ms_load', '-')} ms + entities {r.get('ms_entities', '-')} ms, "
                 f"level change {r.get('level_wall_s')} s wall, frame ms p50 {f.get('ms_p50')} p99 {f.get('ms_p99')}, "
-                f"saves {sav} bytes {r.get('saves')}" + (f", vanilla walk tiles {r['vanilla']['walk']}" if "vanilla" in r else "")
+                f"savegame {sav} bytes" + (f", vanilla walk tiles {r['vanilla']['walk']}" if "vanilla" in r else "")
                 + (f", hall {r.get('hall')}" if r.get("hall") else ""))
 
     hero = w1_by.get("128") or next(iter(w1_by.values()), None)
