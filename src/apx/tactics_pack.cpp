@@ -246,8 +246,9 @@ namespace tactics
 		return angDiff(atan2(my->y - target->y, my->x - target->x), target->yaw + PI) <= PI / 3; // back 120 degrees
 	}
 
-	static void flankFail(TacticsState& s)
+	static void flankFail(TacticsState& s, long long& why)
 	{
+		++why;
 		s.flank = 3;
 		++C.flank_failed;
 		s.route.clear();
@@ -293,7 +294,7 @@ namespace tactics
 		double d = hypot(target->x - my->x, target->y - my->y);
 		if ( s.flank == 1 )
 		{
-			if ( s.flankTarget != tuid ) { flankFail(s); return; }
+			if ( s.flankTarget != tuid ) { flankFail(s, C.flank_fail_target); return; }
 			if ( my->monsterState == MONSTER_STATE_HUNT || my->monsterState == MONSTER_STATE_PATH )
 			{
 				my->monsterState = MONSTER_STATE_ATTACK; // route B is walked by tactics in the ATTACK state
@@ -309,8 +310,8 @@ namespace tactics
 				return;
 			}
 			if ( hypot(my->x - s.progressX, my->y - s.progressY) > 8 ) { s.progressX = my->x; s.progressY = my->y; s.progressTick = ticks; }
-			else if ( ticks - s.progressTick > 75 ) { flankFail(s); return; }
-			if ( ticks - s.flankStart > 10 * TICKS_PER_SECOND ) { flankFail(s); }
+			else if ( ticks - s.progressTick > 75 ) { flankFail(s, C.flank_fail_progress); return; }
+			if ( ticks - s.flankStart > 10 * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
 			return;
 		}
 		if ( s.flank != 0 && s.flankTarget == tuid ) { return; } // one try per target
@@ -340,7 +341,7 @@ namespace tactics
 			}
 			if ( gx >= 0 ) { break; }
 		}
-		if ( gx < 0 ) { flankFail(s); return; }
+		if ( gx < 0 ) { flankFail(s, C.flank_fail_nogoal); return; }
 		HitSave hs;
 		int mx = (int)floor(my->x / 16), my_ = (int)floor(my->y / 16);
 		list_t* a = generatePath(mx, my_, (int)floor(target->x / 16), (int)floor(target->y / 16), my, target, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
@@ -355,7 +356,7 @@ namespace tactics
 		gPenaltyOn = false;
 		copyPath(b, s.route);
 		freePath(b);
-		if ( s.route.empty() ) { flankFail(s); return; }
+		if ( s.route.empty() ) { flankFail(s, C.flank_fail_noroute); return; }
 		s.routeAt = 0;
 		s.routeKind = ROUTE_FLANK;
 		s.flank = 1;

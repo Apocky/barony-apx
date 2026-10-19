@@ -59,6 +59,12 @@ namespace bf3
 	static std::vector<Uint32> helpUids;
 	static Uint32 callTick = 0, firstHelpArrival = 0;
 	static double helpMinDist = 1e9;
+	// help is judged inside the time help needs: twice pack B's walk from its spot (BFS steps at its own speed) plus
+	// 2 s; monsters also wander and find a fight on their own later (s5-route control: 2 of 4 by 26.3 s of 30)
+	static double helpWindowS = 0;
+	static int within4Window = -1;
+	static std::vector<Uint32> helpAcquired;
+	static Uint32 firstHelpAcquire = 0;
 	// flow self-test (BF3-5a): APX_BF3_FLOWTEST pairs per floor over APX_BF3_FLOWFLOORS (default 1,2,3,4,5)
 	static int flowTest = 0;
 	static int dumpCreatures = 0;
@@ -83,6 +89,7 @@ namespace bf3
 		long long pinCorrections = 0, foreignSeen = 0, foreignRemoved = 0;
 		// reach-slot holders per sampled tick: in reach, or out of it by engine state, and out of it standing still 1 s+
 		long long holderIn = 0, holderOut = 0, holderOutAttack = 0, holderOutHunt = 0, holderOutPath = 0, holderOutWait = 0, holderOutStill = 0;
+		long long holderFalseArrive = 0; // out of reach, standing as "at its goal" while more than HOLD_EPS + 1 from it
 		int slots = 0, spawned = 0;
 	};
 	static Arm A;
@@ -489,6 +496,7 @@ namespace bf3
 						else if ( c->monsterState == MONSTER_STATE_PATH ) { ++A.holderOutPath; }
 						else { ++A.holderOutWait; }
 						if ( ts->stillSince && ticks - ts->stillSince >= (Uint32)TICKS_PER_SECOND ) { ++A.holderOutStill; }
+						if ( ts->lastSteer == tactics::STEER_AT_GOAL && hypot(ts->goalX - c->x, ts->goalY - c->y) > tactics::HOLD_EPS + 1 ) { ++A.holderFalseArrive; }
 					}
 				}
 			}
@@ -624,6 +632,9 @@ namespace bf3
 			.i("pin_corrections", A.pinCorrections).i("foreign_seen", A.foreignSeen).i("foreign_removed", A.foreignRemoved)
 			.i("holder_in", A.holderIn).i("holder_out", A.holderOut).i("holder_out_attack", A.holderOutAttack).i("holder_out_hunt", A.holderOutHunt)
 			.i("holder_out_path", A.holderOutPath).i("holder_out_wait", A.holderOutWait).i("holder_out_still", A.holderOutStill)
+			.i("holder_false_arrive", A.holderFalseArrive)
+			.i("flank_fail_target", C.flank_fail_target).i("flank_fail_progress", C.flank_fail_progress).i("flank_fail_time", C.flank_fail_time)
+			.i("flank_fail_nogoal", C.flank_fail_nogoal).i("flank_fail_noroute", C.flank_fail_noroute)
 			.i("goal_routes", C.goal_routes).i("goal_route_fail", C.goal_route_fail).i("goal_route_steps", C.goal_route_steps)
 			.i("arc_fallback", C.arc_fallback).i("step_out", C.step_out).i("doors_opened", C.doors_opened).i("door_bumps_locked", C.door_bumps_locked)
 			.i("routed_engaged", C.routed_engaged).i("routed_promoted", C.routed_promoted)
@@ -702,18 +713,24 @@ namespace bf3
 		Uint32 rs = 2654435761u * (Uint32)(floorNo + 1) ^ (seedBase ? seedBase : 77u);
 		auto rnd = [&rs]() { rs ^= rs << 13; rs ^= rs >> 17; rs ^= rs << 5; return rs; };
 		int pairs = 0, fieldOk = 0, astarOk = 0, bothOk = 0, stepsEqual = 0, stepsWithin1 = 0, stepsDiffMax = 0, costEqual = 0;
-		int fieldCheaper = 0, fieldDearer = 0, doorPairs = 0, doorWithin1 = 0, chaseFail = 0, astarOnly = 0;
+		int fieldCheaper = 0, fieldDearer = 0, doorPairs = 0, doorWithin1 = 0, chaseFail = 0, astarOnly = 0, fieldOnly = 0;
+		long long fieldDiag = 0, astarDiag = 0, astarDiagNeg = 0, astarCornerCut = 0, fieldSteps = 0, astarSteps = 0;
 		std::vector<double> build;
+		// the walker: one of the trial's own kind (the A*'s rules depend on who walks: a player walker skips different
+		// entities). The floor's monsters were removed at load (P_FT_WAIT), so none blocks either side.
+		Entity* probe = open.empty() ? nullptr : summonMonster(kind, open[0].first * 16 + 8, open[0].second * 16 + 8, true);
+		if ( !probe ) { printlog("[apx] bf3 flowtest floor %d: no probe monster, using the character", floorNo); probe = pe; }
 		for ( int i = 0; i < flowTest && open.size() > 1; ++i )
 		{
 			auto s = open[rnd() % open.size()], g = open[rnd() % open.size()];
 			if ( s == g ) { continue; }
-			flow::Compare c = flow::compare(pe, s.first, s.second, g.first, g.second);
+			flow::Compare c = flow::compare(probe, s.first, s.second, g.first, g.second);
 			++pairs;
 			build.push_back(c.buildUs);
 			fieldOk += c.fieldOk; astarOk += c.astarOk;
 			if ( c.astarOk && !c.fieldOk ) { ++astarOnly; }
-			list_t* chase = generatePath(s.first, s.second, g.first, g.second, pe, nullptr, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
+			if ( c.fieldOk && !c.astarOk ) { ++fieldOnly; }
+			list_t* chase = generatePath(s.first, s.second, g.first, g.second, probe, nullptr, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
 			if ( chase ) { list_FreeAll(chase); free(chase); } else { ++chaseFail; }
 			if ( !(c.fieldOk && c.astarOk) ) { continue; }
 			++bothOk;
@@ -722,7 +739,10 @@ namespace bf3
 			stepsEqual += sd == 0; stepsWithin1 += sd <= 1;
 			costEqual += c.fieldCost == c.astarCost; fieldCheaper += c.fieldCost < c.astarCost; fieldDearer += c.fieldCost > c.astarCost;
 			if ( c.door ) { ++doorPairs; doorWithin1 += sd <= 1; }
+			fieldDiag += c.fieldDiag; astarDiag += c.astarDiag; astarDiagNeg += c.astarDiagNeg; astarCornerCut += c.astarCornerCut;
+			fieldSteps += c.fieldSteps; astarSteps += c.astarSteps;
 		}
+		if ( probe != pe ) { removeQuietly(probe); }
 		std::sort(build.begin(), build.end());
 		double b50 = build.empty() ? 0 : build[(size_t)(0.5 * (build.size() - 1) + 0.5)], b99 = build.empty() ? 0 : build[(size_t)(0.99 * (build.size() - 1) + 0.5)];
 		ApxRow r;
@@ -732,6 +752,9 @@ namespace bf3
 			.i("astar_only", astarOnly).i("steps_equal", stepsEqual).i("steps_within1", stepsWithin1).i("steps_diff_max", stepsDiffMax)
 			.i("cost_equal", costEqual).i("cost_field_cheaper", fieldCheaper).i("cost_field_dearer", fieldDearer)
 			.i("door_pairs", doorPairs).i("door_within1", doorWithin1).i("chase_astar_fail", chaseFail)
+			.i("field_only", fieldOnly).i("field_steps", fieldSteps).i("astar_steps", astarSteps).i("field_diag_steps", fieldDiag)
+			.i("astar_diag_steps", astarDiag).i("astar_diag_neg_x", astarDiagNeg).i("astar_corner_cuts", astarCornerCut)
+			.str("probe", probe == pe ? "character" : "monster")
 			.d("build_us_p50", b50).d("build_us_p99", b99);
 		write("bf3-flowtest.jsonl", r);
 		printlog("[apx] bf3 flowtest floor %d: %d pairs, both ok %d, steps equal %d within1 %d (max diff %d), field dearer %d, "
@@ -829,13 +852,15 @@ namespace bf3
 			.str("reason", reason).i("spot_x", hsX).i("spot_y", hsY).i("spot_steps", hsBfs).i("helpers", (long long)helpUids.size())
 			.i("calls_for_help", C.calls_for_help).i("calls_answered", C.calls_answered).i("helpers_sent", C.helpers_sent)
 			.i("helpers_arrived", C.helpers_arrived).i("b_within4_end", within4).i("b_targeting_player_end", targeting)
+			.d("window_s", helpWindowS).i("b_within4_window", within4Window).i("b_acquired", (long long)helpAcquired.size())
+			.d("b_first_acquire_s", firstHelpAcquire ? (firstHelpAcquire - callTick) / (double)TICKS_PER_SECOND : -1)
 			.d("b_first_arrival_s", firstHelpArrival ? (firstHelpArrival - callTick) / (double)TICKS_PER_SECOND : -1)
 			.d("b_min_dist_tiles", helpMinDist < 1e8 ? helpMinDist / 16.0 : -1)
 			.i("input_keys", inKeys - A.keys0).i("input_buttons", inButtons - A.buttons0);
 		write("bf3-help.jsonl", r);
-		printlog("[apx] bf3 help %s: calls %lld answered %lld sent %lld, pack B within 4 tiles %d of %d, first arrival %.1f s",
-			helpArm == 0 ? "on" : "off", C.calls_for_help, C.calls_answered, C.helpers_sent, within4, (int)helpUids.size(),
-			firstHelpArrival ? (firstHelpArrival - callTick) / (double)TICKS_PER_SECOND : -1.0);
+		printlog("[apx] bf3 help %s: calls %lld answered %lld sent %lld, pack B within 4 tiles %d of %d at %.1f s (%d at 30 s), first arrival %.1f s",
+			helpArm == 0 ? "on" : "off", C.calls_for_help, C.calls_answered, C.helpers_sent, within4Window, (int)helpUids.size(), helpWindowS,
+			within4, firstHelpArrival ? (firstHelpArrival - callTick) / (double)TICKS_PER_SECOND : -1.0);
 	}
 
 	static void finish(int code)
@@ -928,13 +953,14 @@ namespace bf3
 						if ( !c || !cs ) { printlog("[apx] bf3 dump arm %d uid %u gone", (int)armI, u); continue; }
 						tactics::TacticsState* s = tactics::find(c);
 						printlog("[apx] bf3 dump arm %d t %u uid %u hp %d d %.1f ang %.2f st %d tgt %d elig %d reach %d ring %d stance %d flank %d atk %d spec %d ally %d leader %u"
-							" steer %d goal_d %.1f goal_ang %.2f goal_gap %.1f goal_clear %d still %u route %d/%d kind %d ok %d",
+							" steer %d goal_d %.1f goal_ang %.2f goal_gap %.1f goal_clear %d still %u route %d/%d kind %d ok %d at %.1f,%.1f moved %.2f bump %d steered_ago %d",
 							(int)armI, ticks - phT, u, cs->HP, hypot(c->x - pe->x, c->y - pe->y), atan2(c->y - pe->y, c->x - pe->x), (int)c->monsterState,
 							(Uint32)c->monsterTarget == pe->getUID() ? 1 : 0, tactics::eligible(c, *cs) ? 1 : 0, s ? s->reachIdx : -9, s ? s->ringIdx : -9,
 							s ? (int)s->stance : -9, s ? (int)s->flank : -9, (int)c->monsterAttack, (int)c->monsterSpecialState, (int)c->monsterAllyIndex, cs->leader_uid,
 							s ? (int)s->lastSteer : -9, s ? hypot(s->goalX - pe->x, s->goalY - pe->y) : -1.0, s ? atan2(s->goalY - pe->y, s->goalX - pe->x) : 0.0,
 							s ? hypot(s->goalX - c->x, s->goalY - c->y) : -1.0, s ? (tactics::wallClear(c, c->x, c->y, s->goalX, s->goalY) ? 1 : 0) : -9,
-							s && s->stillSince ? ticks - s->stillSince : 0u, s ? (int)s->routeAt : -9, s ? (int)s->route.size() : -9, s ? (int)s->routeKind : -9, s ? (int)s->routeOk : -9);
+							s && s->stillSince ? ticks - s->stillSince : 0u, s ? (int)s->routeAt : -9, s ? (int)s->route.size() : -9, s ? (int)s->routeKind : -9, s ? (int)s->routeOk : -9,
+							c->x, c->y, s ? s->lastMoved : -1.0, s ? s->lastBump : -9, s ? (int)(ticks - s->steeredTick) : -9);
 					}
 				}
 				if ( ticks - phT == (Uint32)(measureTicks / 2) )
@@ -1023,10 +1049,11 @@ namespace bf3
 				go(P_FT_WAIT);
 				break;
 			case P_FT_WAIT:
-				if ( pe && !loadnextlevel && !loading && currentlevel == ftFloors[ftI] && ticks - phT > 100 ) { go(P_FT_RUN); }
+				if ( pe && !loadnextlevel && !loading && currentlevel == ftFloors[ftI] && ticks - phT > 100 ) { killAllMonsters(); go(P_FT_RUN); }
 				else if ( ticks - phT > 50 * 120 ) { finish(3); }
 				break;
 			case P_FT_RUN:
+				if ( ticks - phT < 10 ) { break; } // the removed monsters leave the entity list first
 				flowTestFloor(pe, ftFloors[ftI]);
 				++ftI;
 				go(P_FT_LOAD);
@@ -1060,6 +1087,15 @@ namespace bf3
 				{
 					if ( Entity* v = uidToEntity(leaderUid) ) { v->alertAlliesOnBeingHit(pe, nullptr); } // the engine's own call
 					callTick = ticks;
+					helpAcquired.clear(); firstHelpAcquire = 0; within4Window = -1; helpWindowS = 0;
+					for ( Uint32 u : helpUids )
+					{
+						Entity* h = uidToEntity(u);
+						if ( !h ) { continue; }
+						double v = .045 * (h->monsterGetDexterityForMovement() + 10) * TICKS_PER_SECOND; // units per second
+						helpWindowS = 2.0 * hsBfs * 16.0 / std::max(v, 1.0) + 2.0;
+						break;
+					}
 					go(P_H_OBSERVE);
 				}
 				break;
@@ -1071,6 +1107,22 @@ namespace bf3
 					double d = hypot(c->x - pe->x, c->y - pe->y);
 					helpMinDist = std::min(helpMinDist, d);
 					if ( !firstHelpArrival && d <= 4 * 16.0 ) { firstHelpArrival = ticks; }
+					if ( (Uint32)c->monsterTarget == pe->getUID() && std::find(helpAcquired.begin(), helpAcquired.end(), u) == helpAcquired.end() )
+					{
+						helpAcquired.push_back(u);
+						if ( !firstHelpAcquire ) { firstHelpAcquire = ticks; }
+						printlog("[apx] bf3 help %s: B uid %u took the character as target %.1f s after the call, %.1f tiles away, state %d",
+							helpArm == 0 ? "on" : "off", u, (ticks - callTick) / (double)TICKS_PER_SECOND, d / 16.0, (int)c->monsterState);
+					}
+				}
+				if ( within4Window < 0 && helpWindowS > 0 && ticks - callTick >= (Uint32)(helpWindowS * TICKS_PER_SECOND) )
+				{
+					within4Window = 0;
+					for ( Uint32 u : helpUids )
+					{
+						Entity* c = uidToEntity(u);
+						if ( c && hypot(c->x - pe->x, c->y - pe->y) <= 4 * 16.0 ) { ++within4Window; }
+					}
 				}
 				if ( ticks - callTick >= 30 * TICKS_PER_SECOND )
 				{

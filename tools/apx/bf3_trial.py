@@ -204,9 +204,15 @@ def gates(by, base, args):
     hon = [h for h in base["help"] if h.get("arm_kind") == "help_on"]
     hoff = [h for h in base["help"] if h.get("arm_kind") == "help_off_nopacks"]
     if hon and hoff:
-        g["calls_for_help"] = {"pass": all(h["calls_answered"] >= 1 and h["b_within4_end"] >= 3 for h in hon)
-                               and all(h["b_within4_end"] == 0 for h in hoff),
-                               "on_within4": [h["b_within4_end"] for h in hon], "off_within4": [h["b_within4_end"] for h in hoff],
+        # judged at window_s: twice pack B's walk from its spot plus 2 s (the game logs it); later arrivals in the
+        # control are monsters wandering into the fight on their own (s5-route: 2 of 4 at 26.3 s), kept as *_end
+        w = lambda h: h.get("b_within4_window", h["b_within4_end"])
+        g["calls_for_help"] = {"pass": all(h["calls_answered"] >= 1 and w(h) >= 3 for h in hon)
+                               and all(w(h) == 0 for h in hoff),
+                               "window_s": [h.get("window_s") for h in hon + hoff],
+                               "on_within4": [w(h) for h in hon], "off_within4": [w(h) for h in hoff],
+                               "on_within4_end": [h["b_within4_end"] for h in hon], "off_within4_end": [h["b_within4_end"] for h in hoff],
+                               "off_first_arrival_s": [h["b_first_arrival_s"] for h in hoff],
                                "on_first_arrival_s": [h["b_first_arrival_s"] for h in hon], "spot_steps": [h["spot_steps"] for h in hon]}
     fl = [a for k, rows in by.items() if k.startswith("flow:") for a in rows]
     nf = [a for k, rows in by.items() if k.startswith("noflow:") for a in rows]

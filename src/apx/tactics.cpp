@@ -202,6 +202,26 @@ namespace tactics
 		s.routeBuilt = 0; // replan now
 	}
 
+	static int gStuckLogs = 0;
+	static void logStuck(Entity* my, TacticsState& s, double gx, double gy)
+	{
+		if ( gStuckLogs >= 80 ) { return; }
+		++gStuckLogs;
+		printlog("[apx] tactics stuck uid %u at %.1f,%.1f tile %d,%d goal %.1f,%.1f steer %d route %d/%d kind %d bump %d",
+			my->getUID(), my->x, my->y, (int)floor(my->x / 16), (int)floor(my->y / 16), gx, gy, (int)s.lastSteer,
+			(int)s.routeAt, (int)s.route.size(), (int)s.routeKind, s.lastBump);
+		int n = 0;
+		for ( node_t* nd = map.entities ? map.entities->first : nullptr; nd && n < 12; nd = nd->next )
+		{
+			Entity* e = (Entity*)nd->element;
+			if ( !e || e == my || fabs(e->x - my->x) > 24 || fabs(e->y - my->y) > 24 ) { continue; }
+			++n;
+			printlog("[apx] tactics stuck   near sprite %d %s passable %d at %.1f,%.1f size %d,%d", (int)e->sprite,
+				e->behavior == &actMonster ? "monster" : e->behavior == &actPlayer ? "player" : e->behavior == &actDoor ? "door"
+				: e->behavior == &actDoorFrame ? "doorframe" : "other", e->flags[PASSABLE] ? 1 : 0, e->x, e->y, (int)e->sizex, (int)e->sizey);
+		}
+	}
+
 	bool moveTo(Entity* my, TacticsState& s, double gx, double gy, double speed, double& dist2)
 	{
 		double dx = gx - my->x, dy = gy - my->y, len = hypot(dx, dy);
@@ -211,15 +231,17 @@ namespace tactics
 		MONSTER_VELY = dy / len * v;
 		double ox = my->x, oy = my->y;
 		dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+		s.lastBump = hit.entity ? (int)hit.entity->sprite : -1; // clipMove clears hit first: this move's own contact
 		bumpDoor(my, s);
 		++C.steer_moves;
 		++C.steer_ticks;
-		if ( hypot(my->x - ox, my->y - oy) < 0.05 )
+		s.lastMoved = hypot(my->x - ox, my->y - oy);
+		if ( s.lastMoved < 0.05 )
 		{
 			if ( !s.stillSince ) { s.stillSince = ticks; }
 			else if ( ticks - s.stillSince >= (Uint32)TICKS_PER_SECOND )
 			{
-				if ( !s.stuckCounted ) { s.stuckCounted = true; ++C.stuck_episodes; }
+				if ( !s.stuckCounted ) { s.stuckCounted = true; ++C.stuck_episodes; logStuck(my, s, gx, gy); }
 				++C.stuck; // ticks stuck (no movement for 1 s while steering toward a goal)
 			}
 		}
@@ -240,7 +262,7 @@ namespace tactics
 			if ( fabs(dA) <= 0.35 ) { return; }   // in line with its slot: straight in
 			if ( dMe < keepR - 1 )
 			{
-				gx = target->x + cos(aMe) * keepR; gy = target->y + sin(aMe) * keepR;
+				gx = target->x + cos(aMe) * (keepR + HOLD_EPS + 1); gy = target->y + sin(aMe) * (keepR + HOLD_EPS + 1);
 				++C.route_around;
 				return;
 			}
@@ -249,7 +271,7 @@ namespace tactics
 		{
 			if ( dMe < keepR - 1 )
 			{
-				gx = target->x + cos(aMe) * (keepR + 2); gy = target->y + sin(aMe) * (keepR + 2);
+				gx = target->x + cos(aMe) * (keepR + HOLD_EPS + 1); gy = target->y + sin(aMe) * (keepR + HOLD_EPS + 1);
 				++C.route_around;
 				return;
 			}
@@ -659,18 +681,37 @@ namespace tactics
 			s.goalX = gx; s.goalY = gy;
 			s.faceTarget = ownSlot ? d < 2 * TILE : true;
 			bool moved = false;
-			if ( needsRoute(target, my, gx, gy, ownSlot) )
+			const bool inZone = d < keepOut(bodyR(target)) - 1;
+			if ( ownSlot && inZone && wallClear(my, my->x, my->y, gx, gy)
+				&& angDiff(atan2(gy - target->y, gx - target->x), atan2(my->y - target->y, my->x - target->x)) <= PI / 2 )
 			{
-				if ( d < keepOut(bodyR(target)) - 1 && wallClear(my, my->x, my->y, target->x, target->y) )
+				// already inside reach, on its slot's side: straight to the slot (no step out and back in)
+				s.lastSteer = STEER_STRAIGHT;
+				moved = moveTo(my, s, gx, gy, speed, dist2);
+			}
+			else if ( !ownSlot && inZone )
+			{
+				// no slot in reach: out of the zone radially, or by its route when a wall stands in the radial way
+				double ox = gx, oy = gy;
+				routeAround(target, my, ox, oy, false);
+				if ( !wallClear(my, my->x, my->y, ox, oy) && planGoalRoute(my, s, target, gx, gy) )
 				{
-					routeAround(target, my, gx, gy, ownSlot); // inside the zone, off its slot's bearing: step out radially first
+					s.lastSteer = STEER_ROUTE;
+					++C.goal_route_steps;
+					moved = followRoute(my, s, speed, dist2, gx, gy, nullptr);
+				}
+				else
+				{
 					s.lastSteer = STEER_OUT;
 					++C.step_out;
-					moved = moveTo(my, s, gx, gy, speed, dist2);
+					moved = moveTo(my, s, ox, oy, speed, dist2);
 				}
-				else if ( planGoalRoute(my, s, target, gx, gy) )
+			}
+			else if ( needsRoute(target, my, gx, gy, ownSlot) )
+			{
+				if ( planGoalRoute(my, s, target, gx, gy) )
 				{
-					// round the zone and any wall by the engine's A* (zone tiles penalised), entering the slot radially
+					// round the zone and any wall by the engine's A* (zone tiles penalised); the slot is entered from its side
 					s.lastSteer = STEER_ROUTE;
 					++C.goal_route_steps;
 					moved = followRoute(my, s, speed, dist2, gx, gy, nullptr);

@@ -66,6 +66,7 @@ namespace tactics
 		bool routeOk = false; int routeGoal = -1; Uint32 routeBuilt = 0;   // ROUTE_GOAL: a path was found, its goal tile, when planned
 		int avoidTile = -1; Uint32 avoidUntil = 0;                         // a locked door it bumped: kept out of its routes for 5 s
 		uint8_t lastSteer = STEER_NONE; double goalX = 0, goalY = 0;       // diagnostics
+		double lastMoved = 0; int lastBump = -1;                           // last steered move: distance, sprite it hit (-1 none)
 		bool lowHp = false, burning = false, outnumbered = false, surrendered = false;
 		Uint32 retreatStart = 0, lastRecover = 0, lastHomePath = 0;
 		Uint32 helpTarget = 0, helpSince = 0; double helpX = 0, helpY = 0;   // answering a call for help
