@@ -80,6 +80,15 @@ local function nearest_player(pos, x, y)
   return best
 end
 
+-- A point is hidden when a wall blocks the view from every player to it AND to its four neighbours: apx.spawn may move the body
+-- one tile to the nearest free ground, so the margin keeps the check valid after the move.
+local function hidden_from_all(pos, x, y)
+  for _, d in ipairs({ { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+    for _, p in ipairs(pos) do if apx.tile_los(p[1], p[2], x + d[1], y + d[2]) ~= false then return false end end
+  end
+  return true
+end
+
 -- AMBUSH: a pack within `cost` budget spawns 14..22 tiles from the party (behind or beside), on open ground,
 -- with an audible cue; after 2 s (100 ticks) it hunts the nearest player. Not in sight is only measured:
 -- spawns that start in line of sight are counted (ambush_visible), because a spawned body cannot be undone.
@@ -96,10 +105,7 @@ local function do_ambush(core, rng, cost, depth, pos)
     local ang = rng:float() * 2 * math.pi
     local r = rmin + rng:float() * (rmax - rmin)
     local cx, cy = centre[1] + math.cos(ang) * r, centre[2] + math.sin(ang) * r
-    local hidden = true
-    if not D.no_los_check then
-      for _, p in ipairs(pos) do if apx.tile_los(p[1], p[2], cx, cy) ~= false then hidden = false; break end end
-    end
+    local hidden = D.no_los_check or hidden_from_all(pos, cx, cy)
     if not hidden then
       D.declines.ambush_candidate_visible = (D.declines.ambush_candidate_visible or 0) + 1
     else
@@ -111,9 +117,17 @@ local function do_ambush(core, rng, cost, depth, pos)
     D.declines.event_blocked_no_tile = D.declines.event_blocked_no_tile + 1
     return { kind = "ambush", spawned = 0, pack = pack, visible = 0 }
   end
-  for i = 2, #pack do
-    local u = apx.spawn(pack[i], ax + (rng:float() - 0.5) * 3, ay + (rng:float() - 0.5) * 3)
-    if u then spawned[#spawned + 1] = u else D.declines.spawn_refused = D.declines.spawn_refused + 1 end
+  for i = 2, #pack do   -- followers: each point is hidden-checked too (up to 4 tries), else the member is dropped and counted
+    local placed = false
+    for _ = 1, 4 do
+      local mx, my = ax + (rng:float() - 0.5) * 3, ay + (rng:float() - 0.5) * 3
+      local hidden = D.no_los_check or hidden_from_all(pos, mx, my)
+      if hidden then
+        local u = apx.spawn(pack[i], mx, my)
+        if u then spawned[#spawned + 1] = u; placed = true; break end
+      end
+    end
+    if not placed then D.declines.spawn_refused = D.declines.spawn_refused + 1 end
   end
   for _, u in ipairs(spawned) do
     local x, y = apx.entity_pos(u)
@@ -165,28 +179,36 @@ end
 local function do_patrol(core, rng, cost, depth, pos)
   local cands = idle_far(pos, 15)
   if #cands == 0 then D.declines.no_eligible = D.declines.no_eligible + 1; return { kind = "patrol", moved = 0, eligible = 0 } end
-  local c = cands[1 + rng:int(#cands)]
   local p = pos[1 + rng:int(#pos)]
-  local ok = apx.path_to(c[1], math.floor(p[1] + (rng:float() - 0.5) * 8), math.floor(p[2] + (rng:float() - 0.5) * 8))
-  if not ok then D.declines.path_failed = (D.declines.path_failed or 0) + 1 end
-  return { kind = "patrol", moved = ok and 1 or 0, eligible = #cands, uid = c[1] }
+  local ok, c = false, nil
+  for _ = 1, math.min(6, #cands) do   -- path search is capped (200 tries): try several idle monsters, count failures
+    c = cands[1 + rng:int(#cands)]
+    ok = apx.path_to(c[1], math.floor(p[1] + (rng:float() - 0.5) * 8), math.floor(p[2] + (rng:float() - 0.5) * 8))
+    if ok then break end
+    D.declines.path_failed = (D.declines.path_failed or 0) + 1
+  end
+  return { kind = "patrol", moved = ok and 1 or 0, eligible = #cands, uid = c and c[1] }
 end
 
 local EXEC = { ambush = do_ambush, den = do_den, patrol = do_patrol }
 
 -- ---- the decision ---------------------------------------------------------------------------
-local me, rng
+local me, rng, me_seed
 apx.every(50, function()
   if not apx.player_uid(0) then return end                 -- menu map: no player, no director
   local t0 = apx.clock_us()
   local core = apx.shared.director_core
-  if not me then
-    me = identity(apx.run_seed())
+  -- Identity follows the run seed. The seed can still change while a run is starting (it is 0 on the start map), so the identity is
+  -- re-derived until it is LOCKED: by the first executed event or by 30 decisions. Replays of a run therefore always see the same name.
+  local seed = apx.run_seed()
+  if not me or (me_seed ~= seed and not D.locked) then
+    me = identity(seed); me_seed = seed
     D.me = me
-    rng = core.rng_new(apx.run_seed() ~ 0x4442)
+    rng = core.rng_new(seed ~ 0x4442)
     D.rng = rng
-    apx.log(string.format("director %s (%s), run seed %d", me.name, me.temper, apx.run_seed()))
+    apx.log(string.format("director %s (%s), run seed %d", me.name, me.temper, seed))
   end
+  if D.decisions >= 30 then D.locked = true end
   local t, pos = read_tension()
   if not t then return end
   t.ewma = D.tension.ewma * 0.7 + t.value * 0.3
@@ -212,7 +234,7 @@ apx.every(50, function()
   if ev ~= "silence" and EXEC[ev] then
     result = EXEC[ev](core, rng, cost, depth, pos)
     D.banked = D.banked - cost
-    D.last[ev] = now_s; D.last_event = ev; D.last_hostile_s = now_s
+    D.last[ev] = now_s; D.last_event = ev; D.last_hostile_s = now_s; D.locked = true
     D.info[ev] = result
   end
   D.totals[ev] = (D.totals[ev] or 0) + 1

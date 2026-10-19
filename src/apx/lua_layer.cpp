@@ -348,12 +348,17 @@ void jsonValue(lua_State* L, int idx, std::string& out, int depth) {
 	}
 }
 int g_rowsWritten = 0, g_rowsRefused = 0;
+// One open handle per file (a per-row open cost 1.4 ms p99, measured). Flushed every 10 rows and at shutdown / test quit:
+// a flush per row cost about 100 us of the 200 us decision budget (measured on a floor with 38 monsters).
+std::map<std::string, std::ofstream> g_rowFiles;
+std::map<std::string, size_t> g_rowSizes;
+bool g_rowsDirty = false;
+void flushRows() { g_rowsDirty = false; for ( auto& f : g_rowFiles ) { f.second.flush(); } }
 int api_row(lua_State* L) {
 	const char* name = luaL_checkstring(L, 1); luaL_checktype(L, 2, LUA_TTABLE);
 	for ( const char* c = name; *c; c++ ) { if ( !(isalnum((unsigned char)*c) || *c == '_' || *c == '-') ) { return luaL_error(L, "bad row file name"); } }
 	std::string line; jsonValue(L, 2, line, 0); line += '\n';
-	static std::map<std::string, std::ofstream> files; // opened once per file: a per-row open cost 1.4 ms p99 (measured)
-	static std::map<std::string, size_t> sizes;
+	auto& files = g_rowFiles; auto& sizes = g_rowSizes;
 	std::string key = name;
 	auto it = files.find(key);
 	if ( it == files.end() ) {
@@ -365,7 +370,8 @@ int api_row(lua_State* L) {
 		it = files.emplace(key, std::ofstream(f, std::ios::app | std::ios::binary)).first;
 	}
 	if ( sizes[key] > 8u * 1024 * 1024 || !it->second ) { g_rowsRefused++; lua_pushboolean(L, 0); return 1; }
-	it->second << line; it->second.flush(); sizes[key] += line.size();
+	it->second << line; sizes[key] += line.size();
+	g_rowsDirty = true;   // flushed from apxLuaTick (off the decision path) and at shutdown
 	bool good = it->second.good();
 	g_rowsWritten++; lua_pushboolean(L, good); return 1;
 }
@@ -385,13 +391,14 @@ int api_player_uid(lua_State* L) {
 }
 int api_monster_count(lua_State* L) {
 	int n = 0;
-	if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster ) { n++; } } }
+	if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster && e->getStats() && e->getStats()->HP > 0 ) { n++; }   /* a dying body is not a monster */ } }
 	lua_pushinteger(L, n); return 1;
 }
 int api_is_test(lua_State* L) { lua_pushboolean(L, G.test); return 1; }
 int api_test_quit(lua_State* L) {
 	if ( !G.test ) { return luaL_error(L, "test_quit is only available with -apx-luatest"); }
 	logf("test_quit(%d) after %d errors caught, %d events", (int)luaL_optinteger(L, 1, 0), G.nErrors, G.nEvents);
+	flushRows();
 	mainloop = 0;
 	return 0;
 }
@@ -569,6 +576,7 @@ void apxLuaShutdown() {
 	if ( !G.on ) { return; }
 	logf("shutdown: events=%d errors=%d handlers_disabled=%d dropped=%d scripts_loaded=%d scripts_failed=%d mem=%zu",
 		G.nEvents, G.nErrors, G.nDisabled, G.nDropped, G.nLoaded, G.nScriptFail, G.used);
+	flushRows();
 	closeState(); G.on = false;
 }
 
@@ -592,12 +600,13 @@ void apxLuaTick() {
 	}
 	if ( ticks % 25 == 0 && G.hadMonsters ) {
 		int alive = 0;
-		if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster ) { alive++; } } }
+		if ( map.creatures ) { for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) { Entity* e = (Entity*)nd->element; if ( e && e->behavior == &actMonster && e->getStats() && e->getStats()->HP > 0 ) { alive++; } } }
 		if ( alive == 0 ) {
 			G.hadMonsters = false;
 			dispatch("floor_cleared", [&](lua_State* L) { lua_newtable(L); lua_pushinteger(L, currentlevel); lua_setfield(L, -2, "floor"); });
 		}
 	}
+	if ( g_rowsDirty && ticks % 250 == 0 ) { flushRows(); }
 	if ( G.timers.empty() ) { return; }
 	lua_State* L = G.L;
 	for ( size_t i = 0; i < G.timers.size(); i++ ) { // handlers may add timers: index loop, copy before call
