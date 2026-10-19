@@ -224,6 +224,27 @@ namespace tactics
 		}
 	}
 
+	// The A* blocks only the tile under an entity's centre, so a body overlapping a tile edge, or anything the
+	// collision code sees and the path map does not, can stop a planned walk for good (s5-route: two creatures
+	// pushed against one tile edge for 12 s). On the first stuck second the tile it pushes into (or, inside one
+	// tile, its waypoint's) is kept out of its routes for 5 s and the route is replanned.
+	static void routeBlocked(Entity* my, TacticsState& s, double gx, double gy)
+	{
+		if ( s.routeKind != ROUTE_GOAL && s.routeKind != ROUTE_HOME ) { return; }
+		double dx = gx - my->x, dy = gy - my->y, len = std::max(hypot(dx, dy), 1e-6);
+		int W = (int)map.width;
+		int ax = (int)floor((my->x + dx / len * 9) / 16), ay = (int)floor((my->y + dy / len * 9) / 16);
+		int mx = (int)floor(my->x / 16), myy = (int)floor(my->y / 16);
+		if ( ax == mx && ay == myy ) { ax = (int)floor(gx / 16); ay = (int)floor(gy / 16); }
+		if ( ax < 0 || ay < 0 || ax >= W || ay >= (int)map.height || (ax == mx && ay == myy) ) { return; }
+		s.avoidTile = ax + ay * W;
+		s.avoidUntil = ticks + 5 * TICKS_PER_SECOND;
+		if ( s.routeKind == ROUTE_GOAL ) { s.routeBuilt = 0; } // planGoalRoute replans on its next call
+		else { s.routeKind = ROUTE_NONE; }                     // packSteer plans the way home again
+		++C.route_blocked_replans;
+		printlog("[apx] tactics route blocked uid %u at %.1f,%.1f: tile %d,%d avoided 5 s, replanning", my->getUID(), my->x, my->y, ax, ay);
+	}
+
 	bool moveTo(Entity* my, TacticsState& s, double gx, double gy, double speed, double& dist2)
 	{
 		double dx = gx - my->x, dy = gy - my->y, len = hypot(dx, dy);
@@ -243,7 +264,7 @@ namespace tactics
 			if ( !s.stillSince ) { s.stillSince = ticks; }
 			else if ( ticks - s.stillSince >= (Uint32)TICKS_PER_SECOND )
 			{
-				if ( !s.stuckCounted ) { s.stuckCounted = true; ++C.stuck_episodes; logStuck(my, s, gx, gy); }
+				if ( !s.stuckCounted ) { s.stuckCounted = true; ++C.stuck_episodes; logStuck(my, s, gx, gy); routeBlocked(my, s, gx, gy); }
 				++C.stuck; // ticks stuck (no movement for 1 s while steering toward a goal)
 			}
 		}

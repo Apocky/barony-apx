@@ -85,6 +85,7 @@ namespace tactics
 		long long goal_routes = 0, goal_route_fail = 0, goal_route_steps = 0, arc_fallback = 0, step_out = 0;
 		long long doors_opened = 0, door_bumps_locked = 0, routed_engaged = 0, routed_promoted = 0;
 		long long flank_fail_target = 0, flank_fail_progress = 0, flank_fail_time = 0, flank_fail_nogoal = 0, flank_fail_noroute = 0;
+		long long route_blocked_replans = 0;  // a planned walk stuck 1 s on a step: that tile avoided 5 s, route replanned
 	};
 	extern Counters C;
 	void resetCounters();

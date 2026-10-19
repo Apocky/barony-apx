@@ -518,6 +518,7 @@ namespace tactics
 				HitSave hs;
 				gPenalty.assign((size_t)map.width * map.height, 0);
 				penaliseZone(target); // the way home leaves the fight directly, never back through it
+				if ( s.avoidTile >= 0 && s.avoidTile < (int)(map.width * map.height) && ticks < s.avoidUntil ) { gPenalty[s.avoidTile] = 255; }
 				gPenaltyOn = true;
 				list_t* p = generatePath((int)floor(my->x / 16), (int)floor(my->y / 16), (int)floor(s.homeX / 16), (int)floor(s.homeY / 16),
 					my, nullptr, GeneratePathTypes::GENERATE_PATH_DEFAULT);
