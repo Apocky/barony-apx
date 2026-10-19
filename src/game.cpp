@@ -3072,7 +3072,8 @@ void gameLogic(void)
 					if ( itemCategory(item) != SPELL_CAT 
 						&& item->x != Player::PaperDoll_t::ITEM_PAPERDOLL_COORDINATE
 						&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
-						&& (item->x >= players[player]->inventoryUI.getSizeX() || item->y >= backpack_sizey[player]) )
+						&& (item->x >= players[player]->inventoryUI.getSizeX()
+						|| item->y >= (apx_inv::vanillaGrid() ? backpack_sizey[player] : players[player]->inventoryUI.getSizeY())) ) // apx: virtual rows are room (U1)
 					{
 						messagePlayer(player, MESSAGE_INVENTORY, Language::get(727), item->getName());
 						bool droppedAll = false;
@@ -3805,7 +3806,8 @@ void gameLogic(void)
 				if ( itemCategory(item) != SPELL_CAT 
 					&& item->x != Player::PaperDoll_t::ITEM_PAPERDOLL_COORDINATE
 					&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
-					&& (item->x >= players[clientnum]->inventoryUI.getSizeX() || item->y >= backpack_sizey) )
+					&& (item->x >= players[clientnum]->inventoryUI.getSizeX()
+						|| item->y >= (apx_inv::vanillaGrid() ? backpack_sizey : players[clientnum]->inventoryUI.getSizeY())) ) // apx: virtual rows are room (U1)
 				{
 					messagePlayer(clientnum, MESSAGE_INVENTORY, Language::get(727), item->getName());
 					bool droppedAll = false;

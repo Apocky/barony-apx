@@ -125,6 +125,7 @@ std::string massText(Sint32 units)
 static std::string g_test;
 static int g_ticks = 0, g_phase = 0, g_mark = 0;
 static std::string g_shot;
+static int g_loadedItems = 0;
 static void runGates();
 static void runUiPhases();
 
@@ -257,6 +258,7 @@ static void runGates()
 	emptyInventory(0);
 	int loaded = loadGame(0, info);
 	std::string after = snapshot(0);
+	g_loadedItems = (int)list_Size(&stats[0]->inventory);
 	bool same = before == after;
 	// control: the compare must see a single changed row
 	std::string tampered = before;
@@ -279,26 +281,21 @@ static void runGates()
 
 // Step 2 phases: the list on screen full size, gamepad and keyboard navigation, then the
 // split-screen quarter layout (player 0's view set to a quadrant the way setupSplitscreen does).
-static void pressBinding(const char* name)
-{
-	// test only: the state a gamepad D-pad press leaves in the binding for one frame
-	auto& b = const_cast<std::unordered_map<std::string, Input::binding_t>&>(Input::inputs[0].getBindings())[name];
-	b.binary = true;
-	b.consumed = false;
-}
-
 static void runUiPhases()
 {
 	const int dt = g_ticks - g_mark;
 	auto& pl = *players[0];
 	static ListState A, B, C, D;
+	static int itemsAtStart = 0;
 	if ( dt == 1 )
 	{
+		itemsAtStart = g_loadedItems; // counted in the same tick as the load
+		listTestPad(true);
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
 	else if ( dt == 60 ) { A = listState(0); g_shot = "apx-u1-full.png"; }
-	else if ( dt >= 70 && dt <= 86 && (dt - 70) % 4 == 0 ) { pressBinding("InventoryMoveDown"); }
+	else if ( dt >= 70 && dt <= 86 && (dt - 70) % 4 == 0 ) { listTestPadPress(); }
 	else if ( dt == 100 ) { B = listState(0); }
 	else if ( dt >= 104 && dt <= 124 && (dt - 104) % 4 == 0 ) { keystatus[SDLK_DOWN] = ((dt - 104) / 4) % 2 == 0; }
 	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); }
@@ -325,6 +322,8 @@ static void runUiPhases()
 					k, s.rowsDrawn > 0, s.rowCount, s.visibleRows, s.rowsDrawn, s.selected, s.scroll, s.moves); };
 			fprintf(f, "{\"test\":\"list_ui\",\"mode\":\"%s\",", vanillaGrid() ? "vanilla" : "apx");
 			st("full", A); st("after_gamepad5", B); st("after_keyboard3", C); st("quarter", D);
+			int itemsNow = (int)list_Size(&stats[0]->inventory);
+			fprintf(f, "\"items_at_start\":%d,\"items_after_260_ticks\":%d,\"items_kept\":%s,", itemsAtStart, itemsNow, itemsNow == itemsAtStart ? "true" : "false");
 			fprintf(f, "\"gamepad_moved\":%d,\"keyboard_moved\":%d,\"quarter_fewer_rows\":%s,\"res\":[%d,%d]}\n",
 				B.selected - A.selected, C.selected - B.selected, D.visibleRows > 0 && D.visibleRows < A.visibleRows ? "true" : "false", xres, yres);
 			fclose(f);

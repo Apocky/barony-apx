@@ -13,6 +13,7 @@
 #include "menu.hpp"
 #include "ui/Frame.hpp"
 #include "ui/Field.hpp"
+#include "ui/Font.hpp"
 #include <algorithm>
 
 namespace apx_inv
@@ -25,23 +26,11 @@ constexpr int ROW_H = 20, HEAD_H = 34, MAX_ROWS = 40;
 const ListState& listState(int player) { return g_list[std::max(0, std::min(MAXPLAYERS - 1, player))]; }
 bool listActive(int player) { return !vanillaGrid() && player >= 0 && player < MAXPLAYERS && g_shown[player]; }
 
-static const char* statusWord(int s)
+// display entries: a header per kind, then that kind's rows by name; equipped items and gold included
+struct Entry { bool header; Row row; std::string name; };
+static std::vector<Entry> displayRows(int player)
 {
-	switch ( s )
-	{
-		case BROKEN: return "broken";
-		case DECREPIT: return "decrepit";
-		case WORN: return "worn";
-		case SERVICABLE: return "serviceable";
-		case EXCELLENT: return "excellent";
-		default: return "";
-	}
-}
-
-// rows for display: by kind, then name; equipped items and gold included
-static std::vector<std::pair<Row, std::string>> displayRows(int player)
-{
-	std::vector<std::pair<Row, std::string>> out;
+	std::vector<Entry> items;
 	for ( auto& r : rows(player) )
 	{
 		std::string name;
@@ -51,19 +40,49 @@ static std::vector<std::pair<Row, std::string>> displayRows(int player)
 			name = it->getName();
 			if ( r.count > 1 ) { name += " x" + std::to_string(r.count); }
 		}
-		out.push_back({ r, name });
+		items.push_back({ false, r, name });
 	}
-	std::stable_sort(out.begin(), out.end(), [](const std::pair<Row, std::string>& a, const std::pair<Row, std::string>& b) {
-		return a.first.kind != b.first.kind ? a.first.kind < b.first.kind : a.second < b.second; });
+	std::stable_sort(items.begin(), items.end(), [](const Entry& a, const Entry& b) {
+		return a.row.kind != b.row.kind ? a.row.kind < b.row.kind : a.name < b.name; });
+	std::vector<Entry> out;
+	int kind = -1;
+	for ( auto& e : items )
+	{
+		if ( e.row.kind != kind )
+		{
+			kind = e.row.kind;
+			Entry h{ true, Row{}, kindName(kind) };
+			h.row.kind = kind;
+			out.push_back(h);
+		}
+		out.push_back(e);
+	}
 	return out;
 }
+static std::vector<char> g_isHeader[MAXPLAYERS];
+static bool g_testPad = false;
+void listTestPad(bool on) { g_testPad = on; }
+static int g_padPending = 0;
+void listTestPadPress() { ++g_padPending; }
 
 static void move(int player, int d)
 {
 	auto& st = g_list[player];
 	if ( d ) { ++st.moves; }
 	if ( st.rowCount <= 0 ) { st.selected = 0; return; }
-	st.selected = std::max(0, std::min(st.rowCount - 1, st.selected + d));
+	auto& hdr = g_isHeader[player];
+	auto isHeader = [&](int i) { return i >= 0 && i < (int)hdr.size() && hdr[i]; };
+	int step = d < 0 ? -1 : 1, n = std::abs(d), sel = st.selected;
+	if ( n == 0 && isHeader(sel) ) { n = 1; step = 1; }
+	for ( int k = 0; k < n; ++k )
+	{
+		int next = sel + step;
+		while ( next >= 0 && next < st.rowCount && isHeader(next) ) { next += step; }
+		if ( next < 0 || next >= st.rowCount ) { break; }
+		sel = next;
+	}
+	st.selected = std::max(0, std::min(st.rowCount - 1, sel));
+	if ( st.selected > 0 && isHeader(st.selected - 1) && st.selected - 1 < st.scroll ) { st.scroll = st.selected - 1; }
 	if ( st.selected < st.scroll ) { st.scroll = st.selected; }
 	if ( st.visibleRows > 0 && st.selected >= st.scroll + st.visibleRows ) { st.scroll = st.selected - st.visibleRows + 1; }
 }
@@ -123,6 +142,10 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 			f->setFont("fonts/pixel_maz_multiline.ttf#16#2");
 			f->setHJustify(Field::justify_t::LEFT);
 			f->setVJustify(Field::justify_t::CENTER);
+			auto m = row->addField("mass", 32);
+			m->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			m->setHJustify(Field::justify_t::RIGHT);
+			m->setVJustify(Field::justify_t::CENTER);
 		}
 	}
 	// shown exactly when the vanilla inventory shows its item slots
@@ -136,6 +159,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	if ( !open ) { return; }
 	invSlots->setDisabled(true);
 	if ( backpackSlots ) { backpackSlots->setDisabled(true); }
+	if ( Frame* bag = inventoryFrame->findFrame("inventory backpack") ) { bag->setDisabled(true); } // the bag strip under the backpack rows
 
 	// geometry: the slot area of this layout plus the backpack strip below it when not compact
 	SDL_Rect r = invSlots->getSize();
@@ -145,6 +169,12 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		const SDL_Rect& b = backpackSlots->getSize();
 		r.h = std::max(r.h, b.y + b.h - r.y);
 	}
+	if ( Frame* base = inventoryFrame->findFrame("inventory base") )
+	{
+		const SDL_Rect& b = base->getSize(); // the painted slot grid lives in the base image: cover it
+		int bottom = b.y + (pl.inventoryUI.bCompactView ? 250 : b.h);
+		r.h = std::max(r.h, bottom - r.y);
+	}
 	r.h = std::max(HEAD_H + ROW_H, std::min(r.h, inventoryFrame->getSize().h - r.y));
 	list->setSize(r);
 	auto& st = g_list[player];
@@ -152,17 +182,28 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 
 	auto dr = displayRows(player);
 	st.rowCount = (int)dr.size();
+	g_isHeader[player].assign(dr.size(), 0);
+	for ( size_t i = 0; i < dr.size(); ++i ) { g_isHeader[player][i] = dr[i].header; }
 	for ( int i = 0; i < st.rowCount; ++i ) // keep the selection on the same item when rows move
 	{
-		if ( dr[i].first.uid == st.selectedUid && (st.selectedUid || dr[i].first.kind == st.selectedKind) ) { st.selected = i; break; }
+		if ( !dr[i].header && dr[i].row.uid == st.selectedUid && (st.selectedUid || dr[i].row.kind == st.selectedKind) ) { st.selected = i; break; }
 	}
+	if ( g_testPad && g_padPending > 0 && player == 0 )
+	{
+		// self-test: the state a D-pad press leaves in the binding, set just before it is read
+		auto& b = const_cast<std::unordered_map<std::string, Input::binding_t>&>(Input::inputs[0].getBindings())["InventoryMoveDown"];
+		b.binary = true;
+		b.consumed = false;
+		--g_padPending;
+	}
+	if ( inputs.hasController(player) || g_testPad ) { listHandleMove(player); } // the gamepad path, whichever runs first
 	move(player, 0);
 	st.scroll = std::max(0, std::min(st.scroll, std::max(0, st.rowCount - st.visibleRows)));
 
 	// header and mass bar: carried and limit as numbers
 	Sint32 carried = carriedMass(player), limit = std::max<Sint32>(1, massLimit(player));
 	char head[128];
-	snprintf(head, sizeof(head), "Carried %s / %s   %d rows", massText(carried).c_str(), massText(limit).c_str(), st.rowCount);
+	snprintf(head, sizeof(head), "%s / %s", massText(carried).c_str(), massText(limit).c_str());
 	if ( auto headField = list->findField("apx head") )
 	{
 		headField->setSize(SDL_Rect{ 6, 2, r.w - 12, 18 });
@@ -213,24 +254,49 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		row->setSize(SDL_Rect{ 4, HEAD_H + i * ROW_H, r.w - 8, ROW_H });
 		if ( inputs.getVirtualMouse(player)->draw_cursor && row->capturesMouseInRealtimeCoords() )
 		{
-			st.selected = idx; // hover selects
+			if ( !dr[idx].header ) { st.selected = idx; } // hover selects
 			if ( in.binaryToggle("MenuLeftClick") ) { in.consumeBinaryToggle("MenuLeftClick"); }
 		}
 		const auto& d = dr[idx];
-		char t[192];
-		snprintf(t, sizeof(t), "%-.4s %s%s  %s  %s", kindName(d.first.kind), d.second.c_str(), d.first.equipped ? " [E]" : "",
-			massText(d.first.mass).c_str(), d.first.type >= 0 ? statusWord(d.first.status) : "");
-		f->setSize(SDL_Rect{ 4, 0, r.w - 16, ROW_H });
-		f->setText(t);
+		Field* mf = row->findField("mass");
 		bool sel = idx == st.selected;
+		if ( d.header )
+		{
+			f->setSize(SDL_Rect{ 2, 0, r.w - 12, ROW_H });
+			f->setText(d.name.c_str());
+			f->setTextColor(makeColor(230, 190, 90, 255));
+			if ( mf ) { mf->setText(""); }
+			row->setColor(makeColor(0, 0, 0, 0));
+			++st.rowsDrawn;
+			continue;
+		}
+		std::string name = d.name + (d.row.equipped ? " [E]" : "");
+		f->setSize(SDL_Rect{ 10, 0, r.w - 74, ROW_H });
+		if ( Font* font = Font::get(f->getFont()) ) // fields do not clip: shorten the name to its column
+		{
+			const int maxW = r.w - 78;
+			int w = 0, h = 0;
+			while ( name.size() > 2 && font->sizeText(name.c_str(), &w, &h) == 0 && w > maxW ) { name.erase(name.size() - 2); name += "."; }
+		}
+		f->setText(name.c_str());
+		if ( mf )
+		{
+			mf->setSize(SDL_Rect{ r.w - 72, 0, 60, ROW_H });
+			mf->setText(massText(d.row.mass).c_str());
+			mf->setTextColor(makeColor(200, 200, 200, 255));
+		}
+		// condition by colour: excellent white .. broken red; equipped blue
+		static const Uint32 cond[] = { makeColor(230, 70, 60, 255), makeColor(240, 140, 60, 255), makeColor(240, 210, 90, 255),
+			makeColor(225, 225, 225, 255), makeColor(255, 255, 255, 255) };
+		int c = d.row.type < 0 ? 4 : std::max(0, std::min(4, d.row.status));
+		f->setTextColor(d.row.equipped ? makeColor(140, 220, 255, 255) : cond[c]);
 		row->setColor(sel ? makeColor(120, 90, 30, 255) : (i % 2 ? makeColor(36, 28, 20, 255) : makeColor(28, 22, 16, 255)));
-		f->setTextColor(d.first.equipped ? makeColor(140, 220, 255, 255) : makeColor(255, 255, 255, 255));
 		++st.rowsDrawn;
 	}
-	if ( st.selected >= 0 && st.selected < st.rowCount )
+	if ( st.selected >= 0 && st.selected < st.rowCount && !dr[st.selected].header )
 	{
-		st.selectedUid = dr[st.selected].first.uid;
-		st.selectedKind = dr[st.selected].first.kind;
+		st.selectedUid = dr[st.selected].row.uid;
+		st.selectedKind = dr[st.selected].row.kind;
 	}
 }
 } // namespace apx_inv

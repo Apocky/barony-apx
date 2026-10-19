@@ -48,6 +48,8 @@ namespace apx_inv
 	void listUpdate(int player, ::Frame* inventoryFrame, ::Frame* invSlots, ::Frame* backpackSlots);
 	bool listHandleMove(int player);
 	const ListState& listState(int player);
+	void listTestPad(bool on);
+	void listTestPadPress();    // self-test only: one D-pad-down press, set in the binding just before the list reads it // self-test only: run the gamepad move path without a controller attached
 
 	// -apxselftest=inventory: runs once on the test floor, writes JSONL, then quits the game.
 	void selfTestArm(const char* which);

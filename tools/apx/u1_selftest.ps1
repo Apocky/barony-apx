@@ -33,7 +33,7 @@ try {
         New-Item -ItemType Directory -Path $run | Out-Null
         if ($mode -eq 'vanilla') { $env:APX_GRID = '1' } else { Remove-Item Env:APX_GRID -ErrorAction SilentlyContinue }
         $t0 = Get-Date
-        $p = Start-Process -FilePath $Exe -ArgumentList '-apxfloor=1', '-apxmapseed=1', '-apxselftest=inventory', '-windowed' -WorkingDirectory $run -PassThru
+        $p = Start-Process -FilePath $Exe -ArgumentList '-windowed', '-size=1280x720', '-quickstart=barbarian', '-apxfloor=1', '-apxmapseed=1234567', '-apxselftest=inventory' -WorkingDirectory $run -PassThru
         if (-not $p.WaitForExit(300000)) { Stop-Process -Id $p.Id -Force; "run $mode TIMEOUT" }
         "run $mode exit $($p.ExitCode) in $([int]((Get-Date) - $t0).TotalSeconds) s at $run"
     }
