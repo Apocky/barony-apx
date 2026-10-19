@@ -1,0 +1,29 @@
+{
+ "_note": "F6 v1 materials (12-CRAFTING section 1: the 24 base materials). density = real kg/m^3; hardness, tier, value_per_kg, flammable, element and salvage class are ASSUMED (T0 data). element: 0 none 1 fire 2 frost 3 earth 4 storm 5 arcane 6 life 7 death. salvage: the Barony stand-in item class at the station (metal, magic, none).",
+ "materials": [
+  {"density": 2600, "element": 3, "flammable": 0, "hardness": 6, "id": "stone", "melt_c": 1200, "name": "stone", "salvage": "none", "tier": 1, "value_per_kg": 1},
+  {"density": 2750, "element": 3, "flammable": 0, "hardness": 7, "id": "granite", "melt_c": 1250, "name": "granite", "salvage": "none", "tier": 2, "value_per_kg": 2},
+  {"density": 2400, "element": 1, "flammable": 0, "hardness": 6, "id": "obsidian", "melt_c": 900, "name": "obsidian", "salvage": "magic", "tier": 5, "value_per_kg": 30},
+  {"density": 1800, "element": 3, "flammable": 0, "hardness": 2, "id": "clay", "melt_c": 1100, "name": "clay", "salvage": "none", "tier": 1, "value_per_kg": 1},
+  {"density": 1900, "element": 3, "flammable": 0, "hardness": 4, "id": "brick", "melt_c": 1300, "name": "brick", "salvage": "none", "tier": 2, "value_per_kg": 2},
+  {"density": 7870, "element": 0, "flammable": 0, "hardness": 5, "id": "iron", "melt_c": 1538, "name": "iron", "salvage": "metal", "tier": 2, "value_per_kg": 8},
+  {"density": 7850, "element": 0, "flammable": 0, "hardness": 7, "id": "steel", "melt_c": 1450, "name": "steel", "salvage": "metal", "tier": 4, "value_per_kg": 20},
+  {"density": 8800, "element": 0, "flammable": 0, "hardness": 4, "id": "bronze", "melt_c": 950, "name": "bronze", "salvage": "metal", "tier": 2, "value_per_kg": 10},
+  {"density": 8960, "element": 4, "flammable": 0, "hardness": 3, "id": "copper", "melt_c": 1085, "name": "copper", "salvage": "metal", "tier": 2, "value_per_kg": 9},
+  {"density": 10490, "element": 6, "flammable": 0, "hardness": 3, "id": "silver", "melt_c": 962, "name": "silver", "salvage": "metal", "tier": 5, "value_per_kg": 120},
+  {"density": 19300, "element": 6, "flammable": 0, "hardness": 2, "id": "gold", "melt_c": 1064, "name": "gold", "salvage": "metal", "tier": 6, "value_per_kg": 900},
+  {"density": 600, "element": 6, "flammable": 3, "hardness": 2, "id": "wood", "melt_c": 0, "name": "wood", "salvage": "none", "tier": 1, "value_per_kg": 1},
+  {"density": 750, "element": 6, "flammable": 3, "hardness": 3, "id": "oak", "melt_c": 0, "name": "oak", "salvage": "none", "tier": 2, "value_per_kg": 3},
+  {"density": 1900, "element": 7, "flammable": 1, "hardness": 4, "id": "bone", "melt_c": 0, "name": "bone", "salvage": "none", "tier": 1, "value_per_kg": 2},
+  {"density": 900, "element": 6, "flammable": 2, "hardness": 1, "id": "hide", "melt_c": 0, "name": "hide", "salvage": "none", "tier": 1, "value_per_kg": 4},
+  {"density": 400, "element": 0, "flammable": 3, "hardness": 1, "id": "cloth", "melt_c": 0, "name": "cloth", "salvage": "none", "tier": 1, "value_per_kg": 5},
+  {"density": 2500, "element": 5, "flammable": 0, "hardness": 5, "id": "glass", "melt_c": 1400, "name": "glass", "salvage": "magic", "tier": 3, "value_per_kg": 15},
+  {"density": 917, "element": 2, "flammable": 0, "hardness": 1, "id": "ice", "melt_c": 0, "name": "ice", "salvage": "none", "tier": 2, "value_per_kg": 1},
+  {"density": 2160, "element": 2, "flammable": 0, "hardness": 2, "id": "salt", "melt_c": 801, "name": "salt", "salvage": "none", "tier": 1, "value_per_kg": 3},
+  {"density": 2070, "element": 1, "flammable": 2, "hardness": 2, "id": "sulfur", "melt_c": 115, "name": "sulfur", "salvage": "none", "tier": 3, "value_per_kg": 6},
+  {"density": 1350, "element": 1, "flammable": 3, "hardness": 2, "id": "coal", "melt_c": 0, "name": "coal", "salvage": "none", "tier": 2, "value_per_kg": 2},
+  {"density": 3100, "element": 5, "flammable": 0, "hardness": 8, "id": "aethite", "melt_c": 2400, "name": "aethite", "salvage": "magic", "tier": 9, "value_per_kg": 2000},
+  {"density": 1050, "element": 7, "flammable": 1, "hardness": 1, "id": "flesh", "melt_c": 0, "name": "flesh", "salvage": "none", "tier": 1, "value_per_kg": 1},
+  {"density": 1000, "element": 2, "flammable": 0, "hardness": 0, "id": "water", "melt_c": 0, "name": "water", "salvage": "none", "tier": 1, "value_per_kg": 0}
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "_note": "F6 salvage numbers (05 section 5; card BF6-6). Data-driven so trade (D73) can read the same yields. Percentages; ASSUMED where 05 gives none. stand_in: the Barony items a returned material becomes at the station until material items exist (grams per item).",
+ "aura_item": "GEM_ROCK",
+ "aura_per_affix_pct": 25,
+ "crafted_return_pct": 100,
+ "discharge_pct": 20,
+ "looted_return_pct": 60,
+ "low_integrity_byte": 77,
+ "low_integrity_factor_pct": 50,
+ "stand_in": [
+  {"class": "metal", "grams": 400, "item": "TOOL_METAL_SCRAP"},
+  {"class": "magic", "grams": 200, "item": "TOOL_MAGIC_SCRAP"}
+ ]
+}
