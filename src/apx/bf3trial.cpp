@@ -15,7 +15,10 @@
 #include "tactics_int.hpp"
 #include "telemetry.hpp"
 #include "flow.hpp"
+#include "tiers.hpp"
 #include "../items.hpp"
+#include "../apx_combat.hpp"
+#include <map>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -96,6 +99,11 @@ namespace bf3
 		long long holderIn = 0, holderOut = 0, holderOutAttack = 0, holderOutHunt = 0, holderOutPath = 0, holderOutWait = 0, holderOutStill = 0;
 		long long holderFalseArrive = 0; // out of reach, standing as "at its goal" while more than HOLD_EPS + 1 from it
 		int slots = 0, spawned = 0;
+		// D74: each blow as the tier rule saw it (vanilla, by tier, after F4c zones and stagger), by attacker tier
+		long long tierHits = 0, tierUnmatched = 0, tierOnHits = 0, vanillaSum = 0, tieredSum = 0, finalSum = 0, tieredMax = 0, finalMax = 0;
+		long long tierN[6] = {}, tierV[6] = {}, tierT[6] = {}, tierF[6] = {}, tierChanged[6] = {};
+		int charMaxHP = 0;                                      // the test character's MAXHP (HP at the arm's start)
+		Uint32 measureStart = 0, deadTick = 0;                  // a passive character with MAXHP would be dead at deadTick
 	};
 	static Arm A;
 
@@ -141,6 +149,8 @@ namespace bf3
 		for ( int i = 1; i < NUMMONSTERS; ++i ) { if ( !_stricmp(monstertypename[i], kindName.c_str()) ) { kind = (Monster)i; } }
 		printlog("[apx] bf3 trial: %d arms (%s), %d %s in packs of %d, settle %d, measure %d ticks, floor %d, morale %d",
 			(int)arms.size(), spec.c_str(), nCreatures, kindName.c_str(), packSize, settleTicks, measureTicks, floorWanted, moraleTest);
+		tierdmg::setLogHits(true); // D74: a "[apx-tierdmg]" line per creature blow on the character (evidence for the rows)
+		printlog("[apx] bf3 trial: tier damage %s (APX_TIER_DAMAGE)", tierdmg::enabled() ? "on" : "off");
 	}
 
 	bool swallowInput(const SDL_Event& ev)
@@ -243,6 +253,7 @@ namespace bf3
 		if ( !st ) { return; }
 		if ( !snapTaken ) { snapCharacter(st); }
 		A.gearFixes = restoreCharacter(st);
+		apx::combat_glue::table().erase(pe->getUID()); // F4c poise and zone pools start fresh too (D74 trials)
 	}
 
 	Entity* attackInFlight = nullptr; // set by Entity::attack (apx::bf3::AttackScope)
@@ -259,8 +270,24 @@ namespace bf3
 			// swing starts, in a later attack() call; s14 tagged swings by their start tick and missed nearly all)
 			bool swing = attackInFlight && isTrial(attackInFlight);
 			if ( nearest > STRIKERANGE + 16 ) { A.foreignDmg += -amount; }
-			else if ( swing ) { A.dmg += -amount; A.dmgHits += -amount; ++A.hits; A.hitTicks.push_back(ticks); }
+			else if ( swing )
+			{
+				A.dmg += -amount; A.dmgHits += -amount; ++A.hits; A.hitTicks.push_back(ticks);
+				// D74: the tier rule's record of this blow (same attacker, same tick); -amount is after F4c zones and stagger
+				const tierdmg::LastHit& L = tierdmg::last;
+				if ( L.attacker == attackInFlight->getUID() && L.tick == ticks )
+				{
+					const int t = std::max(0, std::min(5, (int)L.tier));
+					++A.tierHits; A.tierOnHits += L.on ? 1 : 0;
+					A.vanillaSum += L.vanilla; A.tieredSum += L.tiered; A.finalSum += -amount;
+					A.tieredMax = std::max(A.tieredMax, (long long)L.tiered); A.finalMax = std::max(A.finalMax, (long long)-amount);
+					++A.tierN[t]; A.tierV[t] += L.vanilla; A.tierT[t] += L.tiered; A.tierF[t] += -amount;
+					A.tierChanged[t] += L.tiered != L.vanilla ? 1 : 0;
+				}
+				else { ++A.tierUnmatched; }
+			}
 			else { A.dmg += -amount; A.dmgOther += -amount; ++A.otherEvents; } // bleeding and other damage over time
+			if ( !A.deadTick && A.charMaxHP > 0 && A.dmg >= A.charMaxHP ) { A.deadTick = ticks; }
 		}
 		return true;
 	}
@@ -398,7 +425,8 @@ namespace bf3
 		armKindMon = kind; armKindName = kindName;
 		size_t c1 = a.find(':'), c2 = c1 == std::string::npos ? c1 : a.find(':', c1 + 1);
 		if ( c2 == std::string::npos ) { return; }
-		std::string m = a.substr(c2 + 1);
+		const size_t c3 = a.find(':', c2 + 1);
+		std::string m = a.substr(c2 + 1, c3 == std::string::npos ? std::string::npos : c3 - c2 - 1);
 		for ( int i = 1; i < NUMMONSTERS; ++i )
 		{
 			if ( !_stricmp(monstertypename[i], m.c_str()) ) { armKindMon = (Monster)i; armKindName = monstertypename[i]; return; }
@@ -406,6 +434,43 @@ namespace bf3
 		printlog("[apx] bf3 arm spec %s: unknown monster '%s', using %s", a.c_str(), m.c_str(), kindName.c_str());
 	}
 	static int armN(const std::string& a) { size_t c = a.find(':'); return c == std::string::npos ? nCreatures : std::max(1, atoi(a.c_str() + c + 1)); }
+
+	// D74: the arm's tier, a fourth field ("on:12:skeleton:fodder"): fodder (tagged fodder), fodder0 (tagged fodder with
+	// the damage rule forced off: the in-process vanilla control), regular (tagged regular), wild or none (untagged:
+	// the floor's own tier, spec 04 section 2.1). A spawned pack is tagged as the director tags its members.
+	static std::string armTierMode(const std::string& a)
+	{
+		size_t c1 = a.find(':'), c2 = c1 == std::string::npos ? c1 : a.find(':', c1 + 1), c3 = c2 == std::string::npos ? c2 : a.find(':', c2 + 1);
+		return c3 == std::string::npos ? std::string() : a.substr(c3 + 1);
+	}
+	static std::string armTier, armTierInfo;
+	static void setArmTier(const std::string& a)
+	{
+		armTier = armTierMode(a);
+		armTierInfo.clear();
+		tierdmg::setOverride(armTier == "fodder0" ? 0 : -1);
+	}
+	static void tagTrialCreature(Entity* m)
+	{
+		if ( armTier == "fodder" || armTier == "fodder0" ) { tiers::tag(m, combat::Tier::Fodder); }
+		else if ( armTier == "regular" ) { tiers::tag(m, combat::Tier::Regular); }
+	}
+	static std::string tierInfo() // each trial creature's tier and where it came from, e.g. "skeleton:fodder/band maxhp 40 x12;"
+	{
+		std::map<std::string, int> n;
+		for ( Uint32 u : trialUids )
+		{
+			Entity* c = uidToEntity(u);
+			Stat* cs = c ? c->getStats() : nullptr;
+			if ( !c || !cs ) { continue; }
+			tiers::Source w = tiers::Source::NotMonster;
+			const combat::Tier t = tiers::tierOf(c, &w);
+			++n[std::string(monstertypename[cs->type]) + ":" + combat::tierName(t) + "/" + tiers::sourceName(w) + " maxhp " + std::to_string(cs->MAXHP)];
+		}
+		std::string r;
+		for ( auto& kv : n ) { r += kv.first + " x" + std::to_string(kv.second) + ";"; }
+		return r;
+	}
 
 	static void setArmKnobs(const std::string& spec)
 	{
@@ -437,6 +502,7 @@ namespace bf3
 				st->weapon = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
 			}
 		}
+		tagTrialCreature(m);
 		tactics::assignPack(m, packId, role, hx, hy);
 		m->monsterAcquireAttackTarget(*pe, MONSTER_STATE_PATH);
 		trialUids.push_back(m->getUID());
@@ -747,6 +813,22 @@ namespace bf3
 			.i("ac_end", (players[0] && players[0]->entity && players[0]->entity->getStats()) ? AC(players[0]->entity->getStats()) : -1)
 			.str("gear_end", (players[0] && players[0]->entity && players[0]->entity->getStats()) ? gearString(players[0]->entity->getStats()) : std::string("?"))
 			.i("gear_fixes", A.gearFixes)
+			// D74 tier damage: per blow as the rule saw it (vanilla = the engine's hit after armour; tiered = by the
+			// attacker's tier; final = after F4c zones and stagger), the character's MAXHP and how long it would live
+			.str("tier_mode", armTier.empty() ? std::string("wild") : armTier).str("tier_info", armTierInfo)
+			.i("tier_rule_on_hits", A.tierOnHits).i("tier_hits", A.tierHits).i("tier_unmatched", A.tierUnmatched)
+			.d("vanilla_per_hit", A.tierHits ? (double)A.vanillaSum / A.tierHits : 0)
+			.d("tiered_per_hit", A.tierHits ? (double)A.tieredSum / A.tierHits : 0)
+			.d("final_per_hit", A.tierHits ? (double)A.finalSum / A.tierHits : 0)
+			.i("tiered_max", A.tieredMax).i("final_max", A.finalMax)
+			.i("fodder_hits", A.tierN[0]).i("fodder_vanilla", A.tierV[0]).i("fodder_tiered", A.tierT[0]).i("fodder_final", A.tierF[0])
+			.i("regular_hits", A.tierN[1]).i("regular_vanilla", A.tierV[1]).i("regular_tiered", A.tierT[1]).i("regular_final", A.tierF[1])
+			.i("regular_changed", A.tierChanged[1]).i("elite_hits", A.tierN[2]).i("elite_changed", A.tierChanged[2])
+			.i("char_maxhp", A.charMaxHP)
+			.d("survive_s", A.deadTick ? (A.deadTick - A.measureStart) / (double)TICKS_PER_SECOND : -1.0)
+			.d("survive_s_rate", A.dmg > 0 ? A.charMaxHP / (A.dmg / secs) : -1.0)
+			.i("player_staggers", (players[0] && players[0]->entity && apx::combat_glue::table().count(players[0]->entity->getUID()))
+				? apx::combat_glue::table()[players[0]->entity->getUID()].staggers : 0)
 			.i("dmg_foreign", A.foreignDmg).i("hits", A.hits).d("burst_share", shareNear(A.hitTicks, 5, true))
 			.i("swing_attempts", A.attempts).d("attempt_lockstep_share", shareNear(A.attemptTicks, 5, false))
 			.d("standoff_mean", A.standoffN ? A.standoffSum / A.standoffN : 0).i("blocked_thin", A.thin).i("blocked_wide", A.wide)
@@ -1063,6 +1145,7 @@ namespace bf3
 			case P_SPAWN:
 				setArmKnobs(arms[armI]);
 				setArmMonster(arms[armI]);
+				setArmTier(arms[armI]);
 				tactics::onLevelChange();
 				A = Arm();
 				freshCharacter(pe);
@@ -1070,6 +1153,7 @@ namespace bf3
 				if ( armKind(arms[armI]) == "flow" || armKind(arms[armI]) == "noflow" ) { spawnFar(pe, armN(arms[armI])); }
 				else { spawnPacks(pe, armN(arms[armI]), packSize, true); }
 				flow::resetStats();
+				armTierInfo = tierInfo();
 				A.spawned = (int)trialUids.size();
 				A.slots = trialUids.empty() ? 0 : tactics::reachSlotsFor(pe, uidToEntity(trialUids[0]));
 				go(P_SETTLE);
@@ -1085,7 +1169,8 @@ namespace bf3
 					int slots = A.slots, spawned = A.spawned, fixes = A.gearFixes;
 					A = Arm();
 					A.keys0 = k0; A.buttons0 = b0; A.motion0 = m0; A.other0 = o0; A.slots = slots; A.spawned = spawned; A.gearFixes = fixes;
-					if ( Stat* pst = pe ? pe->getStats() : nullptr ) { A.acStart = AC(pst); }
+					if ( Stat* pst = pe ? pe->getStats() : nullptr ) { A.acStart = AC(pst); A.charMaxHP = pst->MAXHP; }
+					A.measureStart = ticks;
 					measuring = true;
 					go(P_MEASURE);
 				}
@@ -1143,6 +1228,7 @@ namespace bf3
 			case P_M_SPAWN:
 				setArmKnobs(moraleArm == 0 ? "on" : "nomorale");
 				setArmMonster("");
+				setArmTier("");
 				tactics::onLevelChange();
 				tactics::resetCounters();
 				A = Arm();
@@ -1237,6 +1323,7 @@ namespace bf3
 			case P_H_SPAWN:
 				setArmKnobs(helpArm == 0 ? "on" : "nopacks");
 				setArmMonster("");
+				setArmTier("");
 				tactics::onLevelChange();
 				tactics::resetCounters();
 				A = Arm();

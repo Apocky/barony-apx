@@ -40,6 +40,7 @@ See LICENSE for details.
 #include "ui/GameUI.hpp"
 #include "apx_stamina.hpp"
 #include "apx_combat.hpp"
+#include "apx/tiers.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -13176,6 +13177,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 						printlog("[apx-hit] move=%d pose=%d target=%u damage=%d extra=%d dist=%.1f", apx::moveFor(player), pose, hit.entity->getUID(),
 							damage, pose == MONSTER_POSE_SWEEP_ATTACK_NO_UPDATE ? 1 : 0, entityDist(this, hit.entity));
 					}
+					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
 					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 

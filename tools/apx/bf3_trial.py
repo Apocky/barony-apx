@@ -176,6 +176,7 @@ def summarise(results, args):
                                   "stuck": sum(x.get("stuck", 0) for x in v), "stuck_episodes": sum(x.get("stuck_episodes", 0) for x in v),
                                   "steer_ticks": sum(x.get("steer_ticks", 0) for x in v), "no_path_holds": sum(x.get("no_path_holds", 0) for x in v)}
                               for b, v in sorted(kinds.items())} for k, kinds in sorted(by_monster.items())}
+    base["d74"] = d74_summary(arms)
     base["flagged_rows"] = len(flagged)
     base["morale"] = [m for r in results for m in r["morale"]]
     base["help"] = [h for r in results for h in r.get("help", [])]
@@ -184,9 +185,94 @@ def summarise(results, args):
     return base
 
 
+def d74_mode(a):
+    """A D74 arm's tier mode ("on:12:skeleton:fodder" has four fields): fodder, fodder0 (rule forced off in the arm),
+    fodder-env0 (tagged fodder in a launch with APX_TIER_DAMAGE=0: the knob control), regular, wild; None otherwise."""
+    if a.get("arm_kind", "").count(":") != 3:
+        return None
+    m = a.get("tier_mode", "wild")
+    if m == "fodder" and a.get("tier_hits", 0) > 0 and a.get("tier_rule_on_hits", 0) == 0:
+        return "fodder-env0"
+    return m
+
+
+def d74_summary(arms):
+    """D74 per monster and tier mode: damage per 20 s, per hit (vanilla, by tier, after F4c zones), attackers,
+    the character's MAXHP and the seconds a passive character with that MAXHP lives (measured from the 20 s window)."""
+    groups = {}
+    for a in arms:
+        m = d74_mode(a)
+        if m:
+            groups.setdefault(a.get("kind", "?"), {}).setdefault(m, []).append(a)
+    out = {}
+    for kind, modes in sorted(groups.items()):
+        out[kind] = {}
+        for m, v in sorted(modes.items()):
+            th = sum(x.get("tier_hits", 0) for x in v)
+            surv = [x["survive_s"] for x in v if x.get("survive_s", -1) >= 0]
+            out[kind][m] = {"n": len(v), "dmg_mean": round(mean([x["dmg"] for x in v]), 1), "dmg_sd": round(sd([x["dmg"] for x in v]), 1),
+                            "dmg_min": min(x["dmg"] for x in v), "dmg_max": max(x["dmg"] for x in v),
+                            "hits_mean": round(mean([x.get("hits", 0) for x in v]), 1),
+                            "vanilla_per_hit": round(sum(x.get("vanilla_per_hit", 0) * x.get("tier_hits", 0) for x in v) / max(1, th), 2),
+                            "tiered_per_hit": round(sum(x.get("tiered_per_hit", 0) * x.get("tier_hits", 0) for x in v) / max(1, th), 2),
+                            "final_per_hit": round(sum(x.get("final_per_hit", 0) * x.get("tier_hits", 0) for x in v) / max(1, th), 2),
+                            "tiered_max": max(x.get("tiered_max", 0) for x in v), "final_max": max(x.get("final_max", 0) for x in v),
+                            "dmg_other_mean": round(mean([x.get("dmg_other", 0) for x in v]), 1),
+                            "attackers_mean": round(mean([x["attackers_mean"] for x in v]), 2),
+                            "char_maxhp": sorted(set(x.get("char_maxhp", 0) for x in v)),
+                            "survive_s_mean": round(mean(surv), 2) if surv else None, "survive_s_min": min(surv) if surv else None,
+                            "survive_s_max": max(surv) if surv else None,
+                            "survive_s_rate_mean": round(mean([x.get("survive_s_rate", -1) for x in v]), 2),
+                            "player_staggers_mean": round(mean([x.get("player_staggers", 0) for x in v]), 1),
+                            "tier_hits": th, "tier_unmatched": sum(x.get("tier_unmatched", 0) for x in v),
+                            "rule_on_hits": sum(x.get("tier_rule_on_hits", 0) for x in v),
+                            "regular_changed": sum(x.get("regular_changed", 0) for x in v),
+                            "tier_info": sorted(set(x.get("tier_info", "") for x in v))}
+    return out
+
+
+def d74_gates(base, args):
+    """D74 (DECISIONS-2): fodder hits 1-2 on floor 1 (about a third of vanilla), the 12 sword skeletons land in the
+    band (D71: within 20 percent of the reference per 20 s), both vanilla controls (fodder0 in-process, and a launch
+    with APX_TIER_DAMAGE=0) land above the band, regular stays vanilla on every blow. No rows = no data, never a pass."""
+    d, g = base.get("d74") or {}, {}
+    if not d:
+        return g
+    lo, hi = 0.8 * args.ref_dmg, 1.2 * args.ref_dmg
+    fod = {k: v["fodder"] for k, v in d.items() if "fodder" in v}
+    g["d74_fodder_per_hit_1_to_2"] = {"pass": bool(fod) and all(1.0 <= s["tiered_per_hit"] <= 2.0 and s["tiered_max"] <= 2
+                                                                and s["rule_on_hits"] == s["tier_hits"] > 0 and s["tier_unmatched"] == 0
+                                                                for s in fod.values()) if fod else None,
+                                      **{k: {"vanilla": s["vanilla_per_hit"], "tiered": s["tiered_per_hit"], "final": s["final_per_hit"],
+                                             "tiered_max": s["tiered_max"], "hits": s["tier_hits"], "unmatched": s["tier_unmatched"]}
+                                         for k, s in fod.items()}}
+    sk = fod.get("skeleton")
+    g["d74_skeleton_fodder_in_band"] = {"pass": (lo <= sk["dmg_mean"] <= hi) if sk else None, "band": [round(lo, 1), round(hi, 1)],
+                                        "dmg_mean": sk["dmg_mean"] if sk else None, "n": sk["n"] if sk else 0,
+                                        "attackers_mean": sk["attackers_mean"] if sk else None,
+                                        "rats_dmg_mean": fod["rat"]["dmg_mean"] if "rat" in fod else None}
+    # both controls must be present to judge (one launch alone holds one of them: no data there, never a pass)
+    ctl = {f"{k}/{m}": v[m] for k, v in d.items() for m in ("fodder0", "fodder-env0") if m in v}
+    both = any(k.endswith("/fodder-env0") for k in ctl) and any(k.endswith("/fodder0") for k in ctl)
+    g["d74_controls_above_band"] = {"pass": all(s["dmg_mean"] > hi and s["vanilla_per_hit"] > 2.0 and s["rule_on_hits"] == 0
+                                                and abs(s["tiered_per_hit"] - s["vanilla_per_hit"]) < 1e-9 for s in ctl.values())
+                                    if both else None, "above": round(hi, 1), "controls_present": sorted(ctl),
+                                    **{k: {"dmg_mean": s["dmg_mean"], "vanilla_per_hit": s["vanilla_per_hit"], "n": s["n"]} for k, s in ctl.items()}}
+    reg = {k: v["regular"] for k, v in d.items() if "regular" in v}
+    g["d74_regular_is_vanilla"] = {"pass": all(s["regular_changed"] == 0 and s["tier_hits"] > 0 for s in reg.values()) if reg else None,
+                                   **{k: {"changed": s["regular_changed"], "hits": s["tier_hits"], "per_hit": s["tiered_per_hit"]} for k, s in reg.items()}}
+    wild = {k: v["wild"]["tier_info"] for k, v in d.items() if "wild" in v}
+    if wild:
+        g["d74_wild_tier_report"] = {"tier_info": wild, "per_hit": {k: d[k]["wild"]["tiered_per_hit"] for k in wild}}
+    g["d74_survival_s"] = {f"{k}/{m}": {"survive_s_mean": s["survive_s_mean"], "range": [s["survive_s_min"], s["survive_s_max"]],
+                                        "by_rate": s["survive_s_rate_mean"], "maxhp": s["char_maxhp"], "dmg_per_20s": s["dmg_mean"]}
+                           for k, v in d.items() for m, s in v.items()}
+    return g
+
+
 def gates(by, base, args):
     """D71 (Apockalypsis DECISIONS-2.md) and card BF3 gates. A gate with no rows is 'no data', never a pass."""
-    g = {}
+    g = d74_gates(base, args)
     on = [a for a in by.get("on", []) if a.get("creatures") == 12]
     off = [a for a in by.get("off", []) if a.get("creatures") == 12]
     if on:
@@ -307,10 +393,21 @@ def regate(paths, args):
                         out += [json.loads(x) for x in fh if x.strip()]
             return out
         results.append({"arms": rows("bf3-arms.jsonl"), "morale": rows("bf3-morale.jsonl"), "help": rows("bf3-help.jsonl"),
-                        "flowtest": rows("bf3-flowtest.jsonl"), "code": 0, "wall_s": 0})
+                        "flowtest": rows("bf3-flowtest.jsonl"), "code": 0, "wall_s": 0, "run_dir": str(d)})
     base = summarise(results, args)
+    base["regate_of"] = [str(d) for d in paths]
     for k, v in base["gates"].items():
         print(f"{k}: {json.dumps(v)}")
+    if args.regate_out:
+        # the combined rows (each with its run folder) and the combined baseline, as one diagnostics file (rule 12)
+        with open(args.regate_out, "w", encoding="ascii") as f:
+            for r in results:
+                for row in r["arms"]:
+                    row = dict(row)
+                    row["run_dir"] = r["run_dir"]
+                    f.write(json.dumps(row, ensure_ascii=True) + "\n")
+            f.write(json.dumps(base, ensure_ascii=True) + "\n")
+        print(f"[bf3] combined rows + baseline: {args.regate_out}")
     return base
 
 
@@ -333,6 +430,7 @@ def main():
     ap.add_argument("--poll", type=float, default=10.0, help="seconds between lock checks")
     ap.add_argument("--build-hash", default="unknown")
     ap.add_argument("--regate", nargs="+", default=None, help="run folders: recompute and print the gates, launch nothing")
+    ap.add_argument("--regate-out", default=None, help="with --regate: write the combined rows and baseline to this JSONL file")
     args = ap.parse_args()
     if args.regate:
         regate(args.regate, args)

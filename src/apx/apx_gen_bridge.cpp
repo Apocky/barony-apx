@@ -18,6 +18,8 @@
 #include "../net.hpp"
 #include "apx_gen_bridge.hpp"
 #include "gen/include/apxgen/apxgen.hpp"
+#include "tier_rules.hpp"
+#include "tiers.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -781,21 +783,17 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		for ( int k = 0; k < 400; ++k ) { ++freq[monsterCurve(currentlevel)]; }
 		map_rng.~BaronyRNG(); // BaronyRNG has no copy-assignment: rebuild it in place from the copy
 		new (&map_rng) BaronyRNG(saved);
-		std::vector<std::pair<std::pair<int, int>, int>> ranked; // ((level, -freq), type)
+		std::vector<std::pair<int, int>> counts; // (type, draws)
 		for ( auto& fq : freq )
 		{
 			if ( fq.first <= NOTHING || fq.first >= NUMMONSTERS ) { continue; }
-			// rank by the curve alone: rarer = stronger, ties by type id. (Stat base levels are only
-			// filled on the host, so ranking by them gave the client another tier order and hash.)
-			ranked.push_back({ { -fq.second, fq.first }, fq.first });
+			counts.push_back({ fq.first, fq.second });
 		}
-		std::sort(ranked.begin(), ranked.end());
-		const size_t n = ranked.size();
-		for ( size_t k = 0; k < n; ++k )
-		{
-			const int tier = n < 2 ? 0 : (int)(k * 3 / n); // bottom third fodder, top third elite
-			tierTypes[tier].push_back(ranked[k].second);
-		}
+		// rank by the curve alone: rarer = stronger, ties by type id. (Stat base levels are only filled on the
+		// host, so ranking by them gave the client another tier order and hash.) One rule with the run-time tier:
+		// apx/tier_rules.hpp bandTiers (unit-tested); the D74 damage rule reads this floor's rank via apx::tiers.
+		apx::tierrules::bandTiers(counts, tierTypes);
+		apx::tiers::recordBand(currentlevel, map.name, tierTypes);
 		std::string s;
 		for ( int t = 0; t < 3; ++t )
 		{

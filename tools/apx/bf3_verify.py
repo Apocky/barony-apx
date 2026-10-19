@@ -25,6 +25,89 @@ EXCL_ARMS = "on,noring,noring,on,flow:150,noflow:150,noflow:150,flow:150,probe:1
 # the gates that decide whether the build is final enough to spend exclusive and parity minutes on; damage and the
 # jam control wait for Apocky's reference decision and do not block
 MOVEMENT_GATES = ("reach_overflow_zero", "holders_reach_slots", "ring_control_bunching", "morale_retreat", "calls_for_help")
+# D74 (--d74): 12 sword skeletons and 12 rats tagged fodder (rule on) vs fodder0 (rule forced off in the arm: the
+# in-process vanilla control), interleaved x3, then regular (must stay vanilla) and wild (untagged: the floor's tier)
+D74_ARMS = ",".join(["on:12:skeleton:fodder", "on:12:skeleton:fodder0", "on:12:rat:fodder", "on:12:rat:fodder0"] * 3
+                    + ["on:12:skeleton:regular", "on:12:rat:regular", "on:12:skeleton:wild", "on:12:rat:wild"])
+# the knob control: a second launch with APX_TIER_DAMAGE=0, the same fodder-tagged arms (must land above the band)
+D74_ENV0_ARMS = ",".join(["on:12:skeleton:fodder", "on:12:rat:fodder"] * 2)
+D74_GATES = ("d74_fodder_per_hit_1_to_2", "d74_skeleton_fodder_in_band", "d74_controls_above_band", "d74_regular_is_vanilla")
+# the F2 generator's own gate (C:/Apocrypha/diagnostics/barony-f2, build a90e21c3, 2026-10-19 08:40-09:00): apx-gen
+# floors for these seeds must hash the same after the band rank moved into tier_rules.hpp (placement unchanged)
+F2_RECORD = Path(r"C:\Apocrypha\diagnostics\barony-f2\f2.jsonl")
+F2_SEEDS = (2001, 4)  # first, count: floors 1-4 (bands of 2 and 4 types, ties included)
+
+
+def rows_of(p):
+    out = []
+    if p.exists():
+        for x in p.read_text(encoding="utf-8-sig").splitlines():
+            x = x.strip()
+            if x:
+                try:
+                    out.append(json.loads(x))
+                except ValueError:
+                    pass
+    return out
+
+
+def run_dir_of(tag):
+    for r in rows_of(DIAG / f"bf3-{tag}.jsonl"):
+        if r.get("run_dir"):
+            return r["run_dir"]
+    return None
+
+
+def f2_floors(rows, since=None):
+    """(seed, level) -> hash of apx-gen size-128 floors, host side, no control."""
+    out = {}
+    for r in rows:
+        env = r.get("env") or {}
+        if r.get("kind") != "floor" or r.get("client") != 0 or env.get("APXGEN_SIZE") != "128" or env.get("APXGEN_CONTROL"):
+            continue
+        if since and r.get("ts", "") < since:
+            continue
+        out[(r.get("seed_asked"), r.get("level"))] = r.get("hash")
+    return out
+
+
+def d74_chain(args, bh, py, out, save):
+    t1, t2 = args.tag, args.tag + "-env0"
+    common = ["--exe", args.exe, "--runs", "1", "--mode", "slot", "--env", "APX_BF3_MORALE=0", "--env", "APX_BF3_HELP=0",
+              "--timeout", "3600", "--poll", "3", "--build-hash", bh]
+    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--tag", t1, "--arms", D74_ARMS] + common, RUNS / f"bf3-{t1}.out.txt")
+    out["steps"].append({"step": "d74-slot", "exit": code, "wall_s": wall, "run_dir": run_dir_of(t1)})
+    save()
+    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--tag", t2, "--arms", D74_ENV0_ARMS, "--env", "APX_TIER_DAMAGE=0"] + common,
+                     RUNS / f"bf3-{t2}.out.txt")
+    out["steps"].append({"step": "d74-env0", "exit": code, "wall_s": wall, "run_dir": run_dir_of(t2)})
+    save()
+    dirs = [d for d in (run_dir_of(t1), run_dir_of(t2)) if d]
+    comb = DIAG / f"bf3-{args.tag}-d74.jsonl"
+    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--regate"] + dirs + ["--regate-out", str(comb)], RUNS / f"bf3-{args.tag}-d74-regate.out.txt")
+    rows = rows_of(comb)
+    base = rows[-1] if rows and rows[-1].get("kind") == "baseline" else {}
+    g = base.get("gates", {})
+    out["steps"].append({"step": "d74-gates", "exit": code, "wall_s": wall, "runs": dirs, "combined": str(comb),
+                         "pass": {k: (g.get(k) or {}).get("pass") for k in D74_GATES}, "gates": {k: v for k, v in g.items() if k.startswith("d74")},
+                         "d74": base.get("d74")})
+    save()
+    # the generator's placement unchanged: the F2 gate's own sweep for 4 seeds, hashes against its record
+    fdir = DIAG / f"barony-bf3-f2check-{args.tag}"
+    code, wall = run([py, "-u", "tools/apx/gate_f2.py", "sweep", "--exe", args.exe, "--size", "128", "--first", str(F2_SEEDS[0]),
+                      "--count", str(F2_SEEDS[1]), "--per-process", str(F2_SEEDS[1]), "--out", str(fdir)], RUNS / f"bf3-{args.tag}-f2check.out.txt")
+    rec = f2_floors(rows_of(F2_RECORD), since="2026-10-19T08:40")
+    mine = f2_floors(rows_of(fdir / "f2.jsonl"))
+    cmp_ = {f"{s}/{l}": {"recorded": rec.get((s, l)), "now": h, "same": rec.get((s, l)) == h} for (s, l), h in sorted(mine.items())}
+    out["steps"].append({"step": "f2-hashes", "exit": code, "wall_s": wall, "floors": cmp_,
+                         "pass": bool(cmp_) and len(cmp_) == F2_SEEDS[1] and all(v["same"] for v in cmp_.values())})
+    save()
+    # vanilla floors unchanged: golden parity against the F0 lines recorded from Steam vanilla
+    code, wall = run(["pwsh", "-NoProfile", "-File", "tools/apx/golden_parity.ps1", "-Exe", str(Path(args.exe).resolve()), "-Tag", f"bf3-{args.tag}"],
+                     RUNS / f"bf3-{args.tag}-golden.out.txt")
+    txt = (RUNS / f"bf3-{args.tag}-golden.out.txt").read_text(encoding="utf-8", errors="replace")
+    out["steps"].append({"step": "golden-parity", "exit": code, "wall_s": wall, "tail": txt.strip().splitlines()[-3:] if txt.strip() else []})
+    save()
 
 
 def run(cmd, log):
@@ -57,6 +140,7 @@ def main():
     ap.add_argument("--skip-exclusive", action="store_true")
     ap.add_argument("--skip-parity", action="store_true")
     ap.add_argument("--exe", default="build/vs2022/Release/barony.exe", help="the build under test (build.ps1 -Cache ccache: build/ninja-ccache/barony.exe)")
+    ap.add_argument("--d74", action="store_true", help="D74 tier damage: fodder vs both vanilla controls, F2 hashes, golden parity")
     args = ap.parse_args()
     bh = args.build_hash or args.tag
     py = sys.executable
@@ -65,6 +149,15 @@ def main():
 
     def save():
         report.write_text(json.dumps(out, indent=1), encoding="utf-8")
+
+    if args.d74:
+        d74_chain(args, bh, py, out, save)
+        out["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        save()
+        for s in out["steps"]:
+            print(s["step"], "exit", s["exit"], "wall_s", s["wall_s"], json.dumps(s.get("pass")))
+        print("report", report)
+        return 0
 
     code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--exe", args.exe, "--runs", "1", "--tag", args.tag, "--mode", "slot", "--arms", SLOT_ARMS,
                       "--env", "APX_BF3_DUMP=1", "--env", "APX_BF3_FLOWTEST=200", "--timeout", "3600", "--poll", "3",

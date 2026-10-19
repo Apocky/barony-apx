@@ -24,6 +24,7 @@
 #include "paths.hpp"
 #include "prng.hpp"
 #include "mod_tools.hpp"
+#include "apx/tiers.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -1347,6 +1348,7 @@ void actThrown(Entity* my)
 				if ( !friendlyHit )
 				{
 					Sint32 oldHP = hitstats->HP;
+					damage = apx::tierdmg::onCreatureHit(parent, hit.entity, damage, apx::tierdmg::THROWN); // apx D74: a creature's hit by its tier
 					hit.entity->modHP(-damage);
 
 					if ( hitstats )
