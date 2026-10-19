@@ -41,12 +41,24 @@ namespace bf3
 	static Uint32 phT = 0;
 	static std::vector<std::string> arms;
 	static size_t armI = 0;
+	// D76 (Apocky, protocol rule 12): run until the critical numbers are in. APX_BF3_STOP="min=2,max=4" turns the arm
+	// list into CELLS (each distinct spec, an optional "@metric" suffix): cells run round-robin, a cell is done when it
+	// has min arms and the 95 percent half-width of its metric is under its tolerance, or at max arms (the hard cap).
+	struct StopCell { std::string spec, metric; std::vector<double> v; bool done = false; };
+	static std::vector<StopCell> cells;
+	static bool stopMode = false;
+	static int stopMin = 2, stopMax = 4;
+	static size_t cellI = 0;
+	// APX_BF3_EXPECT_TIERS="rat=fodder,skeleton=fodder": a deterministic check at the first spawn of each untagged
+	// arm; a creature of a listed type with another tier ends the run at once (exit 3: the first decisive failure)
+	static std::vector<std::pair<std::string, std::string>> expectTiers;
 	static int nCreatures = 12, packSize = 4, settleTicks = 100, measureTicks = 1000, floorWanted = 1, moraleTest = 1;
 	static std::string kindName = "skeleton";
 	static Monster kind = SKELETON;
 	static double pinX = 0, pinY = 0, pinYaw = 0;
 	static bool pinned = false;
 	static int pTX = -1, pTY = -1;
+	static bool arenaCorridor = false;   // D75 jam: APX_BF3_ARENA=corridor
 	static std::vector<std::pair<int, int>> spawnTiles;   // angle-sorted ring 4..7 tiles out
 	static std::vector<Uint32> trialUids;
 	static Uint32 leaderUid = 0;
@@ -103,6 +115,11 @@ namespace bf3
 		long long tierHits = 0, tierUnmatched = 0, tierOnHits = 0, vanillaSum = 0, tieredSum = 0, finalSum = 0, tieredMax = 0, finalMax = 0;
 		long long tierN[6] = {}, tierV[6] = {}, tierT[6] = {}, tierF[6] = {}, tierChanged[6] = {};
 		long long poiseN = 0, poiseVanSum = 0, poiseTierSum = 0;      // the same blows' F4c poise hit, vanilla and by tier
+		// D75: the character's staggers and stagger locks (either poise model) over the measured window only
+		long long stag0 = 0, locks0 = 0, stagTicks0 = 0;
+		double physMax = 0.0, physMin = 1e9;
+		// D75 jam: trial creatures standing inside each other near the fight, per sampled tick
+		long long bodyOverlapSum = 0, bodyOverlapMax = 0;
 		int charMaxHP = 0;                                      // the test character's MAXHP (HP at the arm's start)
 		Uint32 measureStart = 0, deadTick = 0;                  // a passive character with MAXHP would be dead at deadTick
 	};
@@ -123,6 +140,43 @@ namespace bf3
 			if ( q == std::string::npos ) { q = spec.size(); }
 			if ( q > p ) { arms.push_back(spec.substr(p, q - p)); }
 			p = q + 1;
+		}
+		{
+			const char* st = getenv("APX_BF3_STOP");
+			if ( st && *st )
+			{
+				stopMode = true;
+				const char* mn = strstr(st, "min=");
+				const char* mx = strstr(st, "max=");
+				if ( mn ) { stopMin = std::max(1, atoi(mn + 4)); }
+				if ( mx ) { stopMax = std::max(stopMin, atoi(mx + 4)); }
+				const char* dm = getenv("APX_BF3_STOP_METRIC");
+				const std::string defMetric = (dm && *dm) ? dm : "dmg";
+				for ( const std::string& a : arms )
+				{
+					const size_t at = a.find('@');
+					StopCell c;
+					c.spec = a.substr(0, at);
+					c.metric = at == std::string::npos ? defMetric : a.substr(at + 1);
+					bool seen = false;
+					for ( auto& o : cells ) { seen = seen || (o.spec == c.spec && o.metric == c.metric); }
+					if ( !seen ) { cells.push_back(c); }
+				}
+				arms.clear();
+				if ( !cells.empty() ) { arms.push_back(cells[0].spec); }
+			}
+			const char* ex = getenv("APX_BF3_EXPECT_TIERS");
+			std::string es = (ex && *ex) ? ex : "";
+			size_t q0 = 0;
+			while ( q0 < es.size() )
+			{
+				size_t q1 = es.find(',', q0);
+				if ( q1 == std::string::npos ) { q1 = es.size(); }
+				const std::string kv = es.substr(q0, q1 - q0);
+				const size_t eq = kv.find('=');
+				if ( eq != std::string::npos ) { expectTiers.push_back({ kv.substr(0, eq), kv.substr(eq + 1) }); }
+				q0 = q1 + 1;
+			}
 		}
 		nCreatures = envInt("APX_BF3_N", 12);
 		packSize = std::max(1, envInt("APX_BF3_PACK", 4));
@@ -352,18 +406,55 @@ namespace bf3
 		return n;
 	}
 
+	// D75 jam: a straight 1-tile corridor through (x, y): walls on both sides for 3 tiles each way along it.
+	// Returns its open length (tiles walkable along it within 7 each way), 0 if (x, y) is not in such a corridor.
+	static int corridorAt(int x, int y)
+	{
+		if ( !tactics::walkable(x, y) ) { return 0; }
+		int best = 0;
+		for ( int axis = 0; axis < 2; ++axis )
+		{
+			const int ax = axis ? 0 : 1, ay = axis ? 1 : 0;   // along
+			const int sx = ay, sy = ax;                        // side
+			bool ok = true;
+			for ( int k = -3; k <= 3 && ok; ++k )
+			{
+				const int cx = x + ax * k, cy = y + ay * k;
+				ok = tactics::walkable(cx, cy) && !tactics::walkable(cx + sx, cy + sy) && !tactics::walkable(cx - sx, cy - sy);
+			}
+			if ( !ok ) { continue; }
+			int len = 1;
+			for ( int dir = -1; dir <= 1; dir += 2 )
+			{
+				for ( int k = 1; k <= 7 && tactics::walkable(x + ax * k * dir, y + ay * k * dir); ++k ) { ++len; }
+			}
+			best = std::max(best, len);
+		}
+		return best;
+	}
+
 	static void chooseArena(Entity* pe)
 	{
 		int best = -1;
+		const char* arenaEnv = getenv("APX_BF3_ARENA");
+		const bool corridor = arenaEnv && !strcmp(arenaEnv, "corridor");
+		arenaCorridor = corridor;
 		for ( int y = 2; y < (int)map.height - 2; ++y )
 		{
 			for ( int x = 2; x < (int)map.width - 2; ++x )
 			{
+				if ( corridor )
+				{
+					const int n = corridorAt(x, y);
+					if ( n > best ) { best = n; pTX = x; pTY = y; }
+					continue;
+				}
 				if ( !clear3(x, y) ) { continue; }
 				int n = openCount(x, y, 5, nullptr);
 				if ( n > best ) { best = n; pTX = x; pTY = y; }
 			}
 		}
+		if ( corridor ) { printlog("[apx] bf3 arena: corridor mode, best corridor length %d at %d,%d", best, pTX, pTY); }
 		pinX = pTX * 16.0 + 8; pinY = pTY * 16.0 + 8; pinYaw = 0;
 		pe->x = pinX; pe->y = pinY; pe->yaw = pinYaw;
 		// the engine moves an entity between spatial-grid cells (TileEntityList) only when it changes tile inside its
@@ -442,7 +533,37 @@ namespace bf3
 	static std::string armTierMode(const std::string& a)
 	{
 		size_t c1 = a.find(':'), c2 = c1 == std::string::npos ? c1 : a.find(':', c1 + 1), c3 = c2 == std::string::npos ? c2 : a.find(':', c2 + 1);
-		return c3 == std::string::npos ? std::string() : a.substr(c3 + 1);
+		if ( c3 == std::string::npos ) { return std::string(); }
+		const size_t c4 = a.find(':', c3 + 1);
+		return a.substr(c3 + 1, c4 == std::string::npos ? std::string::npos : c4 - c3 - 1);
+	}
+	// D75: a fifth field, the character's kit ("on:12:rat:wild:armoured"): robed (hood, wizard doublet, cloak), armoured
+	// (iron helm, breastpiece and boots, bracers, iron shield); none keeps the quickstart gear. Weapons stay.
+	static std::string armKitName(const std::string& a)
+	{
+		size_t c = std::string::npos, p = 0;
+		for ( int k = 0; k < 4; ++k ) { c = a.find(':', p); if ( c == std::string::npos ) { return std::string(); } p = c + 1; }
+		return a.substr(p);
+	}
+	static std::string armKit;
+	static void applyKit(Entity* pe, const std::string& kit)
+	{
+		Stat* st = pe ? pe->getStats() : nullptr;
+		if ( !st || kit.empty() ) { return; }
+		auto make = [&](ItemType t) { return newItem(t, EXCELLENT, 0, 1, 0, true, &st->inventory); };
+		if ( kit == "robed" )
+		{
+			st->helmet = make(HAT_HOOD); st->breastplate = make(WIZARD_DOUBLET); st->cloak = make(CLOAK);
+			st->gloves = nullptr; st->shoes = nullptr; st->shield = nullptr; st->mask = nullptr;
+		}
+		else if ( kit == "armoured" )
+		{
+			st->helmet = make(IRON_HELM); st->breastplate = make(IRON_BREASTPIECE); st->shoes = make(IRON_BOOTS);
+			st->gloves = make(BRACERS); st->shield = make(IRON_SHIELD); st->cloak = nullptr; st->mask = nullptr;
+		}
+		else { printlog("[apx] bf3 kit %s: unknown, the quickstart gear stays", kit.c_str()); return; }
+		apx::combat_glue::table().erase(pe->getUID()); // the poise pool starts from the kit
+		printlog("[apx] bf3 kit %s: AC %d, poise max %.1f", kit.c_str(), AC(st), apx::combat_glue::playerMaxPoise(pe, st));
 	}
 	static std::string armTier, armTierInfo;
 	static void setArmTier(const std::string& a)
@@ -487,6 +608,8 @@ namespace bf3
 		else if ( a == "noally" ) { tactics::K.allyavoid = false; }
 		else if ( a == "nojitter" ) { tactics::K.interleave = false; }
 		else if ( a == "nodiag" ) { tactics::K.astardiag = false; }   // control for the A* diagonal fix: upstream's test
+		else if ( a == "vcollide" ) { tactics::K.tactics = false; tactics::K.collide = true; } // D75 jam: vanilla, bodies collide
+		else if ( a == "oncollide" ) { tactics::K.collide = true; }                           // D75 jam: limits on, bodies collide
 		flow::enabled = a != "noflow";                             // control for flow fields: the engine's A* for every path
 		tactics::setElbow(a == "slots5" ? 16.0 : -1.0);          // slots5: two body widths of swing room -> 5 slots
 		tactics::refresh();
@@ -643,6 +766,32 @@ namespace bf3
 	{
 		int inReach = 0, attackers = 0, near6 = 0;
 		std::vector<Entity*> waiters;
+		{
+			// D75 jam: pairs of trial creatures within 3 tiles of the fight standing inside each other (same-kind bodies
+			// pass through each other unless K.collide); and the character's physical pool, low and high
+			std::vector<Entity*> near;
+			for ( Uint32 u : trialUids )
+			{
+				Entity* c = uidToEntity(u);
+				if ( c && c->getStats() && c->getStats()->HP > 0 && hypot(c->x - pe->x, c->y - pe->y) < 3 * 16.0 ) { near.push_back(c); }
+			}
+			long long pairs = 0;
+			for ( size_t i = 0; i < near.size(); ++i )
+			{
+				for ( size_t j = i + 1; j < near.size(); ++j )
+				{
+					if ( hypot(near[i]->x - near[j]->x, near[i]->y - near[j]->y) < tactics::bodyR(near[i]) + tactics::bodyR(near[j]) - 0.5 ) { ++pairs; }
+				}
+			}
+			A.bodyOverlapSum += pairs;
+			A.bodyOverlapMax = std::max(A.bodyOverlapMax, pairs);
+			auto it = apx::combat_glue::table().find(pe->getUID());
+			if ( it != apx::combat_glue::table().end() && it->second.physInit )
+			{
+				A.physMax = it->second.phys.max;
+				A.physMin = std::min(A.physMin, it->second.phys.value);
+			}
+		}
 		for ( Uint32 u : trialUids )
 		{
 			Entity* c = uidToEntity(u);
@@ -782,6 +931,88 @@ namespace bf3
 		return (double)n / v.size();
 	}
 
+	// D76: a cell's metric for the arm just measured, and the stop rule's tolerance for it (ASSUMED, stated in the
+	// plan file before the run): the 95 percent half-width must be under max(abs, rel x |mean|)
+	static long long stagDelta(int k);
+	static double armMetric(const std::string& m)
+	{
+		if ( m == "staggers" ) { return (double)stagDelta(0); }
+		if ( m == "locks" ) { return (double)stagDelta(1); }
+		if ( m == "attackers" ) { return A.ticks ? (double)A.attackersSum / A.ticks : 0.0; }
+		return (double)A.dmg;
+	}
+	static void stopTolerance(const std::string& m, double& abs, double& rel)
+	{
+		if ( m == "staggers" ) { abs = 1.5; rel = 0.20; }
+		else if ( m == "locks" ) { abs = 1.0; rel = 0.25; }
+		else if ( m == "attackers" ) { abs = 0.3; rel = 0.05; }
+		else { abs = 25.0; rel = 0.12; } // dmg per 20 s
+	}
+	static double halfWidth95(const std::vector<double>& v, double& mean)
+	{
+		static const double t975[10] = { 0, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262 };
+		const size_t n = v.size();
+		mean = 0.0;
+		for ( double x : v ) { mean += x; }
+		mean = n ? mean / n : 0.0;
+		if ( n < 2 ) { return 1e18; }
+		double ss = 0.0;
+		for ( double x : v ) { ss += (x - mean) * (x - mean); }
+		const double sd = sqrt(ss / (n - 1));
+		return (n - 1 < 10 ? t975[n - 1] : 2.228) * sd / sqrt((double)n);
+	}
+	// after an arm: book its metric in its cell; queue the next unfinished cell (round-robin) as the next arm
+	static void stopAfterArm()
+	{
+		if ( !stopMode || cells.empty() ) { return; }
+		StopCell& c = cells[cellI];
+		c.v.push_back(armMetric(c.metric));
+		double mean = 0.0, abs = 0.0, rel = 0.0;
+		const double hw = halfWidth95(c.v, mean);
+		stopTolerance(c.metric, abs, rel);
+		const double tol = std::max(abs, rel * fabs(mean));
+		c.done = (int)c.v.size() >= stopMin && (hw <= tol || (int)c.v.size() >= stopMax);
+		printlog("[apx] bf3 stop cell %s metric %s n %d value %.2f mean %.2f hw95 %.2f tol %.2f %s", c.spec.c_str(), c.metric.c_str(),
+			(int)c.v.size(), c.v.back(), mean, hw >= 1e17 ? -1.0 : hw, tol, c.done ? ((int)c.v.size() >= stopMax && hw > tol ? "DONE (cap)" : "DONE") : "more");
+		for ( size_t k = 1; k <= cells.size(); ++k )
+		{
+			const size_t j = (cellI + k) % cells.size();
+			if ( !cells[j].done ) { cellI = j; arms.push_back(cells[j].spec); return; }
+		}
+	}
+	// a deterministic check at spawn (D76: gates stop at the first decisive failure)
+	static bool expectationsHold()
+	{
+		if ( expectTiers.empty() || (!armTier.empty() && armTier != "wild") ) { return true; }
+		for ( Uint32 u : trialUids )
+		{
+			Entity* c = uidToEntity(u);
+			Stat* cs = c ? c->getStats() : nullptr;
+			if ( !c || !cs ) { continue; }
+			for ( auto& e : expectTiers )
+			{
+				if ( _stricmp(monstertypename[cs->type], e.first.c_str()) ) { continue; }
+				tiers::Source w = tiers::Source::NotMonster;
+				const char* got = combat::tierName(tiers::tierOf(c, &w));
+				if ( e.second != got )
+				{
+					printlog("[apx] bf3 EXPECT FAIL arm %s: %s is %s/%s, expected %s", arms[armI].c_str(), e.first.c_str(), got, tiers::sourceName(w), e.second.c_str());
+					return false;
+				}
+			}
+		}
+		printlog("[apx] bf3 expect tiers OK arm %s", arms[armI].c_str());
+		return true;
+	}
+
+	// D75: the character's staggers (0), stagger locks (1) and staggered ticks (2) since the measured window began
+	static long long stagDelta(int k)
+	{
+		if ( !players[0] || !players[0]->entity || !apx::combat_glue::table().count(players[0]->entity->getUID()) ) { return 0; }
+		const apx::combat_glue::Rec& r = apx::combat_glue::table()[players[0]->entity->getUID()];
+		return k == 0 ? r.staggers - A.stag0 : k == 1 ? r.locks - A.locks0 : r.staggeredTicks - A.stagTicks0;
+	}
+
 	static void writeArmRow(const std::string& armSpec)
 	{
 		using namespace tactics;
@@ -830,8 +1061,15 @@ namespace bf3
 			.d("poise_tiered_per_hit", A.poiseN ? (double)A.poiseTierSum / A.poiseN : 0)
 			.d("survive_s", A.deadTick ? (A.deadTick - A.measureStart) / (double)TICKS_PER_SECOND : -1.0)
 			.d("survive_s_rate", A.dmg > 0 ? A.charMaxHP / (A.dmg / secs) : -1.0)
-			.i("player_staggers", (players[0] && players[0]->entity && apx::combat_glue::table().count(players[0]->entity->getUID()))
+			.i("player_staggers_arm", (players[0] && players[0]->entity && apx::combat_glue::table().count(players[0]->entity->getUID()))
 				? apx::combat_glue::table()[players[0]->entity->getUID()].staggers : 0)
+			// D75: over the measured window; locks = a stagger starting within 1 s of the previous one's end
+			.str("kit", armKit.empty() ? std::string("quickstart") : armKit).str("arena", arenaCorridor ? "corridor" : "open")
+			.str("poise_model", apx::combat_glue::physicalOn() ? "physical" : "f4c")
+			.i("player_staggers", stagDelta(0)).i("player_locks", stagDelta(1))
+			.d("staggered_share", A.ticks ? (double)stagDelta(2) / std::max<long long>(1, (long long)measureTicks) : 0.0)
+			.d("poise_max", A.physMax).d("poise_min", A.physMin < 1e8 ? A.physMin : -1.0)
+			.d("body_overlap_mean", A.ticks ? (double)A.bodyOverlapSum / A.ticks : 0.0).i("body_overlap_max", A.bodyOverlapMax)
 			.i("dmg_foreign", A.foreignDmg).i("hits", A.hits).d("burst_share", shareNear(A.hitTicks, 5, true))
 			.i("swing_attempts", A.attempts).d("attempt_lockstep_share", shareNear(A.attemptTicks, 5, false))
 			.d("standoff_mean", A.standoffN ? A.standoffSum / A.standoffN : 0).i("blocked_thin", A.thin).i("blocked_wide", A.wide)
@@ -1152,11 +1390,14 @@ namespace bf3
 				tactics::onLevelChange();
 				A = Arm();
 				freshCharacter(pe);
+				armKit = armKitName(arms[armI]);
+				applyKit(pe, armKit);
 				A.keys0 = inKeys; A.buttons0 = inButtons; A.motion0 = inMotion; A.other0 = inOther;
 				if ( armKind(arms[armI]) == "flow" || armKind(arms[armI]) == "noflow" ) { spawnFar(pe, armN(arms[armI])); }
 				else { spawnPacks(pe, armN(arms[armI]), packSize, true); }
 				flow::resetStats();
 				armTierInfo = tierInfo();
+				if ( !expectationsHold() ) { finish(3); break; }
 				A.spawned = (int)trialUids.size();
 				A.slots = trialUids.empty() ? 0 : tactics::reachSlotsFor(pe, uidToEntity(trialUids[0]));
 				go(P_SETTLE);
@@ -1174,6 +1415,11 @@ namespace bf3
 					A.keys0 = k0; A.buttons0 = b0; A.motion0 = m0; A.other0 = o0; A.slots = slots; A.spawned = spawned; A.gearFixes = fixes;
 					if ( Stat* pst = pe ? pe->getStats() : nullptr ) { A.acStart = AC(pst); A.charMaxHP = pst->MAXHP; }
 					A.measureStart = ticks;
+					if ( pe && apx::combat_glue::table().count(pe->getUID()) )
+					{
+						const apx::combat_glue::Rec& pr = apx::combat_glue::table()[pe->getUID()];
+						A.stag0 = pr.staggers; A.locks0 = pr.locks; A.stagTicks0 = pr.staggeredTicks;
+					}
 					measuring = true;
 					go(P_MEASURE);
 				}
@@ -1214,6 +1460,7 @@ namespace bf3
 				{
 					measuring = false;
 					writeArmRow(arms[armI]);
+					stopAfterArm();
 					cleanup();
 					++armI;
 					go(P_CLEAN);

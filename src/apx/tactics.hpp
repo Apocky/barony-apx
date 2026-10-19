@@ -37,6 +37,9 @@ namespace tactics
 	{
 		bool tactics = true, reach = true, interleave = true, allyavoid = true, ring = true, packs = true, morale = true;
 		bool astardiag = true;   // APX_ASTAR_DIAG: the engine A*'s diagonal side test fixed (paths.cpp generatePath)
+		// D75 jam experiment, default OFF (APX_CROWD_COLLIDE=1): hostile creatures of allied kinds collide as bodies
+		// (collision.cpp barony_clear skips monsterally[][] pairs: a same-kind crowd stands inside itself)
+		bool collide = false;
 	};
 	extern Knobs K;           // live knob set (the BF3 trial switches it between arms)
 	extern bool active;       // K.tactics && !client: the master guard every hook tests first

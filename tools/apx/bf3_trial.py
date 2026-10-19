@@ -177,6 +177,7 @@ def summarise(results, args):
                                   "steer_ticks": sum(x.get("steer_ticks", 0) for x in v), "no_path_holds": sum(x.get("no_path_holds", 0) for x in v)}
                               for b, v in sorted(kinds.items())} for k, kinds in sorted(by_monster.items())}
     base["d74"] = d74_summary(arms)
+    base["d75"] = d75_summary(arms)
     base["flagged_rows"] = len(flagged)
     base["morale"] = [m for r in results for m in r["morale"]]
     base["help"] = [h for r in results for h in r.get("help", [])]
@@ -235,6 +236,79 @@ def d74_summary(arms):
     return out
 
 
+def d75_summary(arms):
+    """D75: (1) poise arms "on:12:<monster>:<tier>:<kit>" by crowd, poise model and kit: the character's staggers and
+    stagger locks per 20 s (a lock: a stagger starting within 1 s of the previous one's end), staggered share, its
+    physical pool; (2) jam arms "<vanilla|on|vcollide|oncollide>:12:<monster>" by arena and monster: attackers, bodies
+    standing inside each other, blocked swings, friendly fire, damage."""
+    poise, jam = {}, {}
+    for a in arms:
+        k = a.get("arm_kind", "")
+        if k.count(":") == 4 and a.get("kit") in ("robed", "armoured"):
+            crowd = f'{a.get("kind", "?")}/{a.get("tier_mode", "wild")}'
+            poise.setdefault(crowd, {}).setdefault(a.get("poise_model", "?"), {}).setdefault(a["kit"], []).append(a)
+        elif k.count(":") == 2 and a.get("arm_base") in ("vanilla", "on", "vcollide", "oncollide"):
+            jam.setdefault(f'{a.get("arena", "open")}/{a.get("kind", "?")}', {}).setdefault(a["arm_base"], []).append(a)
+
+    def m(v, f, nd=2):
+        return round(mean([x.get(f, 0) for x in v]), nd)
+    out_p = {c: {mo: {kit: {"n": len(v), "staggers": m(v, "player_staggers"), "locks": m(v, "player_locks"),
+                            "staggered_share": m(v, "staggered_share", 3), "poise_max": m(v, "poise_max", 1),
+                            "poise_min": m(v, "poise_min", 1), "dmg": m(v, "dmg", 1), "hits": m(v, "hits", 1),
+                            "attackers": m(v, "attackers_mean"), "tier_info": sorted(set(x.get("tier_info", "") for x in v))}
+                      for kit, v in sorted(kits.items())} for mo, kits in sorted(models.items())} for c, models in sorted(poise.items())}
+    out_j = {k: {b: {"n": len(v), "dmg": m(v, "dmg", 1), "hits": m(v, "hits", 1), "attackers": m(v, "attackers_mean"),
+                     "in_reach": m(v, "in_reach_mean"), "contact": m(v, "contact_mean"), "blocked_share": m(v, "blocked_share", 3),
+                     "friendly_fire": m(v, "friendly_fire_dmg", 1), "body_overlap": m(v, "body_overlap_mean", 2),
+                     "body_overlap_max": max(x.get("body_overlap_max", 0) for x in v), "stuck": sum(x.get("stuck", 0) for x in v),
+                     "spawned": sorted(set(x.get("creatures", 0) for x in v)), "flags": sorted(set(x.get("flags", "") for x in v))}
+                 for b, v in sorted(bases.items())} for k, bases in sorted(jam.items())}
+    return {"poise": out_p, "jam": out_j}
+
+
+def d75_gates(base, args):
+    """D75 (DECISIONS-2): with physical poise, fodder and wild-rat crowds stagger an armoured fighter far less (at most
+    half) than a robed one; the control (APX_POISE_PHYSICAL=0, F4c's flat pool) restores the lock: armour stops
+    mattering and the armoured fighter is staggered like the robed one again; floor-1 wild rats are fodder by the
+    strength-ordered band. Locks are logged for every crowd. No rows = no data, never a pass."""
+    d, g = (base.get("d75") or {}), {}
+    P = d.get("poise") or {}
+    if not P and not d.get("jam"):
+        return g
+    # the cells the D76 plan runs: physical robed and armoured per crowd; the control's armoured cells (F4c's flat pool
+    # has no armour term, so its robed cell would only repeat the armoured one); a gate without its cells = no data
+    crowds = [c for c in ("skeleton/fodder", "rat/wild") if c in P]
+    rows = {}
+    phys_seen = ctl_seen = 0
+    ok_phys = ok_ctl = True
+    for c in crowds:
+        ph, f4 = P[c].get("physical", {}), P[c].get("f4c", {})
+        if "robed" in ph and "armoured" in ph:
+            phys_seen += 1
+            r, a = ph["robed"]["staggers"], ph["armoured"]["staggers"]
+            ok_phys = ok_phys and r > 0 and a <= 0.5 * r
+        if "armoured" in f4 and "armoured" in ph:
+            ctl_seen += 1
+            ok_ctl = ok_ctl and f4["armoured"]["staggers"] >= 1.5 * max(ph["armoured"]["staggers"], 0.5)
+        rows[c] = {mo: {kit: [P[c][mo][kit]["staggers"], P[c][mo][kit]["locks"], P[c][mo][kit]["poise_max"]] for kit in P[c][mo]}
+                   for mo in P[c]}
+    g["d75_armour_staggers_less"] = {"pass": ok_phys if phys_seen == len(crowds) and crowds else None,
+                                     "rule": "physical: armoured <= 1/2 robed staggers", "staggers_locks_poisemax": rows}
+    reg = P.get("skeleton/regular", {})
+    reg_lock = (reg.get("f4c", {}).get("armoured") or {}).get("locks")
+    reg_phys = (reg.get("physical", {}).get("armoured") or {}).get("locks")
+    have = ctl_seen == len(crowds) and crowds and reg_lock is not None
+    g["d75_control_restores_lock"] = {"pass": (ok_ctl and reg_lock >= 5 and (reg_phys is None or reg_lock > reg_phys)) if have else None,
+                                      "rule": "APX_POISE_PHYSICAL=0: armoured staggers >= 1.5x physical; regular crowd locks >= 5 per 20 s",
+                                      "regular_crowd": {mo: {kit: [reg[mo][kit]["staggers"], reg[mo][kit]["locks"]] for kit in reg[mo]} for mo in reg}}
+    rats = P.get("rat/wild", {})
+    infos = sorted(set(i for mo in rats.values() for kit in mo.values() for i in kit["tier_info"]))
+    g["d75_floor1_rats_fodder"] = {"pass": (bool(infos) and all("rat:fodder/band" in i for i in infos)) if infos else None, "tier_info": infos}
+    if d.get("jam"):
+        g["d75_jam_report"] = d["jam"]
+    return g
+
+
 def d74_gates(base, args):
     """D74 (DECISIONS-2): fodder hits 1-2 on floor 1 (about a third of vanilla), the 12 sword skeletons land in the
     band (D71: within 20 percent of the reference per 20 s), both vanilla controls (fodder0 in-process, and a launch
@@ -285,6 +359,7 @@ def d74_gates(base, args):
 def gates(by, base, args):
     """D71 (Apockalypsis DECISIONS-2.md) and card BF3 gates. A gate with no rows is 'no data', never a pass."""
     g = d74_gates(base, args)
+    g.update(d75_gates(base, args))
     on = [a for a in by.get("on", []) if a.get("creatures") == 12]
     off = [a for a in by.get("off", []) if a.get("creatures") == 12]
     if on:
