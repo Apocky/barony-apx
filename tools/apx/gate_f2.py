@@ -46,6 +46,15 @@ RE_LEVEL_DONE = re.compile(r"successfully generated a dungeon with (\d+) rooms, 
 RE_LOADMAP = re.compile(r"LoadMap (\S+)")
 
 
+def append_row(path, row):
+    """One os.write on an O_APPEND handle: parallel sweeps no longer interleave a row (a 08:29 row broke)."""
+    fd = os.open(str(path), os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0))
+    try:
+        os.write(fd, (json.dumps(row) + "\n").encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
 def start_game(exe, run_dir, extra, datadir, args):
     env = os.environ.copy()
     for k in list(env):
@@ -217,8 +226,7 @@ def session(label, exe, seeds, extra, args, rows_out, w1=False):
                 row["error"] = f"{type(e).__name__}: {e}"
                 row["finish"] = "timeout" if isinstance(e, TimeoutError) else "error"
             rows_out.append(row)
-            with open(args.out / "f2.jsonl", "a", encoding="utf-8") as fh:
-                fh.write(json.dumps(row) + "\n")
+            append_row(args.out / "f2.jsonl", row)
             print(f"[f2] {label} seed {seed}: {row['finish']} w2={row.get('w2', {}).get('verdict')} "
                   f"hash={row.get('hash')} lvl={row.get('level')} ms={row.get('ms_gen')}/{row.get('ms_load')} "
                   f"fps={row.get('fps')} err={row.get('error', '')}", flush=True)
@@ -314,8 +322,7 @@ def mp_session(exe, seed, size, args):
             h = pf.find_game_window(p.pid) if p.poll() is None else None
             row.setdefault("stopped", {})[role] = pf.stop(p, h)
         row["t_total_s"] = round(time.monotonic() - t0, 1)
-    with open(args.out / "f2.jsonl", "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row) + "\n")
+    append_row(args.out / "f2.jsonl", row)
     print(f"[f2] mp {size} seed {seed}: {row['finish']} same_hash={row.get('same_hash')} "
           f"host={row.get('host', {}).get('hash')} client={row.get('client', {}).get('hash')} net={row.get('net')} "
           f"err={row.get('error', '')}", flush=True)

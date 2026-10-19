@@ -64,7 +64,16 @@ def main():
     ap.add_argument("--w1-exe", default="", help="only W1/mp rows whose exe path contains this (the uncapped build)")
     ap.add_argument("--showcase", type=Path, default=APOCKALYPSIS / "tools" / "showcase.py")
     args = ap.parse_args()
-    rows = [json.loads(l) for l in (args.out / "f2.jsonl").read_text().splitlines() if l.strip()]
+    rows, broken = [], 0
+    for l in (args.out / "f2.jsonl").read_text().splitlines():
+        if not l.strip():
+            continue
+        try:
+            rows.append(json.loads(l))
+        except json.JSONDecodeError:
+            broken += 1  # two sweeps appended at once before the single-write fix; counted, not hidden
+    if broken:
+        print(f"f2.jsonl: {broken} broken line(s) skipped")
     rows = [r for r in rows if r.get("ts", "") >= args.since]
     sheet = args.out / "sheet"
     sheet.mkdir(parents=True, exist_ok=True)
