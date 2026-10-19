@@ -785,8 +785,9 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		for ( auto& fq : freq )
 		{
 			if ( fq.first <= NOTHING || fq.first >= NUMMONSTERS ) { continue; }
-			Stat st(fq.first + 1000);
-			ranked.push_back({ { st.LVL, -fq.second }, fq.first });
+			// rank by the curve alone: rarer = stronger, ties by type id. (Stat base levels are only
+			// filled on the host, so ranking by them gave the client another tier order and hash.)
+			ranked.push_back({ { -fq.second, fq.first }, fq.first });
 		}
 		std::sort(ranked.begin(), ranked.end());
 		const size_t n = ranked.size();
