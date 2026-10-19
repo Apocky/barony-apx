@@ -195,7 +195,7 @@ def main():
         fl, pt = (int(x) for x in kw.split(":"))
         skill = a.skill if key == "repeat_cell" else 0.0
         cls = CLASSES[(fl - 1) % len(CLASSES)]
-        r, enc, runsr, floors = cell(exe, fl, pt, a.runs, skill, cls, out_root, a.seed + fl, a.wall_s, tag_suffix="-" + key)
+        r, enc, runsr, floors = cell(exe, fl, pt, a.runs if key == "repeat_cell" else min(a.runs, 200), skill, cls, out_root, a.seed + fl, a.wall_s, tag_suffix="-" + key)
         c = summarise(fl, pt, r, enc, runsr, floors, a.min_encounters)
         base = next((x for x in result["cells"] if x["floor"] == fl and x["party"] == pt and x["status"] != "unsupported"), None)
         if key == "repeat_cell" and base and base["dmg_in_per_player_per_min"]["p50"] and c["dmg_in_per_player_per_min"]["p50"]:
