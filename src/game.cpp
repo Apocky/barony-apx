@@ -63,6 +63,8 @@ static bool apxSkipSplash() // the control BARONY_APX_KEEPSPLASH=1 keeps the log
 #include "ui/LoadingScreen.hpp"
 
 #include "UnicodeDecoder.h"
+#include "apx/lua_layer.hpp"
+static bool apxLuaTestMode = false;
 
 #include <atomic>
 #include <future>
@@ -5321,6 +5323,7 @@ bool handleEvents(void)
 		{
 			gameLogic();
 			++ticks;
+			apxLuaTick();
 		}
 		else
 		{
@@ -7291,6 +7294,12 @@ int main(int argc, char** argv)
 						// (load-time measurement and headless mod tests; see Apockalypsis BL-load-card.md).
 						apxLoadModPath = argv[c] + 12;
 					}
+					else if ( !strncmp(argv[c], "-apx-luatest=", 13) )
+					{
+						// apx: Lua self-test, only with this flag; the seed is forced too so a test run is reproducible
+						apxLuaTestMode = true;
+						forceMapSeed = (Uint32)strtoul(argv[c] + 13, nullptr, 10);
+					}
 					else if ( !strcmp(argv[c], "-nosound") )
 					{
 						no_sound = true;
@@ -7330,6 +7339,8 @@ int main(int argc, char** argv)
             printlog("failed to initialize SDL: %s\n", SDL_GetError());
             return 1;
         }
+
+        apxLuaInit(apxLuaTestMode);
 
         // load game config
 		Input::defaultBindings();
@@ -8317,6 +8328,7 @@ int main(int argc, char** argv)
 		(void)MainMenu::settingsSave();
 
 		// deinit
+		apxLuaShutdown();
 		deinitGame();
 		return deinitApp();
 	}

@@ -9,6 +9,7 @@ See LICENSE for details.
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -3334,6 +3335,7 @@ void Entity::modHP(int amount)
 			Compendium_t::Events_t::eventUpdateCodex(skill[2], Compendium_t::CPDM_HP_LOST_TOTAL, "hp", oldHP - entitystats->HP);
 		}
 	}
+	apxLuaHpChanged(this, oldHP, entitystats->HP);
 }
 
 /*-------------------------------------------------------------------------------
