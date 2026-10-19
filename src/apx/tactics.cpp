@@ -41,7 +41,7 @@ namespace tactics
 		K.packs = envOn("APX_PACKS", true);
 		K.morale = envOn("APX_MORALE", true);
 		K.astardiag = envOn("APX_ASTAR_DIAG", true);
-		K.collide = envOn("APX_CROWD_COLLIDE", false);
+		K.collide = envOn("APX_CROWD_COLLIDE", true);
 		const char* e = getenv("APX_ELBOW");
 		if ( e && *e ) { gElbow = atof(e); }
 		e = getenv("APX_TACTICS_PROBE_US");
@@ -251,6 +251,8 @@ namespace tactics
 		printlog("[apx] tactics route blocked uid %u at %.1f,%.1f: tile %d,%d avoided 5 s, replanning", my->getUID(), my->x, my->y, ax, ay);
 	}
 
+	bool collideOn() { return K.collide && !apxVanillaMode; }
+
 	bool moveTo(Entity* my, TacticsState& s, double gx, double gy, double speed, double& dist2)
 	{
 		double dx = gx - my->x, dy = gy - my->y, len = hypot(dx, dy);
@@ -261,6 +263,31 @@ namespace tactics
 		double ox = my->x, oy = my->y;
 		dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
 		s.lastBump = hit.entity ? (int)hit.entity->sprite : -1; // clipMove clears hit first: this move's own contact
+		// D80: bodies collide. A packmate's body in the way: slide round it (45, then 90 degrees, away from it first,
+		// then the other side). If the goal itself lies under that body, hold for the place rather than push (a
+		// wait, not stuck; counted).
+		Entity* blocker = hit.entity;
+		if ( collideOn() && blocker && blocker != my && blocker->behavior == &actMonster && hypot(my->x - ox, my->y - oy) < 0.3 * v )
+		{
+			const double cross = (dx / len) * (blocker->y - my->y) - (dy / len) * (blocker->x - my->x);
+			const double away = cross > 0 ? -1.0 : 1.0;
+			const double turns[4] = { away * 0.7854, away * 1.5708, -away * 0.7854, -away * 1.5708 };
+			const double vx0 = MONSTER_VELX, vy0 = MONSTER_VELY;
+			for ( double tr : turns )
+			{
+				const double cs = cos(tr), sn = sin(tr), vx = vx0 * cs - vy0 * sn, vy = vx0 * sn + vy0 * cs;
+				const double x0 = my->x, y0 = my->y;
+				dist2 = clipMove(&my->x, &my->y, vx, vy, my);
+				if ( hypot(my->x - x0, my->y - y0) >= 0.5 * v ) { MONSTER_VELX = vx; MONSTER_VELY = vy; ++C.body_sidesteps; break; }
+			}
+			if ( hypot(my->x - ox, my->y - oy) < 0.05 && hypot(blocker->x - gx, blocker->y - gy) < bodyR(blocker) + bodyR(my) )
+			{
+				MONSTER_VELX = 0; MONSTER_VELY = 0;
+				s.stillSince = 0; s.stuckCounted = false;
+				++C.body_goal_holds;
+				return false;
+			}
+		}
 		// the engine's own bump rules (actmonster.cpp monsterChaseBump: doors open, locked wooden doors, furniture and
 		// breakable colliders are bashed); working on a breakable is not being stuck
 		bool working = false;

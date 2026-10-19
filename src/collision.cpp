@@ -1360,10 +1360,10 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 						{
 							// forced enemies.
 						}
-						else if ( apx::tactics::K.collide && multiplayer != CLIENT && my->behavior == &actMonster && entity->behavior == &actMonster
+						else if ( apx::tactics::collideOn() && multiplayer != CLIENT && my->behavior == &actMonster && entity->behavior == &actMonster
 							&& !myStats->leader_uid && !yourStats->leader_uid )
 						{
-							// apx D75 jam experiment (APX_CROWD_COLLIDE, BF3 trial arms): hostile allied creatures block each other
+							// apx D80: hostile allied creatures block each other as bodies (APX_CROWD_COLLIDE=0, -apxvanilla: off)
 						}
 						else
 						{

@@ -433,28 +433,22 @@ namespace bf3
 		return best;
 	}
 
-	static void chooseArena(Entity* pe)
+	// D80: both arenas are found at the start, the open one (most open 3x3 floor) and the corridor (the longest straight
+	// 1-tile corridor); an arm picks one with a "!open" / "!corridor" suffix, else APX_BF3_ARENA (default open)
+	static int openTX = -1, openTY = -1, openN = -1, corrTX = -1, corrTY = -1, corrN = 0;
+	static bool envCorridor = false;
+
+	static void useArena(Entity* pe, bool corridor)
 	{
-		int best = -1;
-		const char* arenaEnv = getenv("APX_BF3_ARENA");
-		const bool corridor = arenaEnv && !strcmp(arenaEnv, "corridor");
-		arenaCorridor = corridor;
-		for ( int y = 2; y < (int)map.height - 2; ++y )
+		if ( corridor && corrN <= 0 )
 		{
-			for ( int x = 2; x < (int)map.width - 2; ++x )
-			{
-				if ( corridor )
-				{
-					const int n = corridorAt(x, y);
-					if ( n > best ) { best = n; pTX = x; pTY = y; }
-					continue;
-				}
-				if ( !clear3(x, y) ) { continue; }
-				int n = openCount(x, y, 5, nullptr);
-				if ( n > best ) { best = n; pTX = x; pTY = y; }
-			}
+			printlog("[apx] bf3 arena: no straight corridor on this floor, the open arena stays");
+			corridor = false;
 		}
-		if ( corridor ) { printlog("[apx] bf3 arena: corridor mode, best corridor length %d at %d,%d", best, pTX, pTY); }
+		const int tx = corridor ? corrTX : openTX, ty = corridor ? corrTY : openTY;
+		if ( pinned && tx == pTX && ty == pTY && arenaCorridor == corridor ) { return; }
+		arenaCorridor = corridor;
+		pTX = tx; pTY = ty;
 		pinX = pTX * 16.0 + 8; pinY = pTY * 16.0 + 8; pinYaw = 0;
 		pe->x = pinX; pe->y = pinY; pe->yaw = pinYaw;
 		// the engine moves an entity between spatial-grid cells (TileEntityList) only when it changes tile inside its
@@ -476,7 +470,8 @@ namespace bf3
 			double aa = atan2(a.second - pTY, a.first - pTX), ab = atan2(b.second - pTY, b.first - pTX);
 			return aa < ab || (aa == ab && hypot(a.first - pTX, a.second - pTY) < hypot(b.first - pTX, b.second - pTY));
 		});
-		printlog("[apx] bf3 arena: tile %d,%d open %d (radius 5), %d spawn tiles 4-7 tiles out", pTX, pTY, best, (int)spawnTiles.size());
+		printlog("[apx] bf3 arena: %s tile %d,%d (%s %d), %d spawn tiles 4-7 tiles out", corridor ? "corridor" : "open", pTX, pTY,
+			corridor ? "corridor length" : "open tiles radius 5", corridor ? corrN : openN, (int)spawnTiles.size());
 		// the arena's walls, to read routes and stuck creatures against: '#' not walkable, '.' floor, 'P' the character
 		for ( int y = pTY - 8; y <= pTY + 8; ++y )
 		{
@@ -485,6 +480,35 @@ namespace bf3
 			printlog("[apx] bf3 arena row %+d %s", y - pTY, row.c_str());
 		}
 	}
+
+	static void chooseArena(Entity* pe)
+	{
+		const char* arenaEnv = getenv("APX_BF3_ARENA");
+		envCorridor = arenaEnv && !strcmp(arenaEnv, "corridor");
+		openN = -1; corrN = 0;
+		for ( int y = 2; y < (int)map.height - 2; ++y )
+		{
+			for ( int x = 2; x < (int)map.width - 2; ++x )
+			{
+				const int c = corridorAt(x, y);
+				if ( c > corrN ) { corrN = c; corrTX = x; corrTY = y; }
+				if ( !clear3(x, y) ) { continue; }
+				int n = openCount(x, y, 5, nullptr);
+				if ( n > openN ) { openN = n; openTX = x; openTY = y; }
+			}
+		}
+		printlog("[apx] bf3 arenas: open %d,%d (%d tiles), corridor %d,%d (length %d)", openTX, openTY, openN, corrTX, corrTY, corrN);
+		pinned = false;
+		useArena(pe, envCorridor);
+	}
+
+	// D80: an arm's arena suffix ("on:12:skeleton!corridor"); "" = the run's default
+	static std::string armArena(const std::string& a)
+	{
+		const size_t b = a.find('!');
+		return b == std::string::npos ? std::string() : a.substr(b + 1);
+	}
+	static std::string noArena(const std::string& a) { return a.substr(0, a.find('!')); }
 
 	static void removeQuietly(Entity* m)
 	{
@@ -512,8 +536,9 @@ namespace bf3
 	static Monster armKindMon = SKELETON;
 	static std::string armKindName = "skeleton";
 	static bool armedKind(Monster m) { return m == SKELETON || m == GOBLIN || m == HUMAN; } // these get the bronze sword
-	static void setArmMonster(const std::string& a)
+	static void setArmMonster(const std::string& aIn)
 	{
+		const std::string a = aIn.substr(0, aIn.find('!')); // D80: the arena suffix is not a monster
 		armKindMon = kind; armKindName = kindName;
 		size_t c1 = a.find(':'), c2 = c1 == std::string::npos ? c1 : a.find(':', c1 + 1);
 		if ( c2 == std::string::npos ) { return; }
@@ -530,8 +555,9 @@ namespace bf3
 	// D74: the arm's tier, a fourth field ("on:12:skeleton:fodder"): fodder (tagged fodder), fodder0 (tagged fodder with
 	// the damage rule forced off: the in-process vanilla control), regular (tagged regular), wild or none (untagged:
 	// the floor's own tier, spec 04 section 2.1). A spawned pack is tagged as the director tags its members.
-	static std::string armTierMode(const std::string& a)
+	static std::string armTierMode(const std::string& aIn)
 	{
+		const std::string a = aIn.substr(0, aIn.find('!'));
 		size_t c1 = a.find(':'), c2 = c1 == std::string::npos ? c1 : a.find(':', c1 + 1), c3 = c2 == std::string::npos ? c2 : a.find(':', c2 + 1);
 		if ( c3 == std::string::npos ) { return std::string(); }
 		const size_t c4 = a.find(':', c3 + 1);
@@ -539,8 +565,9 @@ namespace bf3
 	}
 	// D75: a fifth field, the character's kit ("on:12:rat:wild:armoured"): robed (hood, wizard doublet, cloak), armoured
 	// (iron helm, breastpiece and boots, bracers, iron shield); none keeps the quickstart gear. Weapons stay.
-	static std::string armKitName(const std::string& a)
+	static std::string armKitName(const std::string& aIn)
 	{
+		const std::string a = aIn.substr(0, aIn.find('!'));
 		size_t c = std::string::npos, p = 0;
 		for ( int k = 0; k < 4; ++k ) { c = a.find(':', p); if ( c == std::string::npos ) { return std::string(); } p = c + 1; }
 		return a.substr(p);
@@ -600,7 +627,8 @@ namespace bf3
 		tactics::K = tactics::Knobs();
 		tactics::setProbeUs(a == "probe" ? 1000.0 : 0.0); // probe: every knob on plus a 1 ms busy-wait per decide (control)
 		if ( a == "off" ) { tactics::K.reach = tactics::K.interleave = tactics::K.allyavoid = tactics::K.ring = false; }
-		else if ( a == "vanilla" ) { tactics::K.tactics = false; }
+		else if ( a == "vanilla" ) { tactics::K.tactics = false; tactics::K.collide = false; } // vanilla: no apx crowd physics
+		else if ( a == "nocollide" ) { tactics::K.collide = false; }                      // D80: the control, bodies pass
 		else if ( a == "nomorale" ) { tactics::K.morale = false; }
 		else if ( a == "nopacks" ) { tactics::K.packs = false; }   // control for calls for help and flanks
 		else if ( a == "noring" ) { tactics::K.ring = false; }        // control for BF3-4: waiters bunch
@@ -1084,6 +1112,7 @@ namespace bf3
 			.i("target_dropped_by_tactics", C.target_dropped_by_tactics).i("target_lost_ticks", A.targetLostTicks)
 			.i("ring_holds", C.ring_holds).i("ring_assign", C.ring_assign).i("ring_slot_fail", C.ring_slot_fail).i("feints", C.feints)
 			.i("stuck", C.stuck).i("stuck_episodes", C.stuck_episodes).i("steer_ticks", C.steer_ticks).i("steer_holds", C.steer_holds)
+			.i("body_sidesteps", C.body_sidesteps).i("body_goal_holds", C.body_goal_holds).i("collide_on", tactics::collideOn() ? 1 : 0).i("apx_vanilla", apxVanillaMode ? 1 : 0)
 			.d("waiters_pair_dist_mean", A.waitPairN ? A.waitPairSum / A.waitPairN : 0)
 			.d("waiters_nn_mean", A.nnN ? A.nnSum / A.nnN : 0).d("waiters_overlap_share", A.waiterSamples ? (double)A.waiterOverlaps / A.waiterSamples : 0)
 			.i("contact_attackers", contactAttackers()).d("blocked_share", A.attempts ? (double)(A.thin + A.wide) / A.attempts : 0)
@@ -1384,6 +1413,10 @@ namespace bf3
 				if ( ticks - phT >= 60 ) { go(armI < arms.size() ? P_SPAWN : (moraleTest ? P_M_SPAWN : (helpTest ? P_H_SPAWN : P_DONE))); if ( ph == P_DONE ) { finish(0); } }
 				break;
 			case P_SPAWN:
+				{
+					const std::string ar = armArena(arms[armI]);
+					useArena(pe, ar.empty() ? envCorridor : ar == "corridor");
+				}
 				setArmKnobs(arms[armI]);
 				setArmMonster(arms[armI]);
 				setArmTier(arms[armI]);
