@@ -1,0 +1,132 @@
+Start testing: Oct 18 22:38 US Mountain Standard Time
+----------------------------------------------------------
+1/6 Testing: w2_gate
+1/6 Test: w2_gate
+Command: "C:/Users/Apocky/source/repos/apx-gen/build-verify/Release/apxgen.exe" "--seeds" "1000" "--quiet"
+Directory: C:/Users/Apocky/source/repos/apx-gen/build-verify
+"w2_gate" start time: Oct 18 22:38 US Mountain Standard Time
+Output:
+----------------------------------------------------------
+{"summary":true,"grammar":"C:/Users/Apocky/source/repos/apx-gen/grammar/default.grammar","programs":40,"hard_walls":true,"size":128,"seeds":1000,"pass":1000,"connected":1000,"reach":1000,"locks_after_keys":1000,"dig_gate":1000,"mission":1000,"retried":62,"nondeterministic":0,"program_fallbacks":0,"rooms_mean":32.5,"open_pct_mean":18.1,"special_rooms":3649,"district_rooms":10469,"themed_rooms":28814,"dress":true,"density_mean":6.93,"density_min":5.23,"floors_density_ge3":1000,"rooms_filled_pct":100.0,"rooms_three_kinds_pct":99.9,"floors_all_filled":1000,"floors_three_kinds_ge70":1000,"clone_army_groups":0,"floors_with_clone_army":0,"clone_army_wall_groups":0,"neg_space_rooms_mean":36.8,"rooms_in_30_45_pct":78.6,"neg_space_halls_mean":64.5,"wall_cover_pct":80.3,"clone_cap":true,"clearance_violations":0,"guaranteed_missed":0,"never_hits":0,"presence_rows":85,"presence_out_of_band":0,"ms_mean":11.739,"ms_p50":11.071,"ms_p99":26.499,"ms_max":41.990,"dress_ms_mean":11.815,"dress_ms_p99":33.314,"gate":"PASS"}
+<end of output>
+Test time =  25.31 sec
+----------------------------------------------------------
+Test Passed.
+"w2_gate" end time: Oct 18 22:38 US Mountain Standard Time
+"w2_gate" time elapsed: 00:00:25
+----------------------------------------------------------
+
+2/6 Testing: w2_control_corrupt_grammar
+2/6 Test: w2_control_corrupt_grammar
+Command: "C:/Users/Apocky/source/repos/apx-gen/build-verify/Release/apxgen.exe" "--seeds" "50" "--quiet" "--grammar" "C:/Users/Apocky/source/repos/apx-gen/grammar/corrupt-key-behind-lock.grammar"
+Directory: C:/Users/Apocky/source/repos/apx-gen/build-verify
+"w2_control_corrupt_grammar" start time: Oct 18 22:38 US Mountain Standard Time
+Output:
+----------------------------------------------------------
+{"summary":true,"grammar":"C:/Users/Apocky/source/repos/apx-gen/grammar/corrupt-key-behind-lock.grammar","programs":40,"hard_walls":true,"size":128,"seeds":50,"pass":0,"connected":0,"reach":0,"locks_after_keys":0,"dig_gate":0,"mission":0,"retried":50,"nondeterministic":0,"program_fallbacks":0,"rooms_mean":32.0,"open_pct_mean":18.3,"special_rooms":192,"district_rooms":509,"themed_rooms":1409,"dress":true,"density_mean":0.00,"density_min":0.00,"floors_density_ge3":0,"rooms_filled_pct":0.0,"rooms_three_kinds_pct":0.0,"floors_all_filled":0,"floors_three_kinds_ge70":0,"clone_army_groups":0,"floors_with_clone_army":0,"clone_army_wall_groups":0,"neg_space_rooms_mean":0.0,"rooms_in_30_45_pct":0.0,"neg_space_halls_mean":0.0,"wall_cover_pct":0.0,"clone_cap":true,"clearance_violations":0,"guaranteed_missed":0,"never_hits":0,"presence_rows":0,"presence_out_of_band":0,"ms_mean":84.232,"ms_p50":80.306,"ms_p99":117.548,"ms_max":117.548,"dress_ms_mean":0.000,"dress_ms_p99":0.000,"gate":"FAIL"}
+<end of output>
+Test time =   8.43 sec
+----------------------------------------------------------
+Test Passed.
+"w2_control_corrupt_grammar" end time: Oct 18 22:38 US Mountain Standard Time
+"w2_control_corrupt_grammar" time elapsed: 00:00:08
+----------------------------------------------------------
+
+3/6 Testing: dig_control_no_hard_walls
+3/6 Test: dig_control_no_hard_walls
+Command: "C:/Users/Apocky/source/repos/apx-gen/build-verify/Release/apxgen.exe" "--seeds" "50" "--quiet" "--no-hard-walls"
+Directory: C:/Users/Apocky/source/repos/apx-gen/build-verify
+"dig_control_no_hard_walls" start time: Oct 18 22:38 US Mountain Standard Time
+Output:
+----------------------------------------------------------
+{"summary":true,"grammar":"C:/Users/Apocky/source/repos/apx-gen/grammar/default.grammar","programs":40,"hard_walls":false,"size":128,"seeds":50,"pass":0,"connected":0,"reach":0,"locks_after_keys":0,"dig_gate":0,"mission":0,"retried":50,"nondeterministic":0,"program_fallbacks":0,"rooms_mean":32.0,"open_pct_mean":18.2,"special_rooms":191,"district_rooms":519,"themed_rooms":1410,"dress":true,"density_mean":0.00,"density_min":0.00,"floors_density_ge3":0,"rooms_filled_pct":0.0,"rooms_three_kinds_pct":0.0,"floors_all_filled":0,"floors_three_kinds_ge70":0,"clone_army_groups":0,"floors_with_clone_army":0,"clone_army_wall_groups":0,"neg_space_rooms_mean":0.0,"rooms_in_30_45_pct":0.0,"neg_space_halls_mean":0.0,"wall_cover_pct":0.0,"clone_cap":true,"clearance_violations":0,"guaranteed_missed":0,"never_hits":0,"presence_rows":0,"presence_out_of_band":0,"ms_mean":87.442,"ms_p50":80.910,"ms_p99":150.654,"ms_max":150.654,"dress_ms_mean":0.000,"dress_ms_p99":0.000,"gate":"FAIL"}
+<end of output>
+Test time =   8.76 sec
+----------------------------------------------------------
+Test Passed.
+"dig_control_no_hard_walls" end time: Oct 18 22:38 US Mountain Standard Time
+"dig_control_no_hard_walls" time elapsed: 00:00:08
+----------------------------------------------------------
+
+4/6 Testing: f3_vox_roundtrip
+4/6 Test: f3_vox_roundtrip
+Command: "C:/Users/Apocky/source/repos/apx-gen/build-verify/Release/apxgen.exe" "--vox" "C:/Users/Apocky/source/repos/apx-gen/build-verify/vox"
+Directory: C:/Users/Apocky/source/repos/apx-gen/build-verify
+"f3_vox_roundtrip" start time: Oct 18 22:38 US Mountain Standard Time
+Output:
+----------------------------------------------------------
+{"vox":"altar","variant":0,"dims":[24,12,10],"voxels":2336,"read_dims":[24,12,10],"read_voxels":2336,"bytes":3660,"roundtrip":true}
+{"vox":"altar","variant":1,"dims":[24,12,12],"voxels":2776,"read_dims":[24,12,12],"read_voxels":2776,"bytes":4236,"roundtrip":true}
+{"vox":"barrel","variant":0,"dims":[10,10,12],"voxels":960,"read_dims":[10,10,12],"read_voxels":960,"bytes":1980,"roundtrip":true}
+{"vox":"barrel","variant":1,"dims":[10,10,14],"voxels":1120,"read_dims":[10,10,14],"read_voxels":1120,"bytes":2180,"roundtrip":true}
+{"vox":"barrel","variant":2,"dims":[10,10,16],"voxels":1280,"read_dims":[10,10,16],"read_voxels":1280,"bytes":2380,"roundtrip":true}
+{"vox":"bed","variant":0,"dims":[14,28,7],"voxels":1448,"read_dims":[14,28,7],"read_voxels":1448,"bytes":3524,"roundtrip":true}
+{"vox":"bed","variant":1,"dims":[14,28,8],"voxels":1476,"read_dims":[14,28,8],"read_voxels":1476,"bytes":3916,"roundtrip":true}
+{"vox":"bench","variant":0,"dims":[12,5,5],"voxels":138,"read_dims":[12,5,5],"read_voxels":138,"bytes":1080,"roundtrip":true}
+{"vox":"bench","variant":1,"dims":[14,5,5],"voxels":158,"read_dims":[14,5,5],"read_voxels":158,"bytes":1130,"roundtrip":true}
+{"vox":"bench","variant":2,"dims":[16,5,5],"voxels":178,"read_dims":[16,5,5],"read_voxels":178,"bytes":1180,"roundtrip":true}
+{"vox":"brazier","variant":0,"dims":[8,8,10],"voxels":198,"read_dims":[8,8,10],"read_voxels":198,"bytes":1420,"roundtrip":true}
+{"vox":"brazier","variant":1,"dims":[8,8,13],"voxels":209,"read_dims":[8,8,13],"read_voxels":209,"bytes":1612,"roundtrip":true}
+{"vox":"crate","variant":0,"dims":[10,10,10],"voxels":1000,"read_dims":[10,10,10],"read_voxels":1000,"bytes":1780,"roundtrip":true}
+{"vox":"crate","variant":1,"dims":[12,12,12],"voxels":1728,"read_dims":[12,12,12],"read_voxels":1728,"bytes":2508,"roundtrip":true}
+{"vox":"crate","variant":2,"dims":[14,14,14],"voxels":2744,"read_dims":[14,14,14],"read_voxels":2744,"bytes":3524,"roundtrip":true}
+{"vox":"pillar","variant":0,"dims":[12,12,28],"voxels":2008,"read_dims":[12,12,28],"read_voxels":2008,"bytes":4812,"roundtrip":true}
+{"vox":"pillar","variant":1,"dims":[12,12,32],"voxels":2216,"read_dims":[12,12,32],"read_voxels":2216,"bytes":5388,"roundtrip":true}
+{"vox":"pillar","variant":2,"dims":[12,12,36],"voxels":2424,"read_dims":[12,12,36],"read_voxels":2424,"bytes":5964,"roundtrip":true}
+{"vox":"rack","variant":0,"dims":[14,4,18],"voxels":396,"read_dims":[14,4,18],"read_voxels":396,"bytes":1788,"roundtrip":true}
+{"vox":"rack","variant":1,"dims":[14,4,20],"voxels":434,"read_dims":[14,4,20],"read_voxels":434,"bytes":1900,"roundtrip":true}
+{"vox":"rubble","variant":0,"dims":[14,14,5],"voxels":185,"read_dims":[14,14,5],"read_voxels":185,"bytes":1760,"roundtrip":true}
+{"vox":"rubble","variant":1,"dims":[14,14,6],"voxels":338,"read_dims":[14,14,6],"read_voxels":338,"bytes":1956,"roundtrip":true}
+{"vox":"rubble","variant":2,"dims":[14,14,7],"voxels":317,"read_dims":[14,14,7],"read_voxels":317,"bytes":2152,"roundtrip":true}
+{"vox":"rubble","variant":3,"dims":[14,14,8],"voxels":376,"read_dims":[14,14,8],"read_voxels":376,"bytes":2348,"roundtrip":true}
+{"vox":"shelf","variant":0,"dims":[14,5,20],"voxels":643,"read_dims":[14,5,20],"read_voxels":643,"bytes":2180,"roundtrip":true}
+{"vox":"shelf","variant":1,"dims":[14,5,23],"voxels":725,"read_dims":[14,5,23],"read_voxels":725,"bytes":2390,"roundtrip":true}
+{"vox":"shelf","variant":2,"dims":[14,5,26],"voxels":841,"read_dims":[14,5,26],"read_voxels":841,"bytes":2600,"roundtrip":true}
+{"vox":"statue","variant":0,"dims":[12,12,28],"voxels":976,"read_dims":[12,12,28],"read_voxels":976,"bytes":4812,"roundtrip":true}
+{"vox":"statue","variant":1,"dims":[12,12,28],"voxels":976,"read_dims":[12,12,28],"read_voxels":976,"bytes":4812,"roundtrip":true}
+{"vox":"statue","variant":2,"dims":[12,12,28],"voxels":976,"read_dims":[12,12,28],"read_voxels":976,"bytes":4812,"roundtrip":true}
+{"vox":"table","variant":0,"dims":[24,12,8],"voxels":690,"read_dims":[24,12,8],"read_voxels":690,"bytes":3084,"roundtrip":true}
+{"vox":"table","variant":1,"dims":[26,12,9],"voxels":756,"read_dims":[26,12,9],"read_voxels":756,"bytes":3588,"roundtrip":true}
+{"vox":"table","variant":2,"dims":[28,12,10],"voxels":822,"read_dims":[28,12,10],"read_voxels":822,"bytes":4140,"roundtrip":true}
+{"vox_summary":true,"fixtures":12,"files":33,"failed":0,"gate":"PASS"}
+<end of output>
+Test time =   0.28 sec
+----------------------------------------------------------
+Test Passed.
+"f3_vox_roundtrip" end time: Oct 18 22:38 US Mountain Standard Time
+"f3_vox_roundtrip" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/6 Testing: f3_dress_strict
+5/6 Test: f3_dress_strict
+Command: "C:/Users/Apocky/source/repos/apx-gen/build-verify/Release/apxgen.exe" "--seeds" "200" "--quiet" "--strict-soft"
+Directory: C:/Users/Apocky/source/repos/apx-gen/build-verify
+"f3_dress_strict" start time: Oct 18 22:38 US Mountain Standard Time
+Output:
+----------------------------------------------------------
+{"summary":true,"grammar":"C:/Users/Apocky/source/repos/apx-gen/grammar/default.grammar","programs":40,"hard_walls":true,"size":128,"seeds":200,"pass":200,"connected":200,"reach":200,"locks_after_keys":200,"dig_gate":200,"mission":200,"retried":19,"nondeterministic":0,"program_fallbacks":0,"rooms_mean":32.3,"open_pct_mean":18.1,"special_rooms":761,"district_rooms":2098,"themed_rooms":5707,"dress":true,"density_mean":6.91,"density_min":5.45,"floors_density_ge3":200,"rooms_filled_pct":100.0,"rooms_three_kinds_pct":99.9,"floors_all_filled":200,"floors_three_kinds_ge70":200,"clone_army_groups":0,"floors_with_clone_army":0,"clone_army_wall_groups":0,"neg_space_rooms_mean":36.5,"rooms_in_30_45_pct":77.7,"neg_space_halls_mean":64.4,"wall_cover_pct":80.0,"clone_cap":true,"clearance_violations":0,"guaranteed_missed":0,"never_hits":0,"presence_rows":85,"presence_out_of_band":0,"ms_mean":14.799,"ms_p50":13.525,"ms_p99":39.239,"ms_max":45.014,"dress_ms_mean":14.595,"dress_ms_p99":46.207,"gate":"PASS"}
+<end of output>
+Test time =   7.59 sec
+----------------------------------------------------------
+Test Passed.
+"f3_dress_strict" end time: Oct 18 22:39 US Mountain Standard Time
+"f3_dress_strict" time elapsed: 00:00:07
+----------------------------------------------------------
+
+6/6 Testing: f3_control_no_clone_cap
+6/6 Test: f3_control_no_clone_cap
+Command: "C:/Users/Apocky/source/repos/apx-gen/build-verify/Release/apxgen.exe" "--seeds" "50" "--quiet" "--strict-soft" "--no-clone-cap"
+Directory: C:/Users/Apocky/source/repos/apx-gen/build-verify
+"f3_control_no_clone_cap" start time: Oct 18 22:39 US Mountain Standard Time
+Output:
+----------------------------------------------------------
+{"summary":true,"grammar":"C:/Users/Apocky/source/repos/apx-gen/grammar/default.grammar","programs":40,"hard_walls":true,"size":128,"seeds":50,"pass":50,"connected":50,"reach":50,"locks_after_keys":50,"dig_gate":50,"mission":50,"retried":3,"nondeterministic":0,"program_fallbacks":0,"rooms_mean":32.0,"open_pct_mean":18.0,"special_rooms":180,"district_rooms":497,"themed_rooms":1421,"dress":true,"density_mean":7.28,"density_min":5.57,"floors_density_ge3":50,"rooms_filled_pct":100.0,"rooms_three_kinds_pct":99.9,"floors_all_filled":50,"floors_three_kinds_ge70":50,"clone_army_groups":353,"floors_with_clone_army":33,"clone_army_wall_groups":3253,"neg_space_rooms_mean":36.1,"rooms_in_30_45_pct":76.3,"neg_space_halls_mean":65.0,"wall_cover_pct":85.0,"clone_cap":false,"clearance_violations":0,"guaranteed_missed":0,"never_hits":0,"presence_rows":85,"presence_out_of_band":1,"ms_mean":13.317,"ms_p50":12.724,"ms_p99":24.953,"ms_max":24.953,"dress_ms_mean":12.923,"dress_ms_p99":32.439,"gate":"FAIL"}
+<end of output>
+Test time =   2.68 sec
+----------------------------------------------------------
+Test Passed.
+"f3_control_no_clone_cap" end time: Oct 18 22:39 US Mountain Standard Time
+"f3_control_no_clone_cap" time elapsed: 00:00:02
+----------------------------------------------------------
+
+End testing: Oct 18 22:39 US Mountain Standard Time

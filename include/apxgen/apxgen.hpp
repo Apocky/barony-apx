@@ -89,6 +89,9 @@ struct Params {
     bool hard_walls = true;      // spec 02 section 8: walls of a lock's far side are undiggable
     int max_attempts = 8;        // sub-seeds tried before the floor is declared failed
     std::string theme;           // "" = by seed from the six themes
+    bool special_cells = true;   // false = control: special nodes keep whatever cell BFS gave them
+    bool band_order_x = false;   // true = the F2 band order (cells by x then z): thin column bands
+    int boss_min = 12;           // the boss cell holds at least this many tiles a side inside its margin
     // macro structure grammar (kits/districts.toml): theme -> districts; one district per lock region
     std::vector<std::pair<std::string, std::vector<std::string>>> districts;
 };
@@ -136,6 +139,9 @@ struct Floor {
     std::vector<std::string> region_district; // district per lock region
     std::vector<uint8_t> feat;   // Feat per tile
     int special_rooms = 0, themed_rooms = 0, district_rooms = 0;
+    int special_swaps = 0, special_merges = 0, special_missed = 0; // missed: a special node on a non-special program
+    unsigned special_kinds = 0;  // bit per special kind placed: haven boss vault nexus stronghold
+    int boss_w = 0, boss_d = 0;
     std::vector<uint8_t> zone;   // Zone per tile (room floor only)
     std::vector<DressRow> dress;
     std::vector<RoomDress> room_dress;

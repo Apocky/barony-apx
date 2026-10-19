@@ -157,6 +157,47 @@ build/Release/apxgen.exe --dump 14 out/dressed/crypt-14.txt
 python tools/sheet.py out/dressed/*.txt --vox out/vox --out out/sheet
 ```
 
+## F3.1 -- all five special rooms on every floor (review fix)
+
+Started 2026-10-18 22:40:10 -0700, gates measured 22:51:01 -0700 (11 min to the gates).
+The review found 1-6 special rooms per floor: special nodes kept whatever cell the BFS embedding
+gave them and fell back to themed programs when their special program did not fit (seed 7: boss
+on mine-drift-end in a 7x6 box). Mechanism and fixes, in `src/layout.cpp`:
+
+- Special cells: after embedding, each special node swaps (inside its lock region's band) into a
+  cell its special program fits; the boss goes first and takes the largest cell of its band, at
+  least `Params::boss_min` = 12 tiles a side. If no single cell fits, up to 4 cells of the band
+  that share whole edges merge into one rectangle (occupants move to spare cells of the band).
+- Band order: cells were cut into regions in x-then-z order, which made the last region a strip
+  10-12 tiles wide along the east edge, where no boss cell can exist. Cells are now ordered along
+  a Hilbert curve, so a region is a compact blob (`--band-order-x` restores the old order).
+- Island repair walked only the box interior, so a corridor opening carved into a box corner had
+  no way in ("island cannot join its door"); it now walks the whole box. This removed every island
+  failure, including the ones F2 already had.
+- Gate: a floor passes only with all five special kinds on special programs and no special node
+  on a non-special program. Control `--no-special-cells`: 14 / 200 floors have all five; gate
+  FAIL (ctest f3_control_no_special_cells, WILL_FAIL).
+
+| Measure, seeds 1-1000 | F3 (527a535) | F3.1 |
+|---|---|---|
+| F2 hard gates | 1000 / 1000 | 1000 / 1000 |
+| floors with all 5 specials on special programs | not gated (the control, special cells off, gives 14 / 200) | 1000 / 1000 |
+| special nodes on a non-special program | not counted | 0 |
+| boss box, smallest side | down to 6 | 12 (0 floors under 12) |
+| special cell swaps / cells merged | - | 2,679 / 108 |
+| floors needing a second sub-seed | 62 | 78 (16 of the first 200 seeds' dead ends: boss band too small even merged) |
+| Clone Army, clearance violations, GUARANTEED misses | 0, 0, 0 | 0, 0, 0 |
+| density per 10 m^2 (with trim) | mean 6.93, min 5.23 | mean 6.68, min 5.33 |
+| non-hall rooms in negative space 30-45 | 78.6 percent | 79.7 percent |
+| ms per floor generate / dress, mean | 9.3 / 9.6 | 10.5 / 9.7 |
+| ctest | 6 / 6 | 7 / 7 |
+
+Negative space by room type (function / hall or room), 1000 seeds: halls keep the void term by
+design (boss 82.7, crypt 75.5, temple 74.6, fortress 73.9, sewer 68.8, mine 63.2, nexus 62.4,
+cave 56.0 percent mean); rooms: haven 43.8 (99.5 percent in band), stronghold 44.4 (100), vault
+42.1 (94.7), sewer 40.5 (89.8), crypt 36.8 (78.6), temple 35.7 (74.7), fortress 34.9 (71.8), mine
+31.6 (62.2). The CLI prints these rows (`neg_space_by_type`) after the per-floor rows.
+
 ## Not done / not checked (F3)
 
 - ASSUMED: 1 tile = 1 m^2 for the density rule (`DressLib::m2_per_tile`); no spec gives Barony's

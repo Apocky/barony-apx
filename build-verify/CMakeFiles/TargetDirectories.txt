@@ -1,0 +1,5 @@
+C:/Users/Apocky/source/repos/apx-gen/build-verify/CMakeFiles/apxgen.dir
+C:/Users/Apocky/source/repos/apx-gen/build-verify/CMakeFiles/apxgen_cli.dir
+C:/Users/Apocky/source/repos/apx-gen/build-verify/CMakeFiles/RUN_TESTS.dir
+C:/Users/Apocky/source/repos/apx-gen/build-verify/CMakeFiles/ALL_BUILD.dir
+C:/Users/Apocky/source/repos/apx-gen/build-verify/CMakeFiles/ZERO_CHECK.dir

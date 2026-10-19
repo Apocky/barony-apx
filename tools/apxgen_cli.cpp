@@ -105,6 +105,8 @@ int main(int argc, char** argv) {
         else if (a == "--no-dress") dress = false;
         else if (a == "--no-clone-cap") clone_cap = false;
         else if (a == "--strict-soft") strict_soft = true;
+        else if (a == "--no-special-cells") P.special_cells = false;
+        else if (a == "--band-order-x") P.band_order_x = true;
         else if (a == "--presence") presence_path = nxt();
         else if (a == "--vox") vox_dir = nxt();
         else if (a == "--dump") { dump_seed = std::stoll(nxt()); dump_path = nxt(); }
@@ -136,6 +138,11 @@ int main(int argc, char** argv) {
           << " filled " << ds.filled << "/" << ds.rooms << " three_kinds " << ds.three << "/" << ds.rooms << "\n";
         o << "legend floor . | behind-lock 1-9 | HARD # | water ~ deep = lava ^ chasm : sky \" bridge + hazard ! (floor tag) | stairs < > key k lock L boss @ chest $ secret ? merchant m plaque p seat f\n";
         o << "legend fixtures table T bench b shelf S barrel o crate c brazier * altar A bed B rack R pillar I statue & rubble % | floor prop , | wall items counted, not drawn\n";
+        if (f.tile.size() != (size_t)f.W * f.H) { // the last attempt dead-ended in LAYOUT: no grid to draw
+            for (auto& l : r.log) o << "log " << l << "\n";
+            std::printf("seed %lld failed in layout; log written to %s\n", dump_seed, dump_path.c_str());
+            return 1;
+        }
         std::vector<std::string> rows(f.H, std::string(f.W, ' '));
         for (int z = 0; z < f.H; ++z)
             for (int x = 0; x < f.W; ++x) {
@@ -178,6 +185,8 @@ int main(int argc, char** argv) {
     }
 
     long long ok = 0, conn = 0, locks = 0, dig = 0, reach = 0, mission = 0, retried = 0, nondet = 0, fallbacks = 0;
+    long long all5 = 0, sp_missed = 0, sp_swaps = 0, sp_merges = 0, boss_small = 0; int boss_min_side = 1 << 30;
+    std::map<std::string, std::pair<double, std::pair<long long, long long>>> ns_by_fn; // function -> (sum ns, (rooms, in band))
     long long d_clearance = 0, d_clone_wall = 0, d_gmiss = 0, d_never = 0, d_clone = 0, d_rooms = 0, d_filled = 0, d_three = 0, d_floor_dense = 0, d_floor_filled = 0, d_floor_three = 0;
     long long d_nrooms = 0, d_band = 0, d_wall_faces = 0, d_wall_dressed = 0, d_clone_floors = 0, d_special = 0, d_themed = 0, d_district = 0;
     double d_density = 0, d_ns_rooms = 0, d_ns_halls = 0, d_dense_min = 1e9;
@@ -208,6 +217,12 @@ int main(int argc, char** argv) {
         ok += r.ok; conn += r.ok && v.connected; locks += r.ok && v.locks_ok; dig += r.ok && v.dig_ok; reach += r.ok && v.reach_ok; mission += r.ok && v.mission_ok;
         retried += f.attempt > 0;
         fallbacks += f.program_fallbacks;
+        if (r.ok) {
+            all5 += f.special_kinds == 31u && f.special_missed == 0;
+            sp_missed += f.special_missed; sp_swaps += f.special_swaps; sp_merges += f.special_merges;
+            boss_min_side = std::min(boss_min_side, std::min(f.boss_w, f.boss_d));
+            boss_small += std::min(f.boss_w, f.boss_d) < P.boss_min;
+        }
         d_special += f.special_rooms; d_themed += f.themed_rooms; d_district += f.district_rooms;
         double open_pct = f.W ? 100.0 * v.floor_tiles / (f.W * f.H) : 0;
         rooms_sum += f.rooms.size();
@@ -223,6 +238,8 @@ int main(int argc, char** argv) {
             d_wall_faces += ds.wall_faces; d_wall_dressed += ds.wall_dressed;
             for (auto& rd : f.room_dress) {
                 fn_rooms[rd.function]++;
+                auto& nb = ns_by_fn[rd.function + (rd.hall ? "/hall" : "/room")];
+                nb.first += rd.neg_space; nb.second.first++; nb.second.second += rd.neg_space >= 30.0 - 1e-9 && rd.neg_space <= 45.0 + 1e-9;
                 std::set<std::string> seen(rd.present.begin(), rd.present.end());
                 for (auto& e : seen) pres[rd.function + "|" + e].first++;
             }
@@ -280,22 +297,27 @@ int main(int argc, char** argv) {
     mean /= std::max<size_t>(1, ms.size());
     dmean /= std::max<size_t>(1, dms.size());
     auto pct = [&](const std::vector<double>& v, double p) { return v.empty() ? 0.0 : v[std::min(v.size() - 1, (size_t)(p * v.size()))]; };
-    bool gate = ok == seeds && conn == seeds && locks == seeds && dig == seeds && nondet == 0 && (!dress || (d_gmiss == 0 && d_never == 0 && d_clearance == 0 && (!strict_soft || d_clone == 0)));
+    bool gate = all5 == ok && ok == seeds && conn == seeds && locks == seeds && dig == seeds && nondet == 0 && (!dress || (d_gmiss == 0 && d_never == 0 && d_clearance == 0 && (!strict_soft || d_clone == 0)));
     long long dfl = std::max<long long>(1, ok);
     std::printf("{\"summary\":true,\"grammar\":\"%s\",\"programs\":%zu,\"hard_walls\":%s,\"size\":%d,\"seeds\":%lld,\"pass\":%lld,\"connected\":%lld,\"reach\":%lld,"
                 "\"locks_after_keys\":%lld,\"dig_gate\":%lld,\"mission\":%lld,\"retried\":%lld,\"nondeterministic\":%lld,\"program_fallbacks\":%lld,\"rooms_mean\":%.1f,\"open_pct_mean\":%.1f,"
-                "\"special_rooms\":%lld,\"district_rooms\":%lld,\"themed_rooms\":%lld,"
+                "\"floors_all_5_specials\":%lld,\"special_nodes_missed\":%lld,\"special_swaps\":%lld,\"special_merges\":%lld,\"boss_min_side\":%d,\"floors_boss_under_min\":%lld,\"special_rooms\":%lld,\"district_rooms\":%lld,\"themed_rooms\":%lld,"
                 "\"dress\":%s,\"density_mean\":%.2f,\"density_min\":%.2f,\"floors_density_ge3\":%lld,\"rooms_filled_pct\":%.1f,\"rooms_three_kinds_pct\":%.1f,"
                 "\"floors_all_filled\":%lld,\"floors_three_kinds_ge70\":%lld,\"clone_army_groups\":%lld,\"floors_with_clone_army\":%lld,\"clone_army_wall_groups\":%lld,"
                 "\"neg_space_rooms_mean\":%.1f,\"rooms_in_30_45_pct\":%.1f,\"neg_space_halls_mean\":%.1f,\"wall_cover_pct\":%.1f,"
                 "\"clone_cap\":%s,\"clearance_violations\":%lld,\"guaranteed_missed\":%lld,\"never_hits\":%lld,\"presence_rows\":%lld,\"presence_out_of_band\":%lld,"
                 "\"ms_mean\":%.3f,\"ms_p50\":%.3f,\"ms_p99\":%.3f,\"ms_max\":%.3f,\"dress_ms_mean\":%.3f,\"dress_ms_p99\":%.3f,\"gate\":\"%s\"}\n",
                 esc(grammar).c_str(), progs.size(), P.hard_walls ? "true" : "false", P.size, seeds, ok, conn, reach, locks, dig, mission, retried, nondet, fallbacks,
-                rooms_sum / std::max<long long>(1, seeds), open_sum / std::max<long long>(1, seeds), d_special, d_district, d_themed,
+                rooms_sum / std::max<long long>(1, seeds), open_sum / std::max<long long>(1, seeds), all5, sp_missed, sp_swaps, sp_merges, boss_min_side, boss_small, d_special, d_district, d_themed,
                 dress ? "true" : "false", d_density / dfl, d_dense_min > 1e8 ? 0.0 : d_dense_min, d_floor_dense, d_rooms ? 100.0 * d_filled / d_rooms : 0.0,
                 d_rooms ? 100.0 * d_three / d_rooms : 0.0, d_floor_filled, d_floor_three, d_clone, d_clone_floors, d_clone_wall,
                 d_nrooms ? d_ns_rooms / d_nrooms : 0.0, d_nrooms ? 100.0 * d_band / d_nrooms : 0.0, (d_rooms - d_nrooms) ? d_ns_halls / (d_rooms - d_nrooms) : 0.0,
                 d_wall_faces ? 100.0 * d_wall_dressed / d_wall_faces : 0.0, clone_cap ? "true" : "false", d_clearance, d_gmiss, d_never, pres_rows, pres_bad,
                 mean, pct(sm, 0.5), pct(sm, 0.99), sm.empty() ? 0 : sm.back(), dmean, pct(sd, 0.99), gate ? "PASS" : "FAIL");
+    if (!quiet || !presence_path.empty()) {
+        for (auto& [k, v] : ns_by_fn)
+            std::printf("{\"neg_space_by_type\":\"%s\",\"rooms\":%lld,\"mean\":%.1f,\"in_30_45_pct\":%.1f}\n", k.c_str(), v.second.first,
+                        v.first / std::max<long long>(1, v.second.first), 100.0 * v.second.second / std::max<long long>(1, v.second.first));
+    }
     return gate ? 0 : 1;
 }

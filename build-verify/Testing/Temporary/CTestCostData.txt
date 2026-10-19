@@ -1,0 +1,7 @@
+w2_gate 1 25.3112
+w2_control_corrupt_grammar 1 8.42696
+dig_control_no_hard_walls 1 8.75706
+f3_vox_roundtrip 1 0.275737
+f3_dress_strict 1 7.5876
+f3_control_no_clone_cap 1 2.67822
+---

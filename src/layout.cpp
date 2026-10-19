@@ -8,6 +8,8 @@
 #include <deque>
 #include <queue>
 #include <tuple>
+#include <cstdio>
+#include <cstdlib>
 
 namespace apx {
 
@@ -188,7 +190,22 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     int nreg = (int)*std::max_element(f.reg.begin(), f.reg.end()) + 1;
     std::vector<int> order(cells.size());
     for (size_t i = 0; i < order.size(); ++i) order[i] = (int)i;
-    std::sort(order.begin(), order.end(), [&](int a, int b) { return std::make_tuple(centre(a).first, centre(a).second, a) < std::make_tuple(centre(b).first, centre(b).second, b); });
+    // cells in Hilbert-curve order of their centres, so a run of cells (a lock region's band) is a
+    // compact blob, not a one-cell-wide column (P.band_order_x = the old x-then-z order, the control)
+    auto hilbert = [](int x, int z) {
+        long long d = 0;
+        for (int s = 128; s > 0; s /= 2) {
+            int rx = (x & s) > 0, rz = (z & s) > 0;
+            d += (long long)s * s * ((3 * rx) ^ rz);
+            if (rz == 0) { if (rx == 1) { x = 255 - x; z = 255 - z; } std::swap(x, z); }
+        }
+        return d;
+    };
+    if (P.band_order_x)
+        std::sort(order.begin(), order.end(), [&](int a, int b) { return std::make_tuple(centre(a).first, centre(a).second, a) < std::make_tuple(centre(b).first, centre(b).second, b); });
+    else
+        std::sort(order.begin(), order.end(), [&](int a, int b) {
+            return std::make_tuple(hilbert(centre(a).first, centre(a).second), a) < std::make_tuple(hilbert(centre(b).first, centre(b).second), b); });
     std::vector<int> counts(nreg, 0);
     for (auto x : f.reg) counts[x]++;
     int spare = (int)cells.size() - N;
@@ -225,6 +242,115 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
     }
     for (int v = 0; v < N; ++v) if (cell_of[v] < 0) return "mission node " + m.nodes[v].name + " not connected";
 
+    // special nodes (HAVEN, BOSS, VAULT, NEXUS, STRONGHOLD) get a cell their special program fits:
+    // a swap inside the node's band (its lock region, so the region rules hold); the boss takes the
+    // largest cell of its band and needs at least P.boss_min tiles a side inside the cell margin
+    if (P.special_cells) {
+        auto inner = [&](int c) { return std::pair<int, int>{cells[c][2] - cells[c][0] - 4, cells[c][3] - cells[c][1] - 4}; };
+        std::vector<int> node_at(cells.size(), -1);
+        for (int v = 0; v < N; ++v) node_at[cell_of[v]] = v;
+        std::vector<char> fixed(N, 0);
+        // the boss first (it wants the largest), then the rest in node order
+        std::vector<int> order_sp;
+        for (int v = 0; v < N; ++v) if (m.nodes[v].kind == Kind::Boss) order_sp.push_back(v);
+        for (int v = 0; v < N; ++v) if (*special_of(m.nodes[v].kind) && m.nodes[v].kind != Kind::Boss) order_sp.push_back(v);
+        for (int v : order_sp) {
+            const std::string sp = special_of(m.nodes[v].kind);
+            int nw = 1 << 30, nd = 1 << 30;
+            for (auto& p : progs) if (p.special == sp) { nw = std::min(nw, p.min[0]); nd = std::min(nd, p.min[2]); }
+            if (nw == (1 << 30)) continue; // no special program of this kind in the kits
+            bool boss = m.nodes[v].kind == Kind::Boss;
+            if (boss) { nw = std::max(nw, P.boss_min); nd = std::max(nd, P.boss_min); }
+            int best = -1;
+            long long ba = -1;
+            for (int c = 0; c < (int)cells.size(); ++c) {
+                if (band_of_cell[c] != f.reg[v]) continue;
+                int u = node_at[c];
+                if (u >= 0 && u != v && (fixed[u] || *special_of(m.nodes[u].kind))) continue;
+                auto [cw, cd] = inner(c);
+                if (cw < nw || cd < nd) continue;
+                long long area = (long long)cw * cd;
+                // boss: the largest; others: the current cell if it fits, else the smallest that fits
+                long long score = boss ? area : (c == cell_of[v] ? (1LL << 40) : -area);
+                if (best < 0 || score > ba) { best = c; ba = score; }
+            }
+            if (best < 0) {
+                // no single cell fits: grow a rectangle of up to 4 cells of the band, each step
+                // adding a cell that shares a whole edge with the rectangle so far (the union stays
+                // a rectangle, no other cell inside it). Non-special occupants move to spare cells
+                // of the band (v's old cell counts as spare). The union goes to v; the others retire.
+                auto shares = [](const Rect& R, const Rect& B) {
+                    return (R[1] == B[1] && R[3] == B[3] && (R[2] == B[0] || B[2] == R[0])) ||
+                           (R[0] == B[0] && R[2] == B[2] && (R[3] == B[1] || B[3] == R[1]));
+                };
+                auto movable = [&](int c) { int u = node_at[c]; return u < 0 || u == v || (!fixed[u] && !*special_of(m.nodes[u].kind)); };
+                long long bestA = -1;
+                std::vector<int> bestS;
+                for (int a = 0; a < (int)cells.size(); ++a) {
+                    if (band_of_cell[a] != f.reg[v] || !movable(a)) continue;
+                    std::vector<int> S{a};
+                    Rect R = cells[a];
+                    for (int step = 0; step < 3; ++step) {
+                        if (R[2] - R[0] - 4 >= nw && R[3] - R[1] - 4 >= nd) break;
+                        int pick = -1;
+                        long long ps = -1;
+                        for (int b = 0; b < (int)cells.size(); ++b) {
+                            if (band_of_cell[b] != f.reg[v] || std::find(S.begin(), S.end(), b) != S.end() || !movable(b) || !shares(R, cells[b])) continue;
+                            Rect U{std::min(R[0], cells[b][0]), std::min(R[1], cells[b][1]), std::max(R[2], cells[b][2]), std::max(R[3], cells[b][3])};
+                            long long s = std::min(U[2] - U[0], U[3] - U[1]); // grow the short side first
+                            if (s > ps) { ps = s; pick = b; }
+                        }
+                        if (pick < 0) break;
+                        Rect B = cells[pick];
+                        R = {std::min(R[0], B[0]), std::min(R[1], B[1]), std::max(R[2], B[2]), std::max(R[3], B[3])};
+                        S.push_back(pick);
+                    }
+                    int cw = R[2] - R[0] - 4, cd = R[3] - R[1] - 4;
+                    if (cw < nw || cd < nd) continue;
+                    int movers = 0, spares = 0;
+                    for (int c : S) movers += node_at[c] >= 0 && node_at[c] != v;
+                    for (int c = 0; c < (int)cells.size(); ++c)
+                        if (band_of_cell[c] == f.reg[v] && std::find(S.begin(), S.end(), c) == S.end() && (node_at[c] < 0 || c == cell_of[v])) ++spares;
+                    if (spares < movers) continue;
+                    long long score = (long long)cw * cd - 1000LL * (long long)S.size(); // fewest cells, then largest
+                    if (bestS.empty() || score > bestA) { bestA = score; bestS = S; }
+                }
+                if (bestS.empty()) return "no cell in band " + std::to_string(f.reg[v]) + " fits special " + sp;
+                std::vector<int> movers;
+                node_at[cell_of[v]] = -1;
+                Rect R = cells[bestS[0]];
+                for (int c : bestS) {
+                    int u = node_at[c];
+                    if (u >= 0 && u != v) movers.push_back(u);
+                    node_at[c] = -1;
+                    R = {std::min(R[0], cells[c][0]), std::min(R[1], cells[c][1]), std::max(R[2], cells[c][2]), std::max(R[3], cells[c][3])};
+                }
+                int ma = bestS[0];
+                cells[ma] = R;
+                for (size_t k = 1; k < bestS.size(); ++k) { cells[bestS[k]] = {0, 0, 0, 0}; band_of_cell[bestS[k]] = UINT32_MAX; } // retired
+                cell_of[v] = ma; node_at[ma] = v;
+                for (int u : movers) {
+                    int home = -1;
+                    for (int c = 0; c < (int)cells.size(); ++c)
+                        if (band_of_cell[c] == f.reg[v] && node_at[c] < 0) { home = c; break; }
+                    if (home < 0) return "merge left node " + m.nodes[u].name + " without a cell";
+                    cell_of[u] = home; node_at[home] = u;
+                }
+                for (int c = 0; c < (int)cells.size(); ++c) used[c] = node_at[c] >= 0 || band_of_cell[c] == UINT32_MAX;
+                f.special_merges += (int)bestS.size() - 1;
+                fixed[v] = 1;
+                continue;
+            }
+            int old = cell_of[v], u = node_at[best];
+            if (best != old) {
+                cell_of[v] = best; node_at[best] = v; node_at[old] = u;
+                if (u >= 0) cell_of[u] = old; else used[old] = 0, used[best] = 1;
+                ++f.special_swaps;
+            }
+            fixed[v] = 1;
+        }
+    }
+
     // theme of the floor (by seed, not by attempt) and a district per lock region from the
     // structure grammar (kits/districts.toml): region 0 is the approach, deeper regions the buildings
     f.theme = P.theme.empty() ? THEMES[hash_words({seed, 0x7E3E}) % 6] : P.theme;
@@ -253,6 +379,13 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         if (fits.empty() && special.empty()) return "no program fits cell " + std::to_string(cw) + "x" + std::to_string(cd);
         const std::vector<const Program*>& pool = !special.empty() ? special : !district.empty() ? district : !themed.empty() ? themed : fits;
         f.special_rooms += !special.empty();
+        if (!sp.empty()) {
+            if (special.empty()) ++f.special_missed;
+            else {
+                static const char* SK[] = {"haven", "boss", "vault", "nexus", "stronghold"};
+                for (int k = 0; k < 5; ++k) if (sp == SK[k]) f.special_kinds |= 1u << k;
+            }
+        }
         f.district_rooms += special.empty() && !district.empty();
         f.themed_rooms += special.empty() && !themed.empty();
         const Program* p = pool[0];
@@ -263,6 +396,7 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         int d = std::max(p->min[2], std::min(cd, p->max[2]));
         int h = std::max(p->min[1], std::min(p->max[1], 6));
         int x0 = cell[0] + 2 + (cw - w) / 2, z0 = cell[1] + 2 + (cd - d) / 2;
+        if (m.nodes[node].kind == Kind::Boss) { f.boss_w = w; f.boss_d = d; }
         RoomRow row{node, p->id, x0, z0, x0 + w, z0 + d, 0, 0, dist};
         std::string e = run_program(*p, w, h, d, hash_words({seed, 0xC4A7, (uint64_t)node}), room_floor[node], nullptr, &room_feat[node]);
         if (!e.empty()) {
@@ -398,7 +532,8 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
             std::vector<int> lab((size_t)S * S, -1);
             std::deque<int> qq{(int)f.idx(ro.door_x, ro.door_z)};
             lab[qq[0]] = 0;
-            auto inside = [&](int x, int z) { return x > ro.x0 && z > ro.z0 && x < ro.x1 - 1 && z < ro.z1 - 1; };
+            // the whole box: a corridor opening carved into a box corner has no interior neighbour
+            auto inside = [&](int x, int z) { return x >= ro.x0 && z >= ro.z0 && x < ro.x1 && z < ro.z1; };
             while (!qq.empty()) {
                 int c = qq.front(); qq.pop_front();
                 int x = c % S, z = c / S;
@@ -433,7 +568,7 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                     q2.push_back(n);
                 }
             }
-            if (hit < 0) return "room " + std::to_string(ro.node) + " island cannot join its door";
+            if (hit < 0) return "room " + std::to_string(ro.node) + " (" + ro.program + " " + std::to_string(ro.x1 - ro.x0) + "x" + std::to_string(ro.z1 - ro.z0) + ") island cannot join its door";
             for (int c = hit; c >= 0; c = prev[c]) { f.tile[c] = FLOOR; if (feat_blocks(f.feat[c])) f.feat[c] = F_BRIDGE; }
             ++f.island_repairs;
         }

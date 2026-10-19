@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Apocky\source\repos\apx-gen\build-verify\CMakeFiles\7940b24713d6fdd05db9673cc17bea6c\RUN_TESTS_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{425D0213-CD82-3686-A838-6E1E15299FA0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

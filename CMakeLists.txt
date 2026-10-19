@@ -25,3 +25,6 @@ add_test(NAME f3_vox_roundtrip COMMAND apxgen_cli --vox ${CMAKE_CURRENT_BINARY_D
 add_test(NAME f3_dress_strict COMMAND apxgen_cli --seeds 200 --quiet --strict-soft)
 add_test(NAME f3_control_no_clone_cap COMMAND apxgen_cli --seeds 50 --quiet --strict-soft --no-clone-cap)
 set_tests_properties(f3_control_no_clone_cap PROPERTIES WILL_FAIL TRUE)
+# all five special rooms on every floor; control: special nodes keep their BFS cell (must fail)
+add_test(NAME f3_control_no_special_cells COMMAND apxgen_cli --seeds 50 --quiet --no-special-cells)
+set_tests_properties(f3_control_no_special_cells PROPERTIES WILL_FAIL TRUE)
