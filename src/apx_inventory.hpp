@@ -56,13 +56,15 @@ namespace apx_inv
 	// Break; a second list (chest, shop, follower pack) beside ours, transfer by row; the bench shell.
 	enum OtherView : int { OTHER_NONE, OTHER_CHEST, OTHER_SHOP, OTHER_FOLLOWER };
 	struct ViewState { int other = OTHER_NONE; int otherRows = 0; int otherSelected = 0; int focus = 0; bool inspectShown = false;
-		Uint32 inspectUid = 0; int station = 0; int stationOps = 0; bool benchShown = false; int transfers = 0; int refusedHeavy = 0; };
+		Uint32 inspectUid = 0; int station = 0; int stationOps = 0; bool benchShown = false; int transfers = 0; int refusedHeavy = 0;
+		int benchRows = 0; int benchTab = 0; int benchTabSwitches = 0; int benchActions = 0; };
 	const ViewState& viewState(int player);
 	void inspectOpen(int player, Item* item);
 	void breakItem(int player, Item* item);
 	bool openRowMenu(int player, Item* item);           // Barony's context menu for an item of the list
 	bool activateSelected(int player);                 // what Enter / gamepad confirm does on the focused row
-	void setFocus(int player, int focus, int selectedRow); // self-test and mouse: 0 ours, 1 theirs
+	void setFocus(int player, int focus, int selectedRow); // self-test and mouse: 0 ours, 1 theirs, 2 bench
+	void benchTab(int player, int d);                  // Craft / Salvage / Formbook
 
 	// -apxselftest=inventory: runs once on the test floor, writes JSONL, then quits the game.
 	void selfTestArm(const char* which);

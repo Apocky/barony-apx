@@ -14,6 +14,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/items.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx_inventory.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx_inventory_ui.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx_bench.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/paths.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/charclass.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/net.cpp"

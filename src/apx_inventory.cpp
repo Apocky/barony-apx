@@ -12,6 +12,8 @@
 #include "input.hpp"
 #include "menu.hpp"
 #include "monster.hpp"
+#include "apx_bench_api.hpp"
+#include <cmath>
 #include "interface/interface.hpp"
 #include <chrono>
 #include <cstdio>
@@ -302,7 +304,28 @@ static struct S345 {
 	int chestFound = 0, chestView = 0, chestRows = 0, takeOk = 0, storeOk = 0, heavyRefused = 0;
 	int followerFound = 0, followerView = 0, giveOk = 0, followerTakeOk = 0;
 	int benchControl = -1, benchShown = 0, benchStation = 0, benchOps = 0;
+	int benchTab0Rows = 0, benchTab1Rows = 0, benchTab2Rows = 0, benchTab1 = -1, benchTab2 = -1;
 } R;
+
+
+static void probe(const char* tag)
+{
+	FILE* f = fopen(diagPath().c_str(), "a");
+	if ( !f ) { return; }
+	auto& pl = *players[0];
+	auto* ui = inputs.getUIInteraction(0);
+	const auto& vs = viewState(0);
+	const auto& st = listState(0);
+	double fd = -1;
+	if ( g_testFollower && pl.entity ) { fd = sqrt((g_testFollower->x - pl.entity->x) * (g_testFollower->x - pl.entity->x) + (g_testFollower->y - pl.entity->y) * (g_testFollower->y - pl.entity->y)); }
+	fprintf(f, "{\"test\":\"probe\",\"tag\":\"%s\",\"active\":%d,\"gui_mode\":%d,\"shootmode\":%d,\"inv_mode\":%d,\"menu_open\":%d,\"menu_item\":%u,"
+		"\"sel\":%d,\"sel_uid\":%u,\"inspect\":%d,\"other\":%d,\"focus\":%d,\"station\":%d,\"bench\":%d,\"bench_rows\":%d,\"bench_tab\":%d,"
+		"\"followers\":%u,\"follower_dist\":%.1f}\n",
+		tag, (int)listActive(0), pl.gui_mode, (int)pl.shootmode, pl.inventory_mode, (int)ui->itemMenuOpen, ui->itemMenuItem,
+		st.selected, st.selectedUid, (int)vs.inspectShown, vs.other, vs.focus, vs.station, (int)vs.benchShown, vs.benchRows, vs.benchTab,
+		(unsigned)list_Size(&stats[0]->FOLLOWERS), fd);
+	fclose(f);
+}
 
 static void runSteps345(int dt)
 {
@@ -323,14 +346,16 @@ static void runSteps345(int dt)
 		activateSelected(0);
 		menuUid = listState(0).selectedUid;
 	}
-	else if ( dt == 150 ) { R.menuOpen = ui->itemMenuOpen; R.menuItemRight = ui->itemMenuItem == menuUid && menuUid != 0; g_shot = "apx-u1b-menu.png"; }
+	else if ( dt == 147 ) { probe("menu+1"); }
+	else if ( dt == 150 ) { probe("menu+4"); R.menuOpen = ui->itemMenuOpen; R.menuItemRight = ui->itemMenuItem == menuUid && menuUid != 0; g_shot = "apx-u1b-menu.png"; }
 	else if ( dt == 154 )
 	{
 		ui->itemMenuOpen = false;
 		// step 3b: Inspect, through the activation the menu entry calls
 		pl.inventoryUI.activateItemContextMenuOption(uidToItem(menuUid), PROMPT_APX_INSPECT);
 	}
-	else if ( dt == 160 ) { R.inspectShown = viewState(0).inspectShown; g_shot = "apx-u1b-inspect.png"; }
+	else if ( dt == 155 ) { probe("inspect+1"); }
+	else if ( dt == 160 ) { probe("inspect+6"); R.inspectShown = viewState(0).inspectShown; g_shot = "apx-u1b-inspect.png"; }
 	else if ( dt == 164 )
 	{
 		inspectOpen(0, nullptr);
@@ -396,6 +421,8 @@ static void runSteps345(int dt)
 		if ( g_testFollower ) { forceFollower(*me, *g_testFollower); }
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
+	else if ( dt == 208 && g_testFollower ) { g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y; }
+	else if ( dt == 212 ) { probe("follower"); }
 	else if ( dt == 215 && g_testFollower )
 	{
 		g_testFollower->x = pl.entity->x + 16; g_testFollower->y = pl.entity->y; // keep it beside us
@@ -426,6 +453,10 @@ static void runSteps345(int dt)
 		g_testDeco->flags[PASSABLE] = true; g_testDeco->flags[NOUPDATE] = true;
 	}
 	else if ( dt == 250 ) { R.benchControl = viewState(0).benchShown; g_testDeco->sprite = 1617; } // now a workbench
+	else if ( dt == 262 ) { probe("bench"); }
+	else if ( dt == 272 ) { R.benchTab0Rows = viewState(0).benchRows; benchTab(0, 1); }
+	else if ( dt == 276 ) { R.benchTab1Rows = viewState(0).benchRows; R.benchTab1 = viewState(0).benchTab; benchTab(0, 1); }
+	else if ( dt == 280 ) { R.benchTab2Rows = viewState(0).benchRows; R.benchTab2 = viewState(0).benchTab; probe("bench-tabs"); }
 	else if ( dt == 268 ) { R.benchShown = viewState(0).benchShown; R.benchStation = viewState(0).station; R.benchOps = viewState(0).stationOps; g_shot = "apx-u1b-bench.png"; }
 	else if ( dt == 290 )
 	{
@@ -434,10 +465,11 @@ static void runSteps345(int dt)
 		{
 			fprintf(f, "{\"test\":\"steps345\",\"mode\":\"%s\",\"menu_open\":%d,\"menu_item_right\":%d,\"inspect_shown\":%d,\"break_gone\":%d,"
 				"\"chest_found\":%d,\"chest_view\":%d,\"chest_rows\":%d,\"take_ok\":%d,\"store_ok\":%d,\"heavy_refused\":%d,"
-				"\"follower_found\":%d,\"follower_view\":%d,\"give_ok\":%d,\"follower_take_ok\":%d,\"bench_control_shown\":%d,\"bench_shown\":%d,\"bench_station\":\"%s\",\"bench_ops\":%d}\n",
+				"\"follower_found\":%d,\"follower_view\":%d,\"give_ok\":%d,\"follower_take_ok\":%d,\"bench_control_shown\":%d,\"bench_shown\":%d,\"bench_station\":\"%s\",\"bench_ops\":%d,"
+				"\"bench_rows_craft_salvage_formbook\":[%d,%d,%d],\"bench_tabs_reached\":[%d,%d],\"provider\":\"%s\"}\n",
 				vanillaGrid() ? "vanilla" : "apx", R.menuOpen, R.menuItemRight, R.inspectShown, R.breakGone, R.chestFound, R.chestView, R.chestRows,
 				R.takeOk, R.storeOk, R.heavyRefused, R.followerFound, R.followerView, R.giveOk, R.followerTakeOk, R.benchControl, R.benchShown,
-				apx_logic::stationName(R.benchStation), R.benchOps);
+				apx_logic::stationName(R.benchStation), R.benchOps, R.benchTab0Rows, R.benchTab1Rows, R.benchTab2Rows, R.benchTab1, R.benchTab2, apx_bench::provider().name);
 			fclose(f);
 		}
 	}

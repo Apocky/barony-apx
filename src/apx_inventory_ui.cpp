@@ -27,6 +27,7 @@
 #include "ui/Frame.hpp"
 #include "ui/Field.hpp"
 #include "ui/Font.hpp"
+#include "apx_bench_api.hpp"
 #include <algorithm>
 
 namespace apx_inv
@@ -35,12 +36,17 @@ using apx_logic::Entry;
 static ListState g_list[MAXPLAYERS];
 static ViewState g_view[MAXPLAYERS];
 static bool g_shown[MAXPLAYERS] = {};
-static bool g_keyHeld[MAXPLAYERS][5] = {};
+static bool g_keyHeld[MAXPLAYERS][7] = {};
 static std::vector<Entry> g_own[MAXPLAYERS], g_other[MAXPLAYERS];
 static std::vector<Item*> g_otherItems[MAXPLAYERS];   // parallel to g_other (nullptr for headers)
 static SDL_Rect g_ownRect[MAXPLAYERS], g_otherRect[MAXPLAYERS];
 static int g_otherScroll[MAXPLAYERS] = {};
 static Entity* g_follower[MAXPLAYERS] = {};
+static std::vector<Entry> g_bench[MAXPLAYERS];
+static int g_benchSel[MAXPLAYERS] = {}, g_benchScroll[MAXPLAYERS] = {}, g_benchTab[MAXPLAYERS] = {};
+static uint32_t g_benchForm[MAXPLAYERS] = {};
+std::vector<Entry> benchEntries(int player, int tab, int station, Item* selectedOwn, uint32_t selectedForm, std::string& head);
+bool benchActivate(int player, int tab, int station, Item* selectedOwn, const Entry& row, uint32_t& selectedForm, std::string& msg);
 constexpr int ROW_H = 20, HEAD_H = 34, MAX_ROWS = 40, PANEL_W = 220;
 static const char* FONT = "fonts/pixel_maz_multiline.ttf#16#2";
 
@@ -157,6 +163,11 @@ static void moveSel(int player, int d)
 		vs.otherSelected = apx_logic::move(g_other[player], vs.otherSelected, d);
 		return;
 	}
+	if ( vs.focus == 2 )
+	{
+		g_benchSel[player] = apx_logic::move(g_bench[player], g_benchSel[player], d);
+		return;
+	}
 	st.selected = apx_logic::move(g_own[player], st.selected, d);
 	if ( st.selected < st.scroll ) { st.scroll = st.selected; }
 	if ( st.selected > 0 && st.selected - 1 < st.scroll && g_own[player][st.selected - 1].header ) { st.scroll = st.selected - 1; }
@@ -166,10 +177,12 @@ static void moveSel(int player, int d)
 void setFocus(int player, int focus, int row)
 {
 	auto& vs = g_view[player];
-	vs.focus = focus && vs.other != OTHER_NONE ? 1 : 0;
+	if ( focus == 1 && vs.other == OTHER_NONE && vs.benchShown ) { focus = 2; }
+	vs.focus = focus == 1 && vs.other != OTHER_NONE ? 1 : focus == 2 && vs.benchShown ? 2 : 0;
 	if ( row >= 0 )
 	{
-		if ( vs.focus ) { vs.otherSelected = apx_logic::move(g_other[player], row, 0); }
+		if ( vs.focus == 1 ) { vs.otherSelected = apx_logic::move(g_other[player], row, 0); }
+		else if ( vs.focus == 2 ) { g_benchSel[player] = apx_logic::move(g_bench[player], row, 0); }
 		else { g_list[player].selected = apx_logic::move(g_own[player], row, 0); }
 	}
 }
@@ -185,6 +198,7 @@ bool openRowMenu(int player, Item* item)
 	ui->itemMenuFromHotbar = false;
 	ui->itemMenuItem = item->uid;
 	ui->itemMenuSelected = 0;
+	ui->toggleclick = true; // click-and-release mode: stays open until the next click
 	int x = pl.camera_virtualx1() + r.x + r.w + 8;
 	int y = pl.camera_virtualy1() + r.y + HEAD_H + (st.selected - st.scroll) * ROW_H;
 	ui->itemMenuX = x + (x & 1);
@@ -198,26 +212,6 @@ void inspectOpen(int player, Item* item)
 	auto& vs = g_view[player];
 	vs.inspectShown = item != nullptr;
 	vs.inspectUid = item ? item->uid : 0;
-}
-
-void breakItem(int player, Item* item)
-{
-	if ( !item || !stats[player] ) { return; }
-	if ( players[player]->paperDoll.enabled && players[player]->paperDoll.isItemOnDoll(*item) )
-	{
-		messagePlayer(player, MESSAGE_INVENTORY, "Unequip the %s before breaking it.", item->getName());
-		return;
-	}
-	// ASSUMED until F6 (Forms): breaking yields Barony's own salvage where the item has one
-	std::string name = item->getName();
-	if ( GenericGUI[player].isItemSalvageable(item, player) && GenericGUI[player].tinkeringSalvageItem(item, false, player) )
-	{
-		messagePlayer(player, MESSAGE_INVENTORY, "You break the %s into parts. (Its Form is learned when Forms land.)", name.c_str());
-		return;
-	}
-	if ( item->count > 1 ) { --item->count; }
-	else if ( item->node ) { list_RemoveNode(item->node); }
-	messagePlayer(player, MESSAGE_INVENTORY, "You break the %s. (Its Form is learned when Forms land.)", name.c_str());
 }
 
 static bool tooHeavy(int player, Sint32 mass)
@@ -309,12 +303,32 @@ bool activateSelected(int player)
 	auto& vs = g_view[player];
 	if ( !listActive(player) ) { return false; }
 	if ( vs.focus == 1 ) { return takeOther(player); }
+	if ( vs.focus == 2 )
+	{
+		int s = g_benchSel[player];
+		if ( s < 0 || s >= (int)g_bench[player].size() ) { return false; }
+		const auto& own0 = g_own[player];
+		int os = g_list[player].selected;
+		Item* target = os >= 0 && os < (int)own0.size() && !own0[os].header && own0[os].row.uid ? uidToItem(own0[os].row.uid) : nullptr;
+		std::string msg;
+		bool ok = benchActivate(player, g_benchTab[player], vs.station, target, g_bench[player][s], g_benchForm[player], msg);
+		if ( !msg.empty() ) { messagePlayer(player, MESSAGE_INVENTORY, "%s", msg.c_str()); }
+		if ( ok ) { ++vs.benchActions; }
+		return ok;
+	}
 	const auto& own = g_own[player];
 	int sel = g_list[player].selected;
 	if ( sel < 0 || sel >= (int)own.size() || own[sel].header || own[sel].row.uid == 0 ) { return false; }
 	Item* it = uidToItem(own[sel].row.uid);
 	if ( vs.other != OTHER_NONE ) { return giveOwn(player, it); }
 	return openRowMenu(player, it);
+}
+
+void benchTab(int player, int d)
+{
+	g_benchTab[player] = (g_benchTab[player] + 3 + d) % 3;
+	g_benchSel[player] = 0; g_benchScroll[player] = 0;
+	++g_view[player].benchTabSwitches;
 }
 
 bool listHandleMove(int player)
@@ -330,6 +344,13 @@ bool listHandleMove(int player)
 		for ( const char* b : { "InventoryMoveRight", "InventoryMoveRightAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); side = 1; } }
 	}
 	if ( side ) { setFocus(player, side > 0 ? 1 : 0, -1); }
+	if ( g_view[player].benchShown )
+	{
+		for ( const char* b : { "MenuPageLeft", "MenuPageRight" } )
+		{
+			if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); benchTab(player, b[8] == 'L' ? -1 : 1); }
+		}
+	}
 	if ( d ) { moveSel(player, d); }
 	return d != 0 || side != 0;
 }
@@ -484,7 +505,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		list = makeList(inventoryFrame, "apx list", player);
 		makeList(inventoryFrame, "apx other", player);
 		makePanel(inventoryFrame, "apx inspect", player, 8);
-		makePanel(inventoryFrame, "apx bench", player, 8);
+		makeList(inventoryFrame, "apx bench", player);
 	}
 	Frame* other = inventoryFrame->findFrame("apx other");
 	Frame* inspect = inventoryFrame->findFrame("apx inspect");
@@ -565,8 +586,8 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	}
 	if ( inputs.bPlayerUsingKeyboardControl(player) && !inputs.getUIInteraction(player)->itemMenuOpen )
 	{
-		const SDL_Keycode keys[5] = { SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT, SDLK_RETURN };
-		for ( int k = 0; k < 5; ++k )
+		const SDL_Keycode keys[7] = { SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT, SDLK_RETURN, SDLK_LEFTBRACKET, SDLK_RIGHTBRACKET };
+		for ( int k = 0; k < 7; ++k )
 		{
 			bool down = keystatus[keys[k]];
 			if ( down && !g_keyHeld[player][k] )
@@ -574,8 +595,9 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 				if ( k == 0 ) { moveSel(player, -1); }
 				else if ( k == 1 ) { moveSel(player, 1); }
 				else if ( k == 2 ) { setFocus(player, 0, -1); }
-				else if ( k == 3 ) { setFocus(player, 1, -1); }
-				else { activateSelected(player); }
+				else if ( k == 3 ) { setFocus(player, vs.focus == 0 ? 1 : 2, -1); }
+				else if ( k == 4 ) { activateSelected(player); }
+				else if ( vs.benchShown ) { benchTab(player, k == 5 ? -1 : 1); }
 			}
 			g_keyHeld[player][k] = down;
 		}
@@ -641,7 +663,10 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	{
 		SDL_Rect ir{ view == OTHER_NONE ? rr.x : rr.x + PANEL_W + 4, r.y, PANEL_W, 8 * ROW_H + 12 };
 		inspect->setSize(ir);
-		setLines(inspect, apx_logic::inspectLines(logicRow(*insp, player, 0)), ir.w, 8);
+		auto il = apx_logic::inspectLines(logicRow(*insp, player, 0));
+		for ( auto& p : apx_bench::provider().parts(insp) ) { il.insert(il.end() - 1, "  " + p.slotName + ": " + p.material + " q" + std::to_string(p.quality)); }
+		if ( il.size() > 8 ) { il.resize(8); }
+		setLines(inspect, il, ir.w, 8);
 	}
 	// bench shell: a station decoration next to us, or the alchemy (alembic) window open
 	if ( ticks % 10 == 0 || vs.station == apx_logic::NONE )
@@ -651,16 +676,19 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	}
 	vs.benchShown = vs.station != apx_logic::NONE && view == OTHER_NONE && !insp;
 	bench->setDisabled(!vs.benchShown);
+	if ( !vs.benchShown && vs.focus == 2 ) { vs.focus = 0; }
 	if ( vs.benchShown )
 	{
-		auto ops = apx_logic::stationOps(vs.station);
-		vs.stationOps = (int)ops.size();
-		std::vector<std::string> lines{ std::string(apx_logic::stationName(vs.station)) + " -- operations" };
-		for ( auto& o : ops ) { lines.push_back("  " + o); }
-		lines.push_back("Form board: empty");
-		lines.push_back("(filled when Forms land, F6)");
-		bench->setSize(SDL_Rect{ rr.x, r.y, PANEL_W, (int)lines.size() * ROW_H + 12 });
-		setLines(bench, lines, PANEL_W, 8);
+		vs.stationOps = (int)apx_logic::stationOps(vs.station).size();
+		const auto& own0 = g_own[player];
+		Item* target = st.selected >= 0 && st.selected < (int)own0.size() && !own0[st.selected].header && own0[st.selected].row.uid ? uidToItem(own0[st.selected].row.uid) : nullptr;
+		std::string bh;
+		g_bench[player] = benchEntries(player, g_benchTab[player], vs.station, target, g_benchForm[player], bh);
+		g_benchSel[player] = apx_logic::move(g_bench[player], g_benchSel[player], 0);
+		vs.benchRows = (int)g_bench[player].size();
+		vs.benchTab = g_benchTab[player];
+		SDL_Rect br{ rr.x, r.y, PANEL_W + 40, r.h };
+		drawList(player, bench, br, g_bench[player], g_benchSel[player], g_benchScroll[player], st.visibleRows, bh.c_str(), carried, limit, 2, vs.focus == 2);
 	}
 }
 } // namespace apx_inv
