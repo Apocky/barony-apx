@@ -315,8 +315,12 @@ else( NOT WIN32 )
 	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -pg ${OPTIMIZATION_LEVEL} -ffast-math -funroll-loops -malign-double -fstrict-aliasing -mwindows")
 	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${OPTIMIZATION_LEVEL} -ffast-math -funroll-loops -malign-double -fstrict-aliasing -mwindows")
 	# We should be using Visual Studio flags...or better yet, providing an option to select which you'd prefer.
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MP")
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MP ")
+	# apx: /MP batches many sources into one cl.exe; only the Visual Studio generator needs it. Under Ninja
+	# each cl.exe compiles one file, which compiler caches (sccache, ccache) require.
+	if ( CMAKE_GENERATOR MATCHES "Visual Studio" )
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MP")
+		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MP ")
+	endif()
 	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
 	# apx: the code needs C++17 (std::variant, std::clamp); the GCC/Clang branches pass -std=c++17 and
 	# VS.2015/Barony.vcxproj sets LanguageStandard stdcpp17, but MSVC defaults to C++14 under CMake.

@@ -4,7 +4,15 @@
 # data with -datadir="<Steam>\Barony" from any working directory; on Windows the game writes its
 # log, config and saves to the working directory, so pick an empty one (tools\apx\parity_f0.py does).
 #
-# Usage (PowerShell 7):  pwsh -NoProfile -File tools\apx\build.ps1 [-Config Release] [-NoFmod] [-Editor]
+# Usage (PowerShell 7):  pwsh -NoProfile -File tools\apx\build.ps1 [-Config Release] [-NoFmod] [-Editor] [-Cache <mode>]
+#
+# -Cache: vs      = Visual Studio generator, no compiler cache (the original build; output build\vs2022\<Config>)
+#         none    = Ninja, no compiler cache (control; output build\ninja-none)
+#         sccache = Ninja + sccache, cache shared by every worktree (output build\ninja-sccache)
+#         ccache  = Ninja + ccache, same sharing (output build\ninja-ccache)
+# Ninja modes load the VS 2022 Build Tools x64 environment (vcvars64), the same v143 compiler the VS build
+# uses. The caches live in C:\Apocrypha\cache\<tool>; paths are rewritten relative to each worktree's root
+# (SCCACHE_BASEDIRS / CCACHE_BASEDIR), so a second worktree reuses objects the first one compiled.
 
 param(
     [string]$Config = 'Release',
@@ -14,7 +22,11 @@ param(
     [string]$BuildDir,
     [switch]$NoFmod,
     [switch]$Editor,
-    [int]$Jobs = 0     # compiler processes for /MP; 0 = derive from free memory at build time
+    [int]$Jobs = 0,    # compiler processes (/MP or ninja -j); 0 = derive from free memory at build time
+    [ValidateSet('vs', 'none', 'sccache', 'ccache')]
+    [string]$Cache = 'vs',
+    [string]$CacheRoot = 'C:\Apocrypha\cache',
+    [string]$VcVars = 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,7 +34,52 @@ Set-StrictMode -Version Latest
 function Step([string]$msg) { Write-Host "[build] $msg" }
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-if (-not $BuildDir) { $BuildDir = Join-Path $repo 'build\vs2022' }   # build/* is git-ignored upstream
+$ninja = $Cache -ne 'vs'
+if (-not $BuildDir) {   # build/* is git-ignored upstream
+    $BuildDir = if ($ninja) { Join-Path $repo "build\ninja-$Cache" } else { Join-Path $repo 'build\vs2022' }
+}
+
+# Tools installed by winget are on the user PATH, which a shell started before the install may lack.
+function Find-Tool([string]$name) {
+    $c = Get-Command $name -ErrorAction SilentlyContinue
+    if ($c) { return $c.Source }
+    $hit = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages') -Recurse -Filter "$name.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($hit) { return $hit.FullName }
+    throw "$name not found (winget install Mozilla.sccache / Ccache.Ccache / Ninja-build.Ninja)"
+}
+
+$launcherArgs = @()
+$cacheTool = $null
+if ($ninja) {
+    if (-not (Test-Path $VcVars)) { throw "vcvars64.bat not found: $VcVars" }
+    Step "loading the MSVC x64 environment from $VcVars"
+    foreach ($line in (& cmd /c ""$VcVars" >nul && set")) {
+        if ($line -match '^([^=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2]) }
+    }
+    $launcherArgs += "-DCMAKE_MAKE_PROGRAM=$(Find-Tool 'ninja')"
+    $launcherArgs += "-DCMAKE_BUILD_TYPE=$Config"
+    if ($Cache -eq 'sccache') {
+        $cacheTool = Find-Tool 'sccache'
+        $env:SCCACHE_DIR = Join-Path $CacheRoot 'sccache'
+        $env:SCCACHE_BASEDIRS = $repo
+        $env:SCCACHE_CACHE_SIZE = '20G'
+        # the server keeps the environment it started with; restart it so it sees this worktree's base dir
+        & $cacheTool --stop-server 2>$null | Out-Null
+        & $cacheTool --start-server | Out-Null
+        & $cacheTool --zero-stats | Out-Null
+    } elseif ($Cache -eq 'ccache') {
+        $cacheTool = Find-Tool 'ccache'
+        $env:CCACHE_DIR = Join-Path $CacheRoot 'ccache'
+        $env:CCACHE_BASEDIR = $repo
+        $env:CCACHE_NOHASHDIR = 'true'
+        $env:CCACHE_MAXSIZE = '20G'
+        & $cacheTool --zero-stats | Out-Null
+    }
+    if ($cacheTool) {
+        $launcherArgs += "-DCMAKE_CXX_COMPILER_LAUNCHER=$cacheTool"
+        $launcherArgs += "-DCMAKE_C_COMPILER_LAUNCHER=$cacheTool"
+    }
+}
 
 # Guard: with BARONY_DATADIR in the environment, CMakeLists.txt adds INSTALL rules that copy barony.exe,
 # editor.exe and lang/en.txt INTO the data directory. Ours is the Steam install, whose barony.exe is
@@ -47,8 +104,9 @@ if (-not $NoFmod) {
     $soundArgs = @('-DFMOD_ENABLED=ON')
 }
 
-Step "configure $BuildDir ($Generator, x64, $($soundArgs -join ' '))"
-& cmake -S $repo -B $BuildDir -G $Generator -A x64 `
+if ($ninja) { $Generator = 'Ninja'; $platformArgs = @() } else { $platformArgs = @('-A', 'x64') }
+Step "configure $BuildDir ($Generator, cache $Cache, x64, $($soundArgs -join ' '))"
+& cmake -S $repo -B $BuildDir -G $Generator @platformArgs @launcherArgs `
     -DSTEAMWORKS_ENABLED=0 -DEOS_ENABLED=0 -DPLAYFAB_ENABLED=0 -DCURL_ENABLED=0 -DOPUS_ENABLED=0 `
     -DTHEORAPLAYER_ENABLED=0 -DOPENAL_ENABLED=OFF @soundArgs
 if ($LASTEXITCODE -ne 0) { throw 'configure failed' }
@@ -68,14 +126,22 @@ foreach ($t in $targets) {
     }
     Step "build $t ($Config), $jobsNow compiler processes (free commit $freeGB GB)"
     $t0 = Get-Date
-    & cmake --build $BuildDir --config $Config --target $t -- /m /nologo /verbosity:minimal "/p:CL_MPCount=$jobsNow"
+    if ($ninja) {
+        & cmake --build $BuildDir --target $t -- -j $jobsNow
+    } else {
+        & cmake --build $BuildDir --config $Config --target $t -- /m /nologo /verbosity:minimal "/p:CL_MPCount=$jobsNow"
+    }
     if ($LASTEXITCODE -ne 0) { throw "build failed: $t" }
     Step ("built {0} in {1:n0} s" -f $t, ((Get-Date) - $t0).TotalSeconds)
 }
 
 # Runtime DLLs beside the exe (Windows loads DLLs from the exe's folder first, so the Steam install's
 # own DLLs, including its FMOD 2.02 fmod.dll, are never picked up by this build).
-$out = Join-Path $BuildDir $Config
+$out = if ($ninja) { $BuildDir } else { Join-Path $BuildDir $Config }   # Ninja is single-config
+$cacheStats = $null
+if ($Cache -eq 'sccache') { $cacheStats = (& $cacheTool --show-stats) -join "`n" }
+elseif ($Cache -eq 'ccache') { $cacheStats = (& $cacheTool --show-stats) -join "`n" }
+if ($cacheStats) { Step "$Cache stats:`n$cacheStats" }
 Copy-Item (Join-Path $prefix 'bin\*.dll') $out -Force
 if (-not $NoFmod) { Copy-Item (Join-Path $FmodDir 'api\core\lib\x64\fmod.dll') $out -Force }
 
@@ -86,6 +152,7 @@ $info = [ordered]@{
     dirty     = [bool](& git -C $repo status --porcelain --untracked-files=no)
     config    = $Config
     generator = $Generator
+    cache     = $Cache
     fmod      = if ($NoFmod) { $null } else { $FmodDir }
     exe       = $exe
     exe_bytes = (Get-Item $exe).Length
