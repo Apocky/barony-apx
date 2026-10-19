@@ -126,3 +126,8 @@ Headless gate (2026-10-19, MEASURED, local merge of apx/farm and apx/f1-instrume
 jobs in 222 s): 10/10 seeds give the same F1 floor-1 hash and F0 line windowed and headless; seed + 1
 and APX_HASH_POKE=1 change the hash; the headless window was never visible; audio devices opened:
 headless 0, windowed at least 5. Rows: `C:\Apocrypha\diagnostics\barony-farm\gate.jsonl`.
+
+Throughput (2026-10-19, MEASURED, farm_bench.py, 24 floor-1 jobs, same dungeon lines both ways): before,
+one windowed launch at a time: 313.7 s = 275 jobs per hour; after, all 24 submitted to the farm headless
+(code 76491ea6, 13.8 GB commit free, at most 5 games at once by the memory budget): 35.0 s = 2,468 jobs
+per hour, 8.96x. Rows: `C:\Apocrypha\diagnostics\barony-farm\bench.jsonl`.
