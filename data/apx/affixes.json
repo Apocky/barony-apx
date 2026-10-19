@@ -1,14 +1,576 @@
 {
  "_note": "F6 v1 affix pools, 6 per pool (19-GEAR-PARTS section 3 pools per slot). Lookup order: family/slot, then slot, then *. pct is the stat change in percent (ASSUMED). Ids are assigned in file order (pool order, then entry order), so append, never reorder.",
  "pools": [
-  {"id": "Blade", "affixes": [{"name": "edge keeping", "pct": 10}, {"name": "bleed", "pct": 8}, {"name": "reach", "pct": 6}, {"name": "keenness", "pct": 12}, {"name": "heft", "pct": 8}, {"name": "balance", "pct": 6}]},
-  {"id": "Edge", "affixes": [{"name": "serration", "pct": 8}, {"name": "temper", "pct": 10}, {"name": "bite", "pct": 12}, {"name": "glint", "pct": 4}, {"name": "rending", "pct": 9}, {"name": "hone", "pct": 6}]},
-  {"id": "Head", "affixes": [{"name": "crushing", "pct": 12}, {"name": "stagger", "pct": 8}, {"name": "breach", "pct": 10}, {"name": "heft", "pct": 8}, {"name": "spikes", "pct": 6}, {"name": "ring", "pct": 5}]},
-  {"id": "Limb", "affixes": [{"name": "draw weight", "pct": 10}, {"name": "precision", "pct": 8}, {"name": "range", "pct": 12}, {"name": "snap", "pct": 6}, {"name": "flex", "pct": 6}, {"name": "quiet", "pct": 5}]},
-  {"id": "Plate", "affixes": [{"name": "deflection", "pct": 10}, {"name": "lightness", "pct": 8}, {"name": "insulation", "pct": 8}, {"name": "bulwark", "pct": 12}, {"name": "sheen", "pct": 4}, {"name": "rivets", "pct": 6}]},
-  {"id": "Padding", "affixes": [{"name": "cushion", "pct": 10}, {"name": "warmth", "pct": 8}, {"name": "breathing", "pct": 6}, {"name": "quilting", "pct": 8}, {"name": "absorb", "pct": 10}, {"name": "comfort", "pct": 5}]},
-  {"id": "Grip", "affixes": [{"name": "sure grip", "pct": 8}, {"name": "quick hands", "pct": 6}, {"name": "wrap", "pct": 5}, {"name": "control", "pct": 8}, {"name": "sweat-proof", "pct": 4}, {"name": "leverage", "pct": 7}]},
-  {"id": "Body", "affixes": [{"name": "weave", "pct": 8}, {"name": "ward", "pct": 10}, {"name": "drape", "pct": 5}, {"name": "hush", "pct": 6}, {"name": "dye", "pct": 3}, {"name": "toughness", "pct": 8}]},
-  {"id": "*", "affixes": [{"name": "durable", "pct": 8}, {"name": "light", "pct": 6}, {"name": "fine", "pct": 5}, {"name": "sturdy", "pct": 8}, {"name": "gleaming", "pct": 3}, {"name": "attuned", "pct": 6}]}
+  {
+   "affixes": [
+    {
+     "name": "edge keeping",
+     "pct": 10
+    },
+    {
+     "name": "bleed",
+     "pct": 8
+    },
+    {
+     "name": "reach",
+     "pct": 6
+    },
+    {
+     "name": "keenness",
+     "pct": 12
+    },
+    {
+     "name": "heft",
+     "pct": 8
+    },
+    {
+     "name": "balance",
+     "pct": 6
+    }
+   ],
+   "id": "Blade"
+  },
+  {
+   "affixes": [
+    {
+     "name": "serration",
+     "pct": 8
+    },
+    {
+     "name": "temper",
+     "pct": 10
+    },
+    {
+     "name": "bite",
+     "pct": 12
+    },
+    {
+     "name": "glint",
+     "pct": 4
+    },
+    {
+     "name": "rending",
+     "pct": 9
+    },
+    {
+     "name": "hone",
+     "pct": 6
+    }
+   ],
+   "id": "Edge"
+  },
+  {
+   "affixes": [
+    {
+     "name": "crushing",
+     "pct": 12
+    },
+    {
+     "name": "stagger",
+     "pct": 8
+    },
+    {
+     "name": "breach",
+     "pct": 10
+    },
+    {
+     "name": "heft",
+     "pct": 8
+    },
+    {
+     "name": "spikes",
+     "pct": 6
+    },
+    {
+     "name": "ring",
+     "pct": 5
+    }
+   ],
+   "id": "Head"
+  },
+  {
+   "affixes": [
+    {
+     "name": "draw weight",
+     "pct": 10
+    },
+    {
+     "name": "precision",
+     "pct": 8
+    },
+    {
+     "name": "range",
+     "pct": 12
+    },
+    {
+     "name": "snap",
+     "pct": 6
+    },
+    {
+     "name": "flex",
+     "pct": 6
+    },
+    {
+     "name": "quiet",
+     "pct": 5
+    }
+   ],
+   "id": "Limb"
+  },
+  {
+   "affixes": [
+    {
+     "name": "deflection",
+     "pct": 10
+    },
+    {
+     "name": "lightness",
+     "pct": 8
+    },
+    {
+     "name": "insulation",
+     "pct": 8
+    },
+    {
+     "name": "bulwark",
+     "pct": 12
+    },
+    {
+     "name": "sheen",
+     "pct": 4
+    },
+    {
+     "name": "rivets",
+     "pct": 6
+    }
+   ],
+   "id": "Plate"
+  },
+  {
+   "affixes": [
+    {
+     "name": "cushion",
+     "pct": 10
+    },
+    {
+     "name": "warmth",
+     "pct": 8
+    },
+    {
+     "name": "breathing",
+     "pct": 6
+    },
+    {
+     "name": "quilting",
+     "pct": 8
+    },
+    {
+     "name": "absorb",
+     "pct": 10
+    },
+    {
+     "name": "comfort",
+     "pct": 5
+    }
+   ],
+   "id": "Padding"
+  },
+  {
+   "affixes": [
+    {
+     "name": "sure grip",
+     "pct": 8
+    },
+    {
+     "name": "quick hands",
+     "pct": 6
+    },
+    {
+     "name": "wrap",
+     "pct": 5
+    },
+    {
+     "name": "control",
+     "pct": 8
+    },
+    {
+     "name": "sweat-proof",
+     "pct": 4
+    },
+    {
+     "name": "leverage",
+     "pct": 7
+    }
+   ],
+   "id": "Grip"
+  },
+  {
+   "affixes": [
+    {
+     "name": "weave",
+     "pct": 8
+    },
+    {
+     "name": "ward",
+     "pct": 10
+    },
+    {
+     "name": "drape",
+     "pct": 5
+    },
+    {
+     "name": "hush",
+     "pct": 6
+    },
+    {
+     "name": "dye",
+     "pct": 3
+    },
+    {
+     "name": "toughness",
+     "pct": 8
+    }
+   ],
+   "id": "Body"
+  },
+  {
+   "affixes": [
+    {
+     "name": "durable",
+     "pct": 8
+    },
+    {
+     "name": "light",
+     "pct": 6
+    },
+    {
+     "name": "fine",
+     "pct": 5
+    },
+    {
+     "name": "sturdy",
+     "pct": 8
+    },
+    {
+     "name": "gleaming",
+     "pct": 3
+    },
+    {
+     "name": "attuned",
+     "pct": 6
+    }
+   ],
+   "id": "*"
+  },
+  {
+   "affixes": [
+    {
+     "name": "piercing",
+     "pct": 12
+    },
+    {
+     "name": "needle",
+     "pct": 8
+    },
+    {
+     "name": "slip",
+     "pct": 6
+    },
+    {
+     "name": "poise",
+     "pct": 5
+    },
+    {
+     "name": "anchor",
+     "pct": 4
+    }
+   ],
+   "id": "Point"
+  },
+  {
+   "affixes": [
+    {
+     "name": "reach",
+     "pct": 10
+    },
+    {
+     "name": "straight",
+     "pct": 8
+    },
+    {
+     "name": "spring",
+     "pct": 6
+    },
+    {
+     "name": "flex",
+     "pct": 5
+    },
+    {
+     "name": "long",
+     "pct": 7
+    }
+   ],
+   "id": "Shaft"
+  },
+  {
+   "affixes": [
+    {
+     "name": "draw weight",
+     "pct": 10
+    },
+    {
+     "name": "snap",
+     "pct": 8
+    },
+    {
+     "name": "range",
+     "pct": 10
+    },
+    {
+     "name": "steady",
+     "pct": 6
+    },
+    {
+     "name": "quiet",
+     "pct": 5
+    }
+   ],
+   "id": "Prod"
+  },
+  {
+   "affixes": [
+    {
+     "name": "steady aim",
+     "pct": 8
+    },
+    {
+     "name": "recoil",
+     "pct": 6
+    },
+    {
+     "name": "light",
+     "pct": 6
+    },
+    {
+     "name": "sturdy",
+     "pct": 8
+    }
+   ],
+   "id": "Stock"
+  },
+  {
+   "affixes": [
+    {
+     "name": "deflection",
+     "pct": 10
+    },
+    {
+     "name": "lightness",
+     "pct": 8
+    },
+    {
+     "name": "bulwark",
+     "pct": 12
+    },
+    {
+     "name": "padded",
+     "pct": 6
+    },
+    {
+     "name": "sheen",
+     "pct": 4
+    }
+   ],
+   "id": "Shell"
+  },
+  {
+   "affixes": [
+    {
+     "name": "cushion",
+     "pct": 10
+    },
+    {
+     "name": "warmth",
+     "pct": 8
+    },
+    {
+     "name": "breathing",
+     "pct": 6
+    },
+    {
+     "name": "absorb",
+     "pct": 10
+    }
+   ],
+   "id": "Liner"
+  },
+  {
+   "affixes": [
+    {
+     "name": "grip",
+     "pct": 8
+    },
+    {
+     "name": "quiet step",
+     "pct": 8
+    },
+    {
+     "name": "warmth",
+     "pct": 6
+    },
+    {
+     "name": "water-shedding",
+     "pct": 6
+    }
+   ],
+   "id": "Upper"
+  },
+  {
+   "affixes": [
+    {
+     "name": "traction",
+     "pct": 10
+    },
+    {
+     "name": "quiet step",
+     "pct": 8
+    },
+    {
+     "name": "spring",
+     "pct": 6
+    },
+    {
+     "name": "long wear",
+     "pct": 8
+    }
+   ],
+   "id": "Sole"
+  },
+  {
+   "affixes": [
+    {
+     "name": "sure grip",
+     "pct": 8
+    },
+    {
+     "name": "quick hands",
+     "pct": 6
+    },
+    {
+     "name": "padding",
+     "pct": 6
+    },
+    {
+     "name": "feel",
+     "pct": 5
+    }
+   ],
+   "id": "Palm"
+  },
+  {
+   "affixes": [
+    {
+     "name": "seal",
+     "pct": 6
+    },
+    {
+     "name": "wrap",
+     "pct": 5
+    },
+    {
+     "name": "guard",
+     "pct": 8
+    },
+    {
+     "name": "flex",
+     "pct": 5
+    }
+   ],
+   "id": "Cuff"
+  },
+  {
+   "affixes": [
+    {
+     "name": "catch",
+     "pct": 8
+    },
+    {
+     "name": "deflect",
+     "pct": 10
+    },
+    {
+     "name": "balance",
+     "pct": 6
+    },
+    {
+     "name": "wide",
+     "pct": 5
+    }
+   ],
+   "id": "Guard"
+  },
+  {
+   "affixes": [
+    {
+     "name": "counterweight",
+     "pct": 8
+    },
+    {
+     "name": "bash",
+     "pct": 6
+    },
+    {
+     "name": "balance",
+     "pct": 8
+    },
+    {
+     "name": "charm",
+     "pct": 3
+    }
+   ],
+   "id": "Pommel"
+  },
+  {
+   "affixes": [
+    {
+     "name": "tight",
+     "pct": 8
+    },
+    {
+     "name": "silent",
+     "pct": 6
+    },
+    {
+     "name": "durable",
+     "pct": 8
+    },
+    {
+     "name": "fast",
+     "pct": 6
+    }
+   ],
+   "id": "String"
+  },
+  {
+   "affixes": [
+    {
+     "name": "clear sight",
+     "pct": 8
+    },
+    {
+     "name": "deflection",
+     "pct": 8
+    },
+    {
+     "name": "hush",
+     "pct": 4
+    },
+    {
+     "name": "shade",
+     "pct": 5
+    }
+   ],
+   "id": "Visor"
+  }
  ]
 }

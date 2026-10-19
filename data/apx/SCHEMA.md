@@ -43,3 +43,12 @@ low_integrity_factor_pct, aura_item (Barony ItemType name), stand_in: [{"class",
 `{"recipes": [{"family": "Blades", "slots": {"Blade": {"grams": 2400, "materials": ["iron", "steel", "bronze"]}, ...},
 "bench": "forge"|"workbench"|"loom"|"any", "form_needed": 1}]}` - grams of material per slot; a
 crafted item's parts take the materials the player supplies; form_needed = Formbook successes required.
+
+## D78 gear content additions (authored by tools/apx/author_gear.py; lint: python tests/apx/test_gear_content.py)
+- materials.json grew to 41 rows (appended); forms.json to 17 families (Daggers, Polearms, Staves, Crossbows, Thrown, Helms, Boots, Gloves
+  added) and 51 slots; affixes.json gained pools for the new slots (appended). gen_forms.py maps vanilla types to the new families.
+- kinds.json (D66): materials -> {crush, slash, pierce, brittle, edge, poise} 0-100; families -> {crush, slash, pierce} percent, sums to 100.
+  Read by F4 (damage kinds, poise); not read by the F6 loader.
+- recipes.json (final for the starting set): one row per gear family; slot grams = volume x density of the first listed material.
+- formbook.json: default and per-origin starting Forms (vanilla ItemType names), known = 1 success, mastered = 5.
+- salvage_materials.json: per material {unit, grams_per_unit, break_loss_pct}; salvage.json percentages apply on top.

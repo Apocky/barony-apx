@@ -18,7 +18,15 @@ ROOT = Path(__file__).resolve().parents[2]
 FAMILY_RULES = [  # first match wins; patterns are searched in the type name
     # not gear, whatever words they contain (SCROLL_ENCHANTARMOR, SPELLBOOK_FORCE_SHIELD ...)
     ("Plain", r"^(SCROLL|SPELLBOOK|POTION|FOOD|GEM|MAGICSTAFF|AMULET|RING|READABLE|ENCHANTED_FEATHER|ARTIFACT_ORB|SPELL)_"),
-    ("Armour", r"^HAT_.*HELM"),
+    # D78 gear content: 17 families (05 section 3); the specific families come before the broad ones
+    ("Helms", r"HELM"),
+    ("Crossbows", r"CROSSBOW"),
+    ("Thrown", r"DART|SHURIKEN|CHAKRAM|JAVELIN|TOMAHAWK|BOLAS"),
+    ("Daggers", r"DAGGER"),
+    ("Staves", r"QUARTERSTAFF|^STAFF"),
+    ("Polearms", r"SPEAR|HALBERD|TRIDENT|SCYTHE|POLEARM|GLAIVE|PIKE"),
+    ("Boots", r"BOOTS"),
+    ("Gloves", r"GLOVES|GAUNTLETS|BRACERS"),
     ("Cloth", r"^HAT_"),
     ("Bows", r"(^|_)(SHORTBOW|LONGBOW|COMPOUND_BOW|BOW|CROSSBOW|SLING)(_|$)"),
     ("Shields", r"SHIELD|BUCKLER"),
@@ -38,6 +46,9 @@ MATERIAL_RULES = [  # name pattern -> default materials (first is the main part'
     (r"SILVER", ["silver", "oak", "hide"]),
     (r"GOLD", ["gold", "oak", "hide"]),
     (r"OBSIDIAN", ["obsidian", "wood", "hide"]),
+    (r"BLACKIRON", ["blackiron", "wood", "hide"]),
+    (r"QUILTED", ["wool", "linen"]),
+    (r"SUEDE", ["hide", "sinew"]),
     (r"BONE", ["bone", "hide"]),
     (r"LEATHER|HIDE|_FUR", ["hide", "cloth"]),
     (r"WOODEN|WOOD|_BOW$|SHORTBOW|LONGBOW|SLING|QUARTERSTAFF", ["wood", "oak", "hide"]),
@@ -47,7 +58,10 @@ MATERIAL_RULES = [  # name pattern -> default materials (first is the main part'
 ]
 DEFAULT_MATERIALS = {"Blades": ["iron", "wood", "hide"], "Hafts": ["iron", "wood", "hide"], "Fists": ["iron", "hide"],
                      "Bows": ["wood", "hide"], "Armour": ["iron", "hide", "cloth"], "Cloth": ["cloth", "hide"],
-                     "Shields": ["wood", "iron", "hide"], "Tools": ["iron", "wood", "hide"], "Plain": ["stone"]}
+                     "Shields": ["wood", "iron", "hide"], "Tools": ["iron", "wood", "hide"], "Plain": ["stone"],
+                     "Daggers": ["iron", "wood", "hide"], "Polearms": ["iron", "ash", "hide"], "Staves": ["oak", "hide"],
+                     "Crossbows": ["oak", "iron", "sinew"], "Thrown": ["iron", "wood", "linen"], "Helms": ["iron", "cloth"],
+                     "Boots": ["hide", "wool"], "Gloves": ["hide", "linen"]}
 
 
 def item_types():

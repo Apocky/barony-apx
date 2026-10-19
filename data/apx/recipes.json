@@ -1,0 +1,628 @@
+{
+ "_note": "Starting crafting recipes (F6-C). grams = slot volume x density of the first listed material, rounded; form_needed = Formbook successes required. Optional slots above q3 and Graft are added by quality, not by recipe.",
+ "recipes": [
+  {
+   "bench": "forge",
+   "family": "Blades",
+   "form_needed": 1,
+   "slots": {
+    "Blade": {
+     "grams": 2350,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "copper",
+      "blackiron"
+     ]
+    },
+    "Grip": {
+     "grams": 50,
+     "materials": [
+      "wood",
+      "oak",
+      "hide",
+      "cloth"
+     ]
+    },
+    "Guard": {
+     "grams": 50,
+     "materials": [
+      "wood",
+      "oak",
+      "hide",
+      "cloth"
+     ]
+    },
+    "Pommel": {
+     "grams": 24,
+     "materials": [
+      "wood",
+      "oak",
+      "hide",
+      "cloth"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Hafts",
+   "form_needed": 2,
+   "slots": {
+    "Binding": {
+     "grams": 12,
+     "materials": [
+      "wood",
+      "oak",
+      "ash",
+      "hide",
+      "sinew"
+     ]
+    },
+    "Grip": {
+     "grams": 50,
+     "materials": [
+      "wood",
+      "oak",
+      "ash",
+      "hide",
+      "sinew"
+     ]
+    },
+    "Haft": {
+     "grams": 3150,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "stone",
+      "flint",
+      "bone"
+     ]
+    },
+    "Head": {
+     "grams": 1950,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "stone",
+      "flint",
+      "bone"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Fists",
+   "form_needed": 2,
+   "slots": {
+    "Knuckle": {
+     "grams": 950,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "brass"
+     ]
+    },
+    "Plate": {
+     "grams": 7100,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "brass"
+     ]
+    },
+    "Strap": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "cloth"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "workbench",
+   "family": "Bows",
+   "form_needed": 2,
+   "slots": {
+    "Grip": {
+     "grams": 100,
+     "materials": [
+      "sinew",
+      "linen",
+      "silk",
+      "hide"
+     ]
+    },
+    "Limb": {
+     "grams": 200,
+     "materials": [
+      "yew",
+      "ash",
+      "oak",
+      "wood",
+      "horn"
+     ]
+    },
+    "Riser": {
+     "grams": 100,
+     "materials": [
+      "yew",
+      "ash",
+      "oak",
+      "wood",
+      "horn"
+     ]
+    },
+    "String": {
+     "grams": 11,
+     "materials": [
+      "sinew",
+      "linen",
+      "silk",
+      "hide"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Armour",
+   "form_needed": 2,
+   "slots": {
+    "Padding": {
+     "grams": 3150,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "blackiron",
+      "scale",
+      "chitin",
+      "bone"
+     ]
+    },
+    "Plate": {
+     "grams": 7100,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "blackiron",
+      "scale",
+      "chitin",
+      "bone"
+     ]
+    },
+    "Strap": {
+     "grams": 16,
+     "materials": [
+      "cloth",
+      "wool",
+      "linen",
+      "hide"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "loom",
+   "family": "Cloth",
+   "form_needed": 1,
+   "slots": {
+    "Body": {
+     "grams": 250,
+     "materials": [
+      "cloth",
+      "linen",
+      "wool",
+      "silk",
+      "hide"
+     ]
+    },
+    "Clasp": {
+     "grams": 150,
+     "materials": [
+      "bronze",
+      "brass",
+      "iron",
+      "bone",
+      "horn"
+     ]
+    },
+    "Lining": {
+     "grams": 1750,
+     "materials": [
+      "bronze",
+      "brass",
+      "iron",
+      "bone",
+      "horn"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Shields",
+   "form_needed": 2,
+   "slots": {
+    "Grip": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "cloth",
+      "iron"
+     ]
+    },
+    "Plate": {
+     "grams": 550,
+     "materials": [
+      "wood",
+      "oak",
+      "iron",
+      "steel",
+      "bronze",
+      "bone"
+     ]
+    },
+    "Strap": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "cloth",
+      "iron"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "any",
+   "family": "Tools",
+   "form_needed": 1,
+   "slots": {
+    "Binding": {
+     "grams": 12,
+     "materials": [
+      "wood",
+      "hide",
+      "sinew"
+     ]
+    },
+    "Head": {
+     "grams": 1950,
+     "materials": [
+      "iron",
+      "bronze",
+      "brass",
+      "wood"
+     ]
+    },
+    "Hook": {
+     "grams": 12,
+     "materials": [
+      "wood",
+      "hide",
+      "sinew"
+     ]
+    },
+    "Shaft": {
+     "grams": 2350,
+     "materials": [
+      "iron",
+      "bronze",
+      "brass",
+      "wood"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Daggers",
+   "form_needed": 1,
+   "slots": {
+    "Grip": {
+     "grams": 50,
+     "materials": [
+      "wood",
+      "hide",
+      "cloth"
+     ]
+    },
+    "Guard": {
+     "grams": 50,
+     "materials": [
+      "wood",
+      "hide",
+      "cloth"
+     ]
+    },
+    "Point": {
+     "grams": 650,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "flint",
+      "bone"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Polearms",
+   "form_needed": 2,
+   "slots": {
+    "Binding": {
+     "grams": 12,
+     "materials": [
+      "wood",
+      "ash",
+      "yew",
+      "hide",
+      "sinew"
+     ]
+    },
+    "Head": {
+     "grams": 1950,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "flint"
+     ]
+    },
+    "Langet": {
+     "grams": 50,
+     "materials": [
+      "wood",
+      "ash",
+      "yew",
+      "hide",
+      "sinew"
+     ]
+    },
+    "Shaft": {
+     "grams": 2350,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "flint"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "workbench",
+   "family": "Staves",
+   "form_needed": 1,
+   "slots": {
+    "Binding": {
+     "grams": 18,
+     "materials": [
+      "hide",
+      "sinew",
+      "linen",
+      "iron",
+      "bronze"
+     ]
+    },
+    "Cap": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "sinew",
+      "linen",
+      "iron",
+      "bronze"
+     ]
+    },
+    "Ferrule": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "sinew",
+      "linen",
+      "iron",
+      "bronze"
+     ]
+    },
+    "Shaft": {
+     "grams": 200,
+     "materials": [
+      "wood",
+      "oak",
+      "ash",
+      "yew"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "workbench",
+   "family": "Crossbows",
+   "form_needed": 3,
+   "slots": {
+    "Prod": {
+     "grams": 250,
+     "materials": [
+      "oak",
+      "ash",
+      "yew",
+      "iron",
+      "steel"
+     ]
+    },
+    "Stock": {
+     "grams": 400,
+     "materials": [
+      "oak",
+      "ash",
+      "yew",
+      "iron",
+      "steel"
+     ]
+    },
+    "String": {
+     "grams": 11,
+     "materials": [
+      "sinew",
+      "linen",
+      "hide"
+     ]
+    },
+    "Trigger": {
+     "grams": 16,
+     "materials": [
+      "sinew",
+      "linen",
+      "hide"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Thrown",
+   "form_needed": 1,
+   "slots": {
+    "Fletching": {
+     "grams": 6,
+     "materials": [
+      "wood",
+      "linen",
+      "hide"
+     ]
+    },
+    "Tip": {
+     "grams": 150,
+     "materials": [
+      "iron",
+      "steel",
+      "blackiron",
+      "flint",
+      "bone"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "forge",
+   "family": "Helms",
+   "form_needed": 2,
+   "slots": {
+    "Liner": {
+     "grams": 50,
+     "materials": [
+      "cloth",
+      "wool",
+      "linen",
+      "hide"
+     ]
+    },
+    "Nasal": {
+     "grams": 8,
+     "materials": [
+      "cloth",
+      "wool",
+      "linen",
+      "hide"
+     ]
+    },
+    "Shell": {
+     "grams": 5500,
+     "materials": [
+      "iron",
+      "steel",
+      "bronze",
+      "blackiron",
+      "bone",
+      "hide"
+     ]
+    },
+    "Visor": {
+     "grams": 50,
+     "materials": [
+      "cloth",
+      "wool",
+      "linen",
+      "hide"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "workbench",
+   "family": "Boots",
+   "form_needed": 1,
+   "slots": {
+    "Sole": {
+     "grams": 150,
+     "materials": [
+      "hide",
+      "scale",
+      "iron"
+     ]
+    },
+    "Strap": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "cloth",
+      "wool"
+     ]
+    },
+    "Upper": {
+     "grams": 200,
+     "materials": [
+      "hide",
+      "scale",
+      "iron"
+     ]
+    }
+   }
+  },
+  {
+   "bench": "workbench",
+   "family": "Gloves",
+   "form_needed": 1,
+   "slots": {
+    "Cuff": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "cloth",
+      "linen"
+     ]
+    },
+    "Palm": {
+     "grams": 50,
+     "materials": [
+      "hide",
+      "cloth",
+      "iron",
+      "steel"
+     ]
+    },
+    "Plate": {
+     "grams": 800,
+     "materials": [
+      "hide",
+      "cloth",
+      "iron",
+      "steel"
+     ]
+    }
+   }
+  }
+ ]
+}
