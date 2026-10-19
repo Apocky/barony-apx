@@ -68,7 +68,7 @@ def main():
     a = ap.parse_args()
     exe = Path(a.exe).resolve()
     OUT.mkdir(parents=True, exist_ok=True)
-    waited = pf.wait_until_no_barony(3600, [pf.SHARED_LOCK_DIR])
+    waited = pf.wait_until_no_barony(4 * 3600, [pf.SHARED_LOCK_DIR])
     pf.hold_lock([pf.SHARED_LOCK_DIR], True)
     rows = []
     try:

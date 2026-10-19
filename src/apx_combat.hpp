@@ -112,6 +112,15 @@ namespace combat_glue
 	inline void startStagger(Entity* target, Rec& r)
 	{
 		target->setEffect(EFF_PARALYZED, true, kStaggerTicks, true, true);
+		Stat* ts = target->getStats();
+		if ( ts && !ts->getEffectActive(EFF_PARALYZED) )
+		{
+			// the engine refuses the paralysis SPELL to some creatures (bosses): a stagger is not that
+			// spell, so the engine's paralysed state is set directly for the stagger's ticks
+			ts->setEffectActive(EFF_PARALYZED, 1);
+			ts->EFFECTS_TIMERS[EFF_PARALYZED] = kStaggerTicks;
+			printlog("[apx-f4c] stagger forced past paralysis immunity uid=%u type=%d", target->getUID(), (int)ts->type);
+		}
 		++r.staggers;
 	}
 
@@ -137,6 +146,14 @@ namespace combat_glue
 	{
 		if ( !poiseOn() && !zonesOn() ) return damage;
 		return applyHit(attacker, atkStats, target, tStats, damage, strikeZone(attacker, target), weaponClassOf(atkStats));
+	}
+
+	// in a poise stagger now (the engine's boss un-paralysis skips these)
+	inline bool staggered(Entity* e)
+	{
+		if ( !e || !poiseOn() ) return false;
+		auto it = table().find(e->getUID());
+		return it != table().end() && it->second.poise.staggered();
 	}
 
 	// arms disabled or downed: no attack (a staggered entity is already paralysed by the engine)
@@ -234,6 +251,8 @@ namespace combat_glue
 		Entity* mon[4] = { nullptr, nullptr, nullptr, nullptr };
 		int pass = 0, fail = 0;
 		int downedAt = -1;
+		double bx = 0, by = 0;
+		int bossHeld = 0;
 		void check(bool ok, const char* what, double got, double want)
 		{
 			(ok ? pass : fail)++;
@@ -281,11 +300,15 @@ namespace combat_glue
 				T.check(hits == want && ms->getEffectActive(EFF_PARALYZED), what, hits, want);
 			}
 			T.mark = ::ticks;
+			if ( T.mon[3] ) { T.bx = T.mon[3]->x; T.by = T.mon[3]->y; }
 			T.phase = 3;
 			return;
 		}
 		if ( T.phase == 3 && ::ticks - T.mark == (Uint32)kStaggerTicks / 2 ) // mid-stagger: paralysed, takes 1.5x
 		{
+			Stat* bs = T.mon[3] ? T.mon[3]->getStats() : nullptr; // the boss-tier creature: immune to the spell, not to stagger
+			T.check(bs && bs->getEffectActive(EFF_PARALYZED), "boss_tier_paralysed_mid_stagger", bs ? bs->getEffectActive(EFF_PARALYZED) : -1, 1);
+
 			Entity* m = T.mon[1];
 			Stat* ms = m ? m->getStats() : nullptr;
 			T.check(ms && ms->getEffectActive(EFF_PARALYZED), "regular_paralysed_mid_stagger", ms ? ms->getEffectActive(EFF_PARALYZED) : 0, 1);
@@ -293,8 +316,11 @@ namespace combat_glue
 			T.phase = 4;
 			return;
 		}
+		if ( T.phase >= 3 && T.phase <= 4 && ::ticks - T.mark < (Uint32)kStaggerTicks - 1 && T.mon[3] && T.mon[3]->getStats() && T.mon[3]->getStats()->getEffectActive(EFF_PARALYZED) )
+			++T.bossHeld; // the boss-tier creature held paralysed, tick by tick
 		if ( T.phase == 4 && ::ticks - T.mark >= (Uint32)kStaggerTicks + 5 ) // stagger over
 		{
+			T.check(T.bossHeld >= kStaggerTicks - 3, "boss_tier_held_whole_stagger_ticks", T.bossHeld, kStaggerTicks - 1);
 			Stat* ms = T.mon[1] ? T.mon[1]->getStats() : nullptr;
 			T.check(ms && !ms->getEffectActive(EFF_PARALYZED), "stagger_ends", ms ? ms->getEffectActive(EFF_PARALYZED) : -1, 0);
 			for ( auto* m : T.mon ) if ( m ) m->setHP(0); // clear the arena

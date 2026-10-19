@@ -8040,7 +8040,8 @@ void Entity::handleEffects(Stat* myStats)
 
 	// unparalyze certain boss characters
 	if ( myStats->getEffectActive(EFF_PARALYZED) && ((myStats->type >= LICH && myStats->type < KOBOLD)
-		|| myStats->type == COCKATRICE || myStats->type == LICH_FIRE || myStats->type == LICH_ICE) )
+		|| myStats->type == COCKATRICE || myStats->type == LICH_FIRE || myStats->type == LICH_ICE)
+		&& !apx::combat_glue::staggered(this) ) // apx F4c: a poise stagger holds even on these bosses
 	{
 		myStats->clearEffect(EFF_PARALYZED);
 		myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 0;
