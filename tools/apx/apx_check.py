@@ -41,6 +41,13 @@ def acquire(exclusive=False, tag="f1-instruments"):
     return lk
 
 
+def release(lock=None):
+    for f in ([lock] if lock else list(_held)):
+        f.unlink(missing_ok=True)
+        if f in _held:
+            _held.remove(f)
+
+
 def launch(exe, seed, floors, tag, telem="1", datadir=P.STEAM_DIR, extra=(), settle=4.0, timeout=240, env_extra=None, after=None):
     """One game run: descend `floors` levels. Returns dict(run_dir, out_dir, gen_lines, flags, exit_code)."""
     run_dir = DIAG / "runs" / f"{datetime.datetime.now():%Y%m%d-%H%M%S}-{tag}"
