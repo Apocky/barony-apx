@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--build-hash", default=None)
     ap.add_argument("--skip-exclusive", action="store_true")
     ap.add_argument("--skip-parity", action="store_true")
+    ap.add_argument("--exe", default="build/vs2022/Release/barony.exe", help="the build under test (build.ps1 -Cache ccache: build/ninja-ccache/barony.exe)")
     args = ap.parse_args()
     bh = args.build_hash or args.tag
     py = sys.executable
@@ -65,7 +66,7 @@ def main():
     def save():
         report.write_text(json.dumps(out, indent=1), encoding="utf-8")
 
-    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--runs", "1", "--tag", args.tag, "--mode", "slot", "--arms", SLOT_ARMS,
+    code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--exe", args.exe, "--runs", "1", "--tag", args.tag, "--mode", "slot", "--arms", SLOT_ARMS,
                       "--env", "APX_BF3_DUMP=1", "--env", "APX_BF3_FLOWTEST=200", "--timeout", "3600", "--poll", "3",
                       "--build-hash", bh], RUNS / f"bf3-{args.tag}.out.txt")
     base = baseline(args.tag)
@@ -80,14 +81,14 @@ def main():
     save()
     if go_on and not args.skip_exclusive:
         tag2 = args.tag + "-excl"
-        code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--runs", "1", "--tag", tag2, "--mode", "exclusive", "--arms", EXCL_ARMS,
+        code, wall = run([py, "-u", "tools/apx/bf3_trial.py", "--exe", args.exe, "--runs", "1", "--tag", tag2, "--mode", "exclusive", "--arms", EXCL_ARMS,
                           "--env", "APX_BF3_FLOWTEST=200", "--env", "APX_BF3_MORALE=0", "--env", "APX_BF3_HELP=0", "--timeout", "3600",
                           "--poll", "3", "--build-hash", bh], RUNS / f"bf3-{tag2}.out.txt")
         out["steps"].append({"step": "exclusive", "exit": code, "wall_s": wall, "gates": baseline(tag2).get("gates", {})})
         save()
         if not args.skip_parity:
             pdir = DIAG / f"barony-bf3-parity-{args.tag}"
-            code, wall = run([py, "-u", "tools/apx/parity_f0.py", "--ours", "build/vs2022/Release/barony.exe", "--slot", "--exe-arg=-windowed",
+            code, wall = run([py, "-u", "tools/apx/parity_f0.py", "--ours", args.exe, "--slot", "--exe-arg=-windowed",
                               "--lock-name", "barony-bf3-parity.LOCK", "--out", str(pdir), "--wait-foreign", "10800"],
                              RUNS / f"bf3-{args.tag}-parity.out.txt")
             summary = pdir / "summary.json"
