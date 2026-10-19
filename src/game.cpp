@@ -7433,6 +7433,10 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strcmp(argv[c], "-apxlightprobe") )
+					{
+						apx::vis::armProbe(); // apx BVIS1: per-tile light monsters see, then quit
+					}
 					else if ( !strcmp(argv[c], "-apxvisshots") )
 					{
 						apx::vis::arm(); // apx BVIS1: far and near screenshots on the test floor, then quit

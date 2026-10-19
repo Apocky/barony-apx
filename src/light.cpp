@@ -31,6 +31,27 @@ static Sint32 apxVisReach(Sint32 radius, float exp) {
     return radius;
 #endif
 }
+// apx BVIS1: the old-curve delta map monsters read (see light.hpp)
+std::vector<vec4_t> lightmapGameplayDelta;
+
+void lightmapGameplayDeltaReset()
+{
+    lightmapGameplayDelta.assign((size_t)map.width * map.height, vec4_t{0.f, 0.f, 0.f, 0.f});
+}
+
+static void apxAddGameplayDelta(light_t* light, int soff, Sint32 extent, int doff, const vec4_t& dv)
+{
+    if (lightmapGameplayDelta.size() != (size_t)map.width * map.height) { lightmapGameplayDeltaReset(); }
+    if (!light->tilesDelta) {
+        const auto w = extent * 2 + 1;
+        light->tilesDelta = (vec4_t*)calloc((size_t)w * w, sizeof(vec4_t));
+        if (!light->tilesDelta) { return; }
+    }
+    auto& t = light->tilesDelta[soff];
+    t.x += dv.x; t.y += dv.y; t.z += dv.z; t.w += dv.w;
+    auto& d = lightmapGameplayDelta[doff];
+    d.x += dv.x; d.y += dv.y; d.z += dv.z; d.w += dv.w;
+}
 static float apxVisLeft(float d2, float radius, float exp) {
 #ifndef EDITOR
     return apx::vision::falloff(d2, radius, exp);
@@ -129,6 +150,11 @@ light_t* lightSphereShadow(int index, Sint32 x, Sint32 y, Sint32 radius, float r
                     s.y += g - g * falloff;
                     s.z += b - b * falloff;
                     s.w += a - a * falloff;
+                    if (apxCurve && index == 0) { // apx BVIS1: monsters keep seeing the old curve
+                        const float old = std::min<float>(dist / radius, 1.0f);
+                        const vec4_t dv = { (r - r * old) - (r - r * falloff), (g - g * old) - (g - g * falloff), (b - b * old) - (b - b * falloff), (a - a * old) - (a - a * falloff) };
+                        apxAddGameplayDelta(light, soff, extent, v + u * map.height, dv);
+                    }
                     const auto doff = v + u * map.height;
                     if (index) {
                         auto& d = lightmaps[index][doff];
@@ -184,6 +210,11 @@ light_t* lightSphere(int index, Sint32 x, Sint32 y, Sint32 radius, float r, floa
                 s.y += g - g * falloff;
                 s.z += b - b * falloff;
                 s.w += a - a * falloff;
+                if (apxCurve && index == 0) { // apx BVIS1: monsters keep seeing the old curve
+                    const float old = std::min<float>(dist / radius, 1.0f);
+                    const vec4_t dv = { (r - r * old) - (r - r * falloff), (g - g * old) - (g - g * falloff), (b - b * old) - (b - b * falloff), (a - a * old) - (a - a * falloff) };
+                    apxAddGameplayDelta(light, soff, extent, v + u * map.height, dv);
+                }
                 const auto doff = v + u * map.height;
                 if (index) {
                     auto& d = lightmaps[index][doff];

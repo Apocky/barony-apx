@@ -1381,6 +1381,7 @@ extern bool monsterally[NUMMONSTERS][NUMMONSTERS];
 int AC(Stat* stat);
 
 Entity* uidToEntity(Sint32 uidnum);
+int entityLightAt(int tileX, int tileY); // apx BVIS1: the light monsters see at a tile (Entity::entityLight)
 list_t* checkTileForEntity(int x, int y); //Don't forget to free the list returned when you're done with it. Also, provide x and y in map, not entity, units.
 /*
  * Don't forget to free the list returned when you're done with it.
