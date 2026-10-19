@@ -96,6 +96,7 @@ namespace tactics
 	bool packSteer(Entity* my, Stat& st, TacticsState& s, Entity* target, double d, double speed, double& dist2);
 	void moraleEvent(Entity* e, TacticsState& s, int delta);
 	void packsReset();
+	Entity* packTarget(Entity* my, TacticsState& s); // the most common live target among packmates within 10 tiles
 }
 
 namespace bf3

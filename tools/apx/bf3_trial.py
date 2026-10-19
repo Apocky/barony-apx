@@ -43,7 +43,7 @@ def other_locks(lock_dir):
     found = []
     for d in [lock_dir] + EXTRA_LOCK_DIRS:
         if d.exists():
-            found += [f"{d.name}/{p.name}" for p in d.glob("*.LOCK") if not (d == lock_dir and p.name == LOCK_NAME)]
+            found += [f"{d.name}/{p.name}" for p in d.glob("*.LOCK") if not (d == lock_dir and p.name.startswith("barony-bf3"))]
     return found
 
 
@@ -63,8 +63,10 @@ def take_lock(lock_dir, limit_s):
             lock.unlink(missing_ok=True)
         if time.time() - t0 > limit_s:
             sys.exit(f"Barony busy ({', '.join(busy)}) for {limit_s:.0f} s; giving up")
-        print(f"[bf3] waiting: {', '.join(busy)}", flush=True)
-        time.sleep(60)
+        if busy != getattr(take_lock, "last", None):
+            print(f"[bf3] waiting: {', '.join(busy)}", flush=True)
+            take_lock.last = busy
+        time.sleep(10)  # the same cadence as tools/apx/parity_f0.py; a 60 s poll lost every gap to it
 
 
 def read_rows(p):
@@ -143,7 +145,7 @@ def summarise(results, args):
                 pairs_by_n.setdefault(a["creatures"], []).append((kinds[args.control]["dmg"], kinds["on"]["dmg"]))
     main_n = max(pairs_by_n, key=lambda n: len(pairs_by_n[n])) if pairs_by_n else None
     pairs = pairs_by_n.get(main_n, [])
-    flagged = [a for a in arms if a.get("flags")]
+    flagged = [a for a in arms if any(f.startswith("CONTAMINATED") or f == "SPAWN_SHORT" for f in a.get("flags", "").split(";"))]
     base = {"tag": args.tag, "kind": "baseline", "control": args.control, "runs": len(results),
             "codes": [r["code"] for r in results], "wall_s": [r["wall_s"] for r in results]}
     fields = ["dmg", "dmg_pm", "hits", "burst_share", "swing_attempts", "standoff_mean", "attackers_mean",
@@ -153,7 +155,9 @@ def summarise(results, args):
               "swing_phase_spread_ticks", "attempt_lockstep_share", "decide_us_p50", "decide_us_p99", "move_us_p99",
               "tick_us_p99", "target_lost_ticks", "promoted", "keep_engaged", "input_keys", "input_buttons", "input_motion",
               "creature_dmg", "dmg_foreign", "tactics_calls", "population_x", "stuck_episodes", "reach_slots_mean",
-              "jitter_mean", "swing_resets_jittered", "feints", "player_moved", "reach_assign", "ring_assign"]
+              "jitter_mean", "swing_resets_jittered", "feints", "player_moved", "reach_assign", "ring_assign",
+              "st_wait", "st_attack", "st_path", "st_hunt", "targeting_player_mean", "dist_mean", "overlap_ticks",
+              "pack_reacquire", "friendly_fire_dmg", "player_attack_ticks", "creatures_lost_ticks"]
     for kind, rows in sorted(by.items()):
         base[kind] = {"n": len(rows)}
         for f in fields:

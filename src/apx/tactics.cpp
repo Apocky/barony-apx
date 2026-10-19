@@ -138,12 +138,16 @@ namespace tactics
 		return true;
 	}
 
+	// walls only. LINETRACE_IGNORE_ENTITIES does NOT skip visible monsters (collision.cpp findEntityInLine skips
+	// only non-sight-blocking props and invisible monsters), so a crowd read as walls: reach slots fell from 7 to
+	// about 2 and ring slots failed. With no tracing entity, findEntityInLine returns nothing: a pure wall trace.
 	bool wallClear(Entity* from, double x0, double y0, double x1, double y1)
 	{
+		(void)from;
 		double len = hypot(x1 - x0, y1 - y0);
 		if ( len < 1 ) { return true; }
 		HitSave hs;
-		double d = lineTrace(from, x0, y0, atan2(y1 - y0, x1 - x0), len, LINETRACE_IGNORE_ENTITIES, false);
+		double d = lineTrace(nullptr, x0, y0, atan2(y1 - y0, x1 - x0), len, 0, false);
 		return d >= len - 0.5;
 	}
 
@@ -339,6 +343,37 @@ namespace tactics
 		}
 	}
 
+	// Every tick, not only at decide: the engine's ATTACK state sends a creature to PATH whenever its own packmates
+	// block its line (and to WAIT, which drops the target, when a HUNT path ends). Between decides that walked managed
+	// creatures back into the crowd. A creature that holds a reach slot, a ring slot or a flank stays in its fight.
+	static void holdInFight(Entity* my, TacticsState& s)
+	{
+		if ( s.stance != STANCE_NORMAL ) { return; }
+		bool flanking = K.packs && s.flank == 1;
+		bool placed = K.reach && (s.reachIdx >= 0 || s.ringIdx >= 0);
+		if ( !flanking && !placed ) { return; }
+		Uint32 tu = flanking ? s.flankTarget : s.slotTarget;
+		Entity* t = tu ? uidToEntity(tu) : nullptr;
+		Stat* ts = t ? t->getStats() : nullptr;
+		if ( !t || !ts || ts->HP <= 0 ) { return; }
+		if ( (Uint32)my->monsterTarget != tu )
+		{
+			my->monsterAcquireAttackTarget(*t, MONSTER_STATE_ATTACK); // the engine released it in WAIT
+			if ( (Uint32)my->monsterTarget != tu ) { return; }
+			++C.pack_reacquire;
+		}
+		if ( my->monsterState == MONSTER_STATE_PATH || my->monsterState == MONSTER_STATE_HUNT || my->monsterState == MONSTER_STATE_WAIT )
+		{
+			double d = hypot(t->x - my->x, t->y - my->y);
+			if ( flanking || (d <= ENGAGE_R + TILE && wallClear(my, my->x, my->y, t->x, t->y)) )
+			{
+				my->monsterState = MONSTER_STATE_ATTACK;
+				serverUpdateEntitySkill(my, 0);
+				++C.promoted;
+			}
+		}
+	}
+
 	// ---------------------------------------------------------------- hooks
 	void tick(Entity* my)
 	{
@@ -351,6 +386,7 @@ namespace tactics
 		TacticsState& s = S[uid];
 		if ( s.self != my ) { s = TacticsState(); s.self = my; }
 		if ( !s.seen ) { s.seen = true; s.homeX = my->x; s.homeY = my->y; s.morale = MORALE_START; }
+		holdInFight(my, s);
 		if ( (ticks + uid) % DECIDE != 0 ) { return; }
 		Timer tm;
 		HitSave hs;
@@ -358,6 +394,16 @@ namespace tactics
 		s.decideTick = ticks;
 		Entity* target = my->monsterTarget ? uidToEntity((Uint32)my->monsterTarget) : nullptr;
 		if ( target && target->behavior != &actPlayer && target->behavior != &actMonster ) { target = nullptr; }
+		if ( !target && K.packs && s.packId && s.stance == STANCE_NORMAL )
+		{
+			// one pack, one fight: a member whose target was released (the engine releases it every tick in WAIT,
+			// e.g. when its own packmates block its sight) takes up the pack's target again
+			if ( Entity* pt = packTarget(my, s) )
+			{
+				my->monsterAcquireAttackTarget(*pt, MONSTER_STATE_PATH);
+				if ( (Uint32)my->monsterTarget == pt->getUID() ) { target = pt; ++C.pack_reacquire; }
+			}
+		}
 		packDecide(my, *st, s, target);
 		bool managed = false;
 		if ( target && K.reach && s.stance == STANCE_NORMAL && s.flank != 1 && !my->hasRangedWeapon() )
@@ -439,6 +485,15 @@ namespace tactics
 			auto it = T.find(target->getUID());
 			if ( it == T.end() || !it->second.assigned ) { return false; }
 			TargetSlots& ts = it->second;
+			if ( my->monsterAttack != 0 )
+			{
+				// mid-swing (wind-up 9 ticks, then the blow): stand and face the target, or the blow lands on a packmate
+				stand(my, target, speed);
+				++C.steer_holds;
+				s.steeredTick = ticks;
+				addMoveUs(tm.us());
+				return true;
+			}
 			double gx = my->x, gy = my->y;
 			bool hold = false;
 			if ( s.reachIdx >= 0 && s.reachIdx < ts.n )

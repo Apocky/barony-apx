@@ -74,7 +74,7 @@ namespace tactics
 		long long flank_started = 0, flank_arrived = 0, flank_failed = 0;
 		long long retreats = 0, regroups = 0, morale_breaks = 0, morale_events = 0, surrenders_offered = 0, home_moved = 0;
 		long long swing_resets = 0, jitter_sum = 0;
-		long long packs_formed = 0;
+		long long packs_formed = 0, pack_reacquire = 0;
 	};
 	extern Counters C;
 	void resetCounters();

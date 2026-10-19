@@ -89,6 +89,27 @@ namespace tactics
 		++C.packs_formed;
 	}
 
+	Entity* packTarget(Entity* my, TacticsState& s)
+	{
+		std::unordered_map<Uint32, int> votes;
+		for ( auto& kv : S )
+		{
+			if ( kv.first == my->getUID() || kv.second.packId != s.packId || kv.second.stance != STANCE_NORMAL ) { continue; }
+			Entity* m = uidToEntity(kv.first);
+			Stat* ms = m ? m->getStats() : nullptr;
+			if ( !m || kv.second.self != m || !ms || ms->HP <= 0 || !m->monsterTarget ) { continue; }
+			Entity* t = uidToEntity((Uint32)m->monsterTarget);
+			Stat* ts = t ? t->getStats() : nullptr;
+			if ( !t || !ts || ts->HP <= 0 || (t->behavior != &actPlayer && t->behavior != &actMonster) ) { continue; }
+			if ( hypot(t->x - my->x, t->y - my->y) > 10 * TILE ) { continue; }
+			++votes[t->getUID()];
+		}
+		Uint32 best = 0;
+		int bestN = 0;
+		for ( auto& v : votes ) { if ( v.second > bestN || (v.second == bestN && v.first < best) ) { best = v.first; bestN = v.second; } }
+		return best ? uidToEntity(best) : nullptr;
+	}
+
 	void moraleEvent(Entity* e, TacticsState& s, int delta)
 	{
 		(void)e;
@@ -187,6 +208,12 @@ namespace tactics
 		if ( s.flank == 1 )
 		{
 			if ( s.flankTarget != tuid ) { flankFail(s); return; }
+			if ( my->monsterState == MONSTER_STATE_HUNT || my->monsterState == MONSTER_STATE_PATH )
+			{
+				my->monsterState = MONSTER_STATE_ATTACK; // route B is walked by tactics in the ATTACK state
+				serverUpdateEntitySkill(my, 0);
+				++C.promoted;
+			}
 			if ( d <= 2 * TILE && inBackArc(my, target) )
 			{
 				s.flank = 2;
@@ -248,6 +275,11 @@ namespace tactics
 		s.flankStart = s.progressTick = ticks;
 		s.progressX = my->x; s.progressY = my->y;
 		s.reachIdx = -1; s.ringIdx = -1; s.ringSlot = 0;
+		if ( my->monsterState != MONSTER_STATE_ATTACK )
+		{
+			my->monsterState = MONSTER_STATE_ATTACK; // route B is walked by tactics in the ATTACK state
+			serverUpdateEntitySkill(my, 0);
+		}
 		++C.flank_started;
 	}
 
@@ -324,6 +356,16 @@ namespace tactics
 
 	static bool followRoute(Entity* my, TacticsState& s, double speed, double& dist2, double fx, double fy)
 	{
+		// re-sync to the nearest waypoint ahead (the creature may have been pushed, or walked by the engine)
+		size_t best = s.routeAt;
+		double bestD = 1e18;
+		for ( size_t j = s.routeAt; j < s.route.size() && j < s.routeAt + 8; ++j )
+		{
+			int t = s.route[j];
+			double d = hypot((t % (int)map.width) * 16.0 + 8 - my->x, (t / (int)map.width) * 16.0 + 8 - my->y);
+			if ( d < bestD ) { bestD = d; best = j; }
+		}
+		s.routeAt = best;
 		while ( s.routeAt < s.route.size() )
 		{
 			int t = s.route[s.routeAt];

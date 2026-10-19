@@ -59,6 +59,8 @@ namespace bf3
 		long long attackersMax = 0, inReachMax = 0, lost = 0, standoffN = 0, spreadN = 0, waitPairN = 0;
 		double standoffSum = 0, spreadSum = 0, waitPairSum = 0;
 		long long keys0 = 0, buttons0 = 0, motion0 = 0, other0 = 0;
+		long long stWait = 0, stAttack = 0, stPath = 0, stHunt = 0, stOther = 0, targetPlayer = 0, overlapTicks = 0, playerAttackTicks = 0;
+		double distSum = 0; long long distN = 0;
 		std::vector<Uint32> hitTicks, attemptTicks;
 		std::vector<int> hist = std::vector<int>(13, 0);
 		int slots = 0, spawned = 0;
@@ -348,7 +350,17 @@ namespace bf3
 			Stat* cs = c ? c->getStats() : nullptr;
 			if ( !c || !cs || cs->HP <= 0 ) { ++A.lost; continue; }
 			double d = hypot(c->x - pe->x, c->y - pe->y);
-			if ( (Uint32)c->monsterTarget != pe->getUID() ) { ++A.targetLostTicks; }
+			if ( (Uint32)c->monsterTarget != pe->getUID() ) { ++A.targetLostTicks; } else { ++A.targetPlayer; }
+			switch ( c->monsterState )
+			{
+				case MONSTER_STATE_WAIT: ++A.stWait; break;
+				case MONSTER_STATE_ATTACK: ++A.stAttack; break;
+				case MONSTER_STATE_PATH: ++A.stPath; break;
+				case MONSTER_STATE_HUNT: ++A.stHunt; break;
+				default: ++A.stOther; break;
+			}
+			A.distSum += d; ++A.distN;
+			if ( d < tactics::bodyR(pe) + tactics::bodyR(c) - 0.5 ) { ++A.overlapTicks; }
 			if ( d < 6 * 16.0 ) { ++near6; }
 			if ( d < STRIKERANGE + tactics::bodyR(pe) )
 			{
@@ -358,6 +370,7 @@ namespace bf3
 			else if ( d < 6 * 16.0 ) { waiters.push_back(c); }
 		}
 		++A.ticks;
+		if ( pe->skill[9] != 0 ) { ++A.playerAttackTicks; } // PLAYER_ATTACK (actplayer.cpp): the test character swung
 		A.inReachSum += inReach; A.attackersSum += attackers; A.near6Sum += near6;
 		A.inReachMax = std::max<long long>(A.inReachMax, inReach);
 		A.attackersMax = std::max<long long>(A.attackersMax, attackers);
@@ -396,11 +409,15 @@ namespace bf3
 		double dp50, dp99, mp50, mp99, tp99;
 		timingPercentiles(dp50, dp99, mp50, mp99, tp99);
 		long long keys = inKeys - A.keys0, buttons = inButtons - A.buttons0, motion = inMotion - A.motion0, other = inOther - A.other0;
+		// CONTAMINATED_* voids a row; INFO_* is behaviour worth reading (friendly fire is the engine's own:
+		// a monster's blow hurts a packmate that steps into it; friendlyFireProtection covers players' allies only)
 		std::string flags;
-		if ( keys + buttons + other > 0 ) { flags += "INPUT_REJECTED;"; }
-		if ( A.creatureDmg > 0 ) { flags += "CONTAMINATED_CREATURE_DAMAGE;"; }
-		if ( A.foreignDmg > 0 ) { flags += "FOREIGN_DAMAGE;"; }
-		if ( A.lost > 0 ) { flags += "CREATURES_LOST;"; }
+		if ( A.playerAttackTicks > 0 ) { flags += "CONTAMINATED_PLAYER_ATTACKED;"; }
+		if ( A.playerMoved > 0 ) { flags += "CONTAMINATED_PLAYER_MOVED;"; }
+		if ( keys + buttons + other > 0 ) { flags += "INFO_INPUT_REJECTED;"; }
+		if ( A.foreignDmg > 0 ) { flags += "INFO_FOREIGN_DAMAGE;"; }
+		if ( A.creatureDmg > 0 ) { flags += "INFO_FRIENDLY_FIRE;"; }
+		if ( A.lost > 0 ) { flags += "INFO_CREATURES_LOST;"; }
 		if ( A.spawned < armN(arms[armI]) ) { flags += "SPAWN_SHORT;"; }
 		ApxRow r;
 		commonFields(r);
@@ -433,7 +450,13 @@ namespace bf3
 			.d("jitter_mean", C.swing_resets ? (double)C.jitter_sum / C.swing_resets : 0)
 			.i("deaths", 0).str("outcome", "survived_damage_negated")
 			.i("input_keys", keys).i("input_buttons", buttons).i("input_motion", motion).i("input_other", other)
-			.i("player_moved", A.playerMoved).i("creature_dmg", A.creatureDmg).i("creatures_lost_ticks", A.lost).str("flags", flags);
+			.i("player_moved", A.playerMoved).i("player_attack_ticks", A.playerAttackTicks)
+			.i("creature_dmg", A.creatureDmg).i("friendly_fire_dmg", A.creatureDmg).i("creatures_lost_ticks", A.lost)
+			.d("st_wait", A.ticks ? (double)A.stWait / A.ticks : 0).d("st_attack", A.ticks ? (double)A.stAttack / A.ticks : 0)
+			.d("st_path", A.ticks ? (double)A.stPath / A.ticks : 0).d("st_hunt", A.ticks ? (double)A.stHunt / A.ticks : 0)
+			.d("st_other", A.ticks ? (double)A.stOther / A.ticks : 0).d("targeting_player_mean", A.ticks ? (double)A.targetPlayer / A.ticks : 0)
+			.d("dist_mean", A.distN ? A.distSum / A.distN : 0).i("overlap_ticks", A.overlapTicks).i("pack_reacquire", C.pack_reacquire)
+			.str("flags", flags);
 		write("bf3-arms.jsonl", r);
 		printlog("[apx] bf3 arm %d %s: dmg %lld (%.1f/min) hits %lld attackers mean %.2f max %lld slots %d input %lld/%lld/%lld",
 			(int)armI, armSpec.c_str(), A.dmg, A.dmg / (secs / 60.0), A.hits, A.ticks ? (double)A.attackersSum / A.ticks : 0,
