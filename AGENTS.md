@@ -9,10 +9,13 @@ screenshots; runs read assets from the Steam install and write evidence to C:\Ap
 
 - Task: slice F0 (build upstream on this PC, prove parity with Steam v5.0.2). Side session of the
   barony-fork design session, 2026-10-18.
-- State: apx-main builds (CMake 4.3 + VS 2022 v143 + FMOD 2.03.15); parity matrices in
+- State: F0 done. apx-main builds (CMake 4.3 + VS 2022 v143 + FMOD 2.03.15); parity matrices in
   C:\Apocrypha\diagnostics\barony-f0 (parity.jsonl, summary.json, sheet/). Seeds 1234567 and 7654321
-  give the same floor-1 line in our build and barony_vanilla.exe.
-- Next: F1 instruments (floor and encounter JSONL, floor hash, headless sim, screenshot hook).
+  give the same floor-1 line in our build and barony_vanilla.exe. Evidence exe came from incremental
+  builds of the committed sources; a from-scratch rebuild (separate build folder) is NOT done yet:
+  at 22:15 drive C: was full (0.25 GB free; C1085 "No space left on device").
+- Next: when C: has space, `build.ps1 -BuildDir build\vs2022-clean` + one parity run; then F1
+  instruments (floor and encounter JSONL, floor hash, headless sim, screenshot hook).
 - Traps:
   1. Never configure CMake with BARONY_DATADIR set and never build INSTALL: CMakeLists.txt then installs
      barony.exe and editor.exe INTO that folder (the Steam install; its barony.exe is Apocky's S.A.M build).
