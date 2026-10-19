@@ -539,7 +539,14 @@ namespace apx
 		{
 			nextPath = ticks + 25;
 			wp.clear();
-			list_t* path = generatePath((int)(my->x / 16), (int)(my->y / 16), (int)(lad->x / 16), (int)(lad->y / 16), my, lad, GENERATE_PATH_DEFAULT);
+			const int sx = (int)(my->x / 16), sy = (int)(my->y / 16);
+			list_t* path = generatePath(sx, sy, (int)(lad->x / 16), (int)(lad->y / 16), my, lad, GENERATE_PATH_DEFAULT);
+			// standing on a tile the pathfinder rejects (door frame, pillar edge): path from a neighbouring tile instead
+			for ( int k = 0; !path && k < 8; ++k )
+			{
+				static const int ox[8] = { 1, -1, 0, 0, 1, 1, -1, -1 }, oy[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
+				path = generatePath(sx + ox[k], sy + oy[k], (int)(lad->x / 16), (int)(lad->y / 16), my, lad, GENERATE_PATH_DEFAULT);
+			}
 			if ( path )
 			{
 				for ( node_t* nd = path->first; nd; nd = nd->next )

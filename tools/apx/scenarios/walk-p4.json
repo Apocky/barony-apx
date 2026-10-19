@@ -1,0 +1,1 @@
+{ "name": "walk-p4-dbg", "mode": "walk", "party": 4, "floor": 1, "seed": 4242, "runs": 4, "bot": { "skill": 0.7 } }
