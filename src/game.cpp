@@ -41,6 +41,7 @@
 #include "paths.hpp"
 #include "player.hpp"
 #include "mod_tools.hpp"
+#include "apx_inventory.hpp"
 
 #include "apx/combat/impact.hpp" // apx F4b
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
@@ -982,6 +983,7 @@ static real_t drunkextend[MAXPLAYERS] = { (real_t)0.0 };
 
 void gameLogic(void)
 {
+	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -3105,7 +3107,8 @@ void gameLogic(void)
 					if ( itemCategory(item) != SPELL_CAT 
 						&& item->x != Player::PaperDoll_t::ITEM_PAPERDOLL_COORDINATE
 						&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
-						&& (item->x >= players[player]->inventoryUI.getSizeX() || item->y >= backpack_sizey[player]) )
+						&& (item->x >= players[player]->inventoryUI.getSizeX()
+						|| item->y >= (apx_inv::vanillaGrid() ? backpack_sizey[player] : players[player]->inventoryUI.getSizeY())) ) // apx: virtual rows are room (U1)
 					{
 						messagePlayer(player, MESSAGE_INVENTORY, Language::get(727), item->getName());
 						bool droppedAll = false;
@@ -3838,7 +3841,8 @@ void gameLogic(void)
 				if ( itemCategory(item) != SPELL_CAT 
 					&& item->x != Player::PaperDoll_t::ITEM_PAPERDOLL_COORDINATE
 					&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
-					&& (item->x >= players[clientnum]->inventoryUI.getSizeX() || item->y >= backpack_sizey) )
+					&& (item->x >= players[clientnum]->inventoryUI.getSizeX()
+						|| item->y >= (apx_inv::vanillaGrid() ? backpack_sizey : players[clientnum]->inventoryUI.getSizeY())) ) // apx: virtual rows are room (U1)
 				{
 					messagePlayer(clientnum, MESSAGE_INVENTORY, Language::get(727), item->getName());
 					bool droppedAll = false;
@@ -7326,6 +7330,10 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
+					{
+						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
+					}
 					else if ( !strncmp(argv[c], "-apxmapseed=", 12) )
 					{
 						apxMapSeed = (Uint32)strtoul(argv[c] + 12, nullptr, 10);
@@ -8282,6 +8290,14 @@ int main(int argc, char** argv)
 
 			// update screen
 			GO_SwapBuffers(screen);
+
+			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
+			if ( const char* apxShot = apx_inv::takeShotRequest() )
+			{
+				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }
+				takeScreenshot(apxShot);
+				if (!hdrEnabled) { main_framebuffer.bindForWriting(); }
+			}
 
 			// screenshots
 			if (apx::consumeShot() || Input::inputs[clientnum].consumeBinaryToggle("Screenshot") ||

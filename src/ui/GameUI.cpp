@@ -28,6 +28,7 @@
 #include "../shops.hpp"
 #include "../colors.hpp"
 #include "../book.hpp"
+#include "../apx_inventory.hpp"
 #include "../ui/MainMenu.hpp"
 
 #include <assert.h>
@@ -30954,6 +30955,8 @@ void Player::Inventory_t::processInventory()
 	bool tooltipWasDisabled = tooltipFrame->isDisabled();
 
 	updateInventory();
+	apx_inv::listUpdate(player.playernum, frame, playerInventoryFrames[player.playernum].invSlotsFrame,
+		playerInventoryFrames[player.playernum].backpackSlotsFrame); // apx: the list replaces the grid (U1)
 
 	player.shopGUI.updateShop();
 
