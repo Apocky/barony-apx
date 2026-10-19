@@ -47,7 +47,7 @@ def other_locks(lock_dir):
     return found
 
 
-def take_lock(lock_dir, limit_s):
+def take_lock(lock_dir, limit_s, poll_s=10.0):
     t0 = time.time()
     while True:
         busy = barony_running() + other_locks(lock_dir)
@@ -66,7 +66,7 @@ def take_lock(lock_dir, limit_s):
         if busy != getattr(take_lock, "last", None):
             print(f"[bf3] waiting: {', '.join(busy)}", flush=True)
             take_lock.last = busy
-        time.sleep(10)  # the same cadence as tools/apx/parity_f0.py; a 60 s poll lost every gap to it
+        time.sleep(poll_s)  # default 10 s like tools/apx/parity_f0.py; a 60 s poll lost every gap to it
 
 
 def read_rows(p):
@@ -92,7 +92,7 @@ def run_once(args, n, env_extra):
     env["APX_BUILD_HASH"] = args.build_hash
     env.update(env_extra)
     cmd = [str(Path(args.exe).resolve()), "-quickstart=barbarian", f"-apx-out={out}", f"-apx-seed={args.seed}", "-apx-bf3trial"]
-    lock = take_lock(Path(args.lock_dir), args.wait_limit)
+    lock = take_lock(Path(args.lock_dir), args.wait_limit, args.poll)
     t0 = time.time()
     finish = "exit"
     try:
@@ -196,6 +196,7 @@ def main():
     ap.add_argument("--lock-dir", default=str(LOCK_DIR))
     ap.add_argument("--timeout", type=float, default=1500)
     ap.add_argument("--wait-limit", type=float, default=4 * 3600)
+    ap.add_argument("--poll", type=float, default=10.0, help="seconds between lock checks")
     ap.add_argument("--build-hash", default="unknown")
     args = ap.parse_args()
     env_extra = {}
