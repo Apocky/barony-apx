@@ -80,6 +80,7 @@ void apxPartsBenchRegister()
 	if ( done || !apxPartsEnabled() ) { return; }
 	done = true;
 	apx_bench::Provider p = apx_bench::provider();
+	p.name = "F6 parts";
 	p.parts = &benchParts;
 	p.formbook = &benchFormbook;
 	p.formInputCap = &apxPartsFormInputCap;
