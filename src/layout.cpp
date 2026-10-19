@@ -270,8 +270,13 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                 auto [cw, cd] = inner(c);
                 if (cw < nw || cd < nd) continue;
                 long long area = (long long)cw * cd;
-                // boss: the largest; others: the current cell if it fits, else the smallest that fits
-                long long score = boss ? area : (c == cell_of[v] ? (1LL << 40) : -area);
+                // the current cell if it fits; else the nearest fitting cell (a corridor from the
+                // node's neighbours, embedded near the old cell, can still reach it); ties by area,
+                // the boss preferring the larger, the rest the smaller. P.boss_largest = the old rule.
+                long long dx = (cells[c][0] + cells[c][2]) / 2 - (cells[cell_of[v]][0] + cells[cell_of[v]][2]) / 2;
+                long long dz = (cells[c][1] + cells[c][3]) / 2 - (cells[cell_of[v]][1] + cells[cell_of[v]][3]) / 2;
+                long long near = -(dx * dx + dz * dz) * 4096 + (boss ? area : -area);
+                long long score = (boss && P.boss_largest) ? area : (c == cell_of[v] ? (1LL << 50) : near);
                 if (best < 0 || score > ba) { best = c; ba = score; }
             }
             if (best < 0) {
@@ -314,6 +319,53 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
                     if (spares < movers) continue;
                     long long score = (long long)cw * cd - 1000LL * (long long)S.size(); // fewest cells, then largest
                     if (bestS.empty() || score > bestA) { bestA = score; bestS = S; }
+                }
+                if (bestS.empty() && P.band_steal) {
+                    // the band has no room for this special even merged: take the nearest fitting
+                    // cell of another band into this one (its occupant, if any, moves to a spare cell
+                    // of its own band). Bands only steer corridors; the critic still checks locks.
+                    long long cx = 0, cz = 0, n = 0;
+                    for (int c = 0; c < (int)cells.size(); ++c)
+                        if (band_of_cell[c] == f.reg[v]) { cx += (cells[c][0] + cells[c][2]) / 2; cz += (cells[c][1] + cells[c][3]) / 2; ++n; }
+                    if (n) { cx /= n; cz /= n; }
+                    int pick = -1, home = -1;
+                    long long pd = 0;
+                    for (int c = 0; c < (int)cells.size(); ++c) {
+                        uint32_t bc = band_of_cell[c];
+                        if (bc == f.reg[v] || bc == UINT32_MAX) continue;
+                        auto [cw, cd] = inner(c);
+                        if (cw < nw || cd < nd) continue;
+                        int u = node_at[c], h = -1;
+                        if (u >= 0) {
+                            if (fixed[u] || *special_of(m.nodes[u].kind)) continue;
+                            for (int c2 = 0; c2 < (int)cells.size(); ++c2) if (c2 != c && band_of_cell[c2] == bc && node_at[c2] < 0) { h = c2; break; }
+                            if (h < 0) continue;
+                        }
+                        long long dx = (cells[c][0] + cells[c][2]) / 2 - cx, dz = (cells[c][1] + cells[c][3]) / 2 - cz;
+                        long long d2 = dx * dx + dz * dz;
+                        // a cell touching the band (a shared boundary run) first: a corridor can reach it
+                        bool touch = false;
+                        for (int c2 = 0; c2 < (int)cells.size() && !touch; ++c2) {
+                            if (band_of_cell[c2] != f.reg[v]) continue;
+                            const Rect &A = cells[c], &B = cells[c2];
+                            bool xs = (A[2] == B[0] || B[2] == A[0]) && std::min(A[3], B[3]) - std::max(A[1], B[1]) >= 4;
+                            bool zs = (A[3] == B[1] || B[3] == A[1]) && std::min(A[2], B[2]) - std::max(A[0], B[0]) >= 4;
+                            touch = xs || zs;
+                        }
+                        if (!touch) d2 += 1LL << 40;
+                        if (pick < 0 || d2 < pd) { pick = c; pd = d2; home = h; }
+                    }
+                    if (pick >= 0) {
+                        int u = node_at[pick];
+                        if (u >= 0) { cell_of[u] = home; node_at[home] = u; }
+                        node_at[cell_of[v]] = -1;
+                        band_of_cell[pick] = f.reg[v];
+                        cell_of[v] = pick; node_at[pick] = v;
+                        for (int c = 0; c < (int)cells.size(); ++c) used[c] = node_at[c] >= 0 || band_of_cell[c] == UINT32_MAX;
+                        ++f.band_steals;
+                        fixed[v] = 1;
+                        continue;
+                    }
                 }
                 if (bestS.empty()) return "no cell in band " + std::to_string(f.reg[v]) + " fits special " + sp;
                 std::vector<int> movers;
@@ -447,10 +499,38 @@ std::string build_floor(uint64_t seed, int attempt, const Grammar& gram, const s
         int ex = m.find(Kind::Exit);
         for (int v = ex; v >= 0; v = par[v]) on_path[v] = 1;
     }
-    for (auto& e : m.edges) {
-        int a = e.first, b = e.second;
-        int w = (on_path[a] && on_path[b] && (par[a] == b || par[b] == a)) ? 3 : (deg[a] == 1 || deg[b] == 1) ? 1 : 2;
-        if (!D.dig(a, b, std::min(f.reg[a], f.reg[b]), w)) return "no corridor for edge " + m.nodes[a].name + "-" + m.nodes[b].name;
+    // edges in mission order; a failed edge restarts the corridor pass with that edge first
+    // (earlier corridors of other regions can wall a room in: a corridor may not touch another
+    // region's corridor). P.edge_reorders restarts at most, counted in f.edge_reorders.
+    std::vector<int> eorder(m.edges.size());
+    for (size_t k = 0; k < eorder.size(); ++k) eorder[k] = (int)k;
+    const std::vector<uint8_t> occ0 = D.occ;
+    std::string efail;
+    for (int round = 0;; ++round) {
+        efail.clear();
+        int failed = -1;
+        for (int k : eorder) {
+            int a = m.edges[k].first, b = m.edges[k].second;
+            int w = (on_path[a] && on_path[b] && (par[a] == b || par[b] == a)) ? 3 : (deg[a] == 1 || deg[b] == 1) ? 1 : 2;
+            if (!D.dig(a, b, std::min(f.reg[a], f.reg[b]), w)) {
+                failed = k;
+                efail = "no corridor for edge " + m.nodes[a].name + "-" + m.nodes[b].name + " (" + std::to_string(f.rooms[a].door_x) + "," + std::to_string(f.rooms[a].door_z) +
+                        " r" + std::to_string(f.reg[a]) + " -> " + std::to_string(f.rooms[b].door_x) + "," + std::to_string(f.rooms[b].door_z) + " r" + std::to_string(f.reg[b]) +
+                        ", after " + std::to_string(round) + " reorders)";
+                break;
+            }
+        }
+        if (failed < 0) break;
+        if (round >= P.edge_reorders) return efail;
+        // restart: the failed edge moves to the front
+        eorder.erase(std::find(eorder.begin(), eorder.end(), failed));
+        eorder.insert(eorder.begin(), failed);
+        D.occ = occ0;
+        std::fill(D.cmask.begin(), D.cmask.end(), 0u);
+        D.carve_in_box.clear();
+        D.corridor_tiles = 0; D.narrowed = 0;
+        for (int& x : D.width_hist) x = 0;
+        ++f.edge_reorders;
     }
     // loop quota: the closest same-region pairs that are not graph neighbours (no lock rooms)
     std::vector<std::tuple<long long, int, int>> pairs;

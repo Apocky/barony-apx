@@ -198,6 +198,37 @@ cave 56.0 percent mean); rooms: haven 43.8 (99.5 percent in band), stronghold 44
 42.1 (94.7), sewer 40.5 (89.8), crypt 36.8 (78.6), temple 35.7 (74.7), fortress 34.9 (71.8), mine
 31.6 (62.2). The CLI prints these rows (`neg_space_by_type`) after the per-floor rows.
 
+## F3.2 -- retries under 10 per 1000 (review fix)
+
+Started 2026-10-19 00:18:12 -0700, gates measured 00:24:09, ctest 00:26:55 (9 min to the gates).
+The 78 floors per 1000 that needed a second sub-seed had two causes, both fixed at the mechanism:
+
+- A boss region with no room for a 12-tile boss cell even after merging (61 of the 78). Fix:
+  band steal. The nearest fitting cell of another band, preferring one that shares a boundary
+  with the boss's band, joins the boss's band; its occupant moves to a spare cell of its own band.
+  Bands only steer corridors; the critic still checks every lock (1000 / 1000).
+- A corridor that cannot be dug (the other 17): rooms of the same region a few tiles apart, walled
+  in by corridors dug earlier for other regions (a corridor may not touch another region's
+  corridor). Fix: edge reorder. A failed edge restarts the corridor pass with that edge first, at
+  most `Params::edge_reorders` = 4 times.
+- Special cells now prefer the nearest fitting cell to the node's BFS cell, not the largest
+  (`--boss-largest` restores the F3.1 rule); the boss keeps its 12-tile minimum.
+
+| Measure, seeds 1-1000 | F3.1 (38b819c) | F3.2 |
+|---|---|---|
+| floors needing a second sub-seed | 78 | 1 |
+| F2 hard gates, all 5 specials, determinism | 1000, 1000, 0 mismatches | 1000, 1000, 0 mismatches |
+| boss box, smallest side | 12 | 12 |
+| band steals / edge reorders | - | 66 / 29 |
+| Clone Army, clearance, GUARANTEED misses, NEVER hits | 0, 0, 0, 0 | 0, 0, 0, 0 |
+| density with trim, mean / min | 6.68 / 5.33 | 6.80 / 5.36 |
+| ctest | 7 / 7 | 9 / 9 |
+
+Gate: `--max-retried 10` (the w2_gate ctest now carries it). Controls, each must fail it:
+`--no-edge-reorder` gives 17 retries, `--no-band-steal` gives 67 (ctest f3_control_no_edge_reorder,
+f3_control_no_band_steal). Timing in this run: mean 16.0 ms, max 145 ms per floor while other
+sessions were building; not re-measured on an idle machine.
+
 ## Not done / not checked (F3)
 
 - ASSUMED: 1 tile = 1 m^2 for the density rule (`DressLib::m2_per_tile`); no spec gives Barony's

@@ -91,7 +91,10 @@ struct Params {
     std::string theme;           // "" = by seed from the six themes
     bool special_cells = true;   // false = control: special nodes keep whatever cell BFS gave them
     bool band_order_x = false;   // true = the F2 band order (cells by x then z): thin column bands
-    int boss_min = 12;           // the boss cell holds at least this many tiles a side inside its margin
+    int boss_min = 12;
+    bool boss_largest = false;   // true = F3.1 rule: the boss takes the largest cell of its band (far moves)
+    bool band_steal = true;
+    int edge_reorders = 4;       // corridor-pass restarts with the failed edge first (0 = control)      // false = control: a special that fits no cell of its band dead-ends           // the boss cell holds at least this many tiles a side inside its margin
     // macro structure grammar (kits/districts.toml): theme -> districts; one district per lock region
     std::vector<std::pair<std::string, std::vector<std::string>>> districts;
 };
@@ -139,7 +142,7 @@ struct Floor {
     std::vector<std::string> region_district; // district per lock region
     std::vector<uint8_t> feat;   // Feat per tile
     int special_rooms = 0, themed_rooms = 0, district_rooms = 0;
-    int special_swaps = 0, special_merges = 0, special_missed = 0; // missed: a special node on a non-special program
+    int special_swaps = 0, special_merges = 0, band_steals = 0, edge_reorders = 0, special_missed = 0; // missed: a special node on a non-special program
     unsigned special_kinds = 0;  // bit per special kind placed: haven boss vault nexus stronghold
     int boss_w = 0, boss_d = 0;
     std::vector<uint8_t> zone;   // Zone per tile (room floor only)

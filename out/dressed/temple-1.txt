@@ -1,44 +1,44 @@
-seed 1 ok 1 theme temple hash 62607616691addac dress_hash edaec2c1ef697ec why 
-summary rooms 34 items 1899 fixtures 316 wall_items 1289 density_per_10m2 7.09111 clone_groups 0 clone_wall_groups 0 neg_space_rooms 38.1393 neg_space_halls 67.427 filled 34/34 three_kinds 34/34
+seed 1 ok 1 theme temple hash 1ef98873b66916b8 dress_hash 5f8f1acc75c8af36 why 
+summary rooms 34 items 1900 fixtures 333 wall_items 1247 density_per_10m2 7.27691 clone_groups 0 clone_wall_groups 0 neg_space_rooms 38.1085 neg_space_halls 65.8695 filled 34/34 three_kinds 34/34
 legend floor . | behind-lock 1-9 | HARD # | water ~ deep = lava ^ chasm : sky " bridge + hazard ! (floor tag) | stairs < > key k lock L boss @ chest $ secret ? merchant m plaque p seat f
 legend fixtures table T bench b shelf S barrel o crate c brazier * altar A bed B rack R pillar I statue & rubble % | floor prop , | wall items counted, not drawn
 ################################################################################################################################
 #                                                                                                                              #
 #                                                                                                                              #
 #                                                                                                                              #
-#      .,...b,..          ,.,.b...      .b..,,      ...,,      ..........                                                      #
-#      . .A*b. .          ..bb&A*........&bb .      . . .      . . . . ..                                                      #
-#      ...A<.b..          S....A..........AAS.........bb.      ..""""""..                                                      #
-#      S..&*.,..          TT..*..........*.*.........*b..      .."""A&"..                                                      #
-#      TT....,,.          ........      ..............A&.      ..""*A""...................................................     #
-#         ...              ...           ............*A..      ..",,"*S..                                                .     #
-#         ...              ...           ...        ....S      . . ..T ..                                                .     #
-#         ...              ...           ...        TT...      ......T...                                                .     #
-#         ...              ...           ...          ..           ..                                                    .     #
-#         ...              ...           ...          ..           ..                                                    .     #
-#         ...              ...           ...          ..           ..                                                    .     #
-#   ..,,...........        ...        ........        ..           ..                                                    .     #
-#   ...............       .....       .....&.S        ..           ..                                                    .     #
-#   .. .. ..... ...       ....&       .. ..AA.        ..           ..                                                    .     #
-#   .......................T*...      .,,.*.*.      bb...      .........                                                 .     #
-#   .......................Tp...............T........b...      . .,b., .                                                 .     #
-#   ........*..............*...       ..b...T........*.*.      ...A,b,..                                                 .     #
-#   .T.....&AA.....       ,....       ...b. ..      .AA..........bA..b&.                                                 .     #
-#   .T.......*.....       .....       ..b.....      ,&...........&.*,,,.                                                 .     #
-#   S..............        ..         ........      ,..S.      .....,,..                                                 .     #
-#   ...............        .            ...             .                                                                .     #
-#   ...,,..........        .            ...             .                                                                .     #
-#   .. ., .. .. ...        .            ...             .                                                                .     #
-#   ....,..........        .            ...             .                                                                .     #
-#   ...............        .            ...             .                                                                .     #
-#                          .            ...             .              ###########            ###                        .     #
-#                          .        ..........      .........         ##111111111##         ###1###                      .     #
-#                        ....,      . . ... ..      . , . . .         #11111#11111#        ##11,1,##                   ....    #
-#                        . . ,      ..""""""..      .."""""..    ######111#111#111#        #111#,1S#                   .,.o    #
-#                        ..ITT      ..""""&I..........""""".......11111*1&11b11111##  ######11#,#11#                   .cco    #
-#                        .I,.S      .."b"AA"..........""""".......111111A111Lb1#111#  #111111111&#1#                   ,.$.    #
-#                        ..k..      ..b"*"*".........."""*".......111111A*11b111TT##  #111111b*AA11#                   R..S    #
-#                        .*.*.      .b""""""..      ..""AA".,    ######111#111#11S#   #11###bb11*1,#                   ....    #
+#      .,...b,..          ,.,.b...      .b..,,      ...,,                      ...,                                            #
+#      . .A*b. .          ..bb&A*........&bb .      . . .       ...,cRcS       ,  .                                            #
+#      ...A<.b..          S....A..........AAS.........bb.       ..,c.,.,........*..                                            #
+#      S..&*.,..          TT..*..........*.*.........*b..       .. ,$oo,.........A.                                            #
+#      TT....,,.          ........      ..............A&.       .. .o ,.       S*A&                                            #
+#         ...              ...           ............*A..       ...o.,..                                                       #
+#         ...              ...           ...        ....S       ........                                                       #
+#         ...              ...           ...        TT...          ..                                                          #
+#         ...              ...           ...          ..           ..                                                          #
+#         ...              ...           ...          ..           ..                                                          #
+#         ...              ...           ...          ..           ..                                                          #
+#   ..,,...........        ...        ........        ..           ..                                                          #
+#   ...............       .....       .....&.S        ..           ..                                                          #
+#   .. .. ..... ...       ....&       .. ..AA.        ..           ..                                                          #
+#   .......................T*...      .,,.*.*.      bb...      .........                                                       #
+#   .......................Tp...............T........b...      . .,b., .                                                       #
+#   ........*..............*...       ..b...T........*.*.      ...A,b,..                                                       #
+#   .T.....&AA.....       ,....       ...b. ..      .AA..........bA..b&.                                                       #
+#   .T.......*.....       .....       ..b.....      ,&...........&.*,,,.                                                       #
+#   S..............        ..         ........      ,..S.      .....,,..                                                       #
+#   ...............        .            ...             .                                                                      #
+#   ...,,..........        .            ...             .                                                                      #
+#   .. ., .. .. ...        .            ...             .                                                                      #
+#   ....,..........        .            ...             .                                                                      #
+#   ...............        .            ...             .                                                                      #
+#                          .            ...             .              ###########            ###                              #
+#                          .        ..........      .........         ##111111111##         ###1###                            #
+#                        ....,      . . ... ..      . , . . .         #11111#11111#        ##11,1,##                           #
+#                        . . ,      ..""""""..      .."""""..    ######111#111#111#        #111#,1S#                           #
+#                        ..ITT      ..""""&I..........""""".......11111*1&11b11111##  ######11#,#11#                           #
+#                        .I,.S      .."b"AA"..........""""".......111111A111Lb1#111#  #111111111&#1#                           #
+#                        ..k..      ..b"*"*".........."""*".......111111A*11b111TT##  #111111b*AA11#                           #
+#                        .*.*.      .b""""""..      ..""AA".,    ######111#111#11S#   #11###bb11*1,#                           #
 #                        .AA,.      S.""""""..      .."*?&b.S         #11111111111#   #11# ##TT11,##                           #
 #                        .&...      TT""""""..      ..""""bTT         ##111111111##   #11#  ###11##                            #
 #                        .&b..      . . . . ..      .."""b"..          ####111####    #11#    #11#                             #
@@ -80,51 +80,51 @@ legend fixtures table T bench b shelf S barrel o crate c brazier * altar A bed B
 #                                                                      ####111#####11#       #11#                              #
 #                                                                     ##111111111##11#       #11#                              #
 #                                                                    ##11111111111#11#       #11#                              #
-#                                                  ###########       #11111111111b111#       #11#                              #
-#                                                  #222,22222#       #1111#,11#11bb11#    ####11##    #########                #
-#                                  ###########     #22#2,2#22#    ####1111111111*1111#    #,11111#    #1111111#                #
-#                                  #2222,,&&2#######222BB2222#    #11111111111111AA11#    #1#1111#    #,#111#1#                #
-#                                  #2#22bb2222222222222,c2222#    #1111111111111&1*11#    #1*,1b,######11,1111#                #
-#                                  #222b2A&,222222222,2bf2,2,#    #11#1111#111#S11111#    #1I*1*11111111b1?*1S#                #
-#                                  #2222kA22222222222TTTTbbo2#    #11#11111111TT11111#    #11AAbb######*b1A11T#                #
-#                                  #222b,2*22#######2b2b2,#22#    #11##11111#11111111#    #11&11b#    #b1&A*1T#                #
-#                                  #222222222#     #,222R,222#    #11###111111111#111#    #111111#    #b11111b#                #
-#                                  #####222###     ##222######    #11# ###########111#    ########    #########                #
-#                                      #222#        #222#         #11#           #111#                                         #
-#                                      #222#        #222#         #11#           #111#                                         #
-#                                      #222#        #222#         #11#           #111#                                         #
-#                                      #222#        #222#         #11#           #111#                                         #
-#                                      #222#       ##222##    #####11####      ###111###                                       #
-#                                  #####222###     #22222#    #111111111#     ##1111111##                                      #
-#                                  #2222222,,#     #bb2T2######1#1111S#1#######111111111#                                      #
-#                                  #22222222R#     #2b2T2211111111,ATT1111111111*A&11#11#                                      #
-#                                  #22##2,2,2#     #2*L222111111111A1111111111111A1111,,##                                     #
-#                                  #22#,o,o,2#     #2AA*2211111111*&11b11111111bb1*1I1#11#                                     #
-#                                  #22#2$,c,,#     #22&22######11bI1bb11#######1b111T111##                                     #
-#  ###########                     #22#2,c,2S#     #22,2S#    #111111,,1#     #11#1ST#11#                                      #
-#  #,,3333333#                     #22##o,o,,#     #######    #####1#####     #1111#1111#                                      #
-#  #3#33,3,AA#                     #2222,,22S#                    #1#         ##111111,##                                      #
-#  #33TT>3*3&#                     #2222,,o,,#                    #1#          #########                                       #
-#  #3333S3333#                     #####222###                    #1#                                                          #
-#  #######333#                         #222#                      #1#                                                          #
-#        #333#                         #222#                      #1#                                                          #
-#        #333#                         #222#                    ###1###                                                        #
-#        #333#                         #222#                   ##*1111##                                                       #
-#        #333#                         #222#                   #1AA1&11#                                                       #
-#        #333#                     #####222####               ##1*#1#11##                                                      #
-#      ###333###                   #2222222222#               #,1#1kb#11#                                                      #
-#     ##3333333##      ########    #2#2#222#22#               ##,1#1#b1##                                                      #
-#    ##333333333##     #333333#    #22""""""22#                #11S#b11#                                                       #
-#   ##3333333333,##    #3#33#3#    #22""""""22#                ##11111##                                                       #
-#   #333#33,,#333,######333333######22""""""22#                 #######                                                        #
-#  ##33333*,333333333333333,3332222222""""""22#                                                                                #
-#  #3333333*333333333333333L*332222222""*&""22#                                                                                #
-#  #3333333@3333333333333,A,&332222222""A""I22#                                                                                #
-#  #33333333333333######3IA333######22""A*""2,#                                                                                #
-#  ##,33#3333#3333#    #33,,33#    #22""""""22#                                                                                #
-#   #333,,33333333#    #333,I,#    #22""""""22#                                                                                #
-#   ##33,33333333##    ########    #22""""""22#                                                                                #
-#    ##333333333##                 #2#2#2#2#22#                                                                                #
+#                                                                    #11111111111b111#       #11#                              #
+#                                                                    #1111#,11#11bb11#    ####11##    #########                #
+#                                  ###########                    ####1111111111*1111#    #,11111#    #1111111#                #
+#                                  #222,b*,22#                    #11111111111111AA11#    #1#1111#    #,#111#1#                #
+#                                  #2#2,2b,#2#                    #1111111111111&1*11#    #1*,1b,######11,1111#                #
+#                                  #222A*b*,2######               #11#1111#111#S11111#    #1I*1*11111111b1?*1S#                #
+#                                  #22bAk2b&222222#               #11#11111111TT11111#    #11AAbb######*b1A11T#                #
+#                                  #22&2*,222####2#               #11##11111#11111111#    #11&11b#    #b1&A*1T#                #
+#                                  #22222,I22#  #2#               #11###111111111#111#    #111111#    #b11111b#                #
+#                                  ###########  #2#               #11# ###########111#    ########    #########                #
+#                                               #2#               #11#           #111#                                         #
+#                                               #2#               #11#           #111#                                         #
+#                                               #2#               #11#           #111#                                         #
+#                                               #2#               #11#           #111#                                         #
+#                                               #2########    #####11####      ###111###                                       #
+#                                  ###########  #2##22,2S#    #111111111#     ##1111111##                                      #
+#                                  #222222SS2####2##2#,#2######1#1111S#1#######111111111#                                      #
+#                                  #222,oo22222222222b222211111111,ATT1111111111*A&11#11#                                      #
+#                                  #22##S,,2222222222*L&22111111111A1111111111111A1111,,##                                     #
+#                                  #22#,oc,,c222222222AA2211111111*&11b11111111bb1*1I1#11#                                     #
+#                                  #22#2$,c2S####2##2*2b2######11bI1bb11#######1b111T111##                                     #
+#  ###########                     #22#2,c,,,#  #2##222b2#    #111111,,1#     #11#1ST#11#                                      #
+#  #,,3333333#                     #22##22c,c#  #2########    #####1#####     #1111#1111#                                      #
+#  #3#33,3,AA#                     #22222o,2R#  #2######          #1#         ##111111,##                                      #
+#  #33TT>3*3&#                     #2222,2222#  #222222#          #1#          #########                                       #
+#  #3333S3333#                     #####222###  ######2#          #1#                                                          #
+#  #######333#                         #222#         #2#          #1#                                                          #
+#        #333#                         #222#       ###2###        #1#                                                          #
+#        #333#                         #222#       #22222#      ###1###                                                        #
+#        #333#           ###############222#########2#2#2#     ##*1111##                                                       #
+#        #333#           #222222222222222222222222222I2,2#     #1AA1&11#                                                       #
+#        #333#           #22222222222222222222222222222*2#    ##1*#1#11##                                                      #
+#      ###333###         #22222222222222222222222222222A2#    #,1#1kb#11#                                                      #
+#     ##3333333##      ###333#######22#R2c2b,2######22*A&#    ##,1#1#b1##                                                      #
+#    ##333333333##     #333333#    #2,,,,TT,,2#    #######     #11S#b11#                                                       #
+#   ##3333333333,##    #3#3333#    #22bo,2bc22#                ##11111##                                                       #
+#   #333#33,,#333,######333333#    #222,TT,,22#                 #######                                                        #
+#  ##33333*,333333333333333333#    #2222b,b222#                                                                                #
+#  #3333333*33333333333333*L33#    #,22c2,2,22#                                                                                #
+#  #3333333@3333333333333&A*&3#    #,,222f22b,#                                                                                #
+#  #33333333333333######,,A3,3#    #BB22b2222o#                                                                                #
+#  ##,33#3333#3333#    #33I*33#    #,c2b2222b,#                                                                                #
+#   #333,,33333333#    #333bI,#    #,,c2222222#                                                                                #
+#   ##33,33333333##    ########    #2,22222222#                                                                                #
+#    ##333333333##                 #22#222#222#                                                                                #
 #     ##3333333##                  #2222222222#                                                                                #
 #      #########                   ############                                                                                #
 #                                                                                                                              #
@@ -144,15 +144,15 @@ room 10 Ba1 room temple-rotunda district sanctum [66,75)-(86,88) door 76,81
 room 11 Bb1 room temple-rotunda district sanctum [90,43)-(100,57) door 95,50
 room 12 Bb2 room temple-rotunda district sanctum [90,29)-(100,39) door 95,34
 room 13 L2 lock temple-chapel district cloister [51,92)-(58,101) door 54,96
-room 14 F2 stronghold special-stronghold-hall district cloister [51,78)-(62,88) door 56,83
-room 15 R2 room temple-courtyard district cloister [35,109)-(47,125) door 41,117
+room 14 F2 stronghold special-stronghold-hall district cloister [35,109)-(47,125) door 41,117
+room 15 R2 room temple-chapel district cloister [51,105)-(58,113) door 54,109
 room 16 L3 lock temple-chapel district sanctum [23,111)-(31,122) door 27,116
 room 17 B boss special-boss-arena district sanctum [3,109)-(19,125) door 11,117
 room 18 X exit temple-chapel district sanctum [3,99)-(14,105) door 8,102
 room 19 K1 key temple-chapel district cloister [24,30)-(31,41) door 27,35
 room 20 K2 key temple-rotunda district sanctum [62,105)-(73,115) door 67,110
 room 21 K3 key temple-chapel district cloister [35,80)-(46,88) door 40,84
-room 22 T0 treasure special-vault-strongroom district cloister [117,29)-(125,39) door 121,34
+room 22 T0 treasure special-vault-strongroom district cloister [62,3)-(74,13) door 68,7
 room 23 T1 treasure special-vault-strongroom district cloister [34,92)-(47,105) door 40,98
 room 24 S0 secret temple-courtyard district cloister [51,29)-(62,46) door 56,37
 room 25 S1 secret temple-chapel district sanctum [102,79)-(111,88) door 106,83
@@ -163,7 +163,7 @@ room 29 g4 room temple-chapel district cloister [62,17)-(73,25) door 67,21
 room 30 g5 room temple-rotunda district sanctum [90,61)-(101,75) door 95,68
 room 31 g6 room temple-chapel district sanctum [62,92)-(73,101) door 67,96
 room 32 g7 room temple-chapel district sanctum [90,79)-(98,88) door 94,83
-room 33 g8 room temple-courtyard district cloister [62,3)-(74,13) door 68,8
+room 33 g8 room temple-chapel district cloister [78,3)-(84,10) door 81,6
 roomdress 0 temple hall 0 floor 46 items 50 density 10.8696 neg_space 39.1304 kinds 5 clone 0 wall 31/35 gmiss 0
 roomdress 1 nexus hall 1 floor 53 items 36 density 6.79245 neg_space 52.8302 kinds 4 clone 0 wall 29/32 gmiss 0
 roomdress 2 temple hall 0 floor 46 items 36 density 7.82609 neg_space 32.6087 kinds 4 clone 0 wall 21/24 gmiss 0
@@ -177,17 +177,17 @@ roomdress 9 temple hall 1 floor 82 items 62 density 7.56098 neg_space 59.7561 ki
 roomdress 10 temple hall 1 floor 174 items 84 density 4.82759 neg_space 77.0115 kinds 4 clone 0 wall 70/90 gmiss 0
 roomdress 11 temple hall 1 floor 77 items 60 density 7.79221 neg_space 62.3377 kinds 4 clone 0 wall 45/58 gmiss 0
 roomdress 12 temple hall 1 floor 48 items 61 density 12.7083 neg_space 35.4167 kinds 5 clone 0 wall 42/48 gmiss 0
-roomdress 13 temple hall 0 floor 41 items 34 density 8.29268 neg_space 24.3902 kinds 4 clone 0 wall 20/22 gmiss 0
-roomdress 14 stronghold hall 0 floor 75 items 61 density 8.13333 neg_space 44 kinds 6 clone 0 wall 37/44 gmiss 0
-roomdress 15 temple hall 1 floor 139 items 69 density 4.96403 neg_space 82.7338 kinds 4 clone 0 wall 60/74 gmiss 0
-roomdress 16 temple hall 0 floor 58 items 55 density 9.48276 neg_space 44.8276 kinds 4 clone 0 wall 32/36 gmiss 0
+roomdress 13 temple hall 0 floor 39 items 41 density 10.5128 neg_space 28.2051 kinds 4 clone 0 wall 27/30 gmiss 0
+roomdress 14 stronghold hall 0 floor 151 items 84 density 5.56291 neg_space 44.3709 kinds 6 clone 0 wall 37/50 gmiss 0
+roomdress 15 temple hall 0 floor 32 items 33 density 10.3125 neg_space 40.625 kinds 4 clone 0 wall 24/30 gmiss 0
+roomdress 16 temple hall 0 floor 59 items 47 density 7.9661 neg_space 44.0678 kinds 4 clone 0 wall 27/32 gmiss 0
 roomdress 17 boss hall 1 floor 153 items 67 density 4.37908 neg_space 83.6601 kinds 5 clone 0 wall 54/70 gmiss 0
 roomdress 18 temple hall 0 floor 38 items 39 density 10.2632 neg_space 44.7368 kinds 4 clone 0 wall 25/29 gmiss 0
 roomdress 19 temple hall 0 floor 44 items 57 density 12.9545 neg_space 43.1818 kinds 4 clone 0 wall 34/37 gmiss 0
 roomdress 20 temple hall 1 floor 42 items 67 density 15.9524 neg_space 52.381 kinds 4 clone 0 wall 53/63 gmiss 0
-roomdress 21 temple hall 0 floor 59 items 42 density 7.11864 neg_space 44.0678 kinds 4 clone 0 wall 25/32 gmiss 0
-roomdress 22 vault hall 0 floor 26 items 26 density 10 neg_space 42.3077 kinds 3 clone 0 wall 19/23 gmiss 0
-roomdress 23 vault hall 0 floor 86 items 75 density 8.72093 neg_space 43.0233 kinds 4 clone 0 wall 44/54 gmiss 0
+roomdress 21 temple hall 0 floor 53 items 58 density 10.9434 neg_space 43.3962 kinds 4 clone 0 wall 33/39 gmiss 0
+roomdress 22 vault hall 0 floor 53 items 56 density 10.566 neg_space 43.3962 kinds 3 clone 0 wall 36/42 gmiss 0
+roomdress 23 vault hall 0 floor 86 items 77 density 8.95349 neg_space 44.186 kinds 4 clone 0 wall 43/54 gmiss 0
 roomdress 24 temple hall 1 floor 134 items 77 density 5.74627 neg_space 73.1343 kinds 6 clone 0 wall 60/79 gmiss 0
 roomdress 25 temple hall 0 floor 48 items 52 density 10.8333 neg_space 43.75 kinds 5 clone 0 wall 32/37 gmiss 0
 roomdress 26 temple hall 1 floor 209 items 72 density 3.44498 neg_space 84.689 kinds 4 clone 0 wall 56/84 gmiss 0
@@ -197,20 +197,20 @@ roomdress 29 temple hall 0 floor 56 items 56 density 10 neg_space 44.6429 kinds 
 roomdress 30 temple hall 1 floor 81 items 69 density 8.51852 neg_space 72.8395 kinds 4 clone 0 wall 57/66 gmiss 0
 roomdress 31 temple hall 0 floor 70 items 48 density 6.85714 neg_space 42.8571 kinds 4 clone 0 wall 29/39 gmiss 0
 roomdress 32 temple hall 0 floor 44 items 42 density 9.54545 neg_space 43.1818 kinds 4 clone 0 wall 25/31 gmiss 0
-roomdress 33 temple hall 1 floor 76 items 67 density 8.81579 neg_space 72.3684 kinds 4 clone 0 wall 55/65 gmiss 0
+roomdress 33 temple hall 0 floor 20 items 34 density 17 neg_space 30 kinds 5 clone 0 wall 23/24 gmiss 0
 entity stairs_up 0 11,6
 entity map_plaque 0 28,19
 entity lock_door 1 76,34
 entity merchant 0 76,51
 entity lock_door 2 54,96
-entity faction_seat 0 56,83
+entity faction_seat 0 41,117
 entity lock_door 3 27,116
 entity boss 0 11,117
 entity stairs_down 0 8,102
 entity key 1 27,35
 entity key 2 67,110
 entity key 3 40,84
-entity chest 0 121,34
+entity chest 0 68,7
 entity chest 0 40,98
 entity secret 0 56,37
 entity secret 0 106,83
@@ -952,170 +952,164 @@ dress wall sconce 0 97 37 2 entry 12 wall light
 dress wall chains 1 97 37 3 entry 12 wall -
 dress wall mosaic 0 95 38 1 entry 12 wall writing
 dress wall chains 0 96 38 3 entry 12 wall -
-dress fixture altar 0 54 97 2 core 13 activity:worship station
-dress fixture brazier 0 53 96 1 core 13 activity:worship light
-dress fixture brazier 0 55 97 2 entry 13 activity:worship light
-dress fixture statue 0 54 98 3 core 13 activity:worship -
+dress fixture altar 0 54 97 0 core 13 activity:worship station
+dress fixture brazier 0 53 96 0 entry 13 activity:worship light
+dress fixture brazier 0 53 98 1 core 13 activity:worship light
+dress fixture statue 0 55 96 1 entry 13 activity:worship -
 dress prop candle 1 54 97 0 core 13 activity:worship light
 dress prop incense 1 54 97 0 core 13 activity:worship light
 dress prop offering 0 54 97 0 core 13 activity:worship container
-dress fixture bench 1 53 95 1 core 13 activity:prayer station
-dress fixture bench 2 53 94 1 entry 13 activity:prayer station
-dress fixture bench 1 52 94 2 edge 13 activity:prayer station
-dress fixture shelf 1 56 99 2 edge 13 activity:study container
-dress fixture table 1 55 95 1 entry 13 activity:study station
-dress prop book 1 56 99 0 edge 13 activity:study writing
-dress prop scroll 0 56 99 0 edge 13 activity:study writing
-dress prop urn 0 54 99 0 edge 13 item:urn container
-dress wall cobweb 1 53 92 1 entry 13 wall -
-dress wall chains 0 55 92 3 entry 13 wall -
-dress wall banner 1 52 93 0 entry 13 wall -
-dress wall cobweb 0 52 93 1 entry 13 wall -
-dress wall tapestry 1 56 93 3 entry 13 wall -
-dress wall chains 1 56 93 0 entry 13 wall -
-dress wall sconce 1 52 94 1 edge 13 wall light
-dress wall sconce 0 52 95 1 edge 13 wall light
+dress fixture bench 1 55 98 3 core 13 activity:prayer station
+dress fixture bench 2 55 99 1 edge 13 activity:prayer station
+dress fixture bench 1 53 95 3 entry 13 activity:prayer station
+dress fixture shelf 1 56 93 3 edge 13 activity:study container
+dress prop book 0 56 93 0 edge 13 activity:study writing
+dress prop scroll 1 56 93 0 edge 13 activity:study writing
+dress prop urn 0 54 93 0 edge 13 item:urn container
+dress prop urn 1 54 94 0 edge 13 item:urn container
+dress wall banner 1 52 93 0 edge 13 wall -
+dress wall cobweb 0 52 93 1 edge 13 wall -
+dress wall tapestry 1 53 93 2 edge 13 wall -
+dress wall moss 1 54 93 0 edge 13 wall -
+dress wall plaque 1 55 93 0 edge 13 wall writing
+dress wall chains 1 56 93 0 edge 13 wall -
+dress wall sconce 1 52 94 3 entry 13 wall light
+dress wall sconce 0 52 94 1 entry 13 wall light
+dress wall tapestry 0 54 94 3 edge 13 wall -
+dress wall cobweb 1 54 94 1 edge 13 wall -
+dress wall banner 0 56 94 1 entry 13 wall -
+dress wall sconce 0 51 95 0 entry 13 wall light
+dress wall tapestry 1 53 95 0 entry 13 wall -
+dress wall banner 1 55 95 0 entry 13 wall -
 dress wall mosaic 0 57 95 0 entry 13 wall writing
-dress wall cobweb 0 52 96 1 edge 13 wall -
-dress wall sconce 0 57 97 2 entry 13 wall light
-dress wall moss 0 52 98 1 edge 13 wall -
-dress wall mosaic 1 56 98 3 entry 13 wall writing
+dress wall mosaic 1 51 97 2 entry 13 wall writing
+dress wall sconce 1 57 97 2 entry 13 wall light
+dress wall moss 1 52 98 1 entry 13 wall -
+dress wall mosaic 0 56 98 3 entry 13 wall writing
 dress wall plaque 0 52 99 2 edge 13 wall writing
 dress wall banner 0 52 99 1 edge 13 wall -
-dress wall chains 1 53 99 2 edge 13 wall -
-dress wall banner 1 54 99 2 edge 13 wall -
+dress wall chains 0 53 99 2 edge 13 wall -
+dress wall banner 0 54 99 2 edge 13 wall -
 dress wall tapestry 1 55 99 2 edge 13 wall -
+dress wall banner 1 56 99 2 edge 13 wall -
 dress wall tapestry 0 56 99 3 edge 13 wall -
-dress fixture table 0 54 84 2 core 14 activity:court station
-dress fixture bench 2 55 85 3 entry 14 activity:court station
-dress fixture bench 0 53 85 1 entry 14 activity:court station
-dress fixture bench 1 55 83 1 core 14 activity:court station
-dress prop map_scroll 1 54 84 0 core 14 activity:court writing
-dress prop candle 0 54 84 0 core 14 activity:court light
-dress prop cup 0 54 84 0 core 14 activity:court -
-dress fixture rack 0 56 86 2 entry 14 activity:guard container
-dress fixture bed 0 55 81 1 edge 14 activity:quarters station
-dress fixture crate 1 56 82 0 core 14 activity:quarters container
-dress fixture barrel 2 59 84 2 edge 14 item:barrel container
-dress prop weapon_pile 1 55 79 0 edge 14 item:weapon_pile container
-dress fixture table 1 56 84 2 core 14 vignette:card-game station
-dress fixture bench 1 57 84 2 edge 14 vignette:card-game station
-dress prop coins 1 56 84 0 core 14 vignette:card-game container
-dress prop cup 1 56 84 0 core 14 vignette:card-game -
-dress wall cobweb 1 52 79 1 edge 14 wall -
-dress wall banner 1 53 79 0 edge 14 wall -
-dress wall chains 0 54 79 2 edge 14 wall -
-dress wall tapestry 1 54 79 0 edge 14 wall -
-dress wall sconce 1 55 79 0 edge 14 wall light
-dress wall sconce 0 56 79 0 edge 14 wall light
-dress wall chains 1 57 79 0 edge 14 wall -
-dress wall tapestry 0 58 79 2 edge 14 wall -
-dress wall sconce 1 58 79 0 edge 14 wall light
-dress wall moss 0 60 79 3 edge 14 wall -
-dress wall moss 1 52 80 1 edge 14 wall -
-dress wall sconce 0 53 80 3 edge 14 wall light
-dress wall tapestry 1 57 80 3 edge 14 wall -
-dress wall graffiti 1 59 80 1 edge 14 wall writing
-dress wall banner 0 52 81 1 entry 14 wall -
-dress wall sconce 1 54 81 0 edge 14 wall light
-dress wall banner 0 58 81 0 edge 14 wall -
-dress wall sconce 0 60 81 3 edge 14 wall light
-dress wall banner 1 51 82 0 entry 14 wall -
-dress wall banner 0 60 82 3 edge 14 wall -
-dress wall shield_mount 1 60 83 3 edge 14 wall -
-dress wall tapestry 0 58 84 2 edge 14 wall -
-dress wall shield_mount 0 60 84 3 edge 14 wall -
-dress wall tapestry 1 57 85 3 edge 14 wall -
-dress wall moss 0 59 85 1 edge 14 wall -
-dress wall shield_mount 1 60 85 3 edge 14 wall -
-dress wall banner 0 52 86 2 entry 14 wall -
-dress wall shield_mount 1 52 86 1 entry 14 wall -
-dress wall banner 1 57 86 2 edge 14 wall -
-dress wall banner 1 58 86 2 edge 14 wall -
-dress wall cobweb 0 58 86 0 edge 14 wall -
-dress wall cobweb 1 59 86 2 edge 14 wall -
-dress wall banner 0 60 86 2 edge 14 wall -
-dress wall shield_mount 0 60 86 3 edge 14 wall -
-dress wall banner 1 53 87 1 entry 14 wall -
-dress wall banner 1 55 87 3 entry 14 wall -
-dress prop bucket 0 55 82 0 core 14 clutter liquid
-dress prop lantern 0 52 86 0 entry 14 clutter light
-dress prop sack 0 56 80 0 core 14 clutter container
-dress prop lantern 1 57 86 0 edge 14 clutter light
-dress prop sack 1 60 83 0 edge 14 clutter container
-dress prop bucket 0 53 83 0 entry 14 clutter liquid
-dress prop bucket 1 58 83 0 core 14 clutter liquid
-dress prop sack 0 57 85 0 edge 14 clutter container
-dress fixture bench 2 58 84 2 edge 14 clutter station
-dress fixture altar 1 40 117 3 core 15 activity:worship station
-dress fixture brazier 1 41 118 1 core 15 activity:worship light
-dress fixture brazier 0 40 116 3 core 15 activity:worship light
-dress fixture statue 1 41 116 2 core 15 activity:worship -
-dress prop candle 1 40 117 0 core 15 activity:worship light
-dress prop incense 0 40 117 0 core 15 activity:worship light
-dress prop offering 0 40 117 0 core 15 activity:worship container
-dress prop urn 1 45 118 0 edge 15 item:urn container
-dress fixture pillar 2 43 117 3 core 15 item:pillar -
-dress wall tapestry 0 40 109 1 entry 15 wall -
-dress wall sconce 0 42 109 3 entry 15 wall light
-dress wall plaque 0 36 110 0 edge 15 wall writing
-dress wall plaque 1 36 110 1 edge 15 wall writing
-dress wall tapestry 0 37 110 2 edge 15 wall -
-dress wall sconce 0 37 110 0 edge 15 wall light
-dress wall tapestry 1 38 110 0 edge 15 wall -
-dress wall mosaic 1 39 110 2 entry 15 wall writing
-dress wall plaque 1 39 110 0 entry 15 wall writing
-dress wall plaque 0 43 110 2 entry 15 wall writing
-dress wall tapestry 1 43 110 0 entry 15 wall -
-dress wall cobweb 1 44 110 0 edge 15 wall -
-dress wall tapestry 1 45 110 3 edge 15 wall -
-dress wall plaque 0 45 110 0 edge 15 wall writing
-dress wall tapestry 0 36 111 3 edge 15 wall -
-dress wall moss 1 36 111 1 edge 15 wall -
-dress wall tapestry 0 38 111 3 edge 15 wall -
-dress wall banner 1 38 111 1 edge 15 wall -
-dress wall tapestry 0 40 111 1 entry 15 wall -
-dress wall mosaic 0 42 111 3 entry 15 wall writing
-dress wall tapestry 1 44 111 1 edge 15 wall -
-dress wall moss 0 37 112 0 edge 15 wall -
-dress wall cobweb 0 45 112 3 edge 15 wall -
-dress wall mosaic 1 36 113 1 edge 15 wall writing
-dress wall sconce 1 45 113 3 edge 15 wall light
-dress wall sconce 1 36 114 1 entry 15 wall light
-dress wall sconce 0 45 114 3 edge 15 wall light
-dress wall mosaic 0 35 115 0 entry 15 wall writing
-dress wall plaque 1 45 115 3 edge 15 wall writing
-dress wall chains 0 45 116 3 edge 15 wall -
-dress wall tapestry 1 35 117 2 entry 15 wall -
-dress wall chains 1 36 118 1 entry 15 wall -
-dress wall banner 0 45 118 3 edge 15 wall -
-dress wall sconce 1 36 119 1 edge 15 wall light
-dress wall banner 1 45 119 3 edge 15 wall -
-dress wall plaque 0 36 120 1 edge 15 wall writing
-dress wall mosaic 0 45 120 3 edge 15 wall writing
-dress wall mosaic 1 36 121 1 edge 15 wall writing
-dress wall sconce 0 37 121 2 edge 15 wall light
-dress wall mosaic 0 41 121 2 edge 15 wall writing
-dress wall sconce 1 43 121 2 edge 15 wall light
-dress wall mosaic 1 45 121 3 edge 15 wall writing
-dress wall mosaic 0 36 122 3 edge 15 wall writing
-dress wall plaque 1 36 122 1 edge 15 wall writing
-dress wall chains 1 38 122 3 edge 15 wall -
-dress wall chains 0 38 122 1 edge 15 wall -
-dress wall moss 1 40 122 3 edge 15 wall -
-dress wall banner 0 40 122 1 edge 15 wall -
-dress wall banner 1 42 122 3 edge 15 wall -
-dress wall banner 0 42 122 1 edge 15 wall -
-dress wall cobweb 0 44 122 1 edge 15 wall -
-dress wall cobweb 1 45 122 3 edge 15 wall -
-dress wall cobweb 1 36 123 2 edge 15 wall -
-dress wall cobweb 0 36 123 1 edge 15 wall -
-dress wall chains 1 37 123 2 edge 15 wall -
-dress wall chains 1 37 123 0 edge 15 wall -
-dress wall moss 0 38 123 2 edge 15 wall -
-dress wall chains 0 39 123 0 edge 15 wall -
-dress wall moss 1 40 123 2 edge 15 wall -
-dress wall moss 0 41 123 0 edge 15 wall -
+dress fixture table 0 41 114 2 core 14 activity:court station
+dress fixture bench 2 42 115 0 core 14 activity:court station
+dress fixture bench 0 42 113 3 core 14 activity:court station
+dress fixture bench 1 40 115 0 core 14 activity:court station
+dress prop map_scroll 1 41 114 0 core 14 activity:court writing
+dress prop candle 0 41 114 0 core 14 activity:court light
+dress prop cup 0 41 114 0 core 14 activity:court -
+dress fixture rack 0 39 111 1 entry 14 activity:guard container
+dress fixture bed 0 36 118 1 edge 14 activity:quarters station
+dress fixture crate 1 37 119 1 core 14 activity:quarters container
+dress fixture barrel 2 45 118 3 edge 14 item:barrel container
+dress prop weapon_pile 1 39 112 0 edge 14 item:weapon_pile container
+dress fixture table 1 42 112 2 core 14 vignette:card-game station
+dress fixture bench 1 43 111 3 entry 14 vignette:card-game station
+dress prop coins 1 42 112 0 core 14 vignette:card-game container
+dress prop cup 1 42 112 0 core 14 vignette:card-game -
+dress wall banner 1 35 110 2 entry 14 wall -
+dress wall banner 0 46 110 2 entry 14 wall -
+dress wall moss 0 36 111 1 entry 14 wall -
+dress wall banner 1 37 111 3 entry 14 wall -
+dress wall graffiti 1 45 111 3 entry 14 wall writing
+dress wall banner 0 36 112 1 edge 14 wall -
+dress wall banner 1 45 112 3 edge 14 wall -
+dress wall sconce 0 45 113 3 edge 14 wall light
+dress wall chains 1 36 114 1 edge 14 wall -
+dress wall tapestry 0 45 114 3 edge 14 wall -
+dress wall graffiti 0 36 115 1 edge 14 wall writing
+dress wall banner 0 45 115 3 edge 14 wall -
+dress wall moss 1 45 116 3 edge 14 wall -
+dress wall sconce 1 36 117 1 edge 14 wall light
+dress wall sconce 0 45 117 3 edge 14 wall light
+dress wall chains 0 36 118 1 edge 14 wall -
+dress wall cobweb 0 45 118 3 edge 14 wall -
+dress wall cobweb 1 36 120 1 edge 14 wall -
+dress wall banner 1 45 120 3 edge 14 wall -
+dress wall sconce 1 42 121 2 edge 14 wall light
+dress wall shield_mount 1 45 121 3 edge 14 wall -
+dress wall shield_mount 0 36 122 1 edge 14 wall -
+dress wall sconce 1 37 122 3 edge 14 wall light
+dress wall moss 0 39 122 1 edge 14 wall -
+dress wall shield_mount 0 43 122 1 edge 14 wall -
+dress wall shield_mount 1 45 122 3 edge 14 wall -
+dress wall cobweb 0 36 123 2 edge 14 wall -
+dress wall banner 1 36 123 1 edge 14 wall -
+dress wall tapestry 1 37 123 2 edge 14 wall -
+dress wall shield_mount 1 38 123 0 edge 14 wall -
+dress wall graffiti 1 39 123 2 edge 14 wall writing
+dress wall shield_mount 0 41 123 2 edge 14 wall -
+dress wall banner 0 42 123 2 edge 14 wall -
+dress wall sconce 0 42 123 0 edge 14 wall light
+dress wall tapestry 0 43 123 2 edge 14 wall -
+dress wall tapestry 1 45 123 2 edge 14 wall -
+dress prop bucket 0 36 119 0 edge 14 clutter liquid
+dress prop lantern 0 43 114 0 core 14 clutter light
+dress prop sack 0 36 117 0 edge 14 clutter container
+dress prop lantern 1 41 116 0 core 14 clutter light
+dress prop sack 1 45 119 0 edge 14 clutter container
+dress prop bucket 0 40 113 0 core 14 clutter liquid
+dress prop bucket 0 44 111 0 entry 14 clutter liquid
+dress prop sack 1 40 112 0 core 14 clutter container
+dress fixture bench 1 44 117 3 core 14 clutter station
+dress fixture crate 2 38 120 2 core 14 clutter container
+dress prop bucket 1 43 116 0 core 14 clutter liquid
+dress prop sack 0 45 117 0 edge 14 clutter container
+dress prop bucket 1 44 112 0 core 14 clutter liquid
+dress prop bucket 0 37 120 0 core 14 clutter liquid
+dress prop chest_small 0 38 112 0 edge 14 clutter container
+dress fixture bench 0 44 119 3 core 14 clutter station
+dress prop weapon_pile 0 41 115 0 core 14 clutter container
+dress prop sack 1 36 120 0 edge 14 clutter container
+dress prop bucket 0 42 114 0 core 14 clutter liquid
+dress prop weapon_pile 1 37 117 0 core 14 clutter container
+dress prop weapon_pile 1 43 112 0 core 14 clutter container
+dress prop chest_small 1 39 114 0 core 14 clutter container
+dress fixture bench 2 39 119 2 core 14 clutter station
+dress fixture crate 0 39 116 0 core 14 clutter container
+dress prop lantern 0 37 121 0 edge 14 clutter light
+dress fixture crate 0 43 113 2 core 14 clutter container
+dress fixture crate 1 41 111 1 entry 14 clutter container
+dress fixture bench 2 40 118 3 core 14 clutter station
+dress fixture barrel 0 39 113 0 core 14 clutter container
+dress prop weapon_pile 0 36 116 0 edge 14 clutter container
+dress fixture bench 1 38 113 0 core 14 clutter station
+dress prop bucket 1 37 112 0 edge 14 clutter liquid
+dress fixture altar 1 55 110 3 core 15 activity:worship station
+dress fixture brazier 1 55 109 3 core 15 activity:worship light
+dress fixture brazier 0 54 111 2 edge 15 activity:worship light
+dress fixture statue 1 56 111 2 edge 15 activity:worship -
+dress prop candle 1 55 110 0 core 15 activity:worship light
+dress prop incense 0 55 110 0 core 15 activity:worship light
+dress prop offering 0 55 110 0 core 15 activity:worship container
+dress prop urn 1 55 108 0 edge 15 item:urn container
+dress fixture pillar 2 53 108 0 entry 15 item:pillar -
+dress wall tapestry 0 54 105 3 entry 15 wall -
+dress wall mosaic 0 54 105 1 entry 15 wall writing
+dress wall tapestry 1 53 106 2 entry 15 wall -
+dress wall mosaic 1 53 106 0 entry 15 wall writing
+dress wall tapestry 0 55 106 0 entry 15 wall -
+dress wall tapestry 1 52 107 3 entry 15 wall -
+dress wall tapestry 0 52 107 1 entry 15 wall -
+dress wall sconce 1 54 107 3 entry 15 wall light
+dress wall mosaic 1 56 107 3 edge 15 wall writing
+dress wall tapestry 1 56 107 1 edge 15 wall -
+dress wall moss 0 51 108 0 entry 15 wall -
+dress wall sconce 0 53 108 0 entry 15 wall light
+dress wall mosaic 0 55 108 0 edge 15 wall writing
+dress wall banner 0 56 108 3 edge 15 wall -
+dress wall tapestry 0 56 109 3 edge 15 wall -
+dress wall mosaic 1 51 110 2 entry 15 wall writing
+dress wall tapestry 0 56 110 3 edge 15 wall -
+dress wall tapestry 1 52 111 2 entry 15 wall -
+dress wall sconce 0 52 111 1 entry 15 wall light
+dress wall mosaic 0 53 111 2 edge 15 wall writing
+dress wall mosaic 1 54 111 2 edge 15 wall writing
+dress wall mosaic 0 55 111 2 edge 15 wall writing
+dress wall banner 1 56 111 2 edge 15 wall -
+dress wall tapestry 1 56 111 3 edge 15 wall -
 dress fixture altar 1 26 118 1 core 16 activity:worship station
 dress fixture brazier 1 27 119 2 core 16 activity:worship light
 dress fixture brazier 0 27 117 0 core 16 activity:worship light
@@ -1124,53 +1118,45 @@ dress prop candle 1 26 118 0 core 16 activity:worship light
 dress prop incense 0 26 118 0 core 16 activity:worship light
 dress prop offering 1 26 118 0 core 16 activity:worship container
 dress prop urn 1 29 120 0 edge 16 item:urn container
-dress wall mosaic 0 24 112 0 edge 16 wall writing
+dress wall sconce 0 26 111 1 entry 16 wall light
+dress wall mosaic 0 28 111 3 entry 16 wall writing
+dress wall mosaic 1 24 112 0 edge 16 wall writing
 dress wall sconce 0 24 112 1 edge 16 wall light
-dress wall tapestry 1 25 112 0 edge 16 wall -
-dress wall moss 0 27 112 0 edge 16 wall -
-dress wall sconce 1 28 112 2 edge 16 wall light
-dress wall banner 0 28 112 0 edge 16 wall -
-dress wall tapestry 0 29 112 0 edge 16 wall -
-dress wall tapestry 0 24 113 3 edge 16 wall -
-dress wall plaque 1 24 113 1 edge 16 wall writing
-dress wall tapestry 1 26 113 1 edge 16 wall -
-dress wall sconce 0 27 113 3 edge 16 wall light
-dress wall tapestry 1 29 113 3 edge 16 wall -
-dress wall tapestry 0 29 113 1 edge 16 wall -
+dress wall tapestry 0 25 112 0 entry 16 wall -
+dress wall tapestry 1 29 112 0 entry 16 wall -
+dress wall tapestry 1 24 113 3 edge 16 wall -
+dress wall plaque 0 24 113 1 edge 16 wall writing
+dress wall tapestry 1 26 113 1 entry 16 wall -
+dress wall tapestry 0 29 113 3 edge 16 wall -
 dress wall cobweb 0 24 114 1 entry 16 wall -
-dress wall sconce 1 25 114 0 edge 16 wall light
-dress wall cobweb 1 28 114 0 edge 16 wall -
-dress wall tapestry 1 29 114 3 entry 16 wall -
+dress wall tapestry 1 25 114 0 edge 16 wall -
+dress wall tapestry 0 29 114 3 edge 16 wall -
 dress wall tapestry 0 23 115 0 entry 16 wall -
-dress wall mosaic 0 30 115 0 entry 16 wall writing
+dress wall plaque 1 29 116 3 edge 16 wall writing
 dress wall tapestry 1 23 117 2 entry 16 wall -
-dress wall sconce 1 30 117 2 entry 16 wall light
-dress wall plaque 1 29 118 3 entry 16 wall writing
+dress wall plaque 1 29 118 3 edge 16 wall writing
 dress wall banner 1 24 119 1 edge 16 wall -
 dress wall plaque 0 29 119 3 edge 16 wall writing
-dress wall mosaic 1 24 120 2 edge 16 wall writing
-dress wall sconce 1 24 120 1 edge 16 wall light
-dress wall plaque 0 25 120 2 edge 16 wall writing
-dress wall chains 1 26 120 2 edge 16 wall -
-dress wall chains 0 27 120 2 edge 16 wall -
-dress wall sconce 0 28 120 2 edge 16 wall light
-dress wall mosaic 0 29 120 2 edge 16 wall writing
-dress wall moss 1 29 120 3 edge 16 wall -
-dress prop offering 0 27 119 0 core 16 clutter container
-dress prop candle 0 25 117 0 entry 16 clutter light
-dress fixture brazier 0 28 116 3 entry 16 clutter light
-dress prop offering 0 27 117 0 core 16 clutter container
-dress prop offering 1 27 117 0 core 16 clutter container
-dress prop offering 1 25 117 0 entry 16 clutter container
+dress wall mosaic 0 24 120 2 edge 16 wall writing
+dress wall tapestry 1 24 120 1 edge 16 wall -
+dress wall plaque 1 25 120 2 edge 16 wall writing
+dress wall chains 0 26 120 2 edge 16 wall -
+dress wall chains 1 27 120 2 edge 16 wall -
+dress wall tapestry 0 28 120 2 edge 16 wall -
+dress wall sconce 1 29 120 2 edge 16 wall light
+dress wall moss 0 29 120 3 edge 16 wall -
+dress prop chest_small 1 25 118 0 core 16 clutter container
+dress prop candle 0 26 118 0 core 16 clutter light
 dress fixture pillar 1 28 120 2 edge 16 clutter -
-dress prop candle 0 27 119 0 core 16 clutter light
-dress fixture statue 1 27 115 0 core 16 clutter -
-dress fixture statue 1 27 120 3 edge 16 clutter -
-dress fixture pillar 0 25 118 0 core 16 clutter -
-dress prop candle 0 27 115 0 core 16 clutter light
+dress prop chest_small 0 28 118 0 core 16 clutter container
+dress prop offering 0 26 118 0 core 16 clutter container
+dress fixture pillar 0 26 119 3 core 16 clutter -
+dress fixture bench 0 27 120 3 edge 16 clutter station
+dress prop offering 1 26 119 0 core 16 clutter container
+dress fixture statue 0 28 117 2 core 16 clutter -
+dress prop chest_small 0 24 118 0 entry 16 clutter container
 dress prop candle 0 27 120 0 edge 16 clutter light
-dress fixture statue 2 28 117 0 entry 16 clutter -
-dress prop chest_small 0 26 119 0 core 16 clutter container
+dress fixture brazier 1 26 116 3 core 16 clutter light
 dress prop creature_den 0 11 114 0 core 17 activity:lair den
 dress prop bones 1 12 114 0 hazard 17 activity:lair -
 dress prop bones 1 11 115 0 core 17 activity:lair -
@@ -1401,149 +1387,197 @@ dress wall moss 0 65 113 2 edge 20 wall -
 dress wall moss 1 65 113 1 edge 20 wall -
 dress wall moss 1 66 113 2 edge 20 wall -
 dress wall moss 0 67 113 2 edge 20 wall -
-dress fixture altar 1 41 84 1 core 21 activity:worship station
-dress fixture brazier 1 40 85 1 entry 21 activity:worship light
-dress fixture brazier 0 42 85 2 entry 21 activity:worship light
-dress fixture statue 2 42 83 0 core 21 activity:worship -
-dress prop candle 1 41 84 0 core 21 activity:worship light
-dress prop incense 0 41 84 0 core 21 activity:worship light
-dress prop offering 0 41 84 0 core 21 activity:worship container
-dress fixture bench 1 40 82 0 core 21 activity:prayer station
-dress fixture bench 2 39 83 0 core 21 activity:prayer station
-dress fixture bench 0 41 82 1 core 21 activity:prayer station
-dress prop urn 1 41 81 0 edge 21 item:urn container
-dress prop urn 0 40 81 0 edge 21 item:urn container
+dress fixture altar 1 39 84 1 core 21 activity:worship station
+dress fixture brazier 1 40 85 2 core 21 activity:worship light
+dress fixture brazier 0 40 83 0 core 21 activity:worship light
+dress fixture statue 2 38 85 1 core 21 activity:worship -
+dress prop candle 1 39 84 0 core 21 activity:worship light
+dress prop incense 0 39 84 0 core 21 activity:worship light
+dress prop offering 0 39 84 0 core 21 activity:worship container
+dress fixture bench 1 41 83 0 core 21 activity:prayer station
+dress fixture bench 2 42 84 3 core 21 activity:prayer station
+dress fixture bench 0 41 82 3 core 21 activity:prayer station
+dress prop urn 1 42 82 0 edge 21 item:urn container
+dress prop urn 0 42 81 0 edge 21 item:urn container
 dress wall moss 1 36 81 1 edge 21 wall -
 dress wall sconce 1 37 81 2 edge 21 wall light
 dress wall tapestry 0 38 81 0 edge 21 wall -
 dress wall sconce 0 39 81 0 edge 21 wall light
 dress wall mosaic 1 40 81 0 edge 21 wall writing
 dress wall mosaic 0 42 81 0 edge 21 wall writing
+dress wall sconce 0 43 81 2 edge 21 wall light
 dress wall tapestry 1 43 81 0 edge 21 wall -
-dress wall cobweb 1 44 81 3 entry 21 wall -
-dress wall plaque 0 36 82 1 edge 21 wall writing
-dress wall banner 1 38 82 1 edge 21 wall -
-dress wall tapestry 0 45 82 0 entry 21 wall -
-dress wall chains 1 36 83 1 edge 21 wall -
+dress wall cobweb 0 44 81 3 edge 21 wall -
+dress wall plaque 1 36 82 1 edge 21 wall writing
+dress wall banner 0 38 82 1 edge 21 wall -
+dress wall chains 1 42 82 3 edge 21 wall -
+dress wall tapestry 1 44 82 3 edge 21 wall -
+dress wall tapestry 0 44 82 1 edge 21 wall -
+dress wall chains 0 36 83 1 edge 21 wall -
 dress wall sconce 1 37 83 0 edge 21 wall light
-dress wall moss 0 45 84 2 entry 21 wall -
-dress wall sconce 0 36 85 1 edge 21 wall light
+dress wall plaque 0 43 83 0 edge 21 wall writing
+dress wall plaque 1 44 83 3 entry 21 wall writing
+dress wall moss 1 45 84 2 entry 21 wall -
+dress wall moss 0 45 84 0 entry 21 wall -
+dress wall sconce 1 36 85 1 edge 21 wall light
 dress wall tapestry 1 44 85 3 entry 21 wall -
 dress wall mosaic 1 36 86 2 edge 21 wall writing
 dress wall tapestry 1 36 86 1 edge 21 wall -
 dress wall mosaic 0 37 86 2 edge 21 wall writing
-dress wall mosaic 1 38 86 2 edge 21 wall writing
-dress wall plaque 1 39 86 2 entry 21 wall writing
-dress wall mosaic 1 43 86 2 entry 21 wall writing
-dress wall tapestry 0 44 86 2 edge 21 wall -
-dress wall sconce 1 44 86 3 edge 21 wall light
-dress wall chains 1 40 87 1 entry 21 wall -
-dress prop offering 1 40 85 0 entry 21 clutter container
-dress fixture statue 2 42 81 0 edge 21 clutter -
-dress fixture bench 2 39 85 2 core 21 clutter station
-dress fixture statue 0 43 81 0 edge 21 clutter -
-dress prop urn 1 43 83 0 entry 21 clutter container
-dress prop chest_small 1 120 32 0 core 22 activity:hoard container
-dress fixture crate 1 120 33 2 core 22 activity:hoard container
-dress fixture crate 2 121 33 0 core 22 activity:hoard container
-dress prop coins 0 120 32 0 core 22 activity:hoard container
-dress fixture rack 1 119 35 1 edge 22 activity:armoury container
-dress prop weapon_pile 1 119 34 0 edge 22 activity:armoury container
-dress fixture barrel 0 122 32 3 edge 22 item:barrel container
-dress fixture barrel 1 122 33 0 edge 22 item:barrel container
-dress fixture shelf 1 122 35 3 edge 22 item:shelf container
-dress wall sconce 0 121 29 3 entry 22 wall light
-dress wall shield_mount 0 121 29 1 entry 22 wall -
-dress wall sconce 1 121 30 3 entry 22 wall light
-dress wall plaque 1 119 31 0 edge 22 wall writing
-dress wall sconce 1 119 31 1 edge 22 wall light
-dress wall shield_mount 0 122 31 3 edge 22 wall -
-dress wall sconce 0 122 31 0 edge 22 wall light
-dress wall plaque 0 119 32 1 edge 22 wall writing
-dress wall shield_mount 1 122 32 3 edge 22 wall -
-dress wall moss 1 119 33 1 edge 22 wall -
-dress wall banner 0 122 33 3 edge 22 wall -
-dress wall chains 1 119 34 1 edge 22 wall -
-dress wall shield_mount 1 122 34 3 edge 22 wall -
-dress wall plaque 1 119 36 2 edge 22 wall writing
-dress wall sconce 0 120 36 2 edge 22 wall light
-dress wall shield_mount 0 121 36 2 edge 22 wall -
-dress wall shield_mount 1 122 36 3 edge 22 wall -
+dress wall mosaic 0 38 86 2 edge 21 wall writing
+dress wall plaque 1 39 86 2 edge 21 wall writing
+dress wall sconce 0 40 86 2 edge 21 wall light
+dress wall tapestry 0 41 86 2 edge 21 wall -
+dress wall mosaic 1 42 86 2 edge 21 wall writing
+dress wall plaque 0 43 86 2 edge 21 wall writing
+dress wall plaque 0 44 86 2 edge 21 wall writing
+dress wall plaque 1 44 86 3 edge 21 wall writing
+dress fixture bench 1 40 81 0 edge 21 clutter station
+dress prop chest_small 1 41 86 0 edge 21 clutter container
+dress fixture pillar 2 42 86 2 edge 21 clutter -
+dress prop candle 0 41 82 0 core 21 clutter light
+dress prop chest_small 1 39 82 0 core 21 clutter container
+dress prop urn 0 41 85 0 core 21 clutter container
+dress prop candle 1 39 84 0 core 21 clutter light
+dress fixture brazier 0 41 81 1 edge 21 clutter light
+dress fixture bench 2 38 84 3 core 21 clutter station
+dress prop chest_small 0 39 81 0 edge 21 clutter container
+dress fixture brazier 1 42 83 2 edge 21 clutter light
+dress fixture statue 1 43 84 0 entry 21 clutter -
+dress prop chest_small 1 43 83 0 edge 21 clutter container
+dress prop chest_small 1 69 6 0 core 22 activity:hoard container
+dress fixture crate 1 68 5 0 edge 22 activity:hoard container
+dress fixture crate 2 70 5 0 edge 22 activity:hoard container
+dress prop coins 0 69 6 0 core 22 activity:hoard container
+dress fixture rack 1 69 5 0 edge 22 activity:armoury container
+dress prop weapon_pile 1 71 6 0 entry 22 activity:armoury container
+dress fixture barrel 0 70 7 2 edge 22 item:barrel container
+dress fixture barrel 1 69 7 2 edge 22 item:barrel container
+dress fixture shelf 1 71 5 0 edge 22 item:shelf container
+dress wall banner 0 64 5 0 edge 22 wall -
+dress wall sconce 0 64 5 1 edge 22 wall light
+dress wall sconce 1 65 5 0 edge 22 wall light
+dress wall shield_mount 1 66 5 0 edge 22 wall -
+dress wall sconce 1 67 5 0 edge 22 wall light
+dress wall shield_mount 0 68 5 0 edge 22 wall -
+dress wall shield_mount 0 70 5 0 edge 22 wall -
+dress wall moss 1 64 6 1 edge 22 wall -
+dress wall sconce 0 66 6 2 edge 22 wall light
+dress wall shield_mount 1 72 6 0 entry 22 wall -
+dress wall shield_mount 0 73 6 0 entry 22 wall -
+dress wall sconce 1 64 7 1 edge 22 wall light
+dress wall plaque 1 67 7 1 edge 22 wall writing
+dress wall cobweb 1 69 7 2 edge 22 wall -
+dress wall banner 0 72 7 2 entry 22 wall -
+dress wall graffiti 1 73 7 2 entry 22 wall writing
+dress wall banner 1 64 8 1 edge 22 wall -
+dress wall chains 1 65 8 3 edge 22 wall -
+dress wall cobweb 0 67 8 1 edge 22 wall -
+dress wall shield_mount 1 68 8 3 edge 22 wall -
+dress wall plaque 0 70 8 1 edge 22 wall writing
+dress wall shield_mount 0 71 8 3 edge 22 wall -
+dress wall shield_mount 1 64 9 1 edge 22 wall -
+dress wall plaque 1 66 9 0 edge 22 wall writing
+dress wall sconce 0 69 9 0 edge 22 wall light
+dress wall plaque 0 71 9 3 edge 22 wall writing
+dress wall plaque 0 64 10 2 edge 22 wall writing
+dress wall banner 0 64 10 1 edge 22 wall -
+dress wall banner 1 66 10 2 edge 22 wall -
+dress wall plaque 1 71 10 3 edge 22 wall writing
+dress wall moss 0 67 11 1 entry 22 wall -
+dress wall sconce 1 68 11 3 entry 22 wall light
+dress wall banner 1 67 12 1 entry 22 wall -
+dress wall shield_mount 1 68 12 3 entry 22 wall -
+dress prop chest_small 0 71 7 0 entry 22 clutter container
+dress fixture crate 0 67 6 1 edge 22 clutter container
+dress fixture barrel 2 68 8 3 edge 22 clutter container
+dress prop sack 0 70 8 0 edge 22 clutter container
+dress prop coins 0 68 5 0 edge 22 clutter container
+dress prop sack 1 67 5 0 edge 22 clutter container
+dress prop weapon_pile 0 67 7 0 edge 22 clutter container
+dress prop coins 1 68 8 0 edge 22 clutter container
+dress prop coins 1 71 5 0 edge 22 clutter container
+dress fixture barrel 1 67 9 0 edge 22 clutter container
+dress prop sack 0 69 9 0 edge 22 clutter container
+dress prop coins 0 68 8 0 edge 22 clutter container
+dress prop weapon_pile 1 66 6 0 edge 22 clutter container
 dress prop chest_small 0 42 99 0 core 23 activity:hoard container
 dress fixture crate 1 42 98 0 core 23 activity:hoard container
 dress fixture crate 2 41 99 1 core 23 activity:hoard container
 dress prop coins 1 42 99 0 core 23 activity:hoard container
-dress fixture rack 0 44 95 3 edge 23 activity:armoury container
-dress prop weapon_pile 1 43 96 0 core 23 activity:armoury container
+dress fixture rack 0 44 101 3 edge 23 activity:armoury container
+dress prop weapon_pile 1 43 100 0 core 23 activity:armoury container
 dress fixture barrel 2 40 97 0 edge 23 item:barrel container
-dress fixture shelf 2 44 101 3 edge 23 item:shelf container
+dress fixture shelf 2 43 94 0 edge 23 item:shelf container
 dress prop trap_plate 1 40 102 0 entry 23 item:trap_plate hazard
-dress wall shield_mount 1 40 92 1 entry 23 wall -
-dress wall shield_mount 0 42 92 3 entry 23 wall -
-dress wall sconce 1 40 93 1 entry 23 wall light
-dress wall shield_mount 1 42 93 3 entry 23 wall -
-dress wall banner 0 37 94 0 edge 23 wall -
-dress wall shield_mount 0 38 94 0 edge 23 wall -
+dress wall banner 1 37 94 0 edge 23 wall -
+dress wall shield_mount 1 38 94 0 edge 23 wall -
 dress wall moss 1 39 94 0 edge 23 wall -
-dress wall shield_mount 1 43 94 0 edge 23 wall -
+dress wall banner 0 40 94 0 edge 23 wall -
+dress wall sconce 0 41 94 0 edge 23 wall light
+dress wall chains 0 42 94 0 edge 23 wall -
 dress wall sconce 1 44 94 3 edge 23 wall light
 dress wall shield_mount 0 44 94 0 edge 23 wall -
 dress wall shield_mount 1 36 95 1 edge 23 wall -
 dress wall cobweb 0 38 95 2 edge 23 wall -
 dress wall shield_mount 0 39 95 2 edge 23 wall -
-dress wall shield_mount 1 36 96 1 edge 23 wall -
-dress wall sconce 0 37 96 3 edge 23 wall light
-dress wall banner 1 44 96 3 edge 23 wall -
-dress wall chains 0 36 97 1 edge 23 wall -
+dress wall chains 0 45 95 0 entry 23 wall -
+dress wall sconce 0 46 95 0 entry 23 wall light
+dress wall shield_mount 0 36 96 1 edge 23 wall -
+dress wall sconce 1 37 96 3 edge 23 wall light
+dress wall chains 1 36 97 1 edge 23 wall -
 dress wall sconce 0 39 97 0 edge 23 wall light
-dress wall sconce 1 39 97 1 edge 23 wall light
-dress wall sconce 1 44 97 3 edge 23 wall light
-dress wall sconce 0 37 98 3 edge 23 wall light
-dress wall plaque 0 39 98 1 edge 23 wall writing
-dress wall plaque 1 36 99 1 edge 23 wall writing
+dress wall sconce 0 39 97 1 edge 23 wall light
+dress wall shield_mount 1 45 97 2 entry 23 wall -
+dress wall shield_mount 1 37 98 3 edge 23 wall -
+dress wall sconce 1 39 98 1 edge 23 wall light
+dress wall plaque 0 36 99 1 edge 23 wall writing
 dress wall plaque 1 37 99 3 edge 23 wall writing
-dress wall plaque 0 39 99 1 edge 23 wall writing
-dress wall plaque 1 44 99 3 edge 23 wall writing
-dress wall plaque 0 36 100 1 edge 23 wall writing
-dress wall banner 0 37 100 3 edge 23 wall -
-dress wall banner 1 40 100 1 edge 23 wall -
+dress wall plaque 1 39 99 1 edge 23 wall writing
+dress wall plaque 0 44 99 3 edge 23 wall writing
+dress wall plaque 1 36 100 1 edge 23 wall writing
+dress wall plaque 0 37 100 3 edge 23 wall writing
+dress wall banner 0 40 100 1 edge 23 wall -
 dress wall moss 0 38 101 0 edge 23 wall -
-dress wall banner 0 39 101 0 edge 23 wall -
-dress wall banner 1 36 102 2 edge 23 wall -
-dress wall cobweb 1 36 102 1 edge 23 wall -
-dress wall cobweb 0 37 102 2 edge 23 wall -
-dress wall cobweb 1 38 102 2 edge 23 wall -
-dress wall graffiti 1 39 102 2 edge 23 wall writing
-dress wall graffiti 0 43 102 2 edge 23 wall writing
-dress wall cobweb 0 44 102 2 edge 23 wall -
-dress wall cobweb 1 44 102 3 edge 23 wall -
-dress wall graffiti 0 40 103 1 entry 23 wall writing
+dress wall banner 1 39 101 0 edge 23 wall -
+dress wall banner 0 36 102 2 edge 23 wall -
+dress wall banner 1 36 102 1 edge 23 wall -
+dress wall cobweb 1 37 102 2 edge 23 wall -
+dress wall cobweb 0 38 102 2 edge 23 wall -
+dress wall graffiti 0 39 102 2 edge 23 wall writing
+dress wall graffiti 1 43 102 2 edge 23 wall writing
+dress wall cobweb 1 44 102 2 edge 23 wall -
+dress wall cobweb 0 44 102 3 edge 23 wall -
+dress wall graffiti 1 40 103 1 entry 23 wall writing
 dress wall shield_mount 0 42 103 3 entry 23 wall -
 dress wall plaque 0 42 104 3 entry 23 wall writing
-dress prop sack 1 41 98 0 core 23 clutter container
-dress prop urn 0 43 94 0 edge 23 clutter container
-dress fixture barrel 0 42 100 2 core 23 clutter container
-dress prop sack 0 41 100 0 core 23 clutter container
+dress fixture crate 1 44 100 3 edge 23 clutter container
+dress prop sack 0 41 98 0 core 23 clutter container
 dress prop weapon_pile 0 41 96 0 core 23 clutter container
-dress prop weapon_pile 0 44 100 0 edge 23 clutter container
-dress prop urn 1 44 94 0 edge 23 clutter container
-dress prop chest_small 1 43 100 0 core 23 clutter container
-dress prop sack 0 44 102 0 edge 23 clutter container
-dress prop sack 1 40 99 0 edge 23 clutter container
-dress prop urn 1 41 101 0 core 23 clutter container
-dress fixture barrel 0 40 100 1 edge 23 clutter container
-dress fixture shelf 1 44 99 3 edge 23 clutter container
-dress prop weapon_pile 1 40 101 0 edge 23 clutter container
-dress prop chest_small 0 44 98 0 edge 23 clutter container
-dress fixture barrel 2 42 102 2 entry 23 clutter container
-dress prop weapon_pile 1 41 102 0 entry 23 clutter container
-dress prop urn 0 43 98 0 core 23 clutter container
-dress prop urn 0 39 97 0 edge 23 clutter container
-dress prop coins 0 41 99 0 core 23 clutter container
-dress prop sack 1 41 97 0 core 23 clutter container
-dress prop weapon_pile 1 43 97 0 core 23 clutter container
-dress prop sack 1 43 102 0 edge 23 clutter container
-dress fixture barrel 1 42 97 2 core 23 clutter container
+dress fixture crate 0 42 100 2 core 23 clutter container
+dress prop urn 1 44 99 0 edge 23 clutter container
+dress prop chest_small 0 40 99 0 edge 23 clutter container
+dress prop coins 0 40 97 0 edge 23 clutter container
+dress prop coins 0 42 98 0 core 23 clutter container
+dress fixture crate 1 41 97 0 core 23 clutter container
+dress prop coins 1 41 99 0 core 23 clutter container
+dress fixture shelf 0 40 96 1 edge 23 clutter container
+dress fixture barrel 1 41 95 0 core 23 clutter container
+dress prop chest_small 1 43 99 0 core 23 clutter container
+dress fixture shelf 1 42 94 0 edge 23 clutter container
+dress prop coins 0 42 98 0 core 23 clutter container
+dress prop weapon_pile 0 39 95 0 edge 23 clutter container
+dress prop coins 0 41 97 0 core 23 clutter container
+dress fixture shelf 2 44 98 3 edge 23 clutter container
+dress fixture crate 0 44 97 2 entry 23 clutter container
+dress prop weapon_pile 1 39 97 0 edge 23 clutter container
+dress fixture barrel 0 41 101 0 core 23 clutter container
+dress prop urn 0 42 101 0 core 23 clutter container
+dress prop sack 1 42 96 0 core 23 clutter container
+dress prop urn 1 42 97 0 core 23 clutter container
+dress prop coins 1 43 94 0 edge 23 clutter container
+dress fixture barrel 1 40 95 3 edge 23 clutter container
+dress prop weapon_pile 0 43 97 0 core 23 clutter container
 dress fixture altar 1 56 36 0 core 24 activity:worship station
 dress fixture brazier 1 57 35 3 core 24 activity:worship light
 dress fixture brazier 0 55 37 0 core 24 activity:worship light
@@ -2046,85 +2080,52 @@ dress prop chest_small 0 96 82 0 entry 32 clutter container
 dress prop candle 1 96 84 0 entry 32 clutter light
 dress fixture brazier 1 92 82 1 edge 32 clutter light
 dress fixture bench 0 95 82 2 core 32 clutter station
-dress fixture altar 1 68 8 1 core 33 activity:worship station
-dress fixture brazier 1 67 8 2 core 33 activity:worship light
-dress fixture brazier 0 69 9 3 edge 33 activity:worship light
-dress fixture statue 0 69 7 0 core 33 activity:worship -
-dress prop candle 1 68 8 0 core 33 activity:worship light
-dress prop incense 1 68 8 0 core 33 activity:worship light
-dress prop offering 0 68 8 0 core 33 activity:worship container
-dress fixture shelf 0 70 9 2 edge 33 activity:study container
-dress fixture table 1 69 10 3 edge 33 activity:study station
-dress prop book 1 70 9 0 edge 33 activity:study writing
-dress prop scroll 1 70 9 0 edge 33 activity:study writing
-dress prop urn 0 66 9 0 edge 33 item:urn container
-dress prop urn 1 67 9 0 edge 33 item:urn container
-dress wall sconce 1 63 4 0 edge 33 wall light
-dress wall banner 0 63 4 1 edge 33 wall -
-dress wall tapestry 0 64 4 2 edge 33 wall -
-dress wall plaque 0 64 4 0 edge 33 wall writing
-dress wall tapestry 1 65 4 0 edge 33 wall -
-dress wall sconce 0 66 4 2 edge 33 wall light
-dress wall tapestry 1 67 4 0 edge 33 wall -
-dress wall chains 1 68 4 2 edge 33 wall -
-dress wall plaque 1 68 4 0 edge 33 wall writing
-dress wall plaque 1 69 4 0 edge 33 wall writing
-dress wall chains 0 70 4 2 edge 33 wall -
-dress wall banner 1 70 4 0 edge 33 wall -
-dress wall chains 0 72 4 3 edge 33 wall -
-dress wall tapestry 0 63 5 3 edge 33 wall -
-dress wall sconce 1 63 5 1 edge 33 wall light
-dress wall cobweb 0 65 5 3 edge 33 wall -
-dress wall sconce 0 65 5 1 edge 33 wall light
-dress wall plaque 0 67 5 3 edge 33 wall writing
-dress wall tapestry 0 67 5 1 edge 33 wall -
-dress wall sconce 1 69 5 3 edge 33 wall light
-dress wall tapestry 1 69 5 1 edge 33 wall -
-dress wall sconce 0 71 5 1 edge 33 wall light
-dress wall mosaic 0 72 5 3 edge 33 wall writing
-dress wall chains 1 63 6 1 edge 33 wall -
-dress wall cobweb 1 64 6 0 edge 33 wall -
-dress wall mosaic 1 68 6 0 edge 33 wall writing
-dress wall mosaic 0 70 6 0 edge 33 wall writing
-dress wall mosaic 1 63 7 1 edge 33 wall writing
-dress wall mosaic 0 63 8 1 edge 33 wall writing
-dress wall banner 1 73 8 2 entry 33 wall -
-dress wall plaque 0 73 8 0 entry 33 wall writing
-dress wall chains 0 63 9 1 edge 33 wall -
-dress wall mosaic 1 64 9 2 edge 33 wall writing
-dress wall plaque 1 66 9 2 edge 33 wall writing
-dress wall moss 1 72 9 3 entry 33 wall -
-dress wall moss 0 63 10 3 edge 33 wall -
-dress wall plaque 0 65 10 3 edge 33 wall writing
-dress wall chains 1 65 10 1 edge 33 wall -
-dress wall tapestry 1 67 10 1 entry 33 wall -
-dress wall banner 0 69 10 3 edge 33 wall -
-dress wall banner 1 71 10 1 edge 33 wall -
-dress wall moss 1 72 10 3 edge 33 wall -
-dress wall banner 0 63 11 2 edge 33 wall -
-dress wall moss 0 63 11 1 edge 33 wall -
-dress wall banner 1 64 11 2 edge 33 wall -
-dress wall cobweb 0 65 11 2 edge 33 wall -
-dress wall mosaic 1 66 11 2 entry 33 wall writing
-dress wall tapestry 0 66 11 0 entry 33 wall -
-dress wall mosaic 0 69 11 2 entry 33 wall writing
-dress wall cobweb 1 70 11 2 edge 33 wall -
-dress wall cobweb 1 70 11 0 edge 33 wall -
-dress wall cobweb 0 71 11 2 edge 33 wall -
-dress wall moss 1 72 11 3 edge 33 wall -
-dress wall sconce 0 67 12 1 entry 33 wall light
+dress fixture altar 1 81 7 3 core 33 activity:worship station
+dress fixture brazier 1 80 8 2 edge 33 activity:worship light
+dress fixture brazier 0 80 6 0 entry 33 activity:worship light
+dress fixture statue 0 82 8 2 edge 33 activity:worship -
+dress prop candle 1 81 7 0 core 33 activity:worship light
+dress prop incense 1 81 7 0 core 33 activity:worship light
+dress prop offering 0 81 7 0 core 33 activity:worship container
+dress fixture shelf 0 79 8 2 entry 33 activity:study container
+dress prop book 0 79 8 0 entry 33 activity:study writing
+dress prop scroll 1 79 8 0 entry 33 activity:study writing
+dress prop urn 1 82 4 0 edge 33 item:urn container
+dress prop pilgrim 0 79 5 0 entry 33 item:pilgrim npc
+dress wall banner 1 79 4 0 edge 33 wall -
+dress wall cobweb 0 79 4 1 edge 33 wall -
+dress wall cobweb 1 80 4 2 edge 33 wall -
+dress wall tapestry 0 81 4 2 edge 33 wall -
+dress wall tapestry 1 81 4 0 edge 33 wall -
+dress wall tapestry 0 82 4 3 edge 33 wall -
+dress wall sconce 1 82 4 0 edge 33 wall light
+dress wall sconce 1 79 5 3 entry 33 wall light
+dress wall mosaic 0 79 5 1 entry 33 wall writing
+dress wall sconce 0 82 5 3 edge 33 wall light
+dress wall tapestry 1 82 5 1 edge 33 wall -
+dress wall banner 0 78 6 0 entry 33 wall -
+dress wall tapestry 0 80 6 0 entry 33 wall -
+dress wall mosaic 1 81 6 0 edge 33 wall writing
+dress wall sconce 1 82 6 3 edge 33 wall light
+dress wall tapestry 1 78 7 2 entry 33 wall -
+dress wall tapestry 0 82 7 3 edge 33 wall -
+dress wall mosaic 1 79 8 1 entry 33 wall writing
+dress wall sconce 0 80 8 2 edge 33 wall light
+dress wall banner 0 81 8 2 edge 33 wall -
+dress wall banner 0 82 8 2 edge 33 wall -
+dress wall plaque 1 82 8 3 edge 33 wall writing
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000003333333330000000000333333310000001333330000003333300000033333333330000000000000000000000000000000000000000000000000000000
-zone 00000003032223030000000000322222111000011123010000001030300000030303030330000000000000000000000000000000000000000000000000000000
-zone 00000003332223330000000000322222111000011123111000011133300000033333333330000000000000000000000000000000000000000000000000000000
-zone 00000003221112230000000000311122111000011111111000011122300000032222222210000000000000000000000000000000000000000000000000000000
-zone 00000003311111330000000000111113310000001111111000011122300000032222222111000000000000000000000000000000000000000000000000000000
-zone 00000000001110000000000000011100000000000111111000011122300000033333233310000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000001211300000030301130330000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000003111100000033311113330000000000000000000000000000000000000000000000000000000
+zone 00000003333333330000000000333333310000001333330000003333300000000000000000000003333000000000000000000000000000000000000000000000
+zone 00000003032223030000000000322222111000011123010000001030300000003333333300000001003000000000000000000000000000000000000000000000
+zone 00000003332223330000000000322222111000011123111000011133300000003333222111000011133000000000000000000000000000000000000000000000
+zone 00000003221112230000000000311122111000011111111000011122300000003303333111000011123000000000000000000000000000000000000000000000
+zone 00000003311111330000000000111113310000001111111000011122300000003303303300000001333000000000000000000000000000000000000000000000
+zone 00000000001110000000000000011100000000000111111000011122300000003333333300000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000001211300000003331133300000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000003111100000000001100000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000011000000000001100000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000001110000000000000011100000000000111000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -2142,14 +2143,14 @@ zone 000033333333333332300000000000000000000000000000000000000000000000000000000
 zone 00003303303303303230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00003333333333333230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00003333333333333330000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000001110000000000000100000000000000000000000000000000000000000000000000000000000000001000000
-zone 00000000000000000000000000010000000033311111330000003331113330000000000033333333300000000000000300000000000000000000000001000000
-zone 00000000000000000000000003111300000030301110330000003030103030000000000333330333330000000000033333000000000000000000000331300000
-zone 00000000000000000000000003010300000033333233310000001333333310000000000323033303230000000000333033300000000000000000000322300000
-zone 00000000000000000000000003333300000032222222111000011122222111000011133323332333330000000000330303300000000000000000000322300000
-zone 00000000000000000000000003222300000032222222111000011122222111000011122222222230333000000011133330300000000000000000000322300000
-zone 00000000000000000000000003222300000032222222111000011122222111000011133323332333330000000011122233300000000000000000000322300000
-zone 00000000000000000000000003222300000032222222210000001222222210000000000323032303230000000000332113300000000000000000000333300000
+zone 00000000000000000000000000000000000000001110000000000000100000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000010000000033311111330000003331113330000000000033333333300000000000000300000000000000000000000000000000
+zone 00000000000000000000000003111300000030301110330000003030103030000000000333330333330000000000033333000000000000000000000000000000
+zone 00000000000000000000000003010300000033333233310000001333333310000000000323033303230000000000333033300000000000000000000000000000
+zone 00000000000000000000000003333300000032222222111000011122222111000011133323332333330000000000330303300000000000000000000000000000
+zone 00000000000000000000000003222300000032222222111000011122222111000011122222222230333000000011133330300000000000000000000000000000
+zone 00000000000000000000000003222300000032222222111000011122222111000011133323332333330000000011122233300000000000000000000000000000
+zone 00000000000000000000000003222300000032222222210000001222222210000000000323032303230000000000332113300000000000000000000000000000
 zone 00000000000000000000000003222300000032222222230000003222222230000000000333311133330000000000031111000000000000000000000000000000
 zone 00000000000000000000000003222300000033333333330000003222222230000000000033111113300000000000000110000000000000000000000000000000
 zone 00000000000000000000000003333300000030303030330000003222222230000000000000011100000000000000000000000000000000000000000000000000
@@ -2192,50 +2193,50 @@ zone 000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000033111113300110000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000332211122330110000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000003323332333233330000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000003333333330000000003223032303222230000000001100000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000003303230330000000003223332333222230000003311110000003333333000000000000000000
-zone 00000000000000000000000000000000000033333333100000001333233330000003333222222222222230000003031130000003032303000000000000000000
-zone 00000000000000000000000000000000000030322221110000011122222230000003333223332333222230000003332210000001332333000000000000000000
-zone 00000000000000000000000000000000000033322221110000011122222230000003303223032303222230000003222111000011122223000000000000000000
-zone 00000000000000000000000000000000000032222221110000011122233330000003303323333333222230000003222210000001222223000000000000000000
-zone 00000000000000000000000000000000000032221112100000001111230330000001100332230322331110000003222230000003222223000000000000000000
-zone 00000000000000000000000000000000000033311111300000001111133330000001100033333333301110000003333330000003333333000000000000000000
-zone 00000000000000000000000000000000000000001110000000000111000000000001100000000000001110000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000003223032303222230000000001100000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000000003223332333222230000003311110000003333333000000000000000000
+zone 00000000000000000000000000000000000033333333300000000000000000000003333222222222222230000003031130000003032303000000000000000000
+zone 00000000000000000000000000000000000030322230300000000000000000000003333223332333222230000003332210000001332333000000000000000000
+zone 00000000000000000000000000000000000033322233100000000000000000000003303223032303222230000003222111000011122223000000000000000000
+zone 00000000000000000000000000000000000032222221110000000000000000000003303323333333222230000003222210000001222223000000000000000000
+zone 00000000000000000000000000000000000032222222100000000000000000000001100332230322331110000003222230000003222223000000000000000000
+zone 00000000000000000000000000000000000033333333300000000000000000000001100033333333301110000003333330000003333333000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000001100000000000001110000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000001110000000000111000000000001100000000000001110000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000001110000000001111100000033311113300000000311111300000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000033331113300000003111100000010321130100000003321113330000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000033333222300000003221110000111322231110000111222230330000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000033003222300000003221110000111222221110000111222233330000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000033033222300000003221110000111222221110000111222223033000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000033032222300000003222100000012221222100000003333233330000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000000000000000001100000000000001110000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000003333300000033311113300000000311111300000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000033333333300000001030100000010321130100000003321113330000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000033333222111000011131110000111322231110000111222230330000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000033003222111000011121110000111222221110000111222233330000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000033033222111000011121110000111222221110000111222223033000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000033032222300000001222100000012221222100000003333233330000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000033033222300000003333300000033311133300000003303330330000000000000000000000000000000000000000
 zone 00003333333330000000000000000000000033003222300000000000000000000001000000000003333033330000000000000000000000000000000000000000
 zone 00003032222230000000000000000000000033333222300000000000000000000000000000000000333333300000000000000000000000000000000000000000
 zone 00003332221110000000000000000000000033331113300000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00003333311110000000000000000000000000001110000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000001110000000000000000000000000001110000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000000000000000000331330000000000000000000000000000000000000000000000000000000000
-zone 00000000000000000000000000000000000000000000000000000000000000003333333000000000000000000000000000000000000000000000000000000000
-zone 00000000001110000000000000000000000000001110000000000000000000003303033000000000000000000000000000000000000000000000000000000000
-zone 00000000001410000000000000000000000033311111330000000000000000033033303300000000000000000000000000000000000000000000000000000000
-zone 00000000444444400000000000000000000030301110330000000000000000003303033000000000000000000000000000000000000000000000000000000000
-zone 00000004422222440000000033333300000033333233330000000000000000003330333000000000000000000000000000000000000000000000000000000000
-zone 00000044442244444000000030330300000032222222230000000000000000000333330000000000000000000000000000000000000000000000000000000000
-zone 00000444042240424400000013333100000012222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000424442244421410000111221110000111222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00004422222222221410000111221110000111222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00004222222222221410000111221110000111222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00004424442244422400000012222100000012222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000000010000000000001000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000003111300000000001000000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000001010300000000331330000000000000000000000000000000000000000000000000000000000
+zone 00000000000000000000000000000000000000000000000000011133300000003333333000000000000000000000000000000000000000000000000000000000
+zone 00000000001110000000000000000000000111111111111000011122300000003303033000000000000000000000000000000000000000000000000000000000
+zone 00000000001410000000000000000000000111111111111000011122300000033033303300000000000000000000000000000000000000000000000000000000
+zone 00000000444444400000000000111000000011011111110000001333300000003303033000000000000000000000000000000000000000000000000000000000
+zone 00000004422222440000000031111100000033332222230000000000000000003330333000000000000000000000000000000000000000000000000000000000
+zone 00000044442244444000000030111300000032222222230000000000000000000333330000000000000000000000000000000000000000000000000000000000
+zone 00000444042240424400000013322300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000424442244421410000111222300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00004422222222221410000111222300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00004222222222221410000111222300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00004424442244422400000012222300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000424042240422400000032222300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000444442244424400000033333300000032222222230000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000044222222244000000000000000000033333333330000000000000000000000000000000000000000000000000000000000000000000000000000000000
-zone 00000004422222440000000000000000000030303030330000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000044222222244000000000000000000033332333230000000000000000000000000000000000000000000000000000000000000000000000000000000000
+zone 00000004422222440000000000000000000033032303230000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000444444400000000000000000000033333333330000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 zone 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
