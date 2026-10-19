@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "../apx/parts_engine.hpp"
 #include "../main.hpp"
 #include "../files.hpp"
 #include "../game.hpp"
@@ -10750,6 +10751,8 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	int metal = 0;
 	int magic = 0;
 	tinkeringGetItemValue(item, &metal, &magic);
+	int apxAura = 0;
+	apxPartsSalvageValue(item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5)
 	bool didCraft = false;
 	int skillLVL = 0;
 	int bonusMetalScrap = 0;
@@ -10912,6 +10915,12 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 		}
 	}
 
+	if ( didCraft && apxAura > 0 ) // apx F6: aura crystals (GEM_ROCK stand-in until BF7)
+	{
+		Item* aura = newItem(GEM_ROCK, DECREPIT, 0, apxAura, 0, true, nullptr);
+		itemPickup(player, aura);
+		free(aura); // as the scrap grants above: itemPickup copies (local) or sends (remote)
+	}
 	bool increaseSkill = false;
 	if ( stats[player] && didCraft )
 	{

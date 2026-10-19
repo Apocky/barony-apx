@@ -16,6 +16,7 @@
 #include "entity.hpp"
 #include "files.hpp"
 #include "items.hpp"
+#include "apx/parts_engine.hpp"
 #include "prng.hpp"
 #include "monster.hpp"
 #include "magic/magic.hpp"
@@ -7055,6 +7056,7 @@ std::map<int, int> generatedSpellbooks;
 void assignActions(map_t* map)
 {
 	bool itemsdonebefore = false;
+	apxPartsLevelStart(); // apx F6: per-floor roll index and floor parts map
 	Entity* vampireQuestChest = nullptr;
 
 	if ( map == nullptr )
@@ -7770,6 +7772,7 @@ void assignActions(map_t* map)
 					itemLevelCurvePostProcess(entity, nullptr, map_rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
 				}
 
+				apxPartsBindFloorEntity(entity); // apx F6: floor loot rolls its parts (server)
 				auto item = newItemFromEntity(entity);
 				entity->sprite = itemModel(item);
 				if ( !entity->itemNotMoving )
@@ -10120,6 +10123,7 @@ void assignActions(map_t* map)
 					entity->skill[15] = 0; // unidentified.
 				}
 
+				apxPartsBindFloorEntity(entity); // apx F6: floor loot rolls its parts (server)
 				auto item = newItemFromEntity(entity);
 				entity->sprite = itemModel(item);
 				if ( !entity->itemNotMoving )

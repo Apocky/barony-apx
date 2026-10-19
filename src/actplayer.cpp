@@ -17,6 +17,7 @@
 #include "interface/interface.hpp"
 #include "engine/audio/sound.hpp"
 #include "items.hpp"
+#include "apx/parts_engine.hpp"
 #include "magic/magic.hpp"
 #include "menu.hpp"
 #include "scores.hpp"
@@ -11164,6 +11165,7 @@ void actPlayer(Entity* my)
 											entity->flags[USERFLAG1] = true;
 											entity->behavior = &actItem;
 											entity->skill[10] = item->type;
+											apxPartsToFloor(entity, item); // apx F6
 											entity->skill[11] = item->status;
 											entity->skill[12] = item->beatitude;
 											int qtyToDrop = 1;
@@ -11228,6 +11230,7 @@ void actPlayer(Entity* my)
 											entity->flags[USERFLAG1] = true;
 											entity->behavior = &actItem;
 											entity->skill[10] = item->type;
+											apxPartsToFloor(entity, item); // apx F6
 											entity->skill[11] = item->status;
 											entity->skill[12] = item->beatitude;
 											entity->skill[13] = 1;
