@@ -30,6 +30,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/builder_ui.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/looknet.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/selftest_all.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/qadriver.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/visshots.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics.cpp"

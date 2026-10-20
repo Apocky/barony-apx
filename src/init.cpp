@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/qadriver.hpp" // apx QA driver: non-activating window
 #include "main.hpp"
 
 #include <memory>
@@ -1660,6 +1661,7 @@ bool initVideo()
             return false;
         }
 #endif
+        apx::qa::afterWindow(screen); // apx: a QA-driven window never takes focus
 	}
 	else
 	{
