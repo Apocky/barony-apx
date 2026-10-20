@@ -59,7 +59,7 @@ namespace apx_inv
 	struct ViewState { int other = OTHER_NONE; int otherRows = 0; int otherSelected = 0; int focus = 0; bool inspectShown = false;
 		Uint32 inspectUid = 0; int station = 0; int stationOps = 0; bool benchShown = false; int transfers = 0; int refusedHeavy = 0;
 		int benchRows = 0; int benchTab = 0; int benchTabSwitches = 0; int benchActions = 0;
-		int tab = 0; int sortCol = 0; bool sortDesc = false; int iconsDrawn = 0; bool tipShown = false; int tipLines = 0; std::string tipDelta; bool tipVsWorn = false; std::string lastBenchMsg; int tipAffixLines = 0; int tipParts = 0; };
+		int tab = 0; int sortCol = 0; bool sortDesc = false; int iconsDrawn = 0; bool tipShown = false; int tipLines = 0; std::string tipDelta; bool tipVsWorn = false; std::string lastBenchMsg; int tipAffixLines = 0; int tipParts = 0; int tipUnknownLines = 0; std::string tipName; int tipRarity = -1; };
 	const ViewState& viewState(int player);
 	void inspectOpen(int player, Item* item);
 	void breakItem(int player, Item* item);
@@ -67,7 +67,8 @@ namespace apx_inv
 	bool activateSelected(int player);                 // what Enter / gamepad confirm does on the focused row
 	void setFocus(int player, int focus, int selectedRow); // self-test and mouse: 0 ours, 1 theirs, 2 bench
 	void benchTab(int player, int d);                  // Craft / Salvage / Forms / Materials
-	void setBenchTab(int player, int tab);             // 0 Craft, 1 Salvage, 2 Forms, 3 Materials
+	void setBenchTab(int player, int tab);             // 0 Asm, 1 Swap, 2 Make, 3 Repair, 4 Salvage, 5 Forms, 6 Materials
+	int benchKeep(int player);                         // the component chosen to keep in Salvage (-1 none)
 	void setTab(int player, int tab);                  // D81 category tab (0 All, 1 + apx_logic::Kind)
 	void setSort(int player, int col, bool desc);      // D81 column sort (apx_logic::Column)
 	std::vector<apx_logic::Entry> ownRowsForTest(int player);
