@@ -54,7 +54,9 @@ namespace apx_bench
 		std::vector<RepairOption> (*repairOptions)(int player, const Item* item, int station) = nullptr;
 		bool (*repairPart)(int player, Item* item, int partIndex, std::string& why) = nullptr;
 		std::vector<InfuseOption> (*infuseOptions)(int player, const Item* item, int station) = nullptr; // C6: aura crystal x part
-		bool (*infuse)(int player, Item* item, int partIndex, uint32_t crystalUid, std::string& why) = nullptr;   // 05b s5.8b per component (F6 later); empty repairOptions = use repair below
+		bool (*infuse)(int player, Item* item, int partIndex, uint32_t crystalUid, std::string& why) = nullptr;
+		bool (*extractGraft)(int player, Item* item, int station, std::string& why) = nullptr; // C7: Rare+ assembly -> graft component (item destroyed)
+		int  (*sockets)(const Item* item) = nullptr;                                          // C7: 0-4, for the tooltip   // 05b s5.8b per component (F6 later); empty repairOptions = use repair below
 		// BP1-2: Repair at a FIELD bench or an ANVIL: the cost in grams (-1 = cannot, why says), then repair
 		int  (*repairCost)(int player, const Item* item, std::string& why, std::string& material) = nullptr;
 		bool (*repair)(int player, Item* item, std::string& why) = nullptr;

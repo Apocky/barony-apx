@@ -60,6 +60,8 @@ static bool stubRepairPart(int, Item*, int, std::string& why) { why = "per-compo
 static long long stubPouchGrams(int) { return 0; }
 static std::vector<InfuseOption> stubInfuseOptions(int, const Item*, int) { return {}; }
 static bool stubInfuse(int, Item*, int, uint32_t, std::string& why) { why = "infusing arrives with F6 (C6)"; return false; }
+static bool stubExtractGraft(int, Item*, int, std::string& why) { why = "grafts arrive with F6 (C7)"; return false; }
+static int stubSockets(const Item*) { return 0; }
 
 static int stubRepairCost(int, const Item*, std::string& why, std::string&) { why = "no repair before F6"; return -1; }
 static bool stubRepair(int, Item*, std::string& why) { why = "no repair before F6"; return false; }
@@ -73,7 +75,7 @@ static Provider makeStub()
 	p.craft = stubCraft; p.salvagePreview = stubPreview; p.salvage = stubSalvage; p.breakItem = stubBreak;
 	p.pouch = stubPouch; p.pouchGrams = stubPouchGrams; p.drawBundle = nullptr;
 	p.componentOf = stubComponentOf; p.swapSlots = stubSwapSlots; p.swapPart = stubSwap; p.makeOptions = stubMakeOptions; p.make = stubMake;
-	p.displayName = stubDisplayName; p.assemblePreview = stubAssemblePreview; p.repairOptions = stubRepairOptions; p.repairPart = stubRepairPart; p.infuseOptions = stubInfuseOptions; p.infuse = stubInfuse;
+	p.displayName = stubDisplayName; p.assemblePreview = stubAssemblePreview; p.repairOptions = stubRepairOptions; p.repairPart = stubRepairPart; p.infuseOptions = stubInfuseOptions; p.infuse = stubInfuse; p.extractGraft = stubExtractGraft; p.sockets = stubSockets;
 	p.repairCost = stubRepairCost; p.repair = stubRepair; p.repairPaid = stubRepairPaid; p.repairGrams = stubRepairGrams;
 	return p;
 }
@@ -95,6 +97,8 @@ void setProvider(const Provider& p)
 	if ( !g_active.repairPart ) { g_active.repairPart = g_stub.repairPart; }
 	if ( !g_active.infuseOptions ) { g_active.infuseOptions = g_stub.infuseOptions; }
 	if ( !g_active.infuse ) { g_active.infuse = g_stub.infuse; }
+	if ( !g_active.extractGraft ) { g_active.extractGraft = g_stub.extractGraft; }
+	if ( !g_active.sockets ) { g_active.sockets = g_stub.sockets; }
 	if ( !g_active.repairPaid ) { g_active.repairPaid = g_stub.repairPaid; }
 	if ( !g_active.repairGrams ) { g_active.repairGrams = g_stub.repairGrams; }
 	if ( !g_active.craft ) { g_active.craft = g_stub.craft; }
