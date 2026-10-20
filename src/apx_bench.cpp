@@ -46,12 +46,15 @@ static bool stubBreak(int player, Item* item, std::string& why)
 	return true;
 }
 
+static int stubRepairCost(int, const Item*, std::string& why, std::string&) { why = "no repair before F6"; return -1; }
+static bool stubRepair(int, Item*, std::string& why) { why = "no repair before F6"; return false; }
 static Provider makeStub()
 {
 	Provider p;
 	p.name = "vanilla stub";
 	p.parts = stubParts; p.formbook = stubFormbook; p.formInputCap = stubCap; p.craftSlots = stubSlots;
 	p.craft = stubCraft; p.salvagePreview = stubPreview; p.salvage = stubSalvage; p.breakItem = stubBreak;
+	p.repairCost = stubRepairCost; p.repair = stubRepair;
 	return p;
 }
 static Provider g_stub = makeStub();
@@ -67,6 +70,8 @@ void setProvider(const Provider& p)
 	if ( !g_active.formbook ) { g_active.formbook = g_stub.formbook; }
 	if ( !g_active.formInputCap ) { g_active.formInputCap = g_stub.formInputCap; }
 	if ( !g_active.craftSlots ) { g_active.craftSlots = g_stub.craftSlots; }
+	if ( !g_active.repairCost ) { g_active.repairCost = g_stub.repairCost; }
+	if ( !g_active.repair ) { g_active.repair = g_stub.repair; }
 	if ( !g_active.craft ) { g_active.craft = g_stub.craft; }
 	if ( !g_active.salvagePreview ) { g_active.salvagePreview = g_stub.salvagePreview; }
 	if ( !g_active.salvage ) { g_active.salvage = g_stub.salvage; }
@@ -144,6 +149,13 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 			e.push_back(line("Discharge " + std::to_string(pr.dischargePct) + "%, aura crystal " + std::to_string(pr.auraPct) + "% per affix"));
 		}
 		e.push_back(line(">> Salvage", 0, 0xFFFFFFFFu, 4));
+		if ( station == apx_logic::FIELD || station == apx_logic::ANVIL ) // BP1-2: repair one condition step
+		{
+			std::string why, mat;
+			int g = pv.repairCost(player, selectedOwn, why, mat);
+			e.push_back(header("Repair"));
+			e.push_back(line(g >= 0 ? ">> Repair one step: " + std::to_string(g) + " g of " + mat : "Cannot repair: " + why, 0, 0xFFFFFFFEu, g >= 0 ? 5 : 0));
+		}
 	}
 	else // Formbook
 	{
@@ -177,6 +189,13 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 		std::string why;
 		bool ok = pv.craft(player, selectedForm, station, pick, why);
 		msg = ok ? "Crafted." : "Cannot craft: " + why;
+		return ok;
+	}
+	if ( tab == 1 && selectedOwn && row.row.kind == 5 ) // BP1-2 repair
+	{
+		std::string why, name = selectedOwn->getName();
+		bool ok = pv.repair(player, selectedOwn, why);
+		msg = ok ? "Repaired the " + name + "." : "Cannot repair: " + why;
 		return ok;
 	}
 	if ( tab == 1 && selectedOwn && (row.row.kind == 3 || row.row.kind == 4) )

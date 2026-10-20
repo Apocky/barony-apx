@@ -58,6 +58,18 @@ namespace props
 		}
 	};
 
+	// BP1-2 repair at a field bench or anvil: one status step per use (BROKEN 0 .. EXCELLENT 4), paid in
+	// grams of the item's main-part material from the F6 salvage ledger: 15 percent of the main part's
+	// mass per step (ASSUMED), at least 1 g. Returns -1 when nothing to repair.
+	inline int repairCostGrams(int mainPartGrams, int status)
+	{
+		if ( status >= 4 || status < 0 ) return -1;
+		int g = mainPartGrams * 15 / 100;
+		return g < 1 ? 1 : g;
+	}
+	// BP1-2 table: Flip for cover when a hostile is in sight and it is not flipped yet; Field bench otherwise
+	inline bool tableFlips(bool hostileInSight, bool flipped) { return hostileInSight && !flipped; }
+
 	// the history row a podium reads: stable per podium and floor
 	inline int readPick(uint32_t podiumKey, int floor, int nRows)
 	{

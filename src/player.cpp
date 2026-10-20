@@ -4127,6 +4127,10 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 				interactText = Language::get(4005); // "Open chest" 
 			}
 		}
+		else if ( parent->behavior == &actTorch && apx::props::torchDark(parent) )
+		{
+			interactText = "Relight the sconce"; // apx BP1-2: a dark sconce
+		}
 		else if ( parent->behavior == &actTorch )
 		{
 			if ( foundTinkeringKit )
@@ -4272,7 +4276,7 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 		}
 		else if ( parent->behavior == &actFurniture || parent->behavior == &actMCaxe )
 		{
-			const char* apxVerb = apx::props::labelFor(parent); // apx BP1: the prop's verb (D81)
+			const char* apxVerb = apx::props::labelFor(parent, player.playernum); // apx BP1: the prop's verb (D81)
 			interactText = apxVerb ? apxVerb : Language::get(4023); // "Inspect" 
 		}
 		else if ( parent->behavior == &actFloorDecoration )

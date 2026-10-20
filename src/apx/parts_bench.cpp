@@ -89,6 +89,8 @@ void apxPartsBenchRegister()
 	p.salvagePreview = &benchSalvagePreview;
 	p.salvage = &benchSalvage;
 	p.breakItem = &benchBreak;
+	p.repairCost = &apxPartsRepairCost;
+	p.repair = &apxPartsRepair;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }

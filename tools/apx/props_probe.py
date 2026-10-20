@@ -59,6 +59,14 @@ def checks(r):
         ("skeleton share 25 +- 3 SE", abs(sk - 0.25) <= se(0.25), round(sk * 100, 1)),
         ("trinket share 45 +- 3 SE", abs(tr - 0.45) <= se(0.45), round(tr * 100, 1)),
         ("spawned skeletons tagged fodder (D74)", r["skeletons"] > 0 and r["skeletons_fodder"] == r["skeletons"], [r["skeletons"], r["skeletons_fodder"]]),
+        ("rest group from the floor's fodder band", r.get("enc_creatures", 0) > 0 and r.get("enc_fodder_band") == r.get("enc_creatures") and r.get("fodder_band_kinds", 0) > 0,
+         [r.get("enc_creatures"), r.get("enc_fodder_band"), r.get("fodder_band_kinds")]),
+        ("table offers Flip with a hostile in sight", r.get("flip_label") == "Flip for cover" and r.get("flips") == 1, [r.get("flip_label"), r.get("flips")]),
+        ("flipped table blocks the sight line", r.get("los_before") == 0 and r.get("los_after") == 1, [r.get("los_before"), r.get("los_after")]),
+        ("torch taken leaves a dark sconce, relit with a torch", r.get("torch_found") == 1 and r.get("torch_kept") == 1 and r.get("torch_dark") == 1 and r.get("got_torch") == 1 and r.get("relit") == 1,
+         [r.get("torch_found"), r.get("torch_kept"), r.get("torch_dark"), r.get("got_torch"), r.get("relit")]),
+        ("repair one step through F6 (ledger grams)", r.get("repair_ok") == 1 and r.get("status_after") == r.get("status_before", -9) + 1 and r.get("repair_grams", 0) > 0,
+         [r.get("repair_ok"), r.get("status_before"), r.get("status_after"), r.get("repair_grams"), r.get("repair_why")]),
     ]
 
 
