@@ -1,0 +1,559 @@
+{
+ "_note": "authored by tools/apx/author_variants.py; names of rare variants are placeholders (card BV1 section 8)",
+ "nodes": [
+  {
+   "id": "skeleton",
+   "level": "base",
+   "loot": {
+    "table": [
+     [
+      "mat:bone",
+      0.9
+     ],
+     [
+      "item:GEM_ROCK",
+      0.1
+     ],
+     [
+      "mat:iron",
+      0.08
+     ]
+    ]
+   },
+   "monster": "SKELETON",
+   "name": "skeleton"
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 1,
+   "id": "skeleton.undead",
+   "level": "type",
+   "look": {
+    "light": "none",
+    "scale": 1.0,
+    "tint": "#8fa88a"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:bone",
+      0.25
+     ],
+     [
+      "item:GEM_JETSTONE",
+      0.02
+     ]
+    ],
+    "extends": "skeleton",
+    "reweight": {}
+   },
+   "material": "bone",
+   "name": "Undead skeleton",
+   "parent": "skeleton",
+   "rarity": 0.07,
+   "stats": {
+    "dmg": 1.0,
+    "hp": 1.1,
+    "poise": 1.0,
+    "speed": 0.95
+   },
+   "tier_shift": 0,
+   "traits": [
+    "rise_once:30%"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 3,
+   "id": "skeleton.undead.accursed",
+   "level": "subtype",
+   "look": {
+    "light": "dim_violet",
+    "scale": 1.0,
+    "tint": "#5a2a6a"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:ash",
+      0.35
+     ],
+     [
+      "item:SCROLL_REMOVECURSE",
+      0.03
+     ]
+    ],
+    "extends": "skeleton.undead",
+    "reweight": {}
+   },
+   "material": "bone",
+   "name": "Accursed skeleton",
+   "parent": "skeleton.undead",
+   "rarity": 0.28,
+   "stats": {
+    "dmg": 1.1,
+    "hp": 1.4,
+    "poise": 1.2,
+    "speed": 0.9
+   },
+   "tier_shift": 0,
+   "traits": [
+    "curse_on_hit:10%:30s",
+    "rise_once:50%"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 5,
+   "id": "skeleton.undead.accursed.gravewhisker",
+   "level": "rare",
+   "look": {
+    "light": "dim_violet",
+    "scale": 1.15,
+    "tint": "#5a2a6a"
+   },
+   "loot": {
+    "add": [
+     [
+      "item:GEM_AMETHYST",
+      0.4
+     ]
+    ],
+    "extends": "skeleton.undead.accursed",
+    "reweight": {}
+   },
+   "material": "bone",
+   "max_group": 4,
+   "name": "Gravewhisker (placeholder)",
+   "parent": "skeleton.undead.accursed",
+   "rarity": 0.01,
+   "stats": {
+    "dmg": 1.43,
+    "hp": 2.1,
+    "poise": 1.56,
+    "speed": 0.9
+   },
+   "tier_shift": 1,
+   "traits": [
+    "curse_on_hit:10%:30s",
+    "rise_once:50%",
+    "whisper_aura:6:slow"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 1,
+   "id": "skeleton.undead.skeletal",
+   "level": "subtype",
+   "look": {
+    "light": "none",
+    "scale": 1.0,
+    "tint": "#d8d2b8"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:bone",
+      0.5
+     ]
+    ],
+    "extends": "skeleton.undead",
+    "reweight": {}
+   },
+   "material": "bone",
+   "name": "Skeletal skeleton",
+   "parent": "skeleton.undead",
+   "rarity": 0.28,
+   "stats": {
+    "dmg": 1.15,
+    "hp": 0.9,
+    "poise": 0.8,
+    "speed": 1.05
+   },
+   "tier_shift": 0,
+   "traits": [
+    "brittle:impact:1.5"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 4,
+   "id": "skeleton.undead.skeletal.clatterking",
+   "level": "rare",
+   "look": {
+    "light": "none",
+    "scale": 1.2,
+    "tint": "#d8d2b8"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:ivory",
+      0.3
+     ]
+    ],
+    "extends": "skeleton.undead.skeletal",
+    "reweight": {}
+   },
+   "material": "bone",
+   "max_group": 4,
+   "name": "Clatterking (placeholder)",
+   "parent": "skeleton.undead.skeletal",
+   "rarity": 0.01,
+   "stats": {
+    "dmg": 1.495,
+    "hp": 1.35,
+    "poise": 1.04,
+    "speed": 1.05
+   },
+   "tier_shift": 1,
+   "traits": [
+    "brittle:impact:1.5",
+    "bone_spurs:3:pierce"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 4,
+   "id": "skeleton.undead.spectral",
+   "level": "subtype",
+   "look": {
+    "light": "dim_blue",
+    "scale": 1.0,
+    "tint": "#7fb0d8"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:glass",
+      0.3
+     ],
+     [
+      "mat:quartz",
+      0.15
+     ]
+    ],
+    "extends": "skeleton.undead",
+    "reweight": {}
+   },
+   "material": "aethite",
+   "name": "Spectral skeleton",
+   "parent": "skeleton.undead",
+   "rarity": 0.28,
+   "stats": {
+    "dmg": 1.2,
+    "hp": 0.8,
+    "poise": 0.6,
+    "speed": 1.1
+   },
+   "tier_shift": 0,
+   "traits": [
+    "ethereal_pass:physical:0.5"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 6,
+   "id": "skeleton.undead.spectral.wailing_shade",
+   "level": "rare",
+   "look": {
+    "light": "dim_blue",
+    "scale": 1.0,
+    "tint": "#7fb0d8"
+   },
+   "loot": {
+    "add": [
+     [
+      "item:GEM_OPAL",
+      0.3
+     ]
+    ],
+    "extends": "skeleton.undead.spectral",
+    "reweight": {}
+   },
+   "material": "aethite",
+   "max_group": 4,
+   "name": "Wailing Shade (placeholder)",
+   "parent": "skeleton.undead.spectral",
+   "rarity": 0.01,
+   "stats": {
+    "dmg": 1.56,
+    "hp": 1.2,
+    "poise": 0.78,
+    "speed": 1.1
+   },
+   "tier_shift": 1,
+   "traits": [
+    "ethereal_pass:physical:0.5",
+    "fear_on_hit:8%:3s"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 2,
+   "id": "skeleton.elemental",
+   "level": "type",
+   "look": {
+    "light": "dim_amber",
+    "scale": 1.05,
+    "tint": "#c08a50"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:obsidian",
+      0.2
+     ],
+     [
+      "mat:coal",
+      0.15
+     ]
+    ],
+    "extends": "skeleton",
+    "reweight": {}
+   },
+   "material": "obsidian",
+   "name": "Elemental skeleton",
+   "parent": "skeleton",
+   "rarity": 0.07,
+   "stats": {
+    "dmg": 1.1,
+    "hp": 1.2,
+    "poise": 1.1,
+    "speed": 1.0
+   },
+   "tier_shift": 0,
+   "traits": [
+    "death_burst:6:12"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 2,
+   "id": "skeleton.elemental.fire",
+   "level": "subtype",
+   "look": {
+    "light": "warm_red",
+    "scale": 1.0,
+    "tint": "#d8502a"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:sulfur",
+      0.35
+     ],
+     [
+      "mat:coal",
+      0.3
+     ]
+    ],
+    "extends": "skeleton.elemental",
+    "reweight": {}
+   },
+   "material": "coal",
+   "name": "Fire skeleton",
+   "parent": "skeleton.elemental",
+   "rarity": 0.28,
+   "stats": {
+    "dmg": 1.3,
+    "hp": 1.0,
+    "poise": 1.0,
+    "speed": 1.05
+   },
+   "tier_shift": 0,
+   "traits": [
+    "ignite_on_hit:15%:4s"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 5,
+   "id": "skeleton.elemental.fire.cinderback",
+   "level": "rare",
+   "look": {
+    "light": "warm_red",
+    "scale": 1.15,
+    "tint": "#d8502a"
+   },
+   "loot": {
+    "add": [
+     [
+      "item:GEM_RUBY",
+      0.35
+     ]
+    ],
+    "extends": "skeleton.elemental.fire",
+    "reweight": {}
+   },
+   "material": "coal",
+   "max_group": 4,
+   "name": "Cinderback (placeholder)",
+   "parent": "skeleton.elemental.fire",
+   "rarity": 0.01,
+   "stats": {
+    "dmg": 1.69,
+    "hp": 1.5,
+    "poise": 1.3,
+    "speed": 1.05
+   },
+   "tier_shift": 1,
+   "traits": [
+    "ignite_on_hit:15%:4s",
+    "ember_trail:2:burn"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 2,
+   "id": "skeleton.elemental.frost",
+   "level": "subtype",
+   "look": {
+    "light": "cold_cyan",
+    "scale": 1.0,
+    "tint": "#8fd0f0"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:ice",
+      0.4
+     ],
+     [
+      "mat:salt",
+      0.2
+     ]
+    ],
+    "extends": "skeleton.elemental",
+    "reweight": {}
+   },
+   "material": "ice",
+   "name": "Frost skeleton",
+   "parent": "skeleton.elemental",
+   "rarity": 0.28,
+   "stats": {
+    "dmg": 1.0,
+    "hp": 1.2,
+    "poise": 1.3,
+    "speed": 0.9
+   },
+   "tier_shift": 0,
+   "traits": [
+    "chill_on_hit:20%:4s"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 5,
+   "id": "skeleton.elemental.frost.rimeheart",
+   "level": "rare",
+   "look": {
+    "light": "cold_cyan",
+    "scale": 1.1,
+    "tint": "#8fd0f0"
+   },
+   "loot": {
+    "add": [
+     [
+      "item:GEM_AQUAMARINE",
+      0.35
+     ]
+    ],
+    "extends": "skeleton.elemental.frost",
+    "reweight": {}
+   },
+   "material": "ice",
+   "max_group": 4,
+   "name": "Rimeheart (placeholder)",
+   "parent": "skeleton.elemental.frost",
+   "rarity": 0.01,
+   "stats": {
+    "dmg": 1.3,
+    "hp": 1.8,
+    "poise": 1.69,
+    "speed": 0.9
+   },
+   "tier_shift": 1,
+   "traits": [
+    "chill_on_hit:20%:4s",
+    "frost_nova:24:slow"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 3,
+   "id": "skeleton.elemental.storm",
+   "level": "subtype",
+   "look": {
+    "light": "flicker_white",
+    "scale": 1.0,
+    "tint": "#b8a8f0"
+   },
+   "loot": {
+    "add": [
+     [
+      "mat:quartz",
+      0.35
+     ],
+     [
+      "mat:glass",
+      0.2
+     ]
+    ],
+    "extends": "skeleton.elemental",
+    "reweight": {}
+   },
+   "material": "quartz",
+   "name": "Storm skeleton",
+   "parent": "skeleton.elemental",
+   "rarity": 0.28,
+   "stats": {
+    "dmg": 1.2,
+    "hp": 0.9,
+    "poise": 0.9,
+    "speed": 1.2
+   },
+   "tier_shift": 0,
+   "traits": [
+    "shock_chain:2:10"
+   ]
+  },
+  {
+   "depth_max": 15,
+   "depth_min": 6,
+   "id": "skeleton.elemental.storm.thunderpelt",
+   "level": "rare",
+   "look": {
+    "light": "flicker_white",
+    "scale": 1.1,
+    "tint": "#b8a8f0"
+   },
+   "loot": {
+    "add": [
+     [
+      "item:GEM_FLUORITE",
+      0.35
+     ]
+    ],
+    "extends": "skeleton.elemental.storm",
+    "reweight": {}
+   },
+   "material": "quartz",
+   "max_group": 4,
+   "name": "Thunderpelt (placeholder)",
+   "parent": "skeleton.elemental.storm",
+   "rarity": 0.01,
+   "stats": {
+    "dmg": 1.56,
+    "hp": 1.35,
+    "poise": 1.17,
+    "speed": 1.2
+   },
+   "tier_shift": 1,
+   "traits": [
+    "shock_chain:2:10",
+    "static_field:30:shock"
+   ]
+  }
+ ]
+}
