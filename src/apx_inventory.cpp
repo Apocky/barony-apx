@@ -1025,6 +1025,66 @@ static void runLiveF6(int dt)
 }
 
 // D81: columns sort, category tabs, icons, the rich tooltip with compare-to-equipped. Run once.
+// D88: the grid sits in Barony's inventory panel (no overlap with the paperdoll, stats, hotbar or
+// message log) and the tooltip shows every modifier Barony's own item code gives (boots of speed: DEX)
+static void runD88(int dt)
+{
+	auto& pl = *players[0];
+	static Uint32 bootsUid = 0;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	if ( dt == 470 )
+	{
+		emptyInventory(0);
+		setTab(0, 0);
+		const ItemType t[] = { BRONZE_SWORD, IRON_SWORD, LEATHER_HELM, IRON_HELM, WOODEN_SHIELD, FOOD_APPLE, GEM_RUBY, IRON_AXE, LEATHER_BREASTPIECE };
+		for ( ItemType it : t ) { newItem(it, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); }
+		Item* b = newItem(LEATHER_BOOTS_SPEED, SERVICABLE, 1, 1, 0, true, &stats[0]->inventory);
+		bootsUid = b ? b->uid : 0;
+		inspectOpen(0, nullptr);
+	}
+	else if ( dt == 472 )
+	{
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( e[i].row.uid == bootsUid ) { setFocus(0, 0, (int)i); } }
+
+	}
+	else if ( dt == 475 ) { g_shot = "apx-d88-grid-tip.png"; } // in this phase, before the quarter view
+	else if ( dt == 477 )
+	{
+		const auto& vs = viewState(0);
+		std::string low = vs.tipText;
+		for ( auto& c : low ) { c = (char)tolower(c); }
+		const int dex = low.find("dex") != std::string::npos ? 1 : 0;
+		const int speed = low.find("speed") != std::string::npos ? 1 : 0;
+		Frame* inv = pl.inventoryUI.frame;
+		Frame* g = inv ? inv->findFrame("apx list") : nullptr;
+		Frame* base = inv ? inv->findFrame("inventory base") : nullptr;
+		Frame* tip = inv ? inv->findFrame("apx tip") : nullptr;
+		SDL_Rect gr = g ? g->getSize() : SDL_Rect{ -1, -1, -1, -1 }, br = base ? base->getSize() : SDL_Rect{ -1, -1, -1, -1 };
+		SDL_Rect tr = tip ? tip->getSize() : SDL_Rect{ -1, -1, -1, -1 };
+		const int fh = inv ? inv->getSize().h : -1;
+		const int inside = g && base && gr.x >= br.x && gr.x + gr.w <= br.x + br.w && gr.y >= br.y && gr.y + gr.h <= br.y + br.h ? 1 : 0;
+		const int tipAboveLog = tip && tr.y + tr.h <= fh * 68 / 100 + 1 ? 1 : 0;
+		int hpY = 100000;
+		for ( Frame* bar : { pl.hud.hpFrame, pl.hud.mpFrame } ) { if ( bar && !bar->isDisabled() && bar->getSize().y > gr.y ) { hpY = std::min(hpY, bar->getSize().y); } }
+		const int aboveBars = g && gr.y + gr.h <= hpY ? 1 : 0;
+		const int truncated = vs.tipText.find("  ...") != std::string::npos ? 1 : 0;
+		const int opaque = g ? 1 : 0; // makeGrid sets alpha 255
+		std::string esc;
+		for ( char c : vs.tipText ) { if ( c == '\n' ) { esc += "|"; } else if ( c == '"' || c == '\\' ) { esc += '\''; } else if ( (unsigned char)c >= 32 ) { esc += c; } }
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"d88\",\"mode\":\"%s\",\"headless\":%d,\"tip_shown\":%d,\"tip_vanilla_lines\":%d,\"tip_has_dex\":%d,\"tip_has_speed\":%d,"
+				"\"grid_inside_panel\":%d,\"grid_opaque\":%d,\"tip_above_log\":%d,\"grid_above_hp_bars\":%d,\"hp_bar_y\":%d,\"tip_truncated\":%d,\"grid\":[%d,%d,%d,%d],\"panel\":[%d,%d,%d,%d],\"tip\":[%d,%d,%d,%d],\"frame_h\":%d,"
+				"\"cells_icons\":%d,\"tip_text\":\"%s\"}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, (int)vs.tipShown, vs.tipVanillaLines, dex, speed, inside, opaque, tipAboveLog, aboveBars, hpY, truncated,
+				gr.x, gr.y, gr.w, gr.h, br.x, br.y, br.w, br.h, tr.x, tr.y, tr.w, tr.h, fh, vs.iconsDrawn, esc.c_str());
+			fclose(f);
+		}
+	}
+}
+
 static void runD81(int dt)
 {
 	auto& pl = *players[0];
@@ -1264,8 +1324,8 @@ static void runUiPhases()
 	else if ( dt == 60 ) { A = listState(0); g_shot = "apx-u1-full.png"; }
 	else if ( dt >= 70 && dt <= 86 && (dt - 70) % 4 == 0 ) { listTestPadPress(); }
 	else if ( dt == 100 ) { B = listState(0); }
-	else if ( dt >= 104 && dt <= 134 && (dt - 104) % 6 == 0 ) { keystatus[SDLK_DOWN] = ((dt - 104) / 6) % 2 == 0; } // 3 presses held 6 ticks (~120 ms, a human tap)
-	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); itemsAfter = (int)list_Size(&stats[0]->inventory); }
+	else if ( dt >= 104 && dt <= 134 && (dt - 104) % 6 == 0 ) { keystatus[SDLK_RIGHT] = ((dt - 104) / 6) % 2 == 0; } // 3 presses (one cell each) held 6 ticks (~120 ms, a human tap)
+	else if ( dt == 140 ) { keystatus[SDLK_RIGHT] = false; C = listState(0); itemsAfter = (int)list_Size(&stats[0]->inventory); }
 	else if ( dt >= 141 && dt < 331 ) { runSteps345(dt); }
 	else if ( dt >= 331 && dt < 340 ) { runD81(dt); }
 	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
@@ -1273,6 +1333,7 @@ static void runUiPhases()
 	else if ( dt >= 380 && dt < 410 ) { runComponents(dt); }
 	else if ( dt >= 410 && dt < 440 ) { runLive86(dt); }
 	else if ( dt >= 440 && dt < 470 ) { runLiveF6(dt); }
+	else if ( dt >= 470 && dt < 480 ) { runD88(dt); }
 	else if ( dt == 480 )
 	{
 		splitscreen = true;

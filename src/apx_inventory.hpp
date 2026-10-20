@@ -59,7 +59,7 @@ namespace apx_inv
 	struct ViewState { int other = OTHER_NONE; int otherRows = 0; int otherSelected = 0; int focus = 0; bool inspectShown = false;
 		Uint32 inspectUid = 0; int station = 0; int stationOps = 0; bool benchShown = false; int transfers = 0; int refusedHeavy = 0;
 		int benchRows = 0; int benchTab = 0; int benchTabSwitches = 0; int benchActions = 0;
-		int tab = 0; int sortCol = 0; bool sortDesc = false; int iconsDrawn = 0; bool tipShown = false; int tipLines = 0; std::string tipDelta; bool tipVsWorn = false; std::string lastBenchMsg; int tipAffixLines = 0; int tipParts = 0; int tipUnknownLines = 0; std::string tipName; int tipRarity = -1; };
+		int tab = 0; int sortCol = 0; bool sortDesc = false; int iconsDrawn = 0; bool tipShown = false; int tipLines = 0; std::string tipDelta; bool tipVsWorn = false; std::string lastBenchMsg; int tipAffixLines = 0; int tipParts = 0; int tipUnknownLines = 0; std::string tipName; int tipRarity = -1; int tipVanillaLines = 0; std::string tipText; };
 	const ViewState& viewState(int player);
 	void inspectOpen(int player, Item* item);
 	void breakItem(int player, Item* item);

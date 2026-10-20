@@ -49,7 +49,7 @@ static int g_benchSel[MAXPLAYERS] = {}, g_benchScroll[MAXPLAYERS] = {}, g_benchT
 static uint32_t g_benchForm[MAXPLAYERS] = {};
 std::vector<Entry> benchEntries(int player, int tab, int station, Item* selectedOwn, uint32_t selectedForm, std::string& head);
 bool benchActivate(int player, int tab, int station, Item* selectedOwn, const Entry& row, uint32_t& selectedForm, std::string& msg);
-constexpr int ROW_H = 20, HEAD_H = 34, MAX_ROWS = 40, PANEL_W = 220, TIP_W = 260;
+constexpr int ROW_H = 20, HEAD_H = 34, MAX_ROWS = 40, PANEL_W = 220, TIP_W = 320;
 static const char* FONT = "fonts/pixel_maz_multiline.ttf#16#2";
 
 const ListState& listState(int player) { return g_list[std::max(0, std::min(MAXPLAYERS - 1, player))]; }
@@ -149,7 +149,7 @@ static std::vector<Entry> ownEntries(int player)
 		else { continue; }
 		lr.push_back(x);
 	}
-	return apx_logic::entriesSorted(lr, g_tab[player], g_sortCol[player], g_sortDesc[player]);
+	return apx_logic::withoutHeaders(apx_logic::entriesSorted(lr, g_tab[player], g_sortCol[player], g_sortDesc[player])); // D88: a grid, no header rows
 }
 
 std::vector<Entry> ownRowsForTest(int player) { return g_own[player]; }
@@ -184,7 +184,7 @@ static void buildOther(int player, int view)
 		lr.push_back(logicRow(*it, player, view == OTHER_SHOP ? 1 : 0));
 		its.push_back(it);
 	}
-	auto e = apx_logic::entriesSorted(lr, 0, g_sortCol[player], g_sortDesc[player]);
+	auto e = apx_logic::withoutHeaders(apx_logic::entriesSorted(lr, 0, g_sortCol[player], g_sortDesc[player]));
 	// map entries back to items by uid (entries() sorts)
 	for ( auto& en : e )
 	{
@@ -422,6 +422,9 @@ void benchTab(int player, int d)
 	++g_view[player].benchTabSwitches;
 }
 
+static void moveHorizontal(int player, int d);
+static void moveVertical(int player, int d);
+
 bool listHandleMove(int player)
 {
 	if ( !listActive(player) ) { return false; }
@@ -429,12 +432,9 @@ bool listHandleMove(int player)
 	int d = 0, side = 0;
 	for ( const char* b : { "InventoryMoveUp", "InventoryMoveUpAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); d = -1; } }
 	for ( const char* b : { "InventoryMoveDown", "InventoryMoveDownAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); d = 1; } }
-	if ( g_view[player].other != OTHER_NONE )
-	{
-		for ( const char* b : { "InventoryMoveLeft", "InventoryMoveLeftAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); side = -1; } }
-		for ( const char* b : { "InventoryMoveRight", "InventoryMoveRightAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); side = 1; } }
-	}
-	if ( side ) { setFocus(player, side > 0 ? 1 : 0, -1); }
+	for ( const char* b : { "InventoryMoveLeft", "InventoryMoveLeftAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); side = -1; } }
+	for ( const char* b : { "InventoryMoveRight", "InventoryMoveRightAnalog" } ) { if ( in.binaryToggle(b) ) { in.consumeBinaryToggle(b); side = 1; } }
+	if ( side ) { moveHorizontal(player, side); } // D88 grid: a cell left or right; the right edge hands over to the next panel
 	for ( const char* b : { "MenuPageLeft", "MenuPageRight" } )
 	{
 		if ( !in.binaryToggle(b) ) { continue; }
@@ -443,7 +443,7 @@ bool listHandleMove(int player)
 		if ( g_view[player].benchShown && g_view[player].focus == 2 ) { benchTab(player, d2); } else { setTab(player, g_tab[player] + d2); }
 	}
 	if ( in.binaryToggle("MenuAlt2") ) { in.consumeBinaryToggle("MenuAlt2"); setSort(player, (g_sortCol[player] + 1) % apx_logic::COL_MAX, g_sortDesc[player]); }
-	if ( d ) { moveSel(player, d); }
+	if ( d ) { moveVertical(player, d); }
 	return d != 0 || side != 0;
 }
 
@@ -514,7 +514,7 @@ static Frame* makeTip(Frame* parent, int player)
 	tip->setOwner(player);
 	tip->setColor(makeColor(20, 16, 12, 240));
 	tip->addImage(SDL_Rect{ 8, 8, 64, 64 }, makeColor(255, 255, 255, 255), "", "big");
-	for ( int i = 0; i < 18; ++i ) { char n[16]; snprintf(n, sizeof(n), "line %d", i); label(tip, n, 128, Field::justify_t::LEFT); }
+	for ( int i = 0; i < 32; ++i ) { char n[16]; snprintf(n, sizeof(n), "line %d", i); label(tip, n, 160, Field::justify_t::LEFT); }
 	return tip;
 }
 
@@ -724,8 +724,193 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 	return drawn;
 }
 
+// ---------------------------------------------------------------- D88: the grid (icons, no slot limit, scrolls)
+// A grid of item icons in Barony's own inventory area: a header (carried mass and the limit, a mass
+// bar, the sort column), category tabs, then cells of CELL px with a rarity-coloured border, the icon,
+// the count and an equipped mark. Opaque, so nothing of the vanilla grid shows behind it, and sized
+// to the vanilla slot area, so it never covers the paperdoll, stats, hotbar or message log.
+constexpr int CELL = 40, MAX_CELLS = 120;
+static int g_cols[MAXPLAYERS][3] = {};   // columns of the own (0) and other (1) grids, for up/down moves
+
+static Frame* makeGrid(Frame* parent, const char* name, int player)
+{
+	Frame* g = parent->addFrame(name);
+	g->setOwner(player);
+	g->setColor(makeColor(18, 14, 10, 255)); // opaque (D88: nothing vanilla behind)
+	g->setBorder(0);
+	auto head = g->addField("apx head", 128);
+	head->setFont(FONT);
+	head->setHJustify(Field::justify_t::LEFT);
+	head->setVJustify(Field::justify_t::TOP);
+	head->setTextColor(makeColor(255, 255, 255, 255));
+	Frame* sort = g->addFrame("apx sort");
+	sort->setOwner(player);
+	label(sort, "t", 24, Field::justify_t::RIGHT);
+	auto barBg = g->addFrame("apx bar bg");
+	barBg->setColor(makeColor(60, 50, 40, 255));
+	barBg->addFrame("apx bar");
+	Frame* tabs = g->addFrame("apx tabs");
+	for ( int t = 0; t < 8; ++t )
+	{
+		char n[16]; snprintf(n, sizeof(n), "tab %d", t);
+		Frame* tf = tabs->addFrame(n); tf->setOwner(player);
+		label(tf, "t", 16, Field::justify_t::CENTER);
+	}
+	for ( int i = 0; i < MAX_CELLS; ++i )
+	{
+		char n[32]; snprintf(n, sizeof(n), "apx cell %d", i);
+		Frame* c = g->addFrame(n);
+		c->setOwner(player);
+		Frame* in = c->addFrame("in");
+		in->addImage(SDL_Rect{ 2, 2, 32, 32 }, makeColor(255, 255, 255, 255), "", "icon");
+		Field* cnt = in->addField("n", 8);
+		cnt->setFont(FONT); cnt->setHJustify(Field::justify_t::RIGHT); cnt->setVJustify(Field::justify_t::BOTTOM);
+		cnt->setTextColor(makeColor(255, 255, 255, 255));
+		Field* eq = in->addField("e", 4);
+		eq->setFont(FONT); eq->setHJustify(Field::justify_t::LEFT); eq->setVJustify(Field::justify_t::TOP);
+		eq->setTextColor(makeColor(140, 220, 255, 255));
+	}
+	return g;
+}
+
+// draw one grid; returns cells drawn. scroll is in rows. visibleOut: cells that fit.
+static int drawGrid(int player, Frame* g, const SDL_Rect& r, const std::vector<Entry>& e, int sel, int& scroll, int focusId, bool focused,
+	const std::string& headText, long long carried, long long limit, bool tabsOn, int* visibleOut)
+{
+	g->setSize(r);
+	auto& in = Input::inputs[player];
+	const bool mouse = inputs.getVirtualMouse(player)->draw_cursor;
+	if ( auto hf = g->findField("apx head") ) { hf->setSize(SDL_Rect{ 6, 2, r.w - 70, 18 }); hf->setText(fitText(hf, headText, r.w - 72).c_str()); }
+	if ( Frame* sf = g->findFrame("apx sort") ) // the sort column; click: next column, click again on the same: flip
+	{
+		sf->setSize(SDL_Rect{ r.w - 66, 2, 60, 18 });
+		if ( Field* f = sf->findField("t") )
+		{
+			f->setSize(SDL_Rect{ 0, 0, 60, 18 });
+			f->setText((std::string(apx_logic::columnName(g_sortCol[player])) + (g_sortDesc[player] ? " v" : " ^")).c_str());
+			f->setTextColor(makeColor(255, 220, 120, 255));
+		}
+		if ( mouse && sf->capturesMouseInRealtimeCoords() && in.binaryToggle("MenuLeftClick") )
+		{
+			in.consumeBinaryToggle("MenuLeftClick");
+			setSort(player, (g_sortCol[player] + 1) % apx_logic::COL_MAX, g_sortCol[player] + 1 == apx_logic::COL_MAX ? !g_sortDesc[player] : g_sortDesc[player]);
+		}
+	}
+	if ( auto barBg = g->findFrame("apx bar bg") )
+	{
+		barBg->setSize(SDL_Rect{ 6, 22, r.w - 12, 5 });
+		barBg->setDisabled(limit <= 0);
+		if ( auto bar = barBg->findFrame("apx bar") )
+		{
+			long long lim = std::max<long long>(1, limit);
+			bar->setSize(SDL_Rect{ 0, 0, (int)((long long)(r.w - 12) * std::min(carried, lim) / lim), 5 });
+			bar->setColor(carried > lim ? makeColor(220, 60, 40, 255) : makeColor(200, 170, 60, 255));
+		}
+	}
+	int y = 30;
+	if ( Frame* tabs = g->findFrame("apx tabs") )
+	{
+		tabs->setDisabled(!tabsOn);
+		if ( tabsOn )
+		{
+			const int perRow = 4, rowsT = (apx_logic::tabCount() + perRow - 1) / perRow;
+			tabs->setSize(SDL_Rect{ 3, y, r.w - 6, rowsT * 18 });
+			int tw = (r.w - 6) / perRow;
+			for ( int t = 0; t < 8; ++t )
+			{
+				char n[16]; snprintf(n, sizeof(n), "tab %d", t);
+				Frame* tf = tabs->findFrame(n);
+				if ( !tf ) { continue; }
+				tf->setDisabled(t >= apx_logic::tabCount());
+				if ( t >= apx_logic::tabCount() ) { continue; }
+				tf->setSize(SDL_Rect{ (t % perRow) * tw, (t / perRow) * 18, tw - 1, 17 });
+				bool on = g_tab[player] == t;
+				tf->setColor(on ? makeColor(120, 90, 30, 255) : makeColor(36, 28, 20, 255));
+				if ( Field* f = tf->findField("t") )
+				{
+					f->setSize(SDL_Rect{ 0, 0, tw - 1, 18 });
+					f->setText(apx_logic::tabTiny(t));
+					f->setTextColor(on ? makeColor(255, 235, 170, 255) : makeColor(190, 180, 160, 255));
+				}
+				if ( mouse && tf->capturesMouseInRealtimeCoords() && in.binaryToggle("MenuLeftClick") ) { in.consumeBinaryToggle("MenuLeftClick"); setTab(player, t); }
+			}
+			y += rowsT * 18 + 2;
+		}
+	}
+	const int cols = std::max(1, (r.w - 6) / CELL);
+	const int x0 = (r.w - cols * CELL) / 2;
+	const int rowsVis = std::max(1, (r.h - y - 2) / CELL);
+	g_cols[player][focusId] = cols;
+	if ( visibleOut ) { *visibleOut = std::min(MAX_CELLS, cols * rowsVis); }
+	const int n = (int)e.size();
+	const int totalRows = (n + cols - 1) / cols;
+	scroll = std::max(0, std::min(scroll, std::max(0, totalRows - rowsVis)));
+	if ( sel >= 0 && sel < n )
+	{
+		if ( sel / cols < scroll ) { scroll = sel / cols; }
+		if ( sel / cols >= scroll + rowsVis ) { scroll = sel / cols - rowsVis + 1; }
+	}
+	int drawn = 0;
+	for ( int i = 0; i < MAX_CELLS; ++i )
+	{
+		char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", i);
+		Frame* c = g->findFrame(nm);
+		if ( !c ) { continue; }
+		int idx = scroll * cols + i;
+		if ( i >= cols * rowsVis || idx >= n ) { c->setDisabled(true); continue; }
+		const auto& d = e[idx];
+		c->setDisabled(false);
+		c->setSize(SDL_Rect{ x0 + (i % cols) * CELL, y + (i / cols) * CELL, CELL - 2, CELL - 2 });
+		if ( mouse && c->capturesMouseInRealtimeCoords() ) { setFocus(player, focusId, idx); } // hover selects
+		bool isSel = idx == sel;
+		Uint32 border = d.row.rarity >= 0 ? rarityColor(d.row.rarity) : makeColor(70, 58, 44, 255);
+		c->setColor(isSel && focused ? makeColor(255, 220, 120, 255) : border);
+		if ( Frame* inner = c->findFrame("in") )
+		{
+			inner->setSize(SDL_Rect{ 2, 2, CELL - 6, CELL - 6 });
+			static const Uint32 cond[] = { makeColor(90, 24, 20, 255), makeColor(70, 40, 20, 255), makeColor(46, 38, 22, 255),
+				makeColor(30, 25, 19, 255), makeColor(30, 25, 19, 255) };
+			int c0 = d.row.type < 0 ? 4 : std::max(0, std::min(4, d.row.status));
+			inner->setColor(isSel ? makeColor(90, 70, 30, 255) : cond[c0]); // broken and decrepit items are tinted
+			if ( auto* icon = inner->findImage("icon") )
+			{
+				icon->disabled = d.row.icon.empty();
+				if ( !d.row.icon.empty() ) { icon->path = d.row.icon; icon->pos = SDL_Rect{ 1, 1, CELL - 8, CELL - 8 }; if ( focusId == 0 ) { ++g_iconsDrawn[player]; } }
+			}
+			if ( Field* f = inner->findField("n") )
+			{
+				f->setSize(SDL_Rect{ 0, 0, CELL - 8, CELL - 7 });
+				f->setText(d.row.type < 0 ? (d.row.count > 0 ? std::to_string(d.row.count).c_str() : "") : d.row.count > 1 ? std::to_string(d.row.count).c_str() : "");
+			}
+			if ( Field* f = inner->findField("e") ) { f->setSize(SDL_Rect{ 1, 0, 16, 14 }); f->setText(d.row.equipped ? "E" : ""); }
+		}
+		++drawn;
+	}
+	return drawn;
+}
+
+// the selection moves by cells; up/down by a row of the grid that has focus
+static int gridCols(int player, int focus) { return std::max(1, g_cols[player][focus == 1 ? 1 : 0]); }
+static void moveHorizontal(int player, int d)
+{
+	auto& vs = g_view[player];
+	if ( vs.focus == 2 ) { if ( d < 0 ) { setFocus(player, 0, -1); } return; } // the bench list: Left goes back to the grid
+	const int cols = gridCols(player, vs.focus);
+	const int sel = vs.focus == 1 ? vs.otherSelected : g_list[player].selected;
+	const int n = vs.focus == 1 ? (int)g_other[player].size() : (int)g_own[player].size();
+	const bool rightEdge = sel % cols == cols - 1 || sel == n - 1;
+	if ( d > 0 && rightEdge && vs.focus == 0 && (vs.other != OTHER_NONE || vs.benchShown) ) { setFocus(player, vs.other != OTHER_NONE ? 1 : 2, -1); return; }
+	if ( d < 0 && sel % cols == 0 && vs.focus == 1 ) { setFocus(player, 0, -1); return; }
+	moveSel(player, d);
+}
+static void moveVertical(int player, int d)
+{
+	auto& vs = g_view[player];
+	moveSel(player, vs.focus == 2 ? d : d * gridCols(player, vs.focus));
+}
+
 // the tooltip for one item: large icon, name, kind, stats with compare-to-equipped, kinds, parts
-static int drawTip(int player, Frame* tip, Item* it, int x, int y)
+static int drawTip(int player, Frame* tip, Item* it, int x, int y, int bottom)
 {
 	if ( !it ) { tip->setDisabled(true); return 0; }
 	auto r = logicRow(*it, player, openedChest[player] || !players[player]->shopGUI.bOpen ? 0 : 0);
@@ -784,19 +969,96 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 			}
 		}
 	}
-	const int w = TIP_W, top = 80;
-	int h = top + (int)std::min<size_t>(L.size() - 2, 16) * ROW_H + 10;
+	// D88: every modifier the item gives, read from Barony's own tooltip builder (attributes, skills,
+	// resistances, speed, effects): run it for this item into its hidden frame and copy its text
+	int vanillaLines = 0;
+	{
+		auto& pl = *players[player];
+		static const bool useVanilla = !(getenv("APX_TIP_VANILLA") && getenv("APX_TIP_VANILLA")[0] == '0'); // control knob: 0 = no Barony lines
+		static int logged = 0;
+		if ( useVanilla && logged < 2 ) { printlog("[apx-tip] vanilla tooltip builder in (type %d)", (int)it->type); }
+		if ( useVanilla ) { pl.hud.updateFrameTooltip(it, 0, 0, Player::PANEL_JUSTIFY_LEFT, nullptr); }
+		if ( useVanilla && logged < 2 ) { printlog("[apx-tip] vanilla tooltip builder out"); ++logged; }
+		Frame* vt = useVanilla ? pl.inventoryUI.tooltipFrame : nullptr;
+		std::vector<std::string> got;
+		auto take = [&](Frame* f, const char* field, bool paragraph = false) {
+			if ( !f ) { return; }
+			Field* fl = f->findField(field);
+			if ( !fl || !fl->getText() || fl->isDisabled() ) { return; }
+			std::string t = fl->getText(), line;
+			if ( paragraph ) // Barony breaks sentences for its own width: a line that starts lower case continues the one before
+			{
+				for ( size_t i = 0; i + 1 < t.size(); ++i ) { if ( t[i] == '\n' && islower((unsigned char)t[i + 1]) ) { t[i] = ' '; } }
+			}
+			for ( char c : t ) { if ( c == '\n' ) { if ( !line.empty() ) { got.push_back(line); } line.clear(); } else { line += c; } }
+			if ( !line.empty() ) { got.push_back(line); }
+		};
+		if ( vt )
+		{
+			Frame* attr = vt->findFrame("inventory mouse tooltip attributes frame");
+			Frame* desc = vt->findFrame("inventory mouse tooltip description frame");
+			take(attr, "inventory mouse tooltip primary value");
+			take(attr, "inventory mouse tooltip secondary value");
+			take(attr, "inventory mouse tooltip third value");
+			take(attr, "inventory mouse tooltip attributes text");
+			take(desc, "inventory mouse tooltip description", true);
+			vt->setDisabled(true); // Barony's own tooltip stays hidden: its text is shown in ours
+		}
+		if ( pl.inventoryUI.tooltipPromptFrame ) { pl.inventoryUI.tooltipPromptFrame->setDisabled(true); }
+		if ( pl.inventoryUI.titleOnlyTooltipFrame ) { pl.inventoryUI.titleOnlyTooltipFrame->setDisabled(true); }
+		if ( !got.empty() )
+		{
+			L.push_back({ "Effects", makeColor(230, 190, 90, 255) });
+			for ( auto& gline : got )
+			{
+				// strip Barony's colour markup brackets
+				std::string clean;
+				for ( char c : gline ) { if ( c != '[' && c != ']' ) { clean += c; } }
+				if ( clean.find_first_not_of(' ') == std::string::npos ) { continue; }
+				size_t p0 = clean.find_first_not_of(' ');
+				Uint32 col = clean[p0] == '+' ? makeColor(120, 230, 120, 255) : clean[p0] == '-' ? makeColor(240, 110, 90, 255) : W;
+				// wrap at word breaks to the tooltip width (~36 characters of this font at 300 px)
+				std::string rest = clean.substr(p0);
+				while ( !rest.empty() )
+				{
+					size_t cut = rest.size() <= 36 ? rest.size() : rest.rfind(' ', 36);
+					if ( cut == std::string::npos || cut == 0 ) { cut = std::min<size_t>(36, rest.size()); }
+					L.push_back({ "  " + rest.substr(0, cut), col });
+					rest = rest.substr(cut);
+					size_t q = rest.find_first_not_of(' ');
+					rest = q == std::string::npos ? "" : rest.substr(q);
+				}
+				++vanillaLines;
+			}
+		}
+	}
+	// a long name takes both title lines (wrapped at a space); its kind moves to the first body line
+	if ( L[0].first.size() > 22 )
+	{
+		size_t cut = L[0].first.rfind(' ', 22);
+		if ( cut != std::string::npos && cut > 0 )
+		{
+			auto kindLine = L[1];
+			L[1] = { L[0].first.substr(cut + 1), L[0].second };
+			L[0].first = L[0].first.substr(0, cut);
+			L.insert(L.begin() + 2, kindLine);
+		}
+	}
+	const int w = TIP_W, top = 80, LH = 16;
+	const int maxLines = std::max(4, std::min(30, (bottom - y - top - 10) / LH + 2));
+	if ( (int)L.size() > maxLines ) { L.resize(maxLines - 1); L.push_back({ "  ...", G }); }
+	int h = top + (int)(L.size() - 2) * LH + 10;
 	tip->setDisabled(false);
 	tip->setSize(SDL_Rect{ x, y, w, h });
 	if ( auto* big = tip->findImage("big") ) { big->path = r.icon; big->disabled = r.icon.empty(); big->pos = SDL_Rect{ 8, 8, 64, 64 }; }
-	for ( int i = 0; i < 18; ++i )
+	for ( int i = 0; i < 32; ++i )
 	{
 		char n[16]; snprintf(n, sizeof(n), "line %d", i);
 		Field* f = tip->findField(n);
 		if ( !f ) { continue; }
 		if ( i >= (int)L.size() ) { f->setText(""); continue; }
 		// the first two lines sit beside the big icon
-		SDL_Rect fr = i < 2 ? SDL_Rect{ 80, 10 + i * 22, w - 88, 20 } : SDL_Rect{ 10, top + (i - 2) * ROW_H, w - 20, ROW_H };
+		SDL_Rect fr = i < 2 ? SDL_Rect{ 80, 10 + i * 22, w - 88, 20 } : SDL_Rect{ 10, top + (i - 2) * LH, w - 20, LH };
 		f->setSize(fr);
 		f->setText(fitText(f, L[i].first, fr.w).c_str());
 		f->setTextColor(L[i].second);
@@ -804,6 +1066,9 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 	auto& vs = g_view[player];
 	vs.tipLines = (int)L.size();
 	vs.tipDelta = delta;
+	vs.tipVanillaLines = vanillaLines;
+	vs.tipText.clear();
+	for ( auto& x : L ) { vs.tipText += x.first + "\n"; }
 	vs.tipAffixLines = affixLines;
 	vs.tipUnknownLines = unknownLines;
 	vs.tipName = r.name;
@@ -826,8 +1091,8 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	Frame* list = inventoryFrame->findFrame("apx list");
 	if ( !list )
 	{
-		list = makeList(inventoryFrame, "apx list", player);
-		makeList(inventoryFrame, "apx other", player);
+		list = makeGrid(inventoryFrame, "apx list", player);
+		makeGrid(inventoryFrame, "apx other", player);
 		makePanel(inventoryFrame, "apx inspect", player, 8);
 		makeTip(inventoryFrame, player);
 		makeList(inventoryFrame, "apx bench", player);
@@ -858,19 +1123,21 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	// geometry: the slot area of this layout down to the bottom of the base panel
 	SDL_Rect r = invSlots->getSize();
 	if ( r.w <= 0 || r.h <= 0 ) { r = SDL_Rect{ 0, 202, 210, 242 }; }
-	if ( !pl.inventoryUI.bCompactView && backpackSlots )
-	{
-		const SDL_Rect& b = backpackSlots->getSize();
-		r.h = std::max(r.h, b.y + b.h - r.y);
-	}
 	if ( Frame* base = inventoryFrame->findFrame("inventory base") )
 	{
+		// down to the bottom of Barony's inventory panel and no further (the backpack strip, the HP and
+		// MP bars and the hotbar are below it); the width of Barony's own slot area
 		const SDL_Rect& b = base->getSize();
-		r.h = std::max(r.h, b.y + (pl.inventoryUI.bCompactView ? 250 : b.h) - r.y);
+		int bottom = b.y + (pl.inventoryUI.bCompactView ? 250 : b.h);
+		for ( Frame* bar : { pl.hud.hpFrame, pl.hud.mpFrame } ) // the HP and MP bars (same camera space)
+		{
+			if ( bar && !bar->isDisabled() && bar->getSize().y > r.y ) { bottom = std::min(bottom, bar->getSize().y - 4); }
+		}
+		r.h = bottom - r.y;
+		r.x = b.x; r.w = b.w;
 	}
 	r.h = std::max(HEAD_H + ROW_H, std::min(r.h, inventoryFrame->getSize().h - r.y));
-	// D81: the list is wider than the old slot area where the view allows (columns need room)
-	r.w = std::max(r.w, std::min(470, inventoryFrame->getSize().w * 37 / 100));
+	if ( pl.inventoryUI.selectedItemCursorFrame ) { pl.inventoryUI.selectedItemCursorFrame->setDisabled(true); } // vanilla's slot cursor
 	g_ownRect[player] = r;
 	ListStyle ownStyle; ownStyle.tabs = true; ownStyle.cols = true; ownStyle.tab = &g_tab[player]; ownStyle.sortCol = &g_sortCol[player]; ownStyle.sortDesc = &g_sortDesc[player];
 	ListStyle otherStyle; otherStyle.cols = true; otherStyle.sortCol = &g_sortCol[player]; otherStyle.sortDesc = &g_sortDesc[player];
@@ -905,7 +1172,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	if ( g_testPad && g_padPending > 0 && player == 0 )
 	{
 		// self-test: the state a D-pad press leaves in the binding, set just before it is read
-		auto& b = const_cast<std::unordered_map<std::string, Input::binding_t>&>(Input::inputs[0].getBindings())["InventoryMoveDown"];
+		auto& b = const_cast<std::unordered_map<std::string, Input::binding_t>&>(Input::inputs[0].getBindings())["InventoryMoveRight"]; // D88: one cell
 		b.binary = true;
 		b.consumed = false;
 		--g_padPending;
@@ -925,10 +1192,10 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 			bool down = keystatus[keys[k]];
 			if ( down && !g_keyHeld[player][k] )
 			{
-				if ( k == 0 ) { moveSel(player, -1); }
-				else if ( k == 1 ) { moveSel(player, 1); }
-				else if ( k == 2 ) { setFocus(player, 0, -1); }
-				else if ( k == 3 ) { setFocus(player, vs.focus == 0 ? 1 : 2, -1); }
+				if ( k == 0 ) { moveVertical(player, -1); }
+				else if ( k == 1 ) { moveVertical(player, 1); }
+				else if ( k == 2 ) { moveHorizontal(player, -1); }
+				else if ( k == 3 ) { moveHorizontal(player, 1); }
 				else if ( k == 4 ) { activateSelected(player); }
 				else if ( k == 5 || k == 6 ) { if ( vs.benchShown ) { benchTab(player, k == 5 ? -1 : 1); } }
 				else if ( k == 7 || k == 8 ) { setTab(player, g_tab[player] + (k == 7 ? -1 : 1)); }          // PageUp / PageDown: category
@@ -965,7 +1232,9 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	Sint32 carried = carriedMass(player), limit = std::max<Sint32>(1, massLimit(player));
 	std::string head = massText(carried) + " / " + massText(limit);
 	g_iconsDrawn[player] = 0;
-	st.rowsDrawn = drawList(player, list, r, g_own[player], st.selected, st.scroll, st.visibleRows, head.c_str(), carried, limit, 0, vs.focus == 0, ownStyle);
+	int visibleCells = 0;
+	st.rowsDrawn = drawGrid(player, list, r, g_own[player], st.selected, st.scroll, 0, vs.focus == 0, head, carried, limit, true, &visibleCells);
+	st.visibleRows = visibleCells;
 	vs.iconsDrawn = g_iconsDrawn[player];
 	vs.tab = g_tab[player]; vs.sortCol = g_sortCol[player]; vs.sortDesc = g_sortDesc[player];
 	if ( st.selected >= 0 && st.selected < st.rowCount && !g_own[player][st.selected].header )
@@ -975,7 +1244,9 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	}
 
 	// the right-hand column: second list, else inspect, else bench
-	SDL_Rect rr{ r.x + r.w + 4, r.y, std::max(PANEL_W, std::min(330, inventoryFrame->getSize().w / 4)), r.h };
+	const int sheetW = 210; // Barony's character sheet on the right edge
+	const int logTop = inventoryFrame->getSize().h * 68 / 100; // the message log is below this, centred in the view
+	SDL_Rect rr{ r.x + r.w + 4, r.y, r.w, std::max(HEAD_H + ROW_H, std::min(r.h, logTop - r.y)) };
 	g_otherRect[player] = rr;
 	other->setDisabled(view == OTHER_NONE);
 	if ( view != OTHER_NONE )
@@ -987,7 +1258,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		std::string oh = view == OTHER_CHEST ? "Chest " + massText((Sint32)otherMass)
 			: view == OTHER_SHOP ? "Shop  " + std::to_string(stats[player]->GOLD) + " gold"
 			: std::string("Pack ") + (g_follower[player]->getStats() ? g_follower[player]->getStats()->name : "") + " " + massText((Sint32)otherMass);
-		drawList(player, other, rr, g_other[player], vs.otherSelected, g_otherScroll[player], (r.h - listTop(otherStyle)) / ROW_H, oh.c_str(), otherMass, 0, 1, vs.focus == 1, otherStyle);
+		drawGrid(player, other, rr, g_other[player], vs.otherSelected, g_otherScroll[player], 1, vs.focus == 1, oh, otherMass, 0, false, nullptr);
 		shotIfView("other");
 	}
 	// inspect panel (closed by Escape / cancel, or when its item is gone)
@@ -1027,7 +1298,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		g_benchSel[player] = apx_logic::move(g_bench[player], g_benchSel[player], 0);
 		vs.benchRows = (int)g_bench[player].size();
 		vs.benchTab = g_benchTab[player];
-		SDL_Rect br{ rr.x, r.y, rr.w, r.h };
+		SDL_Rect br{ rr.x, r.y, std::min(330, inventoryFrame->getSize().w - sheetW - rr.x - 4), rr.h };
 		drawList(player, bench, br, g_bench[player], g_benchSel[player], g_benchScroll[player], st.visibleRows, bh.c_str(), carried, limit, 2, vs.focus == 2);
 		shotIfView("bench");
 	}
@@ -1035,10 +1306,10 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	Item* tipItem = insp;
 	if ( !tipItem && vs.focus == 1 && vs.otherSelected >= 0 && vs.otherSelected < (int)g_otherItems[player].size() ) { tipItem = g_otherItems[player][vs.otherSelected]; }
 	if ( !tipItem && vs.focus == 0 && st.selected >= 0 && st.selected < st.rowCount && !g_own[player][st.selected].header && g_own[player][st.selected].row.uid ) { tipItem = uidToItem(g_own[player][st.selected].row.uid); }
-	int tipX = (view != OTHER_NONE || vs.benchShown) ? rr.x + rr.w + 4 : r.x + r.w + 4;
-	const int sheetW = 210; // the character sheet on the right edge
+	int tipX = view != OTHER_NONE ? rr.x + rr.w + 4 : vs.benchShown ? rr.x + std::min(330, inventoryFrame->getSize().w - sheetW - rr.x - 4) + 4 : r.x + r.w + 4;
 	if ( tipX + TIP_W > inventoryFrame->getSize().w - sheetW ) { tipX = std::max(0, inventoryFrame->getSize().w - sheetW - TIP_W - 4); }
-	vs.tipShown = drawTip(player, tip, tipItem, tipX, r.y) > 0;
+	// the tooltip ends above the message log (it sits in the lower part of the view)
+	vs.tipShown = drawTip(player, tip, tipItem, tipX, std::min(r.y, 44), logTop) > 0;
 	if ( vs.tipShown ) { shotIfView("tip"); }
 }
 } // namespace apx_inv
