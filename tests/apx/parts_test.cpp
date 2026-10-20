@@ -155,7 +155,7 @@ int main(int argc, char** argv)
 		{
 			ApxItemData a, b{};
 			randomItem(a);
-			for ( int k = 0; k < a.nParts; ++k ) { a.parts[k].pad = 0; }
+			for ( int k = 0; k < a.nParts; ++k ) { a.parts[k].model = (uint8_t)(n % 3 ? 0 : 1 + n % 200); /* C5 model ids ride the blob */ }
 			const int L = pack(a, buf);
 			maxLen = std::max(maxLen, L);
 			ok += unpack(buf, L, b) && !memcmp(&a, &b, sizeof(a));
@@ -350,6 +350,100 @@ int main(int argc, char** argv)
 		gate("C_name", bad == 0 && commons > 0 && commonOk == commons, kv("names", names) + "," + kv("bad", bad) + "," + kv("commons_plain", commonOk) + "/" + std::to_string(commons) + ",\"example\":\"" + example + "\"");
 		gate("C2_fill_order_prefix_then_suffix", orderN > 1000 && order == orderN, kv("components", orderN) + "," + kv("ordered", order));
 		gate("C2_weight", firstN > 0 && std::fabs(share - expect) < 0.03, "\"first_pick_share\":" + std::to_string(share) + ",\"approx_expected\":" + std::to_string(expect) + ",\"note\":\"pools differ in size; tolerance 0.03\"");
+	}
+	{
+		// parts by slot, from rolls (the components a player could hold)
+		std::vector<std::vector<ApxPart>> bySlot(db.slots.size());
+		Counters c; ApxItemData it;
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 17, 1 + i % 40, 0, i, it, c);
+			for ( int k = 0; k < it.nParts; ++k ) { if ( bySlot[it.parts[k].slot].size() < 400 ) { bySlot[it.parts[k].slot].push_back(it.parts[k]); } }
+		}
+		for ( size_t sl = 0; sl < db.slots.size(); ++sl ) { if ( bySlot[sl].empty() ) { ApxPart q{}; q.slot = (uint8_t)sl; q.material = 0; q.quality = 5; q.integrity = 255; bySlot[sl].push_back(q); } }
+		// LS41: every Form 1,000 times; deterministic; mismatches rejected; nothing dropped; IP cap holds
+		uint64_t st = 12345;
+		auto rnd = [&](int m) { st = st * 6364136223846793005ULL + 1442695040888963407ULL; return m > 0 ? (int)((st >> 33) % (uint64_t)m) : 0; };
+		long long built = 0, okBuilt = 0, gated = 0, wrongAccepted = 0, wrongTried = 0, dropped = 0, overCap = 0, capRejects = 0, nondet = 0;
+		for ( size_t fam = 0; fam < db.families.size(); ++fam )
+		{
+			const Family& f = db.families[fam];
+			for ( int n = 0; n < 1000; ++n )
+			{
+				std::vector<ApxPart> parts;
+				for ( int req : f.required ) { parts.push_back(bySlot[(size_t)req][(size_t)rnd((int)bySlot[(size_t)req].size())]); }
+				for ( auto& o : f.optional ) { if ( rnd(2) ) { parts.push_back(bySlot[(size_t)o.slot][(size_t)rnd((int)bySlot[(size_t)o.slot].size())]); } }
+				const int cap = ipCap(1 + rnd(40));
+				ApxItemData a, b; std::string why, why2;
+				const bool ok = assemble(db, (int)fam, parts, (uint32_t)n, cap, a, why);
+				const bool ok2 = assemble(db, (int)fam, parts, (uint32_t)n, cap, b, why2);
+				++built;
+				nondet += ok != ok2 || (ok && memcmp(&a, &b, sizeof(a)));
+				if ( ok ) { ++okBuilt; dropped += a.nParts != (int)parts.size(); overCap += a.power > cap; }
+				else if ( why.find("opens at quality") != std::string::npos ) { ++gated; }
+				else if ( why.find("over this depth") != std::string::npos ) { ++capRejects; }
+				// a component from a slot this Form does not have must be refused
+				for ( size_t sl = 0; sl < db.slots.size(); ++sl )
+				{
+					bool onForm = false;
+					for ( int r : f.required ) { onForm = onForm || (size_t)r == sl; }
+					for ( auto& o : f.optional ) { onForm = onForm || (size_t)o.slot == sl; }
+					if ( onForm ) { continue; }
+					std::vector<ApxPart> bad = parts; bad.push_back(bySlot[sl][0]);
+					ApxItemData x; std::string w;
+					++wrongTried; wrongAccepted += assemble(db, (int)fam, bad, 1, 1 << 30, x, w);
+					break;
+				}
+			}
+		}
+		gate("LS41_assemble", okBuilt > 0 && wrongAccepted == 0 && dropped == 0 && overCap == 0 && nondet == 0,
+			join({ kv("tries", (int)built), kv("assembled", (int)okBuilt), kv("refused_quality_gate", (int)gated), kv("refused_ip_cap", (int)capRejects),
+				kv("wrong_slot_accepted", (int)wrongAccepted) + "/" + std::to_string(wrongTried), kv("parts_dropped", (int)dropped), kv("over_cap", (int)overCap), kv("nondeterministic", (int)nondet) }));
+		// LS42: swap on crafted (every slot) and looted (quick slots only); affixes move with the component
+		long long crTried = 0, crOk = 0, lootQuick = 0, lootQuickOk = 0, lootOther = 0, lootOtherRefused = 0, moved = 0, movedOk = 0;
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 19, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			const bool looted = i % 2;
+			it.flags = (uint8_t)((it.flags & 0x3f) | (looted ? FLAG_LOOTED : FLAG_CRAFTED));
+			const int k = (int)(i % it.nParts);
+			const auto& pool = bySlot[it.parts[k].slot];
+			const ApxPart comp = pool[(size_t)(i % pool.size())];
+			ApxItemData t = it; ApxPart old{}; std::string why;
+			const bool ok = swapPart(db, t, k, comp, 1 << 30, old, why);
+			const bool quick = db.slots[it.parts[k].slot].quick;
+			if ( !looted ) { ++crTried; crOk += ok; }
+			else if ( quick ) { ++lootQuick; lootQuickOk += ok; }
+			else { ++lootOther; lootOtherRefused += !ok; }
+			if ( ok ) { ++moved; movedOk += !memcmp(&old, &it.parts[k], sizeof(ApxPart)) && !memcmp(&t.parts[k], &comp, sizeof(ApxPart)); }
+		}
+		gate("LS42_swap", crTried > 0 && crOk == crTried && lootOther > 0 && lootOtherRefused == lootOther && lootQuickOk == lootQuick && moved > 0 && movedOk == moved,
+			join({ kv("crafted", (int)crOk) + "/" + std::to_string(crTried), kv("looted_quick", (int)lootQuickOk) + "/" + std::to_string(lootQuick),
+				kv("looted_other_refused", (int)lootOtherRefused) + "/" + std::to_string(lootOther), kv("swaps_intact", (int)movedOk) + "/" + std::to_string(moved) }));
+		// C5 make: cost = the part's mass; quality formula; Rare only at Masterwork (70+); no affixes
+		int makes = 0, makeOk = 0, rare = 0;
+		for ( size_t sl = 0; sl < db.slots.size(); ++sl )
+		{
+			for ( size_t m = 0; m < db.materials.size(); ++m )
+			{
+				for ( int stp = 0; stp <= 30; stp += 15 ) { for ( int tool = 0; tool <= 20; tool += 10 )
+				{
+					int q = 0;
+					const ApxPart mp = makePart(db, (int)sl, (int)m, stp, tool, 7, &q);
+					const int want = 30 * std::min(9, db.materials[m].tier) / 9 + stp + 20 + tool;
+					const int wantR = want >= 70 ? 2 : want >= 50 ? 1 : 0;
+					++makes;
+					rare += mp.rarity == 2;
+					makeOk += q == want && mp.rarity == wantR && mp.nAffix == 0 && mp.model == 7 && mp.integrity == 255 && mp.quality == std::max(1, want / 10)
+						&& makeCostGrams(db, (int)sl, (int)m) == std::max(1, partMassGrams(db, mp));
+				} }
+			}
+		}
+		ApxItemData mi = componentOf(db, makePart(db, 0, 0, 30, 20, 7), 3, FLAG_CRAFTED), mo{};
+		const std::string ms = toString(mi);
+		const bool modelSaved = fromString(ms, mo) && !memcmp(&mi, &mo, sizeof(mi)) && mo.parts[0].model == 7;
+		gate("C5_make", makes > 0 && makeOk == makes && rare > 0 && modelSaved, join({ kv("makes", makes), kv("ok", makeOk), kv("rare_at_masterwork", rare), kv("model_id_saved", modelSaved ? 1 : 0), "\"save_string\":\"" + ms + "\"" }));
 	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;

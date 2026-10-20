@@ -84,7 +84,7 @@ def run_save(name, exe, out, env_extra, args):
     d = out / "runs" / f"{stamp}-{name}"
     d.mkdir(parents=True)
     rows = d / "probe.jsonl"
-    env = {"APX_BF6_PROBE": "save,salvage,bundle", "APX_BF6_OUT": str(rows)}
+    env = {"APX_BF6_PROBE": "save,salvage,craft,bundle", "APX_BF6_OUT": str(rows)}
     env.update(env_extra)
     lock = acquire(False, args.wait)
     t0 = time.monotonic()
@@ -98,7 +98,7 @@ def run_save(name, exe, out, env_extra, args):
     finally:
         lock.unlink(missing_ok=True)
     text = log_text(d)
-    probe, salvage, bundle, comps = None, None, None, None
+    probe, salvage, bundle, comps, craft = None, None, None, None, None
     if rows.exists():
         for l in rows.read_text().splitlines():
             if l.strip():
@@ -111,9 +111,11 @@ def run_save(name, exe, out, env_extra, args):
                     bundle = j
                 elif j.get("probe") == "components":
                     comps = j
+                elif j.get("probe") == "craft":
+                    craft = j
     gen = re.findall(r"successfully generated a dungeon with [^\n]*", text)
     sidecars = sorted(str(x) for x in d.rglob("*.apxparts"))
-    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage, "bundle": bundle, "components": comps,
+    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage, "bundle": bundle, "components": comps, "craft": craft,
             "generated": gen[-1] if gen else None, "sidecars": sidecars, "run_dir": str(d),
             "data_line": (re.findall(r"apxparts: data [^\n]*", text) or [None])[-1]}
 
@@ -262,6 +264,11 @@ def main():
         if not gate("D86 components: salvage hands the chosen part over as an item; crafted = every part; save/load keeps them", cm.get("pass") is True,
                     f"expected {cm.get('expected')}, gained {cm.get('gained')}, given {cm.get('given')}, crafted {cm.get('crafted_components')}/{cm.get('crafted_parts')} parts, "
                     f"kept after load {cm.get('kept_after_load')}/{cm.get('before_load')}, e.g. \"{cm.get('name')}\""):
+            return 1
+        cf = r.get("craft") or {}
+        if not gate("C4/C5 live: make from the pouch, assemble a known Form, swap a part (old back intact), looted non-quick refused", cf.get("pass") is True,
+                    f"form {cf.get('form')}: made {cf.get('made')}/{cf.get('required')}, pouch spent {cf.get('pouch_spent')} g = cost {cf.get('cost')} g, "
+                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}"):
             return 1
         bd = r.get("bundle") or {}
         if not gate("D85 bundles: draw from pouch, survive save/load, pickup returns to pouch", bd.get("pass") is True,

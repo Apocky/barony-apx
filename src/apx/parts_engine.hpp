@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -68,6 +68,16 @@ int apxPartsMaterialIndex(const char* id);
 bool apxPartsLedgerGive(int player, int material, int grams);
 bool apxPartsLedgerTake(int player, int material, int grams);
 int apxPartsMaterialCount();
+// C4/C5 (05b section 5 steps 3, 7, 8): bench operations on the local inventory; refusals say why and count.
+#include <vector>
+std::vector<int> apxPartsFamilySlots(int family, std::vector<int>* qgate);   // required slots first, then optional (with gates)
+int apxPartsRequiredCount(int family);
+std::vector<uint32_t> apxPartsComponentsForSlot(int player, int slot);       // component item uids for that slot
+Item* apxPartsAssemble(int player, int family, int station, const std::vector<std::pair<int, uint32_t>>& slotUid, std::string& why);
+bool apxPartsSwapAllowed(const Item* item, int part);                      // D87: looted = quick slots only
+bool apxPartsSwap(int player, Item* item, int part, uint32_t componentUid, std::string& why); // old part -> component item
+int apxPartsMakeCost(int slot, int material);                              // grams
+Item* apxPartsMake(int player, int slot, int material, int station, int modelId, std::string& why); // spends pouch grams
 // bench rows (U1 provider): one part's component name and its affix words
 const char* apxPartsPartName(const Item* item, int part);
 int apxPartsAffixCount(const Item* item, int part);

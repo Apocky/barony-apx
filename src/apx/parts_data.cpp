@@ -160,7 +160,7 @@ std::string loadDB(const std::string& dir, DB& db)
 	if ( db.materials.size() > 255 ) { return "materials.json: over 255 materials (part.material is a byte)"; }
 	for ( auto& r : f.arr("slots") )
 	{
-		Slot s; s.id = r.str("id"); s.role = roleOf(r.str("role")); s.volume = r.num("volume");
+		Slot s; s.id = r.str("id"); s.role = roleOf(r.str("role")); s.volume = r.num("volume"); s.quick = r.num("quick") != 0;
 		if ( s.id.empty() || db.slot(s.id) >= 0 ) { return "forms.json: missing or duplicate slot " + s.id; }
 		db.slots.push_back(s);
 	}

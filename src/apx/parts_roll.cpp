@@ -213,6 +213,7 @@ std::string toString(const ApxItemData& it)
 		snprintf(buf, sizeof(buf), "P%u.%u.%u.%u.%u.%u.%u.%u-%u-%u-%u;", p.slot, p.material, p.quality, p.rarity, p.integrity, p.maker,
 			p.nAffix, p.affix[0], p.affix[1], p.affix[2], p.affix[3]);
 		s += buf;
+		if ( p.model ) { s.back() = ':'; snprintf(buf, sizeof(buf), "m%u;", p.model); s += buf; } // C5 model id, append-only: absent = 0 (old strings unchanged)
 	}
 	char sum[24];
 	snprintf(sum, sizeof(sum), "c=%08x;", (uint32_t)(fnv1a64(s.data(), s.size()) & 0xffffffffu));
@@ -251,7 +252,12 @@ bool fromString(const std::string& s, ApxItemData& out)
 		unsigned long long f[11];
 		if ( !lit(c, "P") ) { return false; }
 		for ( int j = 0; j < 7; ++j ) { if ( !readU(c, 255, f[j]) || !lit(c, j < 6 ? "." : ".") ) { return false; } }
-		for ( int j = 0; j < 4; ++j ) { if ( !readU(c, 65535, f[7 + j]) || !lit(c, j < 3 ? "-" : ";") ) { return false; } }
+		for ( int j = 0; j < 4; ++j )
+		{
+			if ( !readU(c, 65535, f[7 + j]) ) { return false; }
+			if ( j == 3 && lit(c, ":m") ) { unsigned long long m; if ( !readU(c, 255, m) || m == 0 ) { return false; } p.model = (uint8_t)m; } // C5 model id
+			if ( !lit(c, j < 3 ? "-" : ";") ) { return false; }
+		}
 		p.slot = (uint8_t)f[0]; p.material = (uint8_t)f[1]; p.quality = (uint8_t)f[2]; p.rarity = (uint8_t)f[3];
 		p.integrity = (uint8_t)f[4]; p.maker = (uint8_t)f[5]; p.nAffix = (uint8_t)f[6];
 		if ( p.nAffix > 4 ) { return false; }
@@ -278,7 +284,7 @@ int pack(const ApxItemData& it, uint8_t* o)
 		const ApxPart& p = it.parts[k];
 		o[i++] = p.slot; o[i++] = p.material; o[i++] = p.quality; o[i++] = p.rarity; o[i++] = p.integrity; o[i++] = p.nAffix;
 		for ( int a = 0; a < 4; ++a ) { o[i++] = (uint8_t)p.affix[a]; o[i++] = (uint8_t)(p.affix[a] >> 8); }
-		o[i++] = p.maker; o[i++] = p.pad;
+		o[i++] = p.maker; o[i++] = p.model;
 	}
 	return i;
 }
@@ -301,7 +307,7 @@ bool unpack(const uint8_t* in, int len, ApxItemData& out)
 		ApxPart& p = it.parts[k];
 		p.slot = in[i++]; p.material = in[i++]; p.quality = in[i++]; p.rarity = in[i++]; p.integrity = in[i++]; p.nAffix = in[i++];
 		for ( int a = 0; a < 4; ++a ) { p.affix[a] = (uint16_t)(in[i] | (in[i + 1] << 8)); i += 2; }
-		p.maker = in[i++]; p.pad = in[i++];
+		p.maker = in[i++]; p.model = in[i++];
 		if ( p.nAffix > 4 ) { return false; }
 	}
 	out = it;
@@ -394,6 +400,92 @@ std::string componentName(const DB& db, const ApxPart& p)
 	const std::string mat = p.material < db.materials.size() ? cap(db.materials[p.material].id) : "?";
 	const std::string slot = p.slot < db.slots.size() ? cap(db.slots[p.slot].id) : "Part";
 	return pre + mat + " " + slot + suf;
+}
+
+} // namespace apxparts
+
+namespace apxparts {
+
+bool assemble(const DB& db, int family, const std::vector<ApxPart>& parts, uint32_t key, int ipCapValue, ApxItemData& out, std::string& why)
+{
+	if ( family < 0 || family >= (int)db.families.size() ) { why = "no such Form"; return false; }
+	const Family& f = db.families[(size_t)family];
+	if ( parts.size() > (size_t)APX_MAX_PARTS ) { why = "too many components"; return false; }
+	int minQ = 100;
+	for ( int req : f.required )
+	{
+		int n = 0;
+		for ( auto& p : parts ) { if ( p.slot == req ) { ++n; minQ = std::min<int>(minQ, p.quality); } }
+		if ( n != 1 ) { why = std::string(n ? "two components in slot " : "missing the required slot ") + db.slots[(size_t)req].id; return false; }
+	}
+	for ( auto& p : parts )
+	{
+		bool fits = false;
+		for ( int req : f.required ) { fits = fits || p.slot == req; }
+		for ( auto& o : f.optional )
+		{
+			if ( p.slot != o.slot ) { continue; }
+			if ( minQ < o.q ) { why = db.slots[(size_t)o.slot].id + " opens at quality " + std::to_string(o.q) + " (required parts reach " + std::to_string(minQ) + ")"; return false; }
+			fits = true;
+		}
+		if ( !fits ) { why = "a " + (p.slot < db.slots.size() ? db.slots[p.slot].id : std::string("?")) + " does not mount on " + f.id; return false; }
+		int same = 0;
+		for ( auto& q : parts ) { same += q.slot == p.slot; }
+		if ( same > 1 ) { why = "two components in slot " + db.slots[p.slot].id; return false; }
+	}
+	ApxItemData a{};
+	a.form = (uint32_t)family;
+	a.rollKey = key;
+	a.flags = FLAG_CRAFTED;
+	// required slots first, in the Form's order (the main part is parts[0], as a roll makes it)
+	for ( int req : f.required ) { for ( auto& p : parts ) { if ( p.slot == req ) { a.parts[a.nParts++] = p; } } }
+	for ( auto& p : parts ) { bool req = false; for ( int r : f.required ) { req = req || p.slot == r; } if ( !req ) { a.parts[a.nParts++] = p; } }
+	a.power = (uint16_t)itemPower(db, a);
+	if ( a.power > ipCapValue ) { why = "Item Power " + std::to_string(a.power) + " over this depth's cap " + std::to_string(ipCapValue); return false; }
+	out = a;
+	return true;
+}
+
+bool swapAllowed(const DB& db, const ApxItemData& it, int k)
+{
+	if ( isComponent(it) || k < 0 || k >= it.nParts ) { return false; }
+	const bool looted = (it.flags & FLAG_LOOTED) && !(it.flags & FLAG_CRAFTED);
+	return !looted || (it.parts[k].slot < db.slots.size() && db.slots[it.parts[k].slot].quick);
+}
+
+bool swapPart(const DB& db, ApxItemData& it, int k, const ApxPart& c, int ipCapValue, ApxPart& old, std::string& why)
+{
+	if ( !swapAllowed(db, it, k) ) { why = isComponent(it) ? "a component is not an assembly" : "a looted item swaps only its quick slots; break it for the rest"; return false; }
+	if ( c.slot != it.parts[k].slot ) { why = "the component does not fit that slot"; return false; }
+	ApxItemData t = it;
+	t.parts[k] = c;
+	t.power = (uint16_t)itemPower(db, t);
+	if ( t.power > ipCapValue ) { why = "Item Power " + std::to_string(t.power) + " over this depth's cap " + std::to_string(ipCapValue); return false; }
+	old = it.parts[k];
+	it = t;
+	return true;
+}
+
+int makeCostGrams(const DB& db, int slot, int material)
+{
+	ApxPart p{};
+	p.slot = (uint8_t)slot; p.material = (uint8_t)material;
+	return std::max(1, partMassGrams(db, p));
+}
+
+ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint8_t modelId, int* quality100)
+{
+	ApxPart p{};
+	p.slot = (uint8_t)slot; p.material = (uint8_t)material;
+	const int tier = material >= 0 && material < (int)db.materials.size() ? db.materials[(size_t)material].tier : 1;
+	const int q = std::min(100, 30 * std::min(9, tier) / 9 + std::max(0, std::min(30, stationPts)) + 20 + std::max(0, std::min(20, toolPts)));
+	if ( quality100 ) { *quality100 = q; }
+	p.quality = (uint8_t)std::max(1, q / 10);
+	p.rarity = q >= 70 ? 2 : q >= 50 ? 1 : 0;
+	p.nAffix = 0; // affix slots start empty; only INFUSE adds an affix (05b invariant 7)
+	p.integrity = 255;
+	p.model = modelId;
+	return p;
 }
 
 } // namespace apxparts
