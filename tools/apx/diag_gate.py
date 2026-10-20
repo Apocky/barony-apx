@@ -51,6 +51,26 @@ def launch(exe, tag, env_extra=None, seconds=25, args=ARGS):
     return {"run": run, "exit": code, "wall": time.monotonic() - t0}
 
 
+def launch_in(exe, run, env_extra, seconds=20):
+    """A second launch in the SAME working folder (the next-launch crash upload reads the previous run crash file)."""
+    env = os.environ.copy()
+    env["BARONY_DATADIR"] = str(STEAM)
+    env.update(env_extra)
+    t0 = time.monotonic()
+    p = subprocess.Popen([str(exe)] + list(ARGS), cwd=run, env=env)
+    try:
+        code = p.wait(seconds)
+    except subprocess.TimeoutExpired:
+        p.terminate()
+        try:
+            p.wait(10)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(10)
+        code = "stopped"
+    return {"run": run, "exit": code, "wall": time.monotonic() - t0}
+
+
 def rows(run):
     out = []
     for f in sorted((run / "diag").glob("session-*.jsonl")) if (run / "diag").exists() else []:

@@ -17,11 +17,13 @@
 //   err      a log line classified error/warning (first 3 per distinct message, then counted)
 //   errsum   every minute: top distinct messages with counts
 //   crash    exception code/address, module+offset, symbolized stack, the last events (also crash-*.txt and a .dmp)
+// Upload (D91): OFF until the player answers Yes to the first-launch dialog (see diag_upload.cpp for what is sent).
 // Caps: 12 MB per session (past it only err/spike/crash/sec-every-10s are written), 10 sessions kept,
 //       10 crash files kept. APX_DIAG=0 turns the module off (the control in the gate).
 #pragma once
 #include <cstdint>
 #include <string>
+#include <cstddef>
 
 struct _EXCEPTION_POINTERS;
 
@@ -47,6 +49,25 @@ namespace apxdiag
 	void plantedCrash();                          // APX_DIAG_PLANT=crash test hook (deliberate null write)
 	void plantedChecks(uint32_t tick);            // APX_DIAG_PLANT=stall|error|crash:<tick> test hooks
 	int selfTest();                               // pure-logic tests; returns the number of failures
+
+	std::string jsonEscape(const char* s);
+	void localRow(const char* type, const std::string& kv); // session file only, never uploaded
+	extern void (*consentPromptHook)();           // set by the menu code: shows the opt-in dialog when consent is unset
+	namespace upload
+	{
+		void init();                              // reads diag/consent.json (APX_DIAG_UPLOAD=yes|no overrides for tests)
+		int state();                              // 0 unset (nothing is sent), 1 yes, 2 no
+		void setConsent(bool yes);
+		const char* installIdStr();
+		const char* sessionIdStr();
+		const char* versionStr();
+		const char* shaStr();
+		void noteRow(const char* type, const std::string& row);
+		void tick();                              // once a second from frame(): queue session row / 5-minute event batch
+		void shutdownFlush();                     // at exit: queue the last batch, give the worker 4 s, spool the rest
+		void stats(uint64_t& ok, uint64_t& fail, uint64_t& drop, size_t& queued);
+		std::string scrub(const std::string& in); // <user> for profile path segments
+	}
 
 	struct Scope
 	{

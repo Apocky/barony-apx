@@ -66,7 +66,7 @@ namespace apxdiag
 		bool gGlDone = false;
 		uint64_t gErrTotal = 0, gWarnTotal = 0;
 		uint32_t gFrames = 0;
-		int gPlantCrashTick = -1, gPlantStallTick = -1, gPlantErrTick = -1;
+		int gPlantCrashTick = -1, gPlantStallTick = -1, gPlantErrTick = -1, gPlantExitTick = -1;
 
 		struct ErrKey { uint64_t count = 0; int level = 0; std::string sample; };
 		std::map<std::string, ErrKey> gErr;
@@ -169,8 +169,11 @@ namespace apxdiag
 			std::string r = head(type);
 			if ( !kv.empty() ) { r += ","; r += kv; }
 			r += "}";
-			std::lock_guard<std::mutex> lk(gMu);
-			writeRowLocked(r, urgent);
+			{
+				std::lock_guard<std::mutex> lk(gMu);
+				writeRowLocked(r, urgent);
+			}
+			upload::noteRow(type, r);
 		}
 
 		void mkdirOne(const std::string& d)
@@ -365,6 +368,19 @@ namespace apxdiag
 		}
 	}
 
+	std::string jsonEscape(const char* s) { return jesc(s); }
+	void localRow(const char* type, const std::string& kv)
+	{
+		// written to the session file only: never put into the upload buffers (the upload log must not upload itself)
+		if ( !on ) { return; }
+		std::string r = head(type);
+		if ( !kv.empty() ) { r += ","; r += kv; }
+		r += "}";
+		std::lock_guard<std::mutex> lk(gMu);
+		writeRowLocked(r, true);
+	}
+	void (*consentPromptHook)() = nullptr;
+
 	int64_t nowUs()
 	{
 #ifdef WINDOWS
@@ -480,7 +496,13 @@ namespace apxdiag
 		}
 		gLastFrameUs = t0;
 		if ( !gSecStartUs ) { gSecStartUs = t0; }
-		if ( t0 - gSecStartUs >= 1000000 ) { secondRow(t0); }
+		if ( t0 - gSecStartUs >= 1000000 )
+		{
+			secondRow(t0);
+			upload::tick();
+			static int promptCheck = 0;
+			if ( consentPromptHook && upload::state() == 0 && (++promptCheck % 3) == 0 ) { consentPromptHook(); }
+		}
 		plantedChecks(ticks);
 		gOverheadUs += nowUs() - t0;
 	}
@@ -534,7 +556,8 @@ namespace apxdiag
 		std::string path = gDir + "/crash-" + gSessionStamp + "-" + std::to_string(GetCurrentProcessId()) + ".txt";
 		FILE* f = fopen(path.c_str(), "wb");
 		std::string stackRow;
-		std::string text = std::string("barony-apx crash report (local file, never sent)\nwhy: ") + why + "\n";
+		std::string text = std::string("barony-apx crash report (a local file; it is only uploaded if the player opted in)\nwhy: ") + why + "\n";
+		text += std::string("sha: ") + upload::shaStr() + "\nversion: " + upload::versionStr() + "\nsession_id: " + upload::sessionIdStr() + "\n";
 		char b[256];
 		if ( e && e->ExceptionRecord )
 		{
@@ -638,6 +661,11 @@ namespace apxdiag
 			printlog("Error: planted diagnostic error %d (APX_DIAG_PLANT=error)", 42);
 			printlog("warning: planted diagnostic warning");
 		}
+		if ( gPlantExitTick >= 0 && (int)t >= gPlantExitTick )
+		{
+			gPlantExitTick = -1;
+			mainloop = 0; // a clean quit through the normal shutdown path (the exit-batch test)
+		}
 		if ( gPlantCrashTick >= 0 && (int)t >= gPlantCrashTick )
 		{
 			gPlantCrashTick = -1;
@@ -688,7 +716,9 @@ namespace apxdiag
 			if ( !strncmp(pl, "stall", 5) ) { gPlantStallTick = tk; }
 			else if ( !strncmp(pl, "error", 5) ) { gPlantErrTick = tk; }
 			else if ( !strncmp(pl, "crash", 5) ) { gPlantCrashTick = tk; }
+			else if ( !strncmp(pl, "exit", 4) ) { gPlantExitTick = tk; }
 		}
+		upload::init(); // before the session rows, so they are kept for the (opt-in) session upload
 		writeSessionRows(argc, argv);
 	}
 
@@ -696,6 +726,7 @@ namespace apxdiag
 	{
 		if ( !on ) { return; }
 		emit("exit", "\"clean\":1", true);
+		upload::shutdownFlush();
 		std::lock_guard<std::mutex> lk(gMu);
 		if ( gFile ) { fclose(gFile); gFile = nullptr; }
 	}
