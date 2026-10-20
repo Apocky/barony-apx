@@ -720,6 +720,37 @@ int main(int argc, char** argv)
 			join({ kv("makers", (int)db.makers.size()), kv("active", active), kv("stamped_ok", (int)stampedOk) + "/" + std::to_string(stamped), kv("unstamped_maker0", (int)unstampedOk) + "/" + std::to_string(unstamped),
 				kv("active_seen", activeSeen), kv("allowance", allowOk ? 1 : 0), kv("foreign_75pct_ip", ipOk ? 1 : 0), kv("mods", modsOk ? 1 : 0), kv("graft_75pct", graftOk ? 1 : 0) }));
 	}
+	{
+		// 05b invariant 3: affix ids are append-only. Every row of tests/apx/affix_ids.txt (frozen) still names the
+		// same pool and affix; new ids may only come after it. Control: the same check on a copy with two names swapped fails.
+		std::string ids = argv[2];
+		const size_t sl = ids.find_last_of("/\\");
+		ids = (sl == std::string::npos ? std::string() : ids.substr(0, sl + 1)) + "affix_ids.txt";
+		FILE* f = fopen(ids.c_str(), "rb");
+		std::vector<std::pair<std::string, std::string>> golden;
+		if ( f )
+		{
+			char line[256];
+			while ( fgets(line, sizeof(line), f) )
+			{
+				if ( line[0] == '#' ) { continue; }
+				std::string s(line);
+				while ( !s.empty() && (s.back() == '\n' || s.back() == '\r') ) { s.pop_back(); }
+				const size_t a = s.find('\t'), b = s.find('\t', a + 1);
+				if ( a == std::string::npos || b == std::string::npos ) { continue; }
+				golden.push_back({ s.substr(a + 1, b - a - 1), s.substr(b + 1) });
+			}
+			fclose(f);
+		}
+		auto poolOf = [&](const DB& d, size_t id) { for ( auto& p : d.pools ) { if ( id >= (size_t)p.firstId && id < (size_t)(p.firstId + p.count) ) { return p.key; } } return std::string("?"); };
+		auto check = [&](const DB& d) { int same = 0; for ( size_t i = 0; i < golden.size(); ++i ) { same += i < d.affixes.size() && d.affixes[i].name == golden[i].second && poolOf(d, i) == golden[i].first; } return same; };
+		const int same = check(db);
+		DB t = db;
+		if ( t.affixes.size() > 1 ) { std::swap(t.affixes[0].name, t.affixes[1].name); }
+		const int ctrl = check(t);
+		gate("affix_ids_append_only", !golden.empty() && same == (int)golden.size() && db.affixes.size() >= golden.size() && ctrl < same,
+			join({ kv("frozen", (int)golden.size()), kv("unchanged", same), kv("now", (int)db.affixes.size()), kv("control_swapped_unchanged", ctrl) }));
+	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;
 }

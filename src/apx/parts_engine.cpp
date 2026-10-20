@@ -28,6 +28,16 @@
 
 ApxPartsCounters apxPartsCounters;
 
+// An Item that was not made by newItem (a stack temporary someone did not zero) can carry garbage apx bytes. Every
+// entry point that receives an arbitrary Item checks this first; an insane one is vanilla here, counted, logged once.
+bool apxPartsSane(const Item* item)
+{
+	if ( !item ) { return false; }
+	if ( item->apx.nParts <= APX_MAX_PARTS ) { return true; }
+	if ( apxPartsCounters.apx_insane++ == 0 ) { printlog("apxparts: WARNING item type %d has garbage parts data (nParts %d): treated as vanilla (counter apx_insane)\n", (int)item->type, (int)item->apx.nParts); }
+	return false;
+}
+
 namespace {
 
 const char* const TYPE_NAMES[] = {
@@ -165,7 +175,7 @@ void apxPartsFromFloor(const Entity* entity, Item* item)
 
 int apxPartsNetAppend(const Item* item, uint8_t* packet, int len)
 {
-	if ( !item || !apxPartsEnabled() || item->apx.nParts == 0 ) { return len; }
+	if ( !apxPartsSane(item) || !apxPartsEnabled() || item->apx.nParts == 0 ) { return len; }
 	if ( getenv("APX_NET_STRIP") && *getenv("APX_NET_STRIP") == '1' ) { return len; } // control: the blob is not sent
 	if ( len + apxparts::PACK_MAX > NET_PACKET_SIZE ) { ++apxPartsCounters.net_blob_dropped; return len; }
 	++apxPartsCounters.net_blob_sent;
@@ -186,7 +196,7 @@ void apxPartsNetRead(Item* item, const uint8_t* packet, int len, int at)
 
 std::string apxPartsSaveString(const Item* item)
 {
-	if ( !item || !apxPartsEnabled() || item->apx.nParts == 0 ) { return ""; }
+	if ( !apxPartsSane(item) || !apxPartsEnabled() || item->apx.nParts == 0 ) { return ""; }
 	if ( getenv("APX_SAVE_STRIP") && *getenv("APX_SAVE_STRIP") == '1' ) { return ""; } // control: parts not written
 	return apxparts::toString(item->apx);
 }
@@ -672,14 +682,14 @@ Item* apxPartsExtractGraft(int player, Item* item, int station, std::string& why
 	printlog("apxparts: graft extracted player %d from form %s rarity %d -> %s\n", player, apxPartsFamilyName(src.form), (int)g.rarity, got ? got->getName() : "?");
 	return got;
 }
-int apxPartsSockets(const Item* item) { return item && item->apx.nParts && !apxparts::isComponent(item->apx) ? (item->apx.flags & 7) : 0; }
+int apxPartsSockets(const Item* item) { return apxPartsSane(item) && item->apx.nParts && !apxparts::isComponent(item->apx) ? (item->apx.flags & 7) : 0; }
 
 // ---------------------------------------------------------------- C9 makers in play (05b C9; ports ASSUMED, makers.json _mapping)
 namespace {
 bool makersOff() { const char* v = getenv("APX_MAKERS"); return v && *v == '0'; } // control: makers do nothing (gates must fail)
 apxparts::MakerMods modsOf(const Item* it, bool weapon)
 {
-	if ( !it || it->apx.nParts == 0 || apxparts::isComponent(it->apx) || !apxPartsEnabled() || makersOff() ) { return apxparts::MakerMods{}; }
+	if ( makersOff() || !apxPartsSane(it) || !apxPartsEnabled() || it->apx.nParts == 0 || apxparts::isComponent(it->apx) ) { return apxparts::MakerMods{}; }
 	return apxparts::makerMods(db(), it->apx, weapon);
 }
 bool lowHp(const Stat* s) { return s && s->MAXHP > 0 && s->HP * 100 <= s->MAXHP * 30; }
@@ -724,7 +734,7 @@ int apxPartsStatBonus(const Stat* s, int which)
 bool apxPartsNoWear(const Item* item) { return modsOf(item, true).noWear || modsOf(item, false).noWear; }
 int apxPartsMakerWeightPct(const Item* item) { return modsOf(item, false).weightPct; }
 int apxPartsMakerValuePct(const Item* item) { return modsOf(item, false).valuePct; }
-int apxPartsItemMaker(const Item* item) { return item && item->apx.nParts ? apxparts::itemMaker(db(), item->apx) : 0; }
+int apxPartsItemMaker(const Item* item) { return apxPartsSane(item) && item->apx.nParts ? apxparts::itemMaker(db(), item->apx) : 0; }
 const char* apxPartsMakerName(int maker) { return maker > 0 && maker <= (int)db().makers.size() ? db().makers[(size_t)maker - 1].name.c_str() : ""; }
 
 // trade lane (D73/D85): the pouch as a store of grams
@@ -769,7 +779,7 @@ const char* apxPartsComponentName(const Item* item)
 
 void apxPartsDecorateName(const Item* item, char* name, size_t size)
 {
-	if ( !item || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; } // unidentified: Barony's own name, no affix words
+	if ( !apxPartsSane(item) || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; } // unidentified: Barony's own name, no affix words
 	if ( getenv("APX_PARTS_NAMES") && *getenv("APX_PARTS_NAMES") == '0' ) { return; } // control: vanilla names
 	const std::string n = apxparts::assemblyName(db(), item->apx, name);
 	snprintf(name, size, "%s", n.c_str());
@@ -1625,7 +1635,20 @@ void apxPartsProbeTick()
 						worn ? 1 : 0, a0, a1, a0 * 123 / 100, ac0, ac1, dex0, dex1, mpGain, noWear ? 1 : 0, wearBack ? 1 : 0, aLow, aHigh, a0 * 120 / 100, off ? " [APX_MAKERS=0]" : "");
 					useItem(stats[0]->weapon, 0); useItem(stats[0]->helmet, 0); // unequip for the C12 phase
 				}
-				snprintf(buf, sizeof(buf), "{\"probe\":\"makers\",\"makers\":%d,\"detail\":\"%s\",\"pass\":%s}", (int)db().makers.size(), mb, ok ? "true" : "false");
+				// regression (C9 crash, game.cpp floor-value tally): an Item never zeroed carries garbage apx; every reader
+				// must treat it as vanilla and count it, never walk past ApxItemData::parts
+				const long long insane0 = apxPartsCounters.apx_insane;
+				{
+					Item junk;
+					memset(&junk, 0xAB, sizeof(junk));
+					junk.type = IRON_SWORD; junk.status = SERVICABLE; junk.beatitude = 0; junk.count = 1; junk.appearance = 7; junk.identified = true;
+					volatile int sink = junk.sellValue(0) + junk.getWeight() + junk.getGoldValue() + (int)strlen(junk.getName()) + apxPartsSockets(&junk) + apxPartsItemMaker(&junk)
+						+ (apxPartsNoWear(&junk) ? 1 : 0) + (int)apxPartsSaveString(&junk).size();
+					(void)sink;
+				}
+				const bool junkOk = apxPartsCounters.apx_insane > insane0;
+				ok = ok && junkOk;
+				snprintf(buf, sizeof(buf), "{\"probe\":\"makers\",\"makers\":%d,\"detail\":\"%s\",\"garbage_item_treated_vanilla\":%d,\"pass\":%s}", (int)db().makers.size(), mb, junkOk ? 1 : 0, ok ? "true" : "false");
 				probeRow(buf);
 				makersPass = ok;
 			}

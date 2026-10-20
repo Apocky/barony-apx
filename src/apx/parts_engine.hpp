@@ -11,11 +11,12 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, bio_kills = 0, maker_mp_spent = 0, maker_mp_restored = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, bio_kills = 0, apx_insane = 0, maker_mp_spent = 0, maker_mp_restored = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
 bool apxPartsEnabled();                                  // env APX_PARTS (default 1)
+bool apxPartsSane(const Item* item);                     // apx.nParts <= APX_MAX_PARTS; else vanilla here (counted, logged once)
 void apxPartsLevelStart();                               // per-floor roll index back to 0 (end of assignActions)
 void apxPartsBind(Item* item, int source, int depthOverride = 0); // roll the parts of a loot item (weapon, armour, tool); no-op when bound; depthOverride: selftest forced roll
 void apxPartsBindInventory(void* list, int source);      // every item of a list_t (chest or monster inventory)
