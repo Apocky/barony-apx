@@ -11,3 +11,9 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 06:33 -07:00 F2: rebased (801cf254), apx-gen 7057f3d9, gates PASS on db9ca6c8; merge-ready pending Apocky/parent OK.
 
+## 2026-10-19 22:32 -07:00 D93 Phase C0 (apx::in input lane)
+In flight: Building Phase C0 (`src/apx/in/`, `data/apx/input/actions.json`, `data/apx/input/bindings.json`, `tests/apx/test_in.cpp`, engine glue in `src/game.cpp`, `src/apx/qadriver.*`) on branch `apx/input` in `C:\Users\Apocky\source\repos\barony-apx-input` (from `951f805e`). Resume: run offline `test_in.cpp`, then `pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache` and C0 gate to `C:\Apocrypha\diagnostics\input\`. Next: write `src/apx/in/in.hpp`, `src/apx/ui/ui.hpp` stub, `data/apx/input/*.json`, and `tests/apx/test_in.cpp`.
+
+
+
+## 2026-10-20 D93 C0 DONE: apx::in on apx/input, gate PASS (c0-gate-2). Nothing in flight; next lane step M1 after merge.
