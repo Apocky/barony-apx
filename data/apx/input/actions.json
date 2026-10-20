@@ -1,0 +1,170 @@
+{
+ "version": 1,
+ "actions": [
+  {
+   "name": "Attack",
+   "kind": "button",
+   "note": "melee swing / fire; hold to charge"
+  },
+  {
+   "name": "Block",
+   "kind": "button",
+   "note": "raise guard"
+  },
+  {
+   "name": "Dodge",
+   "kind": "button",
+   "note": "dodge roll"
+  },
+  {
+   "name": "Kick",
+   "kind": "button",
+   "note": "kick"
+  },
+  {
+   "name": "Use",
+   "kind": "button",
+   "note": "interact with the crosshair target"
+  },
+  {
+   "name": "Cast",
+   "kind": "button",
+   "note": "cast the chosen spell"
+  },
+  {
+   "name": "Sneak",
+   "kind": "button",
+   "note": "sneak"
+  },
+  {
+   "name": "Sprint",
+   "kind": "button",
+   "note": "sprint (SprintMod: Left Shift)"
+  },
+  {
+   "name": "Inventory",
+   "kind": "button",
+   "note": "open the inventory window"
+  },
+  {
+   "name": "Map",
+   "kind": "button",
+   "note": "open the map"
+  },
+  {
+   "name": "Menu",
+   "kind": "button",
+   "note": "game menu / pause"
+  },
+  {
+   "name": "Hotbar1",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar2",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar3",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar4",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar5",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar6",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar7",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar8",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar9",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "Hotbar10",
+   "kind": "button",
+   "note": "hotbar slot"
+  },
+  {
+   "name": "HotbarNext",
+   "kind": "button",
+   "note": "next hotbar slot"
+  },
+  {
+   "name": "HotbarPrev",
+   "kind": "button",
+   "note": "previous hotbar slot"
+  },
+  {
+   "name": "Chat",
+   "kind": "button",
+   "note": "open chat"
+  },
+  {
+   "name": "Console",
+   "kind": "button",
+   "note": "open the console"
+  },
+  {
+   "name": "UiAccept",
+   "kind": "button",
+   "note": "UI accept"
+  },
+  {
+   "name": "UiBack",
+   "kind": "button",
+   "note": "UI back"
+  },
+  {
+   "name": "UiNext",
+   "kind": "button",
+   "note": "UI next"
+  },
+  {
+   "name": "UiPrev",
+   "kind": "button",
+   "note": "UI previous"
+  },
+  {
+   "name": "MoveX",
+   "kind": "axis",
+   "note": "-1 left .. +1 right"
+  },
+  {
+   "name": "MoveY",
+   "kind": "axis",
+   "note": "-1 back .. +1 forward"
+  },
+  {
+   "name": "LookX",
+   "kind": "axis",
+   "note": "summed look, mouse px * sensitivity + stick per tick"
+  },
+  {
+   "name": "LookY",
+   "kind": "axis",
+   "note": "summed look"
+  }
+ ]
+}

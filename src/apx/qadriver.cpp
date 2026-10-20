@@ -1,5 +1,7 @@
 // apx/qadriver.cpp -- see qadriver.hpp.
 #include "qadriver.hpp"
+#include "in/in.hpp"
+#include "in/in_glue.hpp"
 #include "../main.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
@@ -28,7 +30,8 @@ namespace qa
 		std::string g_shot;               // pending screenshot path
 		std::string g_lastCmd;
 		int g_x = 0, g_y = 0;             // the game's pointer as the driver last placed it
-		struct Timed { Uint32 at; SDL_Event ev; };
+		struct Timed { Uint32 at; SDL_Event ev; bool useRaw = false; apx::in::Raw raw; };
+		Uint32 g_frames = 0;              // main-loop passes since arming (the gate derives the measured frame rate from it)
 		std::deque<Timed> g_timed;        // key-ups and button-ups due later
 
 		Uint32 windowId() { return screen ? SDL_GetWindowID(screen) : 0; }
@@ -60,7 +63,42 @@ namespace qa
 			e.button.clicks = 1; e.button.x = x; e.button.y = y;
 			SDL_PushEvent(&e);
 		}
-		void later(Uint32 ms, const SDL_Event& e) { g_timed.push_back({ SDL_GetTicks() + ms, e }); }
+		void later(Uint32 ms, const SDL_Event& e) { Timed t; t.at = SDL_GetTicks() + ms; t.ev = e; g_timed.push_back(t); }
+		void laterRaw(Uint32 ms, const apx::in::Raw& r) { Timed t; t.at = SDL_GetTicks() + ms; SDL_zero(t.ev); t.useRaw = true; t.raw = r; g_timed.push_back(t); }
+
+		// act <action> <ms> | press | release: a press of a named action. Into apx::in's own queue when it owns play input;
+		// as raw SDL events when it does not (APX_INPUT_OLD=1, the control) or for sdlact. Both events are scheduled in
+		// real time: a press shorter than the time to the next frame lands in ONE event batch, as a short real press does.
+		void runAct(std::istringstream& in, bool forceSdl)
+		{
+			std::string name, what; in >> name >> what;
+			apx::in::Raw d, u;
+			if ( !apx::in::resolveAction(name.c_str(), &d, &u) ) { printlog("[apx-qa] act: no key or mouse binding for '%s'", name.c_str()); return; }
+			const bool viaIn = apx::in::glue::active() && !forceSdl;
+			int ms = 0; const bool press = what == "press", release = what == "release";
+			if ( !press && !release ) { ms = atoi(what.c_str()); }
+			auto sdlEv = [&](const apx::in::Raw& r)
+			{
+				SDL_Event e; SDL_zero(e);
+				if ( r.type == apx::in::R_KeyDown || r.type == apx::in::R_KeyUp )
+				{
+					e.type = r.type == apx::in::R_KeyDown ? SDL_KEYDOWN : SDL_KEYUP; e.key.windowID = windowId();
+					e.key.state = r.type == apx::in::R_KeyDown ? SDL_PRESSED : SDL_RELEASED;
+					e.key.keysym.scancode = (SDL_Scancode)r.code; e.key.keysym.sym = SDL_GetKeyFromScancode((SDL_Scancode)r.code);
+				}
+				else
+				{
+					e.type = r.type == apx::in::R_MouseDown ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP; e.button.windowID = windowId();
+					e.button.button = (Uint8)r.code; e.button.state = r.type == apx::in::R_MouseDown ? SDL_PRESSED : SDL_RELEASED;
+					e.button.clicks = 1; e.button.x = g_x; e.button.y = g_y;
+				}
+				return e;
+			};
+			auto sched = [&](Uint32 at, const apx::in::Raw& r) { if ( viaIn ) { laterRaw(at, r); } else { later(at, sdlEv(r)); } };
+			if ( !release ) { sched(1, d); }
+			if ( !press ) { sched(1 + (Uint32)ms, u); }
+			g_waitUntil = SDL_GetTicks() + (Uint32)(press || release ? 0 : ms) + 30;
+		}
 
 		void writeStatus()
 		{
@@ -74,6 +112,11 @@ namespace qa
 				me ? me->x / 16.0 : -1.0, me ? me->y / 16.0 : -1.0, me ? me->yaw : 0.0,
 				g_x, g_y, intro ? 1 : 0,
 				(players[0] && players[0]->shootmode == false) ? 1 : 0);
+			char ib[1200]; apx::in::glue::statusLines(ib, (int)sizeof(ib));
+			fputs(ib, f);
+			fprintf(f, "frames %u
+wall_ms %u
+", (unsigned)g_frames, (unsigned)SDL_GetTicks());
 			fclose(f);
 		}
 
@@ -95,6 +138,8 @@ namespace qa
 				later((Uint32)ms, up);
 				g_waitUntil = SDL_GetTicks() + (Uint32)ms + 30;
 			}
+			else if ( op == "act" ) { runAct(in, false); }
+			else if ( op == "sdlact" ) { runAct(in, true); }
 			else if ( op == "move" ) { in >> g_x >> g_y; pushMotion(g_x, g_y, 0, 0); g_waitUntil = SDL_GetTicks() + 30; }
 			else if ( op == "click" || op == "rclick" )
 			{
@@ -183,7 +228,12 @@ namespace qa
 	{
 		if ( !g_on ) { return; }
 		const Uint32 now = SDL_GetTicks();
-		while ( !g_timed.empty() && SDL_TICKS_PASSED(now, g_timed.front().at) ) { SDL_PushEvent(&g_timed.front().ev); g_timed.pop_front(); }
+		++g_frames;
+		while ( !g_timed.empty() && SDL_TICKS_PASSED(now, g_timed.front().at) )
+		{
+			if ( g_timed.front().useRaw ) { apx::in::event(g_timed.front().raw); } else { SDL_PushEvent(&g_timed.front().ev); }
+			g_timed.pop_front();
+		}
 		if ( !g_shot.empty() || !SDL_TICKS_PASSED(now, g_waitUntil) ) { return; }
 		std::ifstream f(g_dir + "/cmd.txt");
 		std::string line; size_t n = 0;
