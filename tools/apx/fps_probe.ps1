@@ -7,7 +7,7 @@
 # waits until no slot, lock or Barony remains, holds C:\Apocrypha\locks\barony\fps-probe.LOCK.
 #
 # Usage: pwsh -NoProfile -File tools\apx\fps_probe.ps1 -Arms "name|exe|extra args|K=V,K2=V2;name2|..." [-Repeat 1]
-param([Parameter(Mandatory)][string]$Arms, [int]$Repeat = 1, [string]$Tag = 'fps')
+param([Parameter(Mandatory)][string]$Arms, [int]$Repeat = 1, [string]$Tag = 'fps', [string]$Size = '1280x720')
 $out = 'C:\Apocrypha\diagnostics\barony-fps'; New-Item -ItemType Directory -Force $out | Out-Null
 $want = 'C:\Apocrypha\locks\barony-want\fps-probe.WANT'; $lock = 'C:\Apocrypha\locks\barony\fps-probe.LOCK'
 Set-Content $want "fps probe $(Get-Date -Format o)"
@@ -24,9 +24,10 @@ try {
                 $dir = Join-Path $out ("runs\{0}-{1}-{2}-{3}" -f $Tag, $name, $floor.n, $r)
                 if (Test-Path $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
                 New-Item -ItemType Directory -Force $dir | Out-Null
+                $appid = Join-Path (Split-Path $exe) 'steam_appid.txt'; if (Test-Path $appid) { Copy-Item $appid $dir } # Steam builds read it from the working folder
                 $kvs = @($envs -split ',' | Where-Object { $_ })
                 foreach ($kv in $kvs) { $k, $v = $kv -split '=', 2; [Environment]::SetEnvironmentVariable($k, $v) }
-                $p = Start-Process -FilePath $exe -WorkingDirectory $dir -PassThru -ArgumentList "-windowed -size=1280x720 -quickstart=barbarian $($floor.a) $extra -apxfpsprobe"
+                $p = Start-Process -FilePath $exe -WorkingDirectory $dir -PassThru -ArgumentList "-windowed -size=$Size -quickstart=barbarian $($floor.a) $extra -apxfpsprobe"
                 if (-not $p.WaitForExit(180000)) { $p.Kill() }
                 foreach ($kv in $kvs) { [Environment]::SetEnvironmentVariable(($kv -split '=', 2)[0], $null) }
                 $log = Get-Content "$dir\log.txt" -EA SilentlyContinue
@@ -34,7 +35,7 @@ try {
                 foreach ($line in $log) {
                     if ($line -match '\[apx-fps\] phase (\w+)') { $phase = $matches[1] }
                     if ($line -match 'apxfps: frames (\d+) seconds ([\d.]+) frame-ms p50 ([\d.]+) p99 ([\d.]+) max ([\d.]+) fps-p50 ([\d.]+) fps-p99 ([\d.]+) map (\d+)x(\d+)') {
-                        $row = [ordered]@{ ts = (Get-Date -Format o); tag = $Tag; arm = $name; floor = $floor.n; phase = $phase; run = $r; env = $envs; args = $extra
+                        $row = [ordered]@{ ts = (Get-Date -Format o); tag = $Tag; size = $Size; arm = $name; floor = $floor.n; phase = $phase; run = $r; env = $envs; args = $extra
                             frames = [int]$matches[1]; ms_p50 = [double]$matches[3]; ms_p99 = [double]$matches[4]; ms_max = [double]$matches[5]
                             fps_p50 = [double]$matches[6]; fps_p99 = [double]$matches[7]; map = "$($matches[8])x$($matches[9])" }
                         Add-Content (Join-Path $out 'runs.jsonl') ($row | ConvertTo-Json -Compress)
