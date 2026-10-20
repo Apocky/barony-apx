@@ -17,6 +17,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import parity_f0 as pf  # noqa: E402
+import apx_locks  # noqa: E402  D70 slots
 
 ROOT = HERE.parents[1]
 pf.LOCK_NAME = "barony-props-qa.LOCK"
@@ -30,18 +31,19 @@ def main():
     ap.add_argument("--script", required=True)
     ap.add_argument("--timeout", type=float, default=240)
     ap.add_argument("--prop", default="1", help="APX_PROPS_QA: chair, table, bed, cage, or 1 (all)")
+    ap.add_argument("--seed", type=int, default=101, help="-apxmapseed (the floor-1 generator seed)")
+    ap.add_argument("--axe", action="store_true", help="equip an iron axe at setup (swing tests)")
     a = ap.parse_args()
-    run = OUT / f"{datetime.datetime.now():%Y%m%d-%H%M%S}-{Path(a.script).stem}-{a.prop}"
+    run = OUT / f"{datetime.datetime.now():%Y%m%d-%H%M%S}-{Path(a.script).stem}-{a.prop.replace(":", "_")}"
     run.mkdir(parents=True)
     qa = run / "qa"
     qa.mkdir()
     shutil.copy(a.script, qa / "cmd.txt")
-    env = dict(os.environ, BARONY_DATADIR=DATADIR, APX_PROPS_QA=a.prop, APX_HOLLOW_DIR=str(ROOT / "data/apx/hollow"))
-    pf.wait_until_no_barony(4 * 3600, [pf.SHARED_LOCK_DIR])
-    pf.hold_lock([pf.SHARED_LOCK_DIR], True)
+    env = dict(os.environ, **({"APX_PROPS_QA_AXE": "1"} if a.axe else {}), BARONY_DATADIR=DATADIR, APX_PROPS_QA=a.prop, APX_HOLLOW_DIR=str(ROOT / "data/apx/hollow"))
+    slot = apx_locks.take_slot("props_qa", 4 * 3600, log=lambda m: print(m, flush=True))  # D70: a slot, other lanes' games run beside us
     try:
         t0 = time.monotonic()
-        p = subprocess.Popen([str(Path(a.exe).resolve()), "-windowed", "-quickstart=barbarian", "-apxfloor=1", "-apxmapseed=101", f"-apxqa={qa}"],
+        p = subprocess.Popen([str(Path(a.exe).resolve()), "-windowed", "-quickstart=barbarian", "-apxfloor=1", f"-apxmapseed={a.seed}", f"-apxqa={qa}"],
                              cwd=run, env=env)
         try:
             p.wait(a.timeout)
@@ -49,11 +51,11 @@ def main():
         except subprocess.TimeoutExpired:
             ended = pf.stop(p)
     finally:
-        pf.hold_lock([pf.SHARED_LOCK_DIR], False)
+        slot.unlink(missing_ok=True)
     log = (run / "log.txt").read_text(errors="replace") if (run / "log.txt").exists() else ""
     print(f"run {run} ended={ended} secs={time.monotonic() - t0:.1f}")
     for line in log.splitlines():
-        if "[apx-props]" in line or "apxqa" in line.lower() or "[apx-qa]" in line:
+        if "[apx-props]" in line or "[apx-interact]" in line or "apxqa" in line.lower() or "[apx-qa]" in line:
             print("  " + line.strip()[:220])
     for s in sorted(qa.glob("*.png")):
         print("  shot", s)

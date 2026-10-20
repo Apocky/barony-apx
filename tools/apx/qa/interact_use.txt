@@ -1,0 +1,17 @@
+# apx::interact gate: the prop is straight ahead (APX_PROPS_QA=<name>[:centre distance]); the prompt shows, Use (real input
+# through apx::in, action Use) acts, a second Use shows the repeat behaviour
+wait 6000
+console /enablecheats
+wait 300
+console /killmonsters
+wait 800
+console /killmonsters
+wait 800
+shot a_prompt
+act Use 120
+wait 900
+shot b_used
+act Use 120
+wait 900
+shot c_used2
+quit

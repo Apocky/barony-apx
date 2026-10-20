@@ -1,6 +1,7 @@
 // apx/ui/ui.cpp -- see ui.hpp (D92 P0).
 #include "ui.hpp"
 #include "inventory.hpp"
+#include "../interact/interact.hpp"
 #include "../headless.hpp"
 #include "../../main.hpp"
 #include "../../game.hpp"
@@ -255,6 +256,7 @@ namespace ui
 		g_cur.clear();
 		if ( ImGui_t::isInit ) { ImGui_t::drawDevMenu(); }
 		inv::draw();
+		interact::draw(); // apx::interact: the Use prompt of the prop under the crosshair
 		// a focused text field of ours needs SDL text input (Barony keeps it off outside chat/console)
 		if ( io.WantTextInput && !SDL_IsTextInputActive() ) { SDL_StartTextInput(); g_textStarted = true; }
 		else if ( !io.WantTextInput && g_textStarted ) { SDL_StopTextInput(); g_textStarted = false; }

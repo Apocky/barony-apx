@@ -2,6 +2,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/lua_layer.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/trade_glue.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/interact/interact.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/init.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/collision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/light.cpp"
