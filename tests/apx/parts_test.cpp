@@ -111,6 +111,7 @@ int main(int argc, char** argv)
 			p.slot = (uint8_t)rr.next(); p.material = (uint8_t)rr.next(); p.quality = (uint8_t)rr.next(); p.rarity = (uint8_t)rr.next();
 			p.integrity = (uint8_t)rr.next(); p.maker = (uint8_t)rr.next(); p.nAffix = (uint8_t)rr.below(5);
 			for ( int a = 0; a < 4; ++a ) { p.affix[a] = (uint16_t)rr.next(); }
+			p.look = rr.below(3) ? 0u : ((uint32_t)rr.next() | 1u); // BX1 looks: saved (v2 strings) and packed (v2 blobs)
 		}
 	};
 	{
@@ -155,10 +156,28 @@ int main(int argc, char** argv)
 		{
 			ApxItemData a, b{};
 			randomItem(a);
-			for ( int k = 0; k < a.nParts; ++k ) { a.parts[k].model = (uint8_t)(n % 3 ? 0 : 1 + n % 200); /* C5 model ids ride the blob */ }
+			for ( int k = 0; k < a.nParts; ++k ) { a.parts[k].look = n % 3 ? 0u : 0x9E3779B9u * (uint32_t)(n + 1) | 1u; /* BX1 looks ride the blob */ }
 			const int L = pack(a, buf);
 			maxLen = std::max(maxLen, L);
 			ok += unpack(buf, L, b) && !memcmp(&a, &b, sizeof(a));
+		}
+		{
+			// v1 blobs (16-byte rows, before BX1) still unpack, look 0
+			int v1ok = 0;
+			for ( int n = 0; n < 1000; ++n )
+			{
+				ApxItemData a, b{};
+				do { randomItem(a); } while ( a.nParts == 0 );
+				for ( int k = 0; k < a.nParts; ++k ) { a.parts[k].look = 0; }
+				uint8_t v2b[PACK_MAX + 8], v1b[PACK_MAX + 8];
+				const int L = pack(a, v2b);
+				int j = 0;
+				for ( int i = 0; i < 13; ++i ) { v1b[j++] = v2b[i]; }
+				v1b[0] = 1;
+				for ( int k = 0; k < a.nParts; ++k ) { for ( int i = 0; i < PACK_ROW_V1; ++i ) { v1b[j++] = v2b[13 + k * PACK_ROW + i]; } }
+				v1ok += L == 13 + PACK_ROW * a.nParts && unpack(v1b, j, b) && !memcmp(&a, &b, sizeof(a));
+			}
+			gate("pack_v1_compat", v1ok == 1000, kv("v1_blobs_read", v1ok));
 		}
 		gate("pack_roundtrip", ok == 100000 && maxLen <= PACK_MAX, join({ kv("items", 100000), kv("equal", ok), kv("max_len", maxLen), kv("pack_max", PACK_MAX) }));
 		long long shortAccepted = 0, shorts = 0;
@@ -431,19 +450,19 @@ int main(int argc, char** argv)
 				for ( int stp = 0; stp <= 30; stp += 15 ) { for ( int tool = 0; tool <= 20; tool += 10 )
 				{
 					int q = 0;
-					const ApxPart mp = makePart(db, (int)sl, (int)m, stp, tool, 7, &q);
+					const ApxPart mp = makePart(db, (int)sl, (int)m, stp, tool, 0xC0FFEE07u, &q);
 					const int want = 30 * std::min(9, db.materials[m].tier) / 9 + stp + 20 + tool;
 					const int wantR = want >= 70 ? 2 : want >= 50 ? 1 : 0;
 					++makes;
 					rare += mp.rarity == 2;
-					makeOk += q == want && mp.rarity == wantR && mp.nAffix == 0 && mp.model == 7 && mp.integrity == 255 && mp.quality == std::max(1, want / 10)
+					makeOk += q == want && mp.rarity == wantR && mp.nAffix == 0 && mp.look == 0xC0FFEE07u && mp.integrity == 255 && mp.quality == std::max(1, want / 10)
 						&& makeCostGrams(db, (int)sl, (int)m) == std::max(1, partMassGrams(db, mp));
 				} }
 			}
 		}
-		ApxItemData mi = componentOf(db, makePart(db, 0, 0, 30, 20, 7), 3, FLAG_CRAFTED), mo{};
+		ApxItemData mi = componentOf(db, makePart(db, 0, 0, 30, 20, 0xC0FFEE07u), 3, FLAG_CRAFTED), mo{};
 		const std::string ms = toString(mi);
-		const bool modelSaved = fromString(ms, mo) && !memcmp(&mi, &mo, sizeof(mi)) && mo.parts[0].model == 7;
+		const bool modelSaved = fromString(ms, mo) && !memcmp(&mi, &mo, sizeof(mi)) && mo.parts[0].look == 0xC0FFEE07u;
 		gate("C5_make", makes > 0 && makeOk == makes && rare > 0 && modelSaved, join({ kv("makes", makes), kv("ok", makeOk), kv("rare_at_masterwork", rare), kv("model_id_saved", modelSaved ? 1 : 0), "\"save_string\":\"" + ms + "\"" }));
 	}
 	{
@@ -458,6 +477,44 @@ int main(int argc, char** argv)
 			if ( it.parts[b].rarity >= 3 ) { ++proper; properOk += n.find("'s ") != std::string::npos && n.find("longsword") == std::string::npos; if ( ex2.empty() ) { ex2 = n; } }
 			else { ++plain; properOk += 0; plainOk += n.find("longsword") != std::string::npos && (it.parts[b].nAffix == 0 ? n == "longsword" : n.size() > 9); if ( ex1.empty() && it.parts[b].nAffix ) { ex1 = n; } }
 		}
+		// unidentified (05b section 4): no affix words, no proper name
+		int hid = 0, hidOk = 0;
+		for ( uint32_t i = 0; i < 3000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 29, 1 + i % 40, 0, i, it, c);
+			for ( int k = 0; k < it.nParts; ++k )
+			{
+				const ApxPart& q = it.parts[k];
+				const std::string want = componentName(db, ApxPart{ q.slot, q.material, 0, 0, 0, 0, { 0, 0, 0, 0 }, 0, 0, 0 });
+				++hid; hidOk += componentName(db, q, false) == want && want.find(" of ") == std::string::npos;
+			}
+			hidOk += 0;
+			if ( it.nParts ) { ++hid; hidOk += assemblyName(db, it, "longsword", false) == "longsword"; }
+		}
+		gate("C_name_unidentified", hid > 0 && hidOk == hid, kv("names_hidden", hidOk) + "/" + std::to_string(hid));
+		// STRIP (05b 5.4, D87): crafted gives every part and the item is gone; looted gives only optional quick slots
+		int crN = 0, crOk = 0, ltN = 0, ltOk = 0, ltRefused = 0;
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 31, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			const bool looted = i % 2;
+			it.flags = (uint8_t)((it.flags & 0x3f) | (looted ? FLAG_LOOTED : FLAG_CRAFTED));
+			ApxItemData t = it; std::vector<ApxPart> rem; bool consumed = false; std::string why;
+			const bool ok = stripParts(db, t, rem, consumed, why);
+			if ( !looted ) { ++crN; crOk += ok && consumed && (int)rem.size() == it.nParts; continue; }
+			int quickOpt = 0;
+			const Family& f = db.families[it.form];
+			for ( int k = 0; k < it.nParts; ++k )
+			{
+				bool req = false; for ( int r : f.required ) { req = req || r == it.parts[k].slot; }
+				quickOpt += db.slots[it.parts[k].slot].quick && !req;
+			}
+			++ltN;
+			if ( !quickOpt ) { ltRefused += !ok; ltOk += !ok; }
+			else { ltOk += ok && !consumed && (int)rem.size() == quickOpt && t.nParts == it.nParts - quickOpt; }
+		}
+		gate("C4_strip", crN > 0 && crOk == crN && ltN > 0 && ltOk == ltN, join({ kv("crafted_all_parts", crOk) + "/" + std::to_string(crN), kv("looted_ok", ltOk) + "/" + std::to_string(ltN), kv("looted_refused_no_quick", ltRefused) }));
 		gate("C_assembly_name", plain > 0 && plainOk == plain && proper > 0 && properOk == proper, join({ kv("plain_ok", plainOk) + "/" + std::to_string(plain), kv("proper_ok", properOk) + "/" + std::to_string(proper), "\"examples\":[\"" + ex1 + "\",\"" + ex2 + "\"]" }));
 	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
