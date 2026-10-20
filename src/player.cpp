@@ -28,6 +28,7 @@
 #include "lobbies.hpp"
 #include "ui/MainMenu.hpp"
 #include "apx/props.hpp"
+#include "apx/interact/interact.hpp"
 
 #ifdef NINTENDO
 #include "nintendo/baronynx.hpp"
@@ -4886,6 +4887,7 @@ void Player::WorldUI_t::handleTooltips()
 				{
 					continue;
 				}
+				if ( apx::interact::suppressTooltip(parent) ) { continue; } // apx D93: props have our prompt, not Barony's
 				real_t newDist = players[player]->worldUI.tooltipInRange(*tooltip);
 				if ( newDist > 0.01 )
 				{

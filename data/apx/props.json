@@ -14,7 +14,8 @@
     "heal_every": 25,
     "hunger": 30,
     "encounter_pm": 100,
-    "encounter_max": 3
+    "encounter_max": 3,
+    "reach": 28
    },
    "outcomes": []
   },
@@ -31,7 +32,8 @@
     "heal_every": 25,
     "hunger": 30,
     "encounter_pm": 100,
-    "encounter_max": 3
+    "encounter_max": 3,
+    "reach": 28
    },
    "outcomes": []
   },
@@ -44,7 +46,8 @@
    "verb": "sit",
    "label": "Sit",
    "params": {
-    "regen_mult": 3
+    "regen_mult": 3,
+    "reach": 28
    },
    "outcomes": []
   },
@@ -56,7 +59,9 @@
    },
    "verb": "bench",
    "label": "Field bench: salvage, repair",
-   "params": {},
+   "params": {
+    "reach": 28
+   },
    "outcomes": []
   },
   {
@@ -67,7 +72,9 @@
    },
    "verb": "read",
    "label": "Read",
-   "params": {},
+   "params": {
+    "reach": 28
+   },
    "outcomes": []
   },
   {
@@ -77,8 +84,10 @@
     "type": "hanging_cage_skel"
    },
    "verb": "break",
-   "label": "",
-   "params": {},
+   "label": "Rattle the cage",
+   "params": {
+    "reach": 30
+   },
    "outcomes": [
     {
      "pm": 250,
@@ -109,8 +118,10 @@
     "type": "hanging_cage_empty"
    },
    "verb": "break",
-   "label": "",
-   "params": {},
+   "label": "Rattle the cage",
+   "params": {
+    "reach": 30
+   },
    "outcomes": [
     {
      "pm": 400,
@@ -209,6 +220,50 @@
      "spawn": null,
      "items": [],
      "yield": "pouch:oak:2000"
+    }
+   ]
+  },
+  {
+   "id": "candelabra",
+   "match": {
+    "behavior": "collider",
+    "type": "candelabra"
+   },
+   "verb": "snuff",
+   "label": "Snuff the candles",
+   "params": {
+    "reach": 30
+   },
+   "outcomes": []
+  },
+  {
+   "id": "iron_maiden",
+   "match": {
+    "behavior": "collider",
+    "type": "iron_maiden"
+   },
+   "verb": "search",
+   "label": "Search",
+   "params": {
+    "reach": 32
+   },
+   "outcomes": [
+    {
+     "pm": 400,
+     "spawn": null,
+     "items": [
+      "TOOL_METAL_SCRAP"
+     ],
+     "yield": ""
+    },
+    {
+     "pm": 200,
+     "spawn": null,
+     "items": [
+      "GEM_GLASS",
+      "RING_ADORNMENT"
+     ],
+     "yield": ""
     }
    ]
   }
