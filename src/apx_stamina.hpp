@@ -647,7 +647,7 @@ namespace apx
 				s.blockStartValue = s.value;
 				s.blockDrained = 0.0;
 			}
-			spend(player, kBlockDrainPerSecond * perTick, 1);
+			spend(player, kBlockDrainPerSecond * perTick * (apx::combat::bracing(player) ? 0.5 : 1.0), 1); // D64: bracing with a staff is cheaper
 		}
 		else if ( s.blocking )
 		{

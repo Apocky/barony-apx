@@ -41,7 +41,8 @@ def script(swings, procs_only=False):
         return "\n".join(L + ["wait 500", "quit"]) + "\n"
     for n in range(3, 15):                       # timed block window sweep, 60..280 ms
         L += [f"console /apxcombat_probe {n}", "key q 450", "wait 700"]
-    L += ["console /apxcombat_probe 30", "key q 800", "wait 800"]          # a plain block, 600 ms after the press
+    L += ["console /apxcombat_probe 30", "key q 800", "wait 800"]
+    L += ["console /apxcombat_arena staff", "wait 900", "console /apxcombat_hp 9999", "wait 300", "console /apxcombat_probe 30", "key q 800", "wait 800", "console /apxcombat_probe 4", "key q 450", "wait 700", "console /apxcombat_arena shield", "wait 900", "console /apxcombat_hp 9999", "wait 300"]          # a plain block, 600 ms after the press
     for n in (2, 5, 7, 10, 14):                  # dodge: invulnerable 150 ms
         L += [f"console /apxcombat_probe {n} dodge", "key space 80", "wait 900"]
     L += ["console /apxcombat_arena shield", "wait 900", "console /apxcombat_hp 9999", "wait 300", "key v 80", "wait 700", "key v 80", "wait 700"]   # kicks at the creature in front
@@ -74,8 +75,11 @@ def evaluate(rows):
     first_not = min([m for m in notfree if last_free is None or m > last_free], default=None)
     v["timed_block"] = dict(last_free_ms=last_free, first_not_free_ms=first_not, probes=len(tb),
                             ok=last_free is not None and first_not is not None and abs(last_free - 200) <= 20 and first_not <= 240)
-    blocks = ev(rows, "block")
-    v["block"] = dict(n=len(blocks), stamina_cost=[b["stamina_cost"] for b in blocks][:3], ok=bool(blocks) and all(b["stamina_cost"] > 0 for b in blocks))
+    blocks = [b for b in ev(rows, "block") if not b.get("brace")]
+    braces = [b for b in ev(rows, "block") if b.get("brace")]
+    tbrace = [t for t in ev(rows, "timed_block")][-1:] if braces else []
+    v["block"] = dict(n=len(blocks), absorbed=[b.get("absorbed") for b in blocks][:3], stamina_cost=[b["stamina_cost"] for b in blocks][:3], ok=bool(blocks) and all(b.get("absorbed", 0) > 0 and abs(b["stamina_cost"] - b["absorbed"] / 10.0) < 0.01 for b in blocks))
+    v["staff_brace"] = dict(blocks=len(braces), cost=[b["stamina_cost"] for b in braces][:2], timed_with_staff=len(tbrace), ok=bool(braces))
     dp = [p for p in probes if p["since_press_ticks"] < 0]   # dodge probes (no block up)
     dod = ev(rows, "dodge")
     ends = ev(rows, "dodge_end")

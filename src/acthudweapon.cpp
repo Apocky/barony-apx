@@ -4488,7 +4488,7 @@ void actHudShield(Entity* my)
 		dropShield = true;
 	}
 
-	if (defending)
+	if (defending || apx::combat::bracing(HUDSHIELD_PLAYERNUM)) // apx D93 C2: a braced staff counts as defending (no shield)
 	{
 		stats[HUDSHIELD_PLAYERNUM]->defending = true;
 		HUDSHIELD_DEFEND_TIME++;

@@ -10166,6 +10166,18 @@ void Entity::attack(int pose, int charge, Entity* target)
 		player = -1; // not a player
 	}
 
+	// apx D93 C3: a creature's melee strike is the combat core's now (queued behind its 300 ms telegraph, resolved through applyHit against
+	// what apx::hostility calls a foe); the windup call below only announces the telegraph. APX_COMBAT_OLD=1 = the old code.
+	if ( player < 0 && behavior == &actMonster && target == nullptr && (pose == 1 || pose == 2 || pose == 3) && !apx::combat::objectPass()
+		&& apx::combat::creatureStrike(this, pose, charge) )
+	{
+		return;
+	}
+	if ( player < 0 && behavior == &actMonster )
+	{
+		apx::combat::onCreatureWindup(this, pose);
+	}
+
 	// apx D93 C1: a player's melee swing on a creature is the combat core's now (apx::combat::tickPlayer sweeps and calls applyHit);
 	// only the core's object pass (doors, colliders, boulders, furniture) comes through here for it. APX_COMBAT_OLD=1 = control.
 	if ( player >= 0 && target == nullptr && (pose == 1 || pose == 2 || pose == 3) && !apx::combat::objectPass() && apx::combat::ownsMelee(player) )

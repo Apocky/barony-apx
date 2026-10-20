@@ -31,6 +31,8 @@
 #include "../qadriver.hpp"
 #include "../in/in.hpp"
 #include "../move/move.hpp"
+#include "../hostility.hpp"
+#include <unordered_map>
 
 #include <algorithm>
 #include <chrono>
@@ -58,6 +60,11 @@ namespace combat
 		constexpr int kMaxHoldTicks = 100;       // a charge held this long releases itself
 		constexpr float kBeamHalfWidth = 4.f;    // units: a line move's half width beyond the body radius
 		constexpr int kFizzleTicks = 12;
+		constexpr double kHitBudgetMs = 0.08;   // after this much combat time in a tick, swept targets still waiting land on the next tick (a hit costs ~0.1 ms)
+		constexpr int kMinTelegraphTicks = 15;  // 300 ms: a creature strike is never earlier than this after its wind-up began
+		std::chrono::steady_clock::time_point gTickT0;
+		double gTickLogBase = 0.0;
+		double tickElapsedMs();
 		constexpr int kTimedBlockTicks = 10;     // 200 ms (BL 6 ticks; fork 10): a block this young is free
 		constexpr int kRiposteTicks = 13;        // 267 ms window after a timed block
 		constexpr int kChamberTicks = 7;         // 133 ms: a counter pressed this soon after the block lands at once
@@ -145,7 +152,8 @@ namespace combat
 			bool released = false, dirLocked = false;
 			bool needRelease = false; // an attempt failed: wait for the button to come up
 			// C2 defence verbs (04b section 6): block, timed block, riposte, chamber, dodge, feint, kick
-			bool blocking = false;    // Block held (and a shield up)
+			bool blocking = false;    // Block held (and a shield up, or a staff braced)
+			bool bracing = false;
 			int blockT = -1;          // ticks since the block went up (0 on its first tick); -1 = down
 			int riposteLeft = 0, chamberLeft = 0;  // ticks left of the riposte window (267 ms) and its first part, the chamber (133 ms)
 			int dodgeLeft = 0, dodgeCool = 0, kickLeft = 0, kickCool = 0, feintLeft = 0;
@@ -458,6 +466,8 @@ namespace combat
 		}
 	} // namespace
 
+	static bool defendHit(Entity* attacker, Entity* target, int& damage);
+
 	HitResult applyHit(const Hit& h)
 	{
 		HitResult r;
@@ -485,6 +495,11 @@ namespace combat
 			damage = meleeDamage(me, ms, target, ts, mv, h, unaware, r.multiplier, sneak, mctx);
 		}
 		r.sneak = sneak;
+		if ( !(h.flags & HF_PRECOMPUTED) && target->behavior == &actPlayer )
+		{
+			int d = damage;
+			if ( defendHit(me, target, d) ) { r.damage = 0; r.hpAfter = ts->HP; r.blocked = true; return r; } // dodged or timed block: the blow is spent
+		}
 
 		Sec secRules(1);
 		// rule stage: D74 tier damage (a hostile creature's hit on a player or follower; the knob lives in tiers.cpp)
@@ -493,6 +508,7 @@ namespace combat
 		t9.end();
 		if ( me && h.path == PATH_MELEE && (h.flags & HF_PRECOMPUTED) ) { damage = apx::vglue::scaleDamage(me, damage); } // BV1: a variant creature's damage multiple
 		// rule stage: F4c zones and D75 poise (armour and stance are read inside), staggered x1.5
+		if ( me ) { apx::hostility::onHit(me, target, damage); } // provocation and the hostility gate's counters (was inside onMeleeHit, which the core bypasses)
 		const combat::Zone zone = zoneOf(h, mv);
 		if ( !(h.flags & HF_NO_ZONES) )
 		{
@@ -517,7 +533,7 @@ namespace combat
 		// ---- the swing's consequences (player melee) ----
 		Sec secCons(3);
 		{ Sec t10(10); if ( mv ) { afterEffects(me, target, ts, mv, damage, wasBlocking, stagBefore, unaware); }
-		if ( me->behavior == &actPlayer )
+		if ( me->behavior == &actPlayer || me->behavior == &actMonster )
 		{
 			// Barony's own rule code for the rest of the blow, kept verbatim (procs.cpp): skill gain, armour and shield wear, weapon wear,
 			// obituary, compendium, and the weapon's procs (poison, paralyze, slow, knockback, bleed, artifact effects)
@@ -554,6 +570,7 @@ namespace combat
 			Sec t12(12);
 			updateEnemyBar(me, target, ts->name[0] ? ts->name : getMonsterLocalizedName(ts->type).c_str(), ts->HP, ts->MAXHP, false, gib);
 		}
+		if ( me->behavior == &actMonster && target->behavior == &actPlayer ) { cameravars[target->skill[2]].shakey += 8; cameravars[target->skill[2]].shakex += 0.1; }
 		{ Sec t13(13); playSoundEntity(target, 28, 64); } // hit
 		if ( r.killed )
 		{
@@ -586,7 +603,7 @@ namespace combat
 			damage = 0;
 			return true;
 		}
-		if ( f.blocking && stats[p] && stats[p]->shield )
+		if ( f.blocking && stats[p] && (stats[p]->shield || f.bracing) )
 		{
 			if ( f.blockT >= 0 && f.blockT <= kTimedBlockTicks )
 			{
@@ -598,9 +615,19 @@ namespace combat
 				return true;
 			}
 			++gCount.blocks;
-			const double cost = damage / 10.0; // the surplus comes off stamina (G11 rule, D64)
+			// the surplus the block absorbed comes off stamina (G11 rule, D64): the AC the raised guard added, measured on the target, is what it took off the blow
+			double absorbed = 0.0;
+			if ( stats[p]->shield && stats[p]->defending )
+			{
+				const int acUp = AC(stats[p]);
+				stats[p]->defending = false;
+				const int acDown = AC(stats[p]);
+				stats[p]->defending = true;
+				absorbed = std::max(0, acUp - acDown);
+			}
+			const double cost = absorbed / 10.0;
 			apx::spend(p, cost, 1);
-			row("{\"ev\":\"block\",\"tick\":%u,\"player\":%d,\"since_press_ticks\":%d,\"damage_in\":%d,\"stamina_cost\":%.2f,\"stamina\":%.2f}", (unsigned)ticks, p, f.blockT, damage, cost, apx::get(p).value);
+			row("{\"ev\":\"block\",\"tick\":%u,\"player\":%d,\"brace\":%d,\"since_press_ticks\":%d,\"damage_in\":%d,\"absorbed\":%.1f,\"stamina_cost\":%.2f,\"stamina\":%.2f}", (unsigned)ticks, p, f.bracing ? 1 : 0, f.blockT, damage, absorbed, cost, apx::get(p).value);
 		}
 		return false;
 	}
@@ -633,7 +660,7 @@ namespace combat
 	// =========================================================================================================
 	// player control, the sweep
 	// =========================================================================================================
-	namespace { void qaOnce(int p); }
+	namespace { void qaOnce(int p); void clearDummies(); Uint32 gCreatureTick = 0xFFFFFFFFu; double tickElapsedMs() { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - gTickT0).count() - (gLogMs - gTickLogBase); } }
 	namespace
 	{
 		int pickDir(float dx, float dy)
@@ -718,7 +745,7 @@ namespace combat
 			for ( const Cand& c : cands )
 			{
 				if ( f.hitCount >= maxTargets ) { break; }
-				if ( hitsThisTick >= kMaxHitsPerTick ) { deferred = true; break; }
+				if ( hitsThisTick >= kMaxHitsPerTick || (hitsThisTick > 0 && tickElapsedMs() > kHitBudgetMs) ) { deferred = true; break; }
 				const double ang = std::atan2(c.e->y - me->y, c.e->x - me->x);
 				const double r = std::max(c.e->sizex, c.e->sizey);
 				if ( wallBetween(me, ang, c.d, r) ) { ++gCount.wallBlocked; continue; } // walls block a sweep, bodies never
@@ -922,6 +949,7 @@ namespace combat
 		Entity* me = players[p]->entity;
 		return me->effectShapeshift == NOTHING && me->effectPolymorph == NOTHING;
 	}
+	bool bracing(int p) { return p >= 0 && p < MAXPLAYERS && gF[p].bracing && blockWanted(p); }
 	bool blockWanted(int p)
 	{
 		if ( p < 0 || p >= MAXPLAYERS ) { return false; }
@@ -960,7 +988,10 @@ namespace combat
 			}
 			// block: a shield up while Block is held; the first 200 ms are the timed window
 			const bool shield = ms->shield && !itemTypeIsQuiver(ms->shield->type);
-			f.blocking = bHeld && shield && !feinted;
+			// a staff blocks without a shield (bracing, D64): cheaper, poise x1.5, no armour bonus
+			const bool brace = !shield && famOf(ms) == FAM_STAFF;
+			f.bracing = bHeld && brace && !feinted;
+			f.blocking = bHeld && (shield || brace) && !feinted;
 			if ( f.blocking && blockWanted(p) ) { f.blockT = f.blockT < 0 ? 0 : f.blockT + 1; }
 			else { f.blockT = -1; }
 			if ( f.blockT == 0 && f.probeMode == 0 && f.probeAt >= 0 && f.probeFire < 0 ) { f.probeFire = (int)ticks + f.probeAt; }
@@ -1023,6 +1054,130 @@ namespace combat
 		}
 	} // namespace
 
+
+	// =========================================================================================================
+	// C3: creature melee on the core. The monster AI (actMonster) still chooses when and whom; its wind-up animation is the telegraph
+	// (limbs raise, a whoosh sounds); the strike call that used to run inside Entity::attack comes here, waits until the telegraph has
+	// lasted 300 ms, and resolves through the same applyHit as a player's blow, against what apx::hostility says is a foe.
+	// =========================================================================================================
+	namespace
+	{
+		struct WindupRec { Uint32 tick; int pose; };
+		struct PendingStrike { Uint32 uid, due, windup; int pose, charge; };
+		std::unordered_map<Uint32, WindupRec> gWind;
+		std::vector<PendingStrike> gPending;
+		Uint32 gFoeUid = 0;
+
+		bool creatureOwned(Entity* e)
+		{
+			if ( !gEnabled || !e || e->behavior != &actMonster ) { return false; }
+			Stat* s = e->getStats();
+			if ( !s || e->isBossMonster() || s->type == MIMIC || s->type == MINIMIMIC || s->type == SHOPKEEPER ) { return false; }
+			return e->monsterAttack >= MONSTER_POSE_MELEE_WINDUP1 && e->monsterAttack <= MONSTER_POSE_MELEE_WINDUP3;
+		}
+
+		void executeStrike(const PendingStrike& ps)
+		{
+			Entity* e = uidToEntity(ps.uid);
+			if ( !e || !e->getStats() || e->getStats()->HP <= 0 || !e->isMobile() ) { return; }
+			// the strike animation starts now (Entity::attack did this at the strike call): the weapon arm swings as the blow resolves
+			{
+				Stat* es = e->getStats();
+				e->monsterAttack = (es->weapon != nullptr || es->type == CRYSTALGOLEM || es->type == COCKATRICE || es->type == EARTH_ELEMENTAL) ? ps.pose : 1;
+				e->monsterAttackTime = 0;
+			}
+			Entity* target = uidToEntity(e->monsterTarget);
+			const int delayMs = (int)(((Uint32)ticks - ps.windup) * kTickMs);
+			if ( !target || !isCreature(target) || !target->getStats() || target->getStats()->HP <= 0 )
+			{
+				// no creature to strike: a door, a barrier or air: Barony's object code (creatures masked out)
+				gObjectPass = true; e->attack(ps.pose, ps.charge, nullptr); gObjectPass = false;
+				return;
+			}
+			apx::hostility::Reason why;
+			const bool foe = apx::hostility::hostile(e, target, &why);
+			const double dx = target->x - e->x, dy = target->y - e->y, d = std::sqrt(dx * dx + dy * dy);
+			const double r = std::max(target->sizex, target->sizey);
+			const bool inReach = d <= STRIKERANGE + r + 2.0 && std::fabs(wrapPi(std::atan2(dy, dx) - e->yaw)) < 0.9;
+			// line of sight as Barony's own strike did: a trace along the facing that must reach the target first (walls, doors and bodies in the way stop it)
+			bool los = false;
+			if ( foe && inReach )
+			{
+				const hit_t savedHit = hit;
+				lineTrace(e, e->x, e->y, std::atan2(dy, dx), STRIKERANGE + r + 4.0, LINETRACE_ATK_CHECK_FRIENDLYFIRE, false);
+				los = hit.entity == target;
+				hit = savedHit;
+			}
+			if ( !foe || !inReach || !los )
+			{
+				++gCount.creatureMisses;
+				row("{\"ev\":\"creature_miss\",\"tick\":%u,\"attacker\":%u,\"type\":%d,\"foe\":%d,\"reason\":\"%s\",\"in_reach\":%d,\"dist\":%.1f}", (unsigned)ticks, e->getUID(), (int)e->getStats()->type, foe ? 1 : 0, why.cls, inReach ? 1 : 0, d);
+				return;
+			}
+			Hit h;
+			h.attacker = e; h.target = target;
+			const int hpBefore = target->getStats()->HP;
+			const HitResult res = applyHit(h);
+			++gCount.creatureStrikes;
+			row("{\"ev\":\"creature_strike\",\"tick\":%u,\"attacker\":%u,\"type\":%d,\"target\":%u,\"target_is_player\":%d,\"telegraph_ms\":%d,\"dmg\":%d,\"blocked\":%d,\"hp_before\":%d,\"hp_after\":%d,\"zone\":%d,\"why\":\"%s\"}",
+				(unsigned)ticks, e->getUID(), (int)e->getStats()->type, target->getUID(), target->behavior == &actPlayer ? 1 : 0, delayMs, res.damage, res.blocked ? 1 : 0, hpBefore, res.hpAfter, res.zone, why.cls);
+		}
+	} // namespace
+
+	void onCreatureWindup(Entity* e, int pose)
+	{
+		if ( !gEnabled || !e || e->behavior != &actMonster || pose < MONSTER_POSE_MELEE_WINDUP1 || pose > MONSTER_POSE_MELEE_WINDUP3 ) { return; }
+		Stat* s = e->getStats();
+		if ( !s || e->isBossMonster() ) { return; }
+		gWind[e->getUID()] = { (Uint32)ticks, pose };
+		playSoundEntity(e, 23 + local_rng.rand() % 5, 140); // the telegraph sound: the whoosh of the raised weapon, loud enough to react to
+		row("{\"ev\":\"telegraph\",\"tick\":%u,\"attacker\":%u,\"type\":%d,\"pose\":%d}", (unsigned)ticks, e->getUID(), (int)s->type, pose);
+	}
+
+	bool creatureStrike(Entity* e, int pose, int charge)
+	{
+		if ( !creatureOwned(e) ) { return false; }
+		for ( const PendingStrike& q : gPending ) { if ( q.uid == e->getUID() ) { return true; } } // the animation calls again every tick until it is advanced
+		Uint32 windup = (Uint32)ticks, due = (Uint32)ticks;
+		auto it = gWind.find(e->getUID());
+		if ( it != gWind.end() ) { windup = it->second.tick; due = std::max<Uint32>(due, windup + kMinTelegraphTicks); gWind.erase(it); }
+		gPending.push_back({ e->getUID(), due, windup, pose, charge });
+		return true;
+	}
+
+	void creatureTick()
+	{
+		if ( gFoeUid && ticks % 50 == 0 && players[0] && players[0]->entity )
+		{
+			Entity* f = uidToEntity(gFoeUid);
+			if ( f ) { row("{\"ev\":\"foe_state\",\"tick\":%u,\"state\":%d,\"target\":%u,\"dist\":%.1f,\"hp\":%d,\"attack\":%d,\"mobile\":%d}", (unsigned)ticks, (int)f->monsterState, f->monsterTarget, std::hypot(f->x - players[0]->entity->x, f->y - players[0]->entity->y), f->getStats() ? f->getStats()->HP : -1, (int)f->monsterAttack, (int)f->isMobile()); }
+		}
+		if ( gPending.empty() ) { return; }
+		for ( size_t i = 0; i < gPending.size(); )
+		{
+			if ( gPending[i].due > (Uint32)ticks ) { ++i; continue; }
+			if ( i > 0 && tickElapsedMs() > kHitBudgetMs ) { break; } // the rest next tick
+			const PendingStrike ps = gPending[i];
+			gPending.erase(gPending.begin() + i);
+			executeStrike(ps);
+		}
+		if ( gWind.size() > 4096 ) { gWind.clear(); }
+	}
+
+	static ConsoleCommand ccmd_apxcombat_foe("/apxcombat_foe", "apx: <goblin|skeleton|rat|troll> -- a creature two tiles ahead that hunts the player (the C3 telegraph gate)", [](int argc, const char** argv) {
+		if ( !players[0] || !players[0]->entity ) { return; }
+		Entity* me = players[0]->entity;
+		Monster t = GOBLIN;
+		if ( argc > 1 ) { if ( !strcmp(argv[1], "skeleton") ) { t = SKELETON; } else if ( !strcmp(argv[1], "rat") ) { t = RAT; } else if ( !strcmp(argv[1], "troll") ) { t = TROLL; } }
+		clearDummies(); // the test cluster would wall the creature off
+		Entity* m = nullptr;
+		for ( int i = 0; i < 16 && !m; ++i ) { const double a = me->yaw + (i % 8) * (PI / 4), d = 26.0 + 8.0 * (i / 8); m = summonMonster(t, me->x + cos(a) * d, me->y + sin(a) * d, false); }
+		if ( !m || !m->getStats() ) { row("{\"ev\":\"foe\",\"made\":0}"); return; }
+		gFoeUid = m->getUID();
+		m->getStats()->HP = m->getStats()->MAXHP = 9999;
+		m->monsterAcquireAttackTarget(*me, MONSTER_STATE_PATH, false);
+		row("{\"ev\":\"foe\",\"made\":1,\"type\":%d,\"uid\":%u}", (int)t, m->getUID());
+	});
 	static ConsoleCommand ccmd_apxcombat_probe("/apxcombat_probe", "apx: <ticks> -- on the next block press a creature hit lands that many ticks later; logs whether it was free (the timed-block gate)", [](int argc, const char** argv) {
 		if ( argc > 1 ) { gF[0].probeAt = std::max(0, std::atoi(argv[1])); gF[0].probeFire = -1; gF[0].probeMode = (argc > 2 && !strcmp(argv[2], "dodge")) ? 1 : 0; }
 	});
@@ -1040,6 +1195,8 @@ namespace combat
 		if ( p < 0 || p >= MAXPLAYERS || !players[p] ) { return; }
 		const auto t0 = std::chrono::steady_clock::now();
 		const double log0 = gLogMs;
+		gTickT0 = t0; gTickLogBase = gLogMs;
+		if ( gCreatureTick != (Uint32)ticks ) { gCreatureTick = (Uint32)ticks; creatureTick(); }
 		const in::TickRecord& rec = in::take(p); // always take: nothing accumulates while the core is idle
 		Fighter& f = gF[p];
 		apx::Stamina_t& sta = apx::get(p);
