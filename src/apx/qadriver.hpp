@@ -20,6 +20,7 @@
 //   act <action> press|release  only the down or only the up event
 //   sdlact <action> <ms>     the same press as raw SDL events (tests the SDL path into apx::in)
 //   wait <ms>                pause the script
+//   waitlevel <n> [ms]       pause until floor n is loaded and player 0 stands on it (default timeout 90 s); logs reached or TIMED OUT
 //   shot <name>              screenshot to <dir>/<name>.png (the game's own back-buffer capture)
 //   console <text>           run a Barony console command (cheats allowed in QA, e.g. /spawnitem ...)
 //   ui <id> [right|double]   click the centre of a D92 stable id's rect (apx/ui), real SDL events

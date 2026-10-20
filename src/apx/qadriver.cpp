@@ -29,6 +29,8 @@ namespace qa
 		std::string g_dir;
 		size_t g_linesDone = 0;          // lines of cmd.txt already read
 		Uint32 g_waitUntil = 0;           // SDL ticks: no new command before this
+		int g_waitLevel = -1;             // waitlevel <n>: no new command until floor n is loaded and player 0 has stood on it for a second
+		Uint32 g_waitLevelDeadline = 0;
 		std::string g_shot;               // pending screenshot path
 		std::string g_lastCmd;
 		int g_x = 0, g_y = 0;             // the game's pointer as the driver last placed it
@@ -209,6 +211,7 @@ namespace qa
 				SDL_Event e; SDL_zero(e); e.type = SDL_MOUSEWHEEL; e.wheel.windowID = windowId(); e.wheel.y = n;
 				SDL_PushEvent(&e); g_waitUntil = SDL_GetTicks() + 30;
 			}
+			else if ( op == "waitlevel" ) { int n = 1, ms = 90000; in >> n >> ms; g_waitLevel = n; g_waitLevelDeadline = SDL_GetTicks() + (Uint32)ms; }
 			else if ( op == "wait" ) { int ms = 0; in >> ms; g_waitUntil = SDL_GetTicks() + (Uint32)ms; }
 			else if ( op == "shot" ) { std::string n; in >> n; g_shot = g_dir + "/" + (n.empty() ? "shot" : n) + ".png"; g_waitUntil = SDL_GetTicks() + 200; }
 			else if ( op == "console" )
@@ -297,7 +300,7 @@ namespace qa
 	bool idle()
 	{
 		if ( !g_on ) { return true; }
-		if ( !g_timed.empty() || !SDL_TICKS_PASSED(SDL_GetTicks(), g_waitUntil) || !g_shot.empty() ) { return false; }
+		if ( !g_timed.empty() || !SDL_TICKS_PASSED(SDL_GetTicks(), g_waitUntil) || !g_shot.empty() || g_waitLevel >= 0 ) { return false; }
 		std::ifstream f(g_dir + "/cmd.txt");
 		std::string line; size_t n = 0;
 		while ( std::getline(f, line) ) { ++n; }
@@ -320,6 +323,15 @@ namespace qa
 		{
 			if ( g_timed.front().useRaw ) { apx::in::event(g_timed.front().raw); } else { SDL_PushEvent(&g_timed.front().ev); }
 			g_timed.pop_front();
+
+		}
+		if ( g_waitLevel >= 0 )
+		{
+			const bool there = !intro && currentlevel == g_waitLevel && players[0] && players[0]->entity && ticks > 50;
+			if ( !there && !SDL_TICKS_PASSED(now, g_waitLevelDeadline) ) { return; }
+			printlog("[apx-qa] waitlevel %d %s", g_waitLevel, there ? "reached" : "TIMED OUT");
+			g_waitLevel = -1; g_waitUntil = now + 800;
+			return;
 		}
 		if ( !g_shot.empty() || !SDL_TICKS_PASSED(now, g_waitUntil) ) { return; }
 		std::ifstream f(g_dir + "/cmd.txt");

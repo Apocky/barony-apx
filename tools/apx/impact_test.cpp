@@ -31,7 +31,7 @@ int main()
 {
 	// unit checks on the rule
 	Material soft{}; soft.kind[IMPACT] = {1.f, 100.f, 2.f};
-	Hit h = resolve(Move{IMPACT, 0.5f, 1.f}, soft);
+	ImpactHit h = resolve(Move{IMPACT, 0.5f, 1.f}, soft);
 	CHECK(h.hp == 0.f && h.stagger && !h.fracture, "below yield: hp %g stagger %d", h.hp, h.stagger);
 	h = resolve(Move{IMPACT, 3.f, 1.f}, soft);
 	CHECK(std::fabs(h.hp - 4.f) < 1e-5f && !h.stagger && !h.fracture, "between: hp %g", h.hp);

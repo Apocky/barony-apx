@@ -47,6 +47,7 @@ See LICENSE for details.
 #include "apx_combat.hpp"
 #include "apx/combat/impact.hpp" // [apx-hit] impact_uses
 #include "apx/tiers.hpp"
+#include "apx/combat/core.hpp"
 #include "apx/hostility.hpp" // apx D93: who fights whom
 
 /*-------------------------------------------------------------------------------
@@ -10165,6 +10166,13 @@ void Entity::attack(int pose, int charge, Entity* target)
 		player = -1; // not a player
 	}
 
+	// apx D93 C1: a player's melee swing on a creature is the combat core's now (apx::combat::tickPlayer sweeps and calls applyHit);
+	// only the core's object pass (doors, colliders, boulders, furniture) comes through here for it. APX_COMBAT_OLD=1 = control.
+	if ( player >= 0 && target == nullptr && (pose == 1 || pose == 2 || pose == 3) && !apx::combat::objectPass() && apx::combat::ownsMelee(player) )
+	{
+		return;
+	}
+
 	if ( multiplayer != CLIENT )
 	{
 		// animation
@@ -11388,6 +11396,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 				}
 			}
 
+			if ( apx::combat::objectPass() && hit.entity && (hit.entity->behavior == &actMonster || hit.entity->behavior == &actPlayer) )
+			{
+				hit.entity = nullptr; // apx D93: the core's object pass strikes objects only; creatures are the core's sweep
+			}
 			if ( hit.entity && (hit.entity->behavior == &actMonster || hit.entity->behavior == &actPlayer) )
 			{
 				Stat* hitstats = hit.entity->getStats();
@@ -13210,9 +13222,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 					{
 						damage = apx::fam::beforeHit(player, this, hit.entity, hitstats, damage, previousMonsterState); // apx F4d: sneak and critical moves
 					}
-					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
-					damage = apx::vglue::scaleDamage(this, damage); // apx BV1: a variant creature's damage multiple
-					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
+					damage = apx::combat::onLegacyHit(this, hit.entity, damage, apx::combat::PATH_MELEE); // apx D93: the one damage entry: D74 tier, BV1 variant, F4c zone, D75 poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 					if ( player >= 0 )
 					{

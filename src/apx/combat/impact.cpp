@@ -26,11 +26,11 @@ bool classMove(int c, Move& out)
 	return true;
 }
 
-Hit resolve(const Move& m, const Material& mat)
+ImpactHit resolve(const Move& m, const Material& mat)
 {
 	const Response& r = mat.kind[m.kind];
 	const float s = m.area > 0.f ? m.momentum / m.area : 0.f;
-	Hit h{0.f, true, false};
+	ImpactHit h{0.f, true, false};
 	if ( s < r.yield ) { return h; }   // stagger only
 	h.stagger = false;
 	h.hp = (s - r.yield) * r.k;
@@ -66,6 +66,13 @@ float multiplierFor(int t, int c, float fallback)
 {
 	Move m;
 	if ( !classMove(c, m) || t < 0 || t >= kApxNumSeedRows ) { return fallback; }
+	const ApxMonsterMaterial& mm = kApxMonsterMaterials[t];
+	return mm.level * materialMultiplier(m, material(mm.material));
+}
+
+float multiplierForMove(int t, const Move& m, float fallback)
+{
+	if ( t < 0 || t >= kApxNumSeedRows ) { return fallback; }
 	const ApxMonsterMaterial& mm = kApxMonsterMaterials[t];
 	return mm.level * materialMultiplier(m, material(mm.material));
 }

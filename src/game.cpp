@@ -19,6 +19,8 @@
 #include "entity.hpp"
 #include "files.hpp"
 #include "apx/telemetry.hpp"
+#include "apx/in/in.hpp"
+#include "apx/combat/core.hpp"
 #include "apx/diag.hpp"
 #include "apx/tactics.hpp"
 #include "apx/flow.hpp"
@@ -228,9 +230,13 @@ static bool apxSelftestTierDamage(std::string& fields)
 	apx::tiers::tag(rat, apx::combat::Tier::Fodder);
 	const bool hostile = !rat->monsterAllyGetPlayerLeader();
 	apx::tierdmg::setOverride(-1);
-	const int knob = apx::tierdmg::onCreatureHit(rat, me, vanilla, apx::tierdmg::MELEE);
+	// D93: through the one damage entry point (dry: the rule stages run, the test deals nothing), tier stage only (no zones)
+	apx::combat::Hit apxHit;
+	apxHit.attacker = rat; apxHit.target = me; apxHit.damage = vanilla; apxHit.path = apx::combat::PATH_MELEE;
+	apxHit.flags = apx::combat::HF_PRECOMPUTED | apx::combat::HF_DRY | apx::combat::HF_NO_ZONES;
+	const int knob = apx::combat::applyHit(apxHit).damage;
 	apx::tierdmg::setOverride(0);
-	const int off = apx::tierdmg::onCreatureHit(rat, me, vanilla, apx::tierdmg::MELEE);
+	const int off = apx::combat::applyHit(apxHit).damage;
 	apx::tierdmg::setOverride(-1);
 	apx::tiers::untag(rat);
 	if ( Stat* rs = rat->getStats() ) { rs->HP = 0; }

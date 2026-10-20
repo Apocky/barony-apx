@@ -25,6 +25,7 @@
 #include "ui/MainMenu.hpp"
 #include "prng.hpp"
 #include "mod_tools.hpp"
+#include "apx/combat/core.hpp"
 #include "apx_stamina.hpp"
 #include "apx/variants_glue.hpp" // apx BV1
 
@@ -823,7 +824,9 @@ void actHudWeapon(Entity* my)
 		const bool apxMelee = !apxWeapon
 			|| (itemCategory(apxWeapon) == WEAPON && !isRangedWeapon(*apxWeapon)
 				&& apxWeapon->type != TOOL_WHIP && apxWeapon->type != TOOL_BEARTRAP);
-		apx::tick(HUDWEAPON_PLAYERNUM, HUDWEAPON_CHOP, apxMelee, stats[HUDWEAPON_PLAYERNUM]->defending);
+		// apx D93 C1: with the combat core on, the stamina tick (regen, block drain, net) runs from apx::combat::tickPlayer every sim tick;
+		// this HUD call stays only as the APX_COMBAT_OLD=1 control (the HUD returns early while the player swims, so regen stopped there)
+		if ( !apx::combat::coreEnabled() ) { apx::tick(HUDWEAPON_PLAYERNUM, HUDWEAPON_CHOP, apxMelee, stats[HUDWEAPON_PLAYERNUM]->defending); }
 		apx::vglue::selftestStep(); // apx BV1: the scripted variant kill run (APX_VARIANTS_SELFTEST), local player only
 	}
 
@@ -854,6 +857,20 @@ void actHudWeapon(Entity* my)
 				return;
 			}
 		}
+	}
+
+	// apx D93 C1: the combat core owns this player's melee (weapons and fists): Barony's swing, charge and chop states
+	// never start, apx::combat::tickPlayer reads apx::in and runs the move, poseHud poses the weapon below
+	const bool apxCoreMelee = apx::combat::ownsMelee(HUDWEAPON_PLAYERNUM);
+	if ( apxCoreMelee )
+	{
+		swingweapon = false;
+		if ( (HUDWEAPON_CHOP >= 1 && HUDWEAPON_CHOP <= 9) || (HUDWEAPON_CHOP >= 21 && HUDWEAPON_CHOP <= 23) )
+		{
+			HUDWEAPON_CHOP = 0;
+		}
+		HUDWEAPON_CHARGE = 0;
+		HUDWEAPON_OVERCHARGE = 0;
 	}
 
 	if ( swingweapon && apx::blockSwingEnabled() && stats[HUDWEAPON_PLAYERNUM]->defending )
@@ -3749,6 +3766,15 @@ void actHudWeapon(Entity* my)
 	{
 		return;
 	}
+	if ( apxCoreMelee ) // apx D93 C1: while a move is out the core's keyframes replace Barony's chop offsets (the arm follows the weapon)
+	{
+		double px = HUDWEAPON_MOVEX, py = HUDWEAPON_MOVEY, pz = HUDWEAPON_MOVEZ, pyaw = HUDWEAPON_YAW, ppitch = HUDWEAPON_PITCH, proll = HUDWEAPON_ROLL;
+		if ( apx::combat::poseHud(HUDWEAPON_PLAYERNUM, px, py, pz, pyaw, ppitch, proll) )
+		{
+			HUDWEAPON_MOVEX = px; HUDWEAPON_MOVEY = py; HUDWEAPON_MOVEZ = pz; HUDWEAPON_YAW = pyaw; HUDWEAPON_PITCH = ppitch; HUDWEAPON_ROLL = proll;
+		}
+	}
+
 	double defaultpitch = PI / 8.f;
 
 	if (stats[HUDWEAPON_PLAYERNUM]->weapon == nullptr || hideWeapon)

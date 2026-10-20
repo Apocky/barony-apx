@@ -11,6 +11,14 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 06:33 -07:00 F2: rebased (801cf254), apx-gen 7057f3d9, gates PASS on db9ca6c8; merge-ready pending Apocky/parent OK.
 
+<<<<<<< HEAD
+
+## 2026-10-19 23:10 -07:00 COMBAT lane C1 (branch apx/combat, worktree ..arony-apx-combat)
+In flight: D93 combat core built, selftest-all 7/7 PASS. Resume: build toolspxuild.ps1; next write toolspx\combat_qa.py (QA-driver real-input gate, APX_COMBAT_QA=<family>[:crowd]), run on normal start and -apxfloor=1, commit, push, ls-remote.
+
+## 2026-10-20 00:30 -07:00 COMBAT lane C1 done
+Nothing in flight. apx/combat pushed (gate PASS, evidence C:\Apocrypha\diagnostics\combatinal). Resume: C2 = block, timed block, riposte, chamber, dodge, feint, kick, bash on apx::combat (04b section 8); when apx/input merges, delete src/apx/in/in_stub.cpp and take its in.hpp.
+=======
 ## 2026-10-19 22:32 -07:00 D93 Phase C0 (apx::in input lane)
 In flight: Building Phase C0 (`src/apx/in/`, `data/apx/input/actions.json`, `data/apx/input/bindings.json`, `tests/apx/test_in.cpp`, engine glue in `src/game.cpp`, `src/apx/qadriver.*`) on branch `apx/input` in `C:\Users\Apocky\source\repos\barony-apx-input` (from `951f805e`). Resume: run offline `test_in.cpp`, then `pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache` and C0 gate to `C:\Apocrypha\diagnostics\input\`. Next: write `src/apx/in/in.hpp`, `src/apx/ui/ui.hpp` stub, `data/apx/input/*.json`, and `tests/apx/test_in.cpp`.
 
@@ -30,6 +38,8 @@ In flight: nothing after this commit. apx::hostility (src/apx/hostility.cpp, dat
 ## 2026-10-19 23:46 -07:00 D93 M1 (`apx::move`) done on apx/move
 Nothing in flight. Gate: `python tools/apx/move_gate.py --exe build/vs2022/Release/barony.exe` (normal + floor1, new + control APX_MOVE_OLD=1) PASS; results C:\Apocrypha\diagnostics\move\ (summary-20261019-234124.json, baseline.json). Offline units `pwsh tools/apx/move_test.ps1` (44 checks). selftest-all 7/7, golden parity 3/3.
 Open: src/apx/in/in.hpp+in.cpp are a STUB of apx::in (same Button names as branch apx/input); on merge take the INPUT lane's in.hpp, delete src/apx/in/in.cpp and its CMake line. Not covered by the gate: swim, levitate, crawl states, slippery/grease tiles, co-op (remote players keep dead reckoning), creature impulses (code path in frame(), no gate row).
+>>>>>>> origin/apx-main
+
 
 ## 2026-10-20 00:50 -07:00 D92 inventory window (apx/inv-imgui) P0+P1 done
 Nothing in flight. Merged origin/apx-main (apx::in owns the gate; apx::ui exposes wantsMouse/wantsKeyboard). Gate: `pwsh tools/apx/inv_qa.ps1 -Script tools/apx/qa/inv_play.txt -Exe build/vs2022/Release/barony.exe`; run C:\Apocrypha\runs\invfinal-20261020-004721. Control: `-Env APX_VANILLA_INVENTORY=1` with inv_control.txt. Not done: P2+ modes, split-screen 2/4 player layout check, 2560x1440 shots, multi-gamepad focus.

@@ -46,6 +46,7 @@ extern ConsoleVariable<int> cvar_entity_bodypart_sync_tick;
 struct spell_t;
 
 // entity class
+namespace apx { namespace combat { struct MeleeCtx; } }
 class Entity
 {
 	Sint32& circuit_status;	// Use CIRCUIT_OFF and CIRCUIT_ON.
@@ -842,6 +843,11 @@ public:
 	void setObituary(const char* obituary);
 
 	void killedByMonsterObituary(Entity* victim, bool fromSpell = false);
+	// apx D93 C1: the melee rule code the combat core runs for player melee (src/apx/combat/procs.cpp)
+	void apxMeleePre1(apx::combat::MeleeCtx& c);
+	void apxMeleePre2(apx::combat::MeleeCtx& c);
+	void apxMeleeAftermath(apx::combat::MeleeCtx& c);
+
 
 	Sint32 getSTR();
 	Sint32 getDEX();

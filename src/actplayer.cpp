@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/combat/core.hpp"
 #include "main.hpp"
 #include "apx/vox/heldmodel.hpp"
 #include "apx_inventory.hpp"
@@ -6177,6 +6178,7 @@ void actPlayer(Entity* my)
 		return;
 	}
 	apx::combat_glue::tick(my); // apx F4c: poise, downed timer and revive, self-test
+	apx::combat::tickPlayer(my->skill[2]); // apx D93 C1: the combat core (player control, swept hits)
 	apx::props::tick(my); // apx BP1: rest, sitting, the props probe
 	apx::hollow::tick(my); // apx H1b: the content probe (APX_BH_PROBE)
 	if ( logCheckObstacle )
