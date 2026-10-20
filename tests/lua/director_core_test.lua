@@ -48,6 +48,44 @@ do
   check("CONTROL: all-cost-1 table fails the 85 percent spend band", sp < 0.85 * 30, "spent " .. sp)
 end
 
+-- 2b. spawn fix 2: a pack is one side (no sworn enemies together), and each kind's tier follows its cost
+do
+  -- the engine's sworn pairs among the floor-1 kinds (swornenemies, actmonster.cpp): rat-goblin, rat-slime, rat-bat, goblin-slime, goblin-bat
+  local swornPairs = { ["rat|goblin"] = true, ["rat|slime"] = true, ["rat|bat"] = true, ["goblin|slime"] = true, ["goblin|bat"] = true }
+  local function sworn(a, b) return swornPairs[a .. "|" .. b] or swornPairs[b .. "|" .. a] or false end
+  local compat = function(a, b) return not sworn(a, b) end
+  local mixedFix, mixedCtl = 0, 0
+  for seed = 1, 500 do
+    local function mixed(p) for i = 1, #p do for j = i + 1, #p do if sworn(p[i], p[j]) then return true end end end return false end
+    if mixed((C.build_pack(12, C.rng_new(seed), 1, nil, compat))) then mixedFix = mixedFix + 1 end
+    if mixed((C.build_pack(12, C.rng_new(seed), 1))) then mixedCtl = mixedCtl + 1 end
+  end
+  check("500 floor-1 packs with the compatibility test hold no sworn enemies", mixedFix == 0, "mixed=" .. mixedFix)
+  check("CONTROL: without it packs mix sworn enemies", mixedCtl > 0, "mixed=" .. mixedCtl)
+  check("tier by cost: kobold fodder, goblin regular, troll elite", C.tier_of("kobold") == "fodder" and C.tier_of("goblin") == "regular" and C.tier_of("troll") == "elite")
+end
+
+-- 2c. spawn fix 5: a floor opens quiet (no ambush, den or patrol in the first ARRIVAL_QUIET_S)
+do
+  local function draws(arrive, now, ctl)
+    local hostile, quiet = 0, 0
+    for seed = 1, 300 do
+      local st = { now_s = now, arrive_s = arrive, no_arrival_quiet = ctl, ewma = 0, banked = 100, total = 100, temper = "storm", last = {},
+                   available = { ambush = true, den = true, patrol = true } }
+      local ev, _, _, cnt = C.choose_event(st, C.rng_new(seed))
+      if C.HOSTILE[ev] then hostile = hostile + 1 end
+      quiet = quiet + cnt.arrival_quiet
+    end
+    return hostile, quiet
+  end
+  local h1, q1 = draws(0, 30, false)
+  check("no hostile event 30 s after arrival", h1 == 0 and q1 > 0, "hostile=" .. h1 .. " quiet=" .. q1)
+  local h2 = draws(0, C.ARRIVAL_QUIET_S + 1, false)
+  check("hostile events resume after the quiet window", h2 > 0, "hostile=" .. h2)
+  local h3 = draws(0, 30, true)
+  check("CONTROL: without the quiet window an ambush can come 30 s after arrival", h3 > 0, "hostile=" .. h3)
+end
+
 -- 3. event choice invariants over a long simulated run
 local function simulate(temper, seed, flags, steps)
   local rng, noise = C.rng_new(seed), C.rng_new(seed + 1)

@@ -93,7 +93,7 @@ end
 -- with an audible cue; after 2 s (100 ticks) it hunts the nearest player. Not in sight is only measured:
 -- spawns that start in line of sight are counted (ambush_visible), because a spawned body cannot be undone.
 local function do_ambush(core, rng, cost, depth, pos)
-  local pack = core.build_pack(cost, rng, depth)
+  local pack = core.build_pack(cost, rng, depth, nil, apx.sworn_enemies and function(a, b) return not apx.sworn_enemies(a, b) end)
   local centre = pos[1 + rng:int(#pos)]
   local rmin, rmax = 14, 22
   if D.ambush_radius then rmin, rmax = D.ambush_radius[1], D.ambush_radius[2] end   -- test hook only
@@ -110,7 +110,7 @@ local function do_ambush(core, rng, cost, depth, pos)
     if not hidden then
       D.declines.ambush_candidate_visible = (D.declines.ambush_candidate_visible or 0) + 1
     else
-      local u = pack[1] and apx.spawn(pack[1], cx, cy)
+      local u = pack[1] and apx.spawn(pack[1], cx, cy, core.tier_of(pack[1]))
       if u then spawned[1] = u; ax, ay = cx, cy; break end
     end
   end
@@ -124,7 +124,7 @@ local function do_ambush(core, rng, cost, depth, pos)
       local mx, my = ax + (rng:float() - 0.5) * 3, ay + (rng:float() - 0.5) * 3
       local hidden = D.no_los_check or hidden_from_all(pos, mx, my)
       if hidden then
-        local u = apx.spawn(pack[i], mx, my)
+        local u = apx.spawn(pack[i], mx, my, core.tier_of(pack[i]))
         if u then spawned[#spawned + 1] = u; placed = true; break end
       end
     end
@@ -298,7 +298,8 @@ apx.every(50, function()
   local total = core.budget_total(depth, ratio, t.players, me.temper, t.ewma, D.fixed)
   D.banked = D.banked == nil and total or core.accrue(D.banked, total, 1)
 
-  local st = { now_s = now_s, ewma = t.ewma, banked = D.banked, total = total, temper = me.temper, last = D.last,
+  if D.arrive_floor ~= apx.floor() or (D.arrive_s or 0) > now_s then D.arrive_floor = apx.floor(); D.arrive_s = now_s end   -- spawn fix 5
+  local st = { now_s = now_s, arrive_s = D.arrive_s, no_arrival_quiet = D.no_arrival_quiet or (apx.spawn_legacy and apx.spawn_legacy()), ewma = t.ewma, banked = D.banked, total = total, temper = me.temper, last = D.last,
                last_event = D.last_event, last_hostile_s = D.last_hostile_s,
                available = { ambush = true, den = true, patrol = true, peddler = D.peddler_ready() }, no_gate = D.no_gate, no_cooldown = D.no_cooldown }
   local ev, reason, cost, counters = core.choose_event(st, rng)

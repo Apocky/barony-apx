@@ -22,12 +22,16 @@
 #include "monster.hpp"
 #include "apx_combat_units.hpp"
 #include "apx/tiers.hpp"
+#include "apx/tier_rules.hpp"
+#include "apx/spawn_fix.hpp"
 #include "apx/poise_rules.hpp"
 #include "apx_stamina.hpp"
 #include "items.hpp"
 #include <cstdlib>
 #include <cmath>
 #include <unordered_map>
+#include <map>
+#include <string>
 
 namespace apx
 {
@@ -44,7 +48,7 @@ namespace combat_glue
 	inline bool poiseOn() { static const bool on = envFlag("APX_POISE", true); return on; }
 	inline bool zonesOn() { static const bool on = envFlag("APX_ZONES", true); return on; }
 	inline bool downedOn() { static const bool on = envFlag("APX_DOWNED", true); return on; }
-	inline bool forceCoop() { static const bool on = envFlag("APX_DOWNED_FORCE_COOP", false); return on || selftestall::active(selftestall::F4C); } // the f4c stage runs solo as co-op, as its script does
+	inline bool forceCoop() { static const bool on = envFlag("APX_DOWNED_FORCE_COOP", false); return on || selftestall::active(selftestall::F4C) || envFlag("APX_F4C_SELFTEST", false); } // the f4c self-test (stage or APX_F4C_SELFTEST=1) runs solo as co-op, as its script does (its bleed-out check needs the co-op path; solo now gets back up)
 	inline bool selftestOn() { static const bool on = envFlag("APX_F4C_SELFTEST", false); return on || selftestall::armed(); } // D77: also the "f4c" stage of -apxselftest=all
 	// D75: a player's poise is physical (apx/poise_rules.hpp); 0 = F4c's flat pool (the control)
 	inline bool physicalOn() { static const bool on = envFlag("APX_POISE_PHYSICAL", true); return on; }
@@ -77,6 +81,41 @@ namespace combat_glue
 		return d[std::max(0, std::min(MAXPLAYERS - 1, playernum))];
 	}
 	inline int& selftestAlly() { static int a = 0; return a; } // self-test: a fake ally stands by
+	inline int& gateStaggers() { static int n = 0; return n; } // spawn gate: staggers on players
+	inline std::map<std::string, int>& gateLoss() { static std::map<std::string, int> m; return m; }   // spawn gate: HP losses by source
+	inline std::map<std::string, int>& gateLossHP() { static std::map<std::string, int> m; return m; } // and the HP they took
+	struct SpawnGate
+	{
+		int seconds = -1;
+		bool started = false, finished = false, censusDue = false;
+		Uint32 t0 = 0;
+		double sx = 0, sy = 0;
+		int playerHits = 0, playerDmg = 0, shopkeeperHits = 0, minHP = 1 << 30, startHP = 0;
+		int mmHitsNear = 0, mmHitsAll = 0, staggers = 0, directorHits = 0, maxBlow = 0, maxFodderBlow = 0, maxRegularBlow = 0;
+		Uint32 deathTick = 0;
+		int maxHP = 0;
+		bool fight = false, fought = false; // APX_SPAWN_GATE_FIGHT=1: a pack is set on the player 5 s in (the damage, downed and killer fixes under load)
+		std::unordered_map<Uint32, int> brawlersAll; // every creature in a creature-on-creature hit
+		std::unordered_map<Uint32, int> brawlers; // creatures in a creature-on-creature hit near the start
+		std::unordered_map<int, int> byType;      // hits on the player by attacker type
+	};
+	inline SpawnGate& gate()
+	{
+		static SpawnGate g;
+		if ( g.seconds < 0 ) { const char* v = std::getenv("APX_SPAWN_GATE"); g.seconds = (v && v[0]) ? std::max(0, atoi(v)) : 0; g.fight = envFlag("APX_SPAWN_GATE_FIGHT", false); }
+		return g;
+	}
+	inline int& lastHitType(int playernum) // and its kind, for when that creature is gone by the time the player bleeds out
+	{
+		static int k[MAXPLAYERS] = {};
+		return k[std::max(0, std::min(MAXPLAYERS - 1, playernum))];
+	}
+	inline Uint32& lastHitBy(int playernum) // the last creature that struck the player: the killer if a downed player bleeds out
+	{
+		static Uint32 u[MAXPLAYERS] = {};
+		return u[std::max(0, std::min(MAXPLAYERS - 1, playernum))];
+	}
+	inline void gateOnHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int dmg);
 
 	inline bool isPlayer(Entity* e) { return e && e->behavior == &actPlayer; }
 	inline Rec& rec(Entity* e, Stat* s)
@@ -209,6 +248,7 @@ namespace combat_glue
 			printlog("[apx-f4c] stagger forced past paralysis immunity uid=%u type=%d", target->getUID(), (int)ts->type);
 		}
 		++r.staggers;
+		if ( isPlayer(target) ) ++gateStaggers();
 	}
 
 	// The melee hit hook. damage is the engine's damage for this hit; returns the damage to apply.
@@ -222,7 +262,26 @@ namespace combat_glue
 		int out = damage;
 		if ( zonesOn() ) out = hitDamage(damage, z, wasStaggered);
 		else if ( wasStaggered ) out = hitDamage(damage, Zone::Torso, true);
+		// apx spawn fix 3: a hostile creature's blow on a PLAYER after F4c's zone and stagger multipliers. D74 makes fodder's
+		// depth cap a ceiling per hit, so it still holds after the multiplier; a blow below elite tier deals at most a third
+		// of the player's max HP (a head hit of 31 x2.5 = 78 one-shot a 40 HP character on floor 1). Elite and above as F4c.
+		if ( !spawnfix::legacy() && isPlayer(target) && attacker && attacker->behavior == &actMonster && !attacker->monsterAllyGetPlayerLeader()
+			&& out > damage && apx::tierdmg::enabled() )
+		{
+			const Tier at = apx::tiers::tierOf(attacker);
+			int lim = out;
+			if ( at == Tier::Fodder ) lim = std::max(damage, apx::tierrules::depthRow(currentlevel).fodderCap);
+			else if ( at == Tier::Regular ) lim = std::max(damage, std::max(1, (int)tStats->MAXHP / 3));
+			if ( out > lim )
+			{
+				if ( at == Tier::Fodder ) ++spawnfix::C().fodderCapAfterZone; else ++spawnfix::C().playerBlowClamps;
+				printlog("[apx-spawnfix] player blow clamp uid=%u tier=%s zone=%s tiered=%d multiplied=%d -> %d (fodder caps %lld, regular clamps %lld)",
+					attacker->getUID(), tierName(at), zoneName(z), damage, out, lim, spawnfix::C().fodderCapAfterZone, spawnfix::C().playerBlowClamps);
+				out = lim;
+			}
+		}
 		if ( zonesOn() && out > 0 ) r.zones.damage(z, out);
+		if ( isPlayer(target) && attacker && attacker != target ) { lastHitBy(target->skill[2]) = attacker->getUID(); if ( atkStats ) lastHitType(target->skill[2]) = (int)atkStats->type; }
 		// apx D74: a hostile creature's poise hit on a player or follower by its tier (fodder a third; apx/tiers.hpp)
 		const int poiseIn = apx::tierdmg::poiseForHit(attacker, target, poiseHit(w));
 		if ( poiseOn() && physicalPlayer(target) )
@@ -236,7 +295,18 @@ namespace combat_glue
 			(int)tStats->type, zoneName(z), damage, out, phys ? r.phys.value : r.poise.value, phys ? r.phys.max : (double)r.poise.max,
 			phys ? " physical" : "", (int)staggeredRec(target, r),
 			r.zones.hp[(int)Zone::Legs], r.zones.max[(int)Zone::Legs], r.zones.hp[(int)Zone::Arms], r.zones.max[(int)Zone::Arms]);
-		(void)atkStats;
+		gateOnHit(attacker, atkStats, target, tStats, out);
+		if ( attacker )
+		{
+			// who struck: type, uid, side, and why hostile (the attacker's target and whether the engine counts them friends)
+			Entity* atkTarget = attacker->behavior == &actMonster ? uidToEntity(attacker->monsterTarget) : nullptr;
+			Entity* leader = attacker->behavior == &actMonster ? attacker->monsterAllyGetPlayerLeader() : nullptr;
+			printlog("[apx-f4c] attacker uid=%u type=%d (%s) on uid=%u type=%d leader=%d state=%d target=%u friend=%d shopkeeper=%d",
+				attacker->getUID(), atkStats ? (int)atkStats->type : -1, atkStats ? monstertypename[atkStats->type] : "?",
+				target->getUID(), (int)tStats->type, leader ? (int)leader->skill[2] : -1,
+				attacker->behavior == &actMonster ? (int)attacker->monsterState : -1, atkTarget ? atkTarget->getUID() : 0u,
+				(int)attacker->checkFriend(target), atkStats && atkStats->type == SHOPKEEPER ? 1 : 0);
+		}
 		return out;
 	}
 	inline int onMeleeHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int damage)
@@ -280,6 +350,16 @@ namespace combat_glue
 	// a player's HP change: a lethal blow downs instead (co-op, or solo once per floor)
 	inline int interceptPlayerDamage(Entity* e, Stat* s, int amount)
 	{
+		if ( gate().seconds && gate().started && !gate().finished && amount < 0 && isPlayer(e) && s )
+		{
+			// spawn gate: every HP loss of the player with its likely source (this tick's D74 hit, burning, else other)
+			const bool d74 = apx::tierdmg::last.tick == ::ticks;
+			const char* src = d74 ? (apx::tierdmg::last.path == 0 ? "melee" : apx::tierdmg::last.path == 1 ? "arrow" : "thrown")
+				: e->flags[BURNING] ? "burning" : s->getEffectActive(EFF_POISONED) ? "poison" : s->getEffectActive(EFF_BLEEDING) ? "bleeding" : "other";
+			printlog("[apx-spawngate] hp_loss %d src=%s hp=%d downed=%d", -amount, src, s->HP, (int)downed(e->skill[2]).downed);
+			++gateLoss()[src];
+			gateLossHP()[src] += -amount;
+		}
 		if ( !downedOn() || amount >= 0 || !isPlayer(e) || !s ) return amount;
 		DownedState& d = downed(e->skill[2]);
 		if ( d.downed ) return 0; // no HP loss while down
@@ -291,10 +371,132 @@ namespace combat_glue
 
 	inline void selftestStep(Entity* my, Stat* s);
 
+	// ------------------------------------------------------------------ the spawn gate (APX_SPAWN_GATE=<seconds>)
+	// The player stands still from the floor start for N game seconds; counts who hits the player, shopkeeper
+	// hits, creature-on-creature hits near the start (a brawl), downs, staggers and locks, then prints one
+	// "[apx-spawngate] summary" row and quits (or at once when the player dies). tools/apx/spawn_gate.py reads it.
+	inline void gateOnHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int dmg)
+	{
+		SpawnGate& g = gate();
+		if ( !g.seconds || !g.started || g.finished || !target ) return;
+		if ( isPlayer(target) )
+		{
+			++g.playerHits; g.playerDmg += dmg;
+			if ( atkStats ) ++g.byType[(int)atkStats->type];
+			if ( atkStats && atkStats->type == SHOPKEEPER ) ++g.shopkeeperHits;
+			apx::tiers::Source why = apx::tiers::Source::NotMonster;
+			if ( attacker ) apx::tiers::tierOf(attacker, &why);
+			if ( why == apx::tiers::Source::Tag ) ++g.directorHits;
+			g.maxBlow = std::max(g.maxBlow, dmg);
+			if ( attacker ) { const Tier at = apx::tiers::tierOf(attacker); if ( at == Tier::Fodder ) g.maxFodderBlow = std::max(g.maxFodderBlow, dmg); else if ( at == Tier::Regular ) g.maxRegularBlow = std::max(g.maxRegularBlow, dmg); }
+		}
+		else if ( attacker && attacker->behavior == &actMonster && target->behavior == &actMonster )
+		{
+			++g.mmHitsAll; ++g.brawlersAll[attacker->getUID()]; ++g.brawlersAll[target->getUID()];
+			if ( std::hypot(target->x - g.sx, target->y - g.sy) <= 12 * 16.0 && (!tStats || tStats->type != SHOPKEEPER) && (!atkStats || atkStats->type != SHOPKEEPER) )
+			{
+				++g.mmHitsNear; ++g.brawlers[attacker->getUID()]; ++g.brawlers[target->getUID()];
+			}
+		}
+	}
+	inline void gateFinish(const char* why)
+	{
+		SpawnGate& g = gate();
+		if ( g.finished ) return;
+		g.finished = true;
+		Entity* p = players[0] ? players[0]->entity : nullptr;
+		Stat* s = p ? p->getStats() : nullptr;
+		long long locks = 0;
+		if ( p ) { auto it = table().find(p->getUID()); if ( it != table().end() ) locks = it->second.locks; }
+		std::string types;
+		for ( auto& kv : g.byType ) { char b[48]; snprintf(b, sizeof b, "%s%s:%d", types.empty() ? "" : ",", monstertypename[kv.first], kv.second); types += b; }
+		const DownedState& d = downed(0);
+		printlog("[apx-spawngate] summary why=%s seconds=%.1f alive=%d hp=%d start_hp=%d min_hp=%d player_hits=%d player_dmg=%d shopkeeper_hits=%d"
+			" director_hits=%d max_blow=%d max_fodder_blow=%d max_regular_blow=%d fodder_cap=%d max_hp=%d fight=%d mm_hits_near=%d mm_hits_all=%d brawlers_all=%d brawlers_near=%d downs=%d bleedouts=%d solo_recovers=%d staggers=%d locks=%lld by_type=%s",
+			why, (::ticks - g.t0) / (double)kTicksPerSecond, (int)(s && s->HP > 0), s ? s->HP : 0, g.startHP, g.minHP == (1 << 30) ? -1 : g.minHP,
+			g.playerHits, g.playerDmg, g.shopkeeperHits, g.directorHits, g.maxBlow, g.maxFodderBlow, g.maxRegularBlow, apx::tierrules::depthRow(currentlevel).fodderCap, g.maxHP, (int)g.fought, g.mmHitsNear, g.mmHitsAll, (int)g.brawlersAll.size(), (int)g.brawlers.size(), d.downs, d.bleedouts, d.soloRecovers,
+			gateStaggers(), locks, types.empty() ? "-" : types.c_str());
+		std::string loss;
+		for ( auto& kv : gateLossHP() ) { char b[64]; snprintf(b, sizeof b, "%s%s:%d/%d", loss.empty() ? "" : ",", kv.first.c_str(), kv.second, gateLoss()[kv.first]); loss += b; }
+		printlog("[apx-spawngate] hp_loss_by_source %s", loss.empty() ? "-" : loss.c_str());
+		const spawnfix::Counters& F = spawnfix::C();
+		printlog("[apx-spawngate] fixes legacy=%d d72_redraws=%lld d72_territory=%lld d72_arrival_moves=%lld d72_fallbacks=%lld director_tags=%lld variant_before_tier=%lld fodder_cap_after_zone=%lld"
+			" player_blow_clamps=%lld solo_recovers=%lld killers_named=%lld obituaries_kept=%lld", (int)spawnfix::legacy(), F.d72Redraws, F.d72TerritoryGroups, F.d72ArrivalMoves, F.d72Fallbacks, F.directorTags,
+			F.variantBeforeTier, F.fodderCapAfterZone, F.playerBlowClamps, F.soloRecovers, F.killersNamed, F.obituariesKept);
+		mainloop = 0;
+	}
+	// the fight scenario: three kobolds (fodder) and two goblins (regular) beside the player, hunting it; tagged with their tiers
+	// as the director tags its spawns (not under APX_SPAWN_LEGACY, as the director's tags are not)
+	inline void gateFightSpawn(Entity* p)
+	{
+		const Monster kinds[5] = { KOBOLD, KOBOLD, KOBOLD, GOBLIN, GOBLIN }; // one side: kobolds and goblins are not sworn enemies
+		int n = 0;
+		for ( int k = 0; k < 5; ++k )
+		{
+			const double a = k * 1.2566;
+			Entity* m = summonMonster(kinds[k], (long)(p->x + std::cos(a) * 40.0), (long)(p->y + std::sin(a) * 40.0), false);
+			if ( !m ) continue;
+			++n;
+			if ( !spawnfix::legacy() ) apx::tiers::tag(m, kinds[k] == GOBLIN ? Tier::Regular : Tier::Fodder);
+			m->monsterAcquireAttackTarget(*p, MONSTER_STATE_PATH);
+		}
+		printlog("[apx-spawngate] fight: %d of 5 creatures set on the player", n);
+	}
+	inline void gateCensus(SpawnGate& g)
+	{
+		int n8 = 0, n16 = 0, n24 = 0;
+		for ( node_t* nd = map.creatures ? map.creatures->first : nullptr; nd; nd = nd->next )
+		{
+			Entity* m = (Entity*)nd->element;
+			if ( !m || m->behavior != &actMonster ) continue;
+			const double dt = std::hypot(m->x - g.sx, m->y - g.sy) / 16.0;
+			n8 += dt <= 8; n16 += dt <= 16; n24 += dt <= 24;
+			Stat* ms = m->getStats();
+			if ( dt <= 16 ) printlog("[apx-spawngate] near uid=%u type=%s dist=%.1f state=%d", m->getUID(), ms ? monstertypename[ms->type] : "?", dt, (int)m->monsterState);
+		}
+		printlog("[apx-spawngate] creatures within 8/16/24 tiles of the start: %d/%d/%d", n8, n16, n24);
+	}
+	inline void gateTick(Entity* e)
+	{
+		SpawnGate& g = gate();
+		if ( !g.seconds || g.finished ) return;
+		Entity* p = players[0] ? players[0]->entity : nullptr;
+		if ( !g.started )
+		{
+			if ( !p || !isPlayer(e) || e != p ) return;
+			g.started = true; g.t0 = ::ticks; g.sx = p->x; g.sy = p->y;
+			if ( Stat* s = p->getStats() ) g.startHP = s->HP;
+			printlog("[apx-spawngate] start floor=%d seconds=%d x=%.0f y=%.0f", currentlevel, g.seconds, p->x / 16.0, p->y / 16.0);
+			gateCensus(g);
+
+			return;
+		}
+		if ( ::ticks < g.t0 )
+		{
+			g.t0 = ::ticks;
+			if ( p ) { g.sx = p->x; g.sy = p->y; }
+			printlog("[apx-spawngate] tick counter reset at floor load: restart at %u x=%.0f y=%.0f", ::ticks, g.sx / 16.0, g.sy / 16.0);
+			g.censusDue = true;
+		}
+		if ( g.censusDue && ::ticks - g.t0 >= 2 ) { g.censusDue = false; gateCensus(g); }
+		if ( g.fight && !g.fought && p && !g.censusDue && ::ticks - g.t0 >= (Uint32)(5 * kTicksPerSecond) ) { g.fought = true; gateFightSpawn(p); }
+		Stat* ps = p ? p->getStats() : nullptr;
+		if ( ps && !g.deathTick ) { g.minHP = std::min(g.minHP, ps->HP); g.maxHP = ps->MAXHP; }
+		if ( !p || !ps || ps->HP <= 0 )
+		{
+			// one more second so the engine records the death (its obituary line) before the summary
+			if ( !g.deathTick ) g.deathTick = ::ticks ? ::ticks : 1;
+			if ( ::ticks - g.deathTick >= (Uint32)kTicksPerSecond ) gateFinish("player_died");
+			return;
+		}
+		if ( ::ticks - g.t0 >= (Uint32)(g.seconds * kTicksPerSecond) ) gateFinish("time");
+	}
+
 	// once per tick per entity, from actPlayer and actMonster
 	inline void tick(Entity* e)
 	{
 		if ( !e ) return;
+		gateTick(e);
 		Stat* s = e->getStats();
 		if ( !s ) return;
 		Rec& r = rec(e, s);
@@ -349,16 +551,43 @@ namespace combat_glue
 					Entity* o = players[i]->entity;
 					ally = std::hypot(o->x - e->x, o->y - e->y) <= kReviveRange * 16.0 && !downed(i).downed;
 				}
-				int res = d.tick(ally, r.hitThisTick);
+				// apx spawn fix 4: downed is a co-op state (an ally channels the revive). A SOLO player has no ally, so the
+				// bleed-out was certain while creatures kept striking: a slow death loop. Solo, the player gets back up after
+				// the revive time (spec 04 section 5: a misstep is a lesson, not a run end); the next lethal blow this floor kills.
+				const bool solo = coopPlayers() <= 1 && !forceCoop() && !spawnfix::legacy();
+				int res = solo ? d.tick(true, false) : d.tick(ally, r.hitThisTick);
 				if ( res > 0 )
 				{
 					e->setHP(d.reviveHP(s->MAXHP));
-					printlog("[apx-f4c] revived player=%d hp=%d", pn, s->HP);
+					if ( solo ) { ++d.soloRecovers; ++spawnfix::C().soloRecovers; }
+					printlog("[apx-f4c] revived player=%d hp=%d%s (solo recovers %lld)", pn, s->HP, solo ? " solo" : "", spawnfix::C().soloRecovers);
 				}
 				else if ( res < 0 )
 				{
-					printlog("[apx-f4c] bled out player=%d", pn);
-					e->setHP(0);
+					// the killer is recorded: the last creature that struck the player (melee), else the last D74 hit (arrows, thrown)
+					Uint32 ku = lastHitBy(pn);
+					if ( !ku && apx::tierdmg::last.attacker ) ku = apx::tierdmg::last.attacker;
+					Entity* killer = (!spawnfix::legacy() && ku) ? uidToEntity(ku) : nullptr;
+					e->setHP(0); // setHP writes the default obituary: the killer's goes after it
+					if ( killer )
+					{
+						killer->killedByMonsterObituary(e);
+						++spawnfix::C().killersNamed;
+					}
+					else if ( !spawnfix::legacy() && lastHitType(pn) > NOTHING && lastHitType(pn) < NUMMONSTERS )
+					{
+						// the creature died meanwhile: name its kind
+						s->killer = KilledBy::MONSTER;
+						s->killer_monster = (Monster)lastHitType(pn);
+						s->killer_uid = ku;
+						char ob[128];
+						snprintf(ob, sizeof ob, "bleeds out after a %s's blows.", getMonsterLocalizedName((Monster)lastHitType(pn)).c_str());
+						e->setObituary(ob);
+						++spawnfix::C().killersNamed;
+					}
+					Stat* ks = killer ? killer->getStats() : nullptr;
+					printlog("[apx-f4c] bled out player=%d killer uid=%u type=%s (killers named %lld)", pn, ku, ks ? monstertypename[ks->type] : (lastHitType(pn) > NOTHING && lastHitType(pn) < NUMMONSTERS ? monstertypename[lastHitType(pn)] : "none"),
+						spawnfix::C().killersNamed);
 				}
 			}
 			if ( selftestOn() && pn == 0 ) selftestStep(e, s);

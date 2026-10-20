@@ -45,6 +45,7 @@ See LICENSE for details.
 #include "apx_combat.hpp"
 #include "apx/combat/impact.hpp" // [apx-hit] impact_uses
 #include "apx/tiers.hpp"
+#include "apx/spawn_fix.hpp" // apx floor-start death fixes
 
 /*-------------------------------------------------------------------------------
 
@@ -3210,9 +3211,19 @@ void Entity::setHP(int amount)
 	{
 		return;
 	}
+	const bool wasDead = entitystats->HP <= 0;
 	entitystats->HP = std::min(std::max(0, amount), entitystats->MAXHP);
 	healthDiff -= entitystats->HP;
-	strncpy(entitystats->obituary, Language::get(1500), 127);
+	if ( wasDead && entitystats->HP <= 0 && !apx::spawnfix::legacy() )
+	{
+		// apx spawn fix 4: already dead this tick (the killer's obituary is written): a later blow on the body (a burning tick, a
+		// second attacker) no longer resets it to "dies randomly" (QA s1: a kobold's killing blow, then the fire tick)
+		++apx::spawnfix::C().obituariesKept;
+	}
+	else
+	{
+		strncpy(entitystats->obituary, Language::get(1500), 127);
+	}
 
 	if ( this->behavior == &actPlayer && buddhamode && entitystats->HP < 1 )
 	{
@@ -13204,8 +13215,20 @@ void Entity::attack(int pose, int charge, Entity* target)
 					{
 						damage = apx::fam::beforeHit(player, this, hit.entity, hitstats, damage, previousMonsterState); // apx F4d: sneak and critical moves
 					}
-					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
-					damage = apx::vglue::scaleDamage(this, damage); // apx BV1: a variant creature's damage multiple
+					if ( apx::spawnfix::legacy() )
+					{
+						damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // the old order: tier, then variant
+						damage = apx::vglue::scaleDamage(this, damage);
+					}
+					else
+					{
+						// apx spawn fix 3: the BV1 variant multiple is part of the creature's own hit, so it applies BEFORE the D74
+						// tier rule; after it, a variant fodder lifted its capped hit over the depth cap
+						const int beforeVariant = damage;
+						damage = apx::vglue::scaleDamage(this, damage); // apx BV1: a variant creature's damage multiple
+						if ( damage != beforeVariant ) { ++apx::spawnfix::C().variantBeforeTier; }
+						damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
+					}
 					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 					if ( player >= 0 )

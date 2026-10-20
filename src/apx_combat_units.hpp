@@ -196,7 +196,7 @@ namespace combat
 		int left = 0;           // ticks to bleed out
 		int revive = 0;         // revive channel progress, ticks
 		int downsThisFloor = 0;
-		int downs = 0, revives = 0, bleedouts = 0;
+		int downs = 0, revives = 0, bleedouts = 0, soloRecovers = 0;
 		// a blow would bring HP to 0 or below. Returns true when the player goes down instead of dying:
 		// co-op always; solo once per floor (spec 04 section 5)
 		bool onLethal(bool coop)

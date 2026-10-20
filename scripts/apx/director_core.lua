@@ -37,15 +37,24 @@ C.CREATURES = {
   { kind = "ghoul", cost = 3, from = 3 }, { kind = "imp", cost = 3, from = 3 }, { kind = "troll", cost = 10, from = 4 },
   { kind = "bugbear", cost = 10, from = 5 },
 }
+-- the D74 tier of a director creature by its cost (fodder 1, regular 3, elite 10): the engine tags each spawn with it
+function C.tier_of(kind) local c = C.cost_of(kind); if not c then return nil end; if c >= 10 then return "elite" elseif c >= 3 then return "regular" end; return "fodder" end
 function C.cost_of(kind) for _, c in ipairs(C.CREATURES) do if c.kind == kind then return c.cost end end end
 
 -- Greedy seeded pack: picks eligible kinds that still fit, stops when none fits or 16 creatures. Returns list, total cost.
-function C.build_pack(budget, rng, depth, costs)
+-- compatible(a, b) (optional): false when kinds a and b would fight each other (the engine's sworn enemies); a kind joins the
+-- pack only when it is compatible with every kind already in it (spawn fix 2: a rat-kobold-goblin pack brawled on arrival).
+function C.build_pack(budget, rng, depth, costs, compatible)
   costs = costs or C.CREATURES
   local pack, spent = {}, 0
+  local function fits(kind)
+    if not compatible then return true end
+    for _, k in ipairs(pack) do if not compatible(kind, k) then return false end end
+    return true
+  end
   while #pack < 16 do
     local fit = {}
-    for _, c in ipairs(costs) do if c.from <= depth and spent + c.cost <= budget then fit[#fit + 1] = c end end
+    for _, c in ipairs(costs) do if c.from <= depth and spent + c.cost <= budget and fits(c.kind) then fit[#fit + 1] = c end end
     if #fit == 0 then break end
     local c = fit[rng:int(#fit) + 1]
     pack[#pack + 1] = c.kind; spent = spent + c.cost
@@ -60,6 +69,11 @@ C.BASE_W = { ambush = 1.0, den = 0.8, patrol = 1.0, collapse = 0.4, flood = 0.3,
 C.COOLDOWN_S = { ambush = 90, den = 120, patrol = 60, collapse = 180, flood = 240, rival = 300, peddler = 400 }
 C.COST_SHARE = { ambush = 0.5, den = 0.35, patrol = 0.25, collapse = 0, flood = 0, rival = 0, peddler = 0 }
 C.MIN_SILENCE_AFTER_HOSTILE_S = 20
+-- spawn fix 5: a floor opens quiet. No hostile event (ambush, den, patrol) in the first ARRIVAL_QUIET_S of a floor (ASSUMED 120 s,
+-- Apocky tunes it): at arrival last_hostile_s was unset, so an ambush could hunt a player who had not moved yet (QA s2 seed 777:
+-- goblins and kobolds within 20 s of the start). st.arrive_s is the floor arrival time; st.no_arrival_quiet is the control.
+C.ARRIVAL_QUIET_S = 120
+C.HOSTILE = { ambush = true, den = true, patrol = true }
 C.TEMPER_W = {
   calm = { ambush = 0.6, den = 0.5, patrol = 0.8, silence = 1.6 },
   story = { ambush = 1.0, den = 1.0, patrol = 1.0, silence = 1.0 },
@@ -72,7 +86,7 @@ C.gate = gate
 --       available = {event -> bool}, marks = {event -> mult} , no_gate, no_cooldown (CONTROL flags) }
 -- returns event name ("silence" when nothing), reason string, cost to spend, counters table (declines)
 function C.choose_event(st, rng)
-  local counters = { event_unavailable = 0, budget_zero = 0, cooldown = 0, tension_gate = 0, repeat_blocked = 0, silence_window = 0 }
+  local counters = { event_unavailable = 0, budget_zero = 0, cooldown = 0, tension_gate = 0, repeat_blocked = 0, silence_window = 0, arrival_quiet = 0 }
   local tw = C.TEMPER_W[st.temper] or C.TEMPER_W.story
   local g = st.no_gate and 1.0 or gate(st.ewma)
   local cands, wsum = {}, 0
@@ -88,6 +102,9 @@ function C.choose_event(st, rng)
     if ok and not st.no_cooldown and st.last_event == e then counters.repeat_blocked = counters.repeat_blocked + 1; ok = false end
     if ok and g == 0 then counters.tension_gate = counters.tension_gate + 1; ok = false end
     if ok and in_silence_window and not st.no_cooldown then counters.silence_window = counters.silence_window + 1; ok = false end
+    if ok and C.HOSTILE[e] and st.arrive_s and not st.no_arrival_quiet and (st.now_s - st.arrive_s) < C.ARRIVAL_QUIET_S then
+      counters.arrival_quiet = counters.arrival_quiet + 1; ok = false
+    end
     local cost = (st.total or 0) * (C.COST_SHARE[e] or 0)
     if ok and cost > 0 and cost > (st.banked or 0) then counters.budget_zero = counters.budget_zero + 1; ok = false end
     if ok then

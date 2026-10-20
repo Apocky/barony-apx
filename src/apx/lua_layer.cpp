@@ -21,6 +21,8 @@
 #include "parts_engine.hpp"
 #include "../items.hpp"
 #include "lua_layer.hpp"
+#include "tiers.hpp"
+#include "spawn_fix.hpp"
 
 extern "C" {
 #include "lua.h"
@@ -216,8 +218,29 @@ int api_spawn(lua_State* L) {
 	if ( inWindow >= kSpawnBudgetPerSecond && !(G.test && getenv("APX_LUA_NOBUDGET")) ) { G.nSpawnRefused++; lua_pushnil(L); lua_pushstring(L, "budget"); return 2; }
 	Entity* e = summonMonster((Monster)k, (long)(x * 16.0), (long)(y * 16.0), false);
 	if ( !e ) { lua_pushnil(L); lua_pushstring(L, "no room"); return 2; }
+	// apx spawn fix 2 (apx/spawn_fix.hpp): an optional 4th argument tags the creature's tier ("fodder", "regular", "elite"; the
+	// director passes its cost tier) so the D74 damage rule reads it; untagged it fell back to the MAXHP tier. APX_SPAWN_LEGACY=1: no tag.
+	if ( const char* tn = luaL_optstring(L, 4, nullptr) )
+	{
+		const std::string s(tn);
+		const int ti = s == "fodder" ? 0 : s == "regular" ? 1 : s == "elite" ? 2 : -1;
+		if ( ti >= 0 && !apx::spawnfix::legacy() )
+		{
+			apx::tiers::tag(e, (apx::combat::Tier)ti);
+			++apx::spawnfix::C().directorTags;
+			printlog("[apx-spawnfix] tagged uid=%u kind=%s tier=%s (tags %lld)", e->getUID(), kind, tn, apx::spawnfix::C().directorTags);
+		}
+	}
 	inWindow++;
 	lua_pushinteger(L, e->getUID());
+	return 1;
+}
+// apx spawn fix: APX_SPAWN_LEGACY=1 (the floor-start death fixes off: the control), for director.lua
+int api_spawn_legacy(lua_State* L) { lua_pushboolean(L, apx::spawnfix::legacy()); return 1; }
+// apx spawn fix 2: true when the engine counts two monster kinds (by name) as sworn enemies, either way round (a pack of them brawls).
+int api_sworn_enemies(lua_State* L) {
+	int a = monsterByName(luaL_checkstring(L, 1)), b = monsterByName(luaL_checkstring(L, 2));
+	lua_pushboolean(L, !apx::spawnfix::legacy() && a > NOTHING && b > NOTHING && a < NUMMONSTERS && b < NUMMONSTERS && (swornenemies[a][b] || swornenemies[b][a]));
 	return 1;
 }
 // Make a monster hunt a player (or any entity). Wakes sleepers: sets its target and the PATH state.
@@ -551,7 +574,7 @@ int api_stats(lua_State* L) {
 const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
-	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
+	{ "spawn", api_spawn }, { "sworn_enemies", api_sworn_enemies }, { "spawn_legacy", api_spawn_legacy }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
 	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "test_teleport", api_test_teleport }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "shop_buy", api_shop_buy }, { "pouch_grams", api_pouch_grams }, { "shop_probe_bundle", api_shop_probe_bundle }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
