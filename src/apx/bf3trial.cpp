@@ -526,6 +526,15 @@ namespace bf3
 			double aa = atan2(a.second - pTY, a.first - pTX), ab = atan2(b.second - pTY, b.first - pTX);
 			return aa < ab || (aa == ab && hypot(a.first - pTX, a.second - pTY) < hypot(b.first - pTX, b.second - pTY));
 		});
+		// D80 loop flank test: APX_BF3_ONESIDE=1 keeps the spawn tiles on the first tile's side of the character only (in a
+		// corridor the far end is then empty unless creatures go round the loop)
+		if ( getenv("APX_BF3_ONESIDE") && atoi(getenv("APX_BF3_ONESIDE")) && !spawnTiles.empty() )
+		{
+			const auto t0 = spawnTiles.front();
+			std::vector<std::pair<int, int>> keep;
+			for ( auto& t : spawnTiles ) { if ( (t.first - pTX) * (t0.first - pTX) + (t.second - pTY) * (t0.second - pTY) > 0 ) { keep.push_back(t); } }
+			spawnTiles.swap(keep);
+		}
 		printlog("[apx] bf3 arena: %s tile %d,%d (%s %d), %d spawn tiles 4-7 tiles out", corridor ? "corridor" : "open", pTX, pTY,
 			corridor ? "corridor length" : "open tiles radius 5", corridor ? corrN : openN, (int)spawnTiles.size());
 		// the arena's walls, to read routes and stuck creatures against: '#' not walkable, '.' floor, 'P' the character
