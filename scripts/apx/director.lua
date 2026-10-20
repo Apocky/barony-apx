@@ -23,7 +23,7 @@ end
 
 local D = { identity = identity, decisions = 0, ticks = {}, us = {}, blind = false, fixed = false,
             tension = { value = 0, ewma = 0 }, hits = {}, banked = nil, last = {}, last_event = nil,
-            last_hostile_s = -1e9, force = nil, events_off = apx.is_test(), info = {}, totals = { ambush = 0, den = 0, patrol = 0, silence = 0 },
+            last_hostile_s = -1e9, force = nil, events_off = apx.is_test(), all_uids = {}, info = {}, totals = { ambush = 0, den = 0, patrol = 0, silence = 0 },
             declines = { event_unavailable = 0, budget_zero = 0, cooldown = 0, tension_gate = 0, repeat_blocked = 0,
                          silence_window = 0, event_blocked_no_tile = 0, spawn_refused = 0, no_eligible = 0, ambush_visible = 0 } }
 apx.shared.director = D
@@ -83,7 +83,7 @@ end
 -- A point is hidden when a wall blocks the view from every player to it AND to its four neighbours: apx.spawn may move the body
 -- one tile to the nearest free ground, so the margin keeps the check valid after the move.
 local function hidden_from_all(pos, x, y)
-  for _, d in ipairs({ { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+  for _, d in ipairs({ { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } }) do
     for _, p in ipairs(pos) do if apx.tile_los(p[1], p[2], x + d[1], y + d[2]) ~= false then return false end end
   end
   return true
@@ -97,11 +97,12 @@ local function do_ambush(core, rng, cost, depth, pos)
   local centre = pos[1 + rng:int(#pos)]
   local rmin, rmax = 14, 22
   if D.ambush_radius then rmin, rmax = D.ambush_radius[1], D.ambush_radius[2] end   -- test hook only
+  if not D.ambush_radius then rmax = 24 end
   local spawned, dists, visible = {}, {}, 0
   local ax, ay
   -- Line of sight is checked BEFORE a body exists: the point must be hidden from every player by a wall
-  -- (apx.tile_los marches the tile grid). Up to 12 candidate points; none hidden -> the event declines (counted).
-  for try = 1, 12 do
+  -- (apx.tile_los marches the tile grid). Up to 24 candidate points; none hidden -> the event declines (counted).
+  for try = 1, 24 do
     local ang = rng:float() * 2 * math.pi
     local r = rmin + rng:float() * (rmax - rmin)
     local cx, cy = centre[1] + math.cos(ang) * r, centre[2] + math.sin(ang) * r
@@ -144,6 +145,7 @@ local function do_ambush(core, rng, cost, depth, pos)
       if x then local p = nearest_player(pos, x, y); apx.set_target(u, p[3]) end
     end
   end)
+  for _, u in ipairs(spawned) do D.all_uids[#D.all_uids + 1] = u end
   return { kind = "ambush", spawned = #spawned, pack = pack, uids = spawned, dists = dists, visible = visible }
 end
 
@@ -172,6 +174,7 @@ local function do_den(core, rng, cost, depth, pos)
     local p = nearest_player(pos, c[2], c[3])
     if apx.set_target(c[1], p[3]) then woken[#woken + 1] = c[1]; spent = spent + 3 end
   end
+  for _, u in ipairs(woken) do D.all_uids[#D.all_uids + 1] = u end
   return { kind = "den", woken = #woken, eligible = #cands, uids = woken }
 end
 
@@ -181,8 +184,10 @@ local function do_patrol(core, rng, cost, depth, pos)
   if #cands == 0 then D.declines.no_eligible = D.declines.no_eligible + 1; return { kind = "patrol", moved = 0, eligible = 0 } end
   local p = pos[1 + rng:int(#pos)]
   local ok, c = false, nil
-  for _ = 1, math.min(6, #cands) do   -- path search is capped (200 tries): try several idle monsters, count failures
-    c = cands[1 + rng:int(#cands)]
+  -- the path search is capped (200 tries), so a patrol starts from the idle monsters NEAREST the party (but 15+ tiles away), nearest first
+  table.sort(cands, function(a, b) return dist(a[2], a[3], p[1], p[2]) < dist(b[2], b[3], p[1], p[2]) end)
+  for i = 1, math.min(12, #cands) do
+    c = cands[i]
     ok = apx.path_to(c[1], math.floor(p[1] + (rng:float() - 0.5) * 8), math.floor(p[2] + (rng:float() - 0.5) * 8))
     if ok then break end
     D.declines.path_failed = (D.declines.path_failed or 0) + 1
@@ -190,7 +195,77 @@ local function do_patrol(core, rng, cost, depth, pos)
   return { kind = "patrol", moved = ok and 1 or 0, eligible = #cands, uid = c and c[1] }
 end
 
-local EXEC = { ambush = do_ambush, den = do_den, patrol = do_patrol }
+-- PEDDLER (D73 rule 4, BT1): a relief event after a hard fight. A small-stock merchant appears out of sight; wild monsters may attack it
+-- (the engine's enemy check allows it). Rescue = it was threatened, the threat is gone, it lives and a player is near: a discount token
+-- (20 percent on one trade, this run) or +1 faction standing. Dead or left alone for 3 minutes: no reward.
+local TRADES = { "smith", "alchemist", "scribe", "provisioner", "fence" }
+local function do_peddler(core, rng, cost, depth, pos)
+  local centre = pos[1 + rng:int(#pos)]
+  local u
+  for _ = 1, 24 do
+    local ang = rng:float() * 2 * math.pi
+    local r = 14 + rng:float() * 10
+    local cx, cy = centre[1] + math.cos(ang) * r, centre[2] + math.sin(ang) * r
+    if D.no_los_check or hidden_from_all(pos, cx, cy) then
+      u = apx.spawn_peddler(cx, cy)
+      if u then break end
+    end
+  end
+  if not u then D.declines.event_blocked_no_tile = D.declines.event_blocked_no_tile + 1; return { kind = "peddler", spawned = 0 } end
+  D.peddler = { uid = u, since = apx.tick(), floor = apx.floor(), threatened = false, done = false }
+  D.peddler_floor = apx.floor()
+  apx.message("You hear a hawker's bell somewhere close.")
+  return { kind = "peddler", spawned = 1, uid = u }
+end
+
+apx.every(25, function()
+  local p = D.peddler
+  if not p or p.done then return end
+  local x, y = apx.entity_pos(p.uid)
+  local hp = apx.get_stat(p.uid, "hp")
+  local function finish(outcome, extra)
+    p.done = true; p.outcome = outcome
+    apx.row("dir_events", { event = "peddler", outcome = outcome, floor = p.floor, tick = apx.tick(), detail = extra })
+  end
+  if not x or not hp or hp <= 0 then finish("lost"); return end
+  if apx.tick() - p.since > 50 * 180 then finish("gone"); return end
+  local hostile = 0   -- wild monsters that count the peddler as an enemy (the peddler itself and other shopkeepers do not)
+  for _, u in ipairs(apx.monsters_near(x, y, 7)) do   -- awake ones only: sleepers nearby are not an attack
+    if u ~= p.uid and apx.monster_state(u) ~= 0 and apx.check_enemy(u, p.uid) then hostile = hostile + 1 end
+  end
+  p.watch = { hostile = hostile, threatened = p.threatened, ticks = (p.watch and p.watch.ticks or 0) + 1 }
+  if hostile > 0 then p.threatened = true; return end
+  if not p.threatened then return end
+  local near = false
+  for i = 0, 3 do
+    local pu = apx.player_uid(i)
+    if pu then local px, py = apx.entity_pos(pu); if px and dist(px, py, x, y) < 12 then near = true end end
+  end
+  p.watch.near = near
+  if not near then return end
+  local rng2 = D.rng
+  local trade = TRADES[1 + rng2:int(#TRADES)]
+  if rng2:int(2) == 0 then
+    apx.trade_discount(trade, 20); D.reward = { kind = "discount", trade = trade, pct = 20 }
+    apx.message("The peddler presses a token into your hand: " .. trade .. " prices down 20 percent.")
+  else
+    apx.run.standing = apx.run.standing or {}
+    apx.run.standing[trade] = (apx.run.standing[trade] or 0) + 1
+    D.reward = { kind = "standing", trade = trade, pct = 0 }
+    apx.message("The peddler will speak well of you to the " .. trade .. ".")
+  end
+  finish("rescued", D.reward.kind .. ":" .. trade)
+end)
+
+local EXEC = { peddler = do_peddler, ambush = do_ambush, den = do_den, patrol = do_patrol }
+
+-- A peddler comes after a hard fight (a recent tension peak above 0.6, now back below 0.35), once per floor, and not while one is out.
+function D.peddler_ready()
+  if D.peddler and not D.peddler.done then return false end
+  if D.peddler_floor == apx.floor() then return false end
+  if not D.peak_tick then return false end
+  return apx.tick() - D.peak_tick <= 50 * 240 and D.tension.ewma < 0.35
+end
 
 -- ---- the decision ---------------------------------------------------------------------------
 local me, rng, me_seed
@@ -212,6 +287,7 @@ apx.every(50, function()
   local t, pos = read_tension()
   if not t then return end
   t.ewma = D.tension.ewma * 0.7 + t.value * 0.3
+  if t.ewma > 0.6 then D.peak_tick = apx.tick() end
   D.tension = t
   D.decisions = D.decisions + 1
   local now_s = apx.tick() / 50
@@ -224,7 +300,7 @@ apx.every(50, function()
 
   local st = { now_s = now_s, ewma = t.ewma, banked = D.banked, total = total, temper = me.temper, last = D.last,
                last_event = D.last_event, last_hostile_s = D.last_hostile_s,
-               available = { ambush = true, den = true, patrol = true }, no_gate = D.no_gate, no_cooldown = D.no_cooldown }
+               available = { ambush = true, den = true, patrol = true, peddler = D.peddler_ready() }, no_gate = D.no_gate, no_cooldown = D.no_cooldown }
   local ev, reason, cost, counters = core.choose_event(st, rng)
   if D.force then ev, reason, cost = D.force, "forced (test)", total * (core.COST_SHARE[D.force] or 0.25); D.force = nil end
   if D.events_off then ev, cost = "silence", 0 end

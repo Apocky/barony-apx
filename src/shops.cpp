@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/trade_glue.hpp"
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -440,6 +441,10 @@ bool isItemSellableToShop(const int player, Item* item)
 	}
 
 	bool deal = true;
+	if ( apx::tradeglue::on() && shopkeepertype[player] != 10 )
+	{
+		return apx::tradeglue::sellable(player, item);   // apx BT1 (D73): a merchant buys only its own trade; no capstone exception
+	}
 	if ( stats[player]->getModifiedProficiency(PRO_TRADING) >= CAPSTONE_UNLOCK_LEVEL[PRO_TRADING] )
 	{
 		//Skill capstone: Can sell anything to any shop.
@@ -551,6 +556,14 @@ bool sellItemToShop(const int player, Item* item)
 		{
 			shopspeech[player] = Language::get(212 + local_rng.rand() % 3);
 		}
+		shoptimer[player] = ticks - 1;
+		playSound(90, 64);
+		return false;
+	}
+
+	if ( apx::tradeglue::purseRefuses(player, item) )
+	{
+		shopspeech[player] = Language::get(4125);   // apx BT1: the merchant cannot afford it (purse is finite)
 		shoptimer[player] = ticks - 1;
 		playSound(90, 64);
 		return false;
