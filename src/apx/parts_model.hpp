@@ -133,6 +133,17 @@ bool swapPart(const DB& db, ApxItemData& it, int partIndex, const ApxPart& c, in
 int makeCostGrams(const DB& db, int slot, int material);
 ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint32_t look, int* quality100 = nullptr);
 
+// C7 (05b sections 1 and 5 step 10): an assembly's derived fields follow its components after every bench
+// change: sockets = its rarity (best component, 0-4), resonance element = the best part's material,
+// power = itemPower. Crafted/looted bits are kept.
+void refreshDerived(const DB& db, ApxItemData& it);
+// GRAFT: extracted from a Rare-or-better assembly, which is destroyed. The graft is a component in the
+// "Graft" slot carrying the assembly's maker (its gimmick arrives with makers, C9), the main part's
+// material, the best rarity and the mean quality; no affixes. It mounts in a Form's Graft slot
+// (assemble or swap) at 75 percent when its maker differs from the assembly's (C9; makers are all 0 now).
+bool extractGraft(const DB& db, const ApxItemData& it, ApxPart& graft, std::string& why);
+int graftSlot(const DB& db);
+
 // C6 INFUSE (05b 5.9): an aura crystal's affix into an empty affix slot of a part. Slots = the part's
 // rarity (Common 0 .. Legendary 4; Unique 4 until the 5th affix lands). The affix must be one a part of
 // this slot can roll (any family's pool for the slot; ASSUMED) and not already on the part.
