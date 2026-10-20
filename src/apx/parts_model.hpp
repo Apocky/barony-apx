@@ -14,7 +14,7 @@ struct ApxPart
 {
 	uint8_t slot, material, quality, rarity /*0-5*/, integrity /*0-255 = 0.0-1.0*/, nAffix;
 	uint16_t affix[4];
-	uint8_t maker, pad;
+	uint8_t maker, model; // model: the component's shape id (0 = the default; C10 voxel builder, 05b 5.8)
 };
 struct ApxItemData
 {
@@ -38,7 +38,7 @@ constexpr uint32_t COMPONENT_FORM = 0xC0000000u;
 inline bool isComponent(const ApxItemData& d) { return d.form == COMPONENT_FORM && d.nParts == 1; }
 
 struct Material { std::string id; int density = 0, hardness = 0, tier = 1, valuePerKg = 0, meltC = 0, flammable = 0, element = 0; std::string salvageClass; float tint[3] = { 0, 0, 0 }; };
-struct Slot { std::string id; Role role = ROLE_OTHER; int volume = 0; };
+struct Slot { std::string id; Role role = ROLE_OTHER; int volume = 0; bool quick = false; }; // quick: swaps on looted assemblies (05b 5.3)
 struct OptSlot { int slot = 0, q = 0; };
 struct Family { std::string id; std::vector<int> required; std::vector<OptSlot> optional; };
 struct TypeForm { int family = -1; std::vector<int> materials; };
@@ -113,9 +113,31 @@ constexpr int LOOSE_PCT[6] = { 0, 10, 25, 50, 100, 100 };
 // keepAsMaterial = the LS44 control (APX_BREAK_KEEP_MATERIAL=1): the chosen part is melted like the rest.
 SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_t seed, bool symmetric = false, bool keepAsMaterial = false);
 int partMassGrams(const DB& db, const ApxPart& p);
+// ---- C4 ASSEMBLE / SWAP and C5 MAKE (05b section 5 steps 3, 7, 8)
+// Assemble a known Form (family) from components: every required slot exactly once; an optional slot
+// opens when the lowest quality among the required components reaches its gate; no slot twice; IP
+// must not exceed ipCapValue (the caller passes ipCap(depth); a rejection says so). Crafted flag set.
+// ASSUMED until makers exist (C9): the maker and foreign-75-percent rules are not applied (maker = 0).
+bool assemble(const DB& db, int family, const std::vector<ApxPart>& parts, uint32_t rollKey, int ipCapValue, ApxItemData& out, std::string& why);
+// Swap rule (D87): on a LOOTED assembly only quick slots swap; on any other every slot swaps.
+bool swapAllowed(const DB& db, const ApxItemData& it, int partIndex);
+// Swap part partIndex for component c (same slot); the old part is returned in `old`.
+bool swapPart(const DB& db, ApxItemData& it, int partIndex, const ApxPart& c, int ipCapValue, ApxPart& old, std::string& why);
+// MAKE: grams of material for one component of this slot (= its mass), and the made part: quality
+// 0-100 = 30 x material tier / 9 + station (0-30) + 20 shaping (any valid build, 05b 5.8) + tool (0-20),
+// stored on the 1-10 part scale (/10, at least 1); rarity Common, Uncommon from Fine (50), Rare at
+// Masterwork (70+) (D87); affix slots empty; integrity full; model = modelId.
+int makeCostGrams(const DB& db, int slot, int material);
+ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint8_t modelId, int* quality100 = nullptr);
+
 // One part as a component item's data (D86).
 ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);
 // "Keen Steel Blade of Embers": prefixes, Material, Slot, "of" suffixes joined by "and".
 std::string componentName(const DB& db, const ApxPart& p);
+// Assembly names (05b section 4, D87): up to Rare "[best prefix] <form name> [best suffix]" from the best
+// component (highest rarity, lowest index on a tie); Epic and up get a generated proper name from rollKey,
+// "Vey's Ember-Tongue" style (ASSUMED grammar until Apocky sets the style, 05b section 14).
+std::string assemblyName(const DB& db, const ApxItemData& it, const std::string& formName);
+std::string properName(const DB& db, const ApxItemData& it);
 
 } // namespace apxparts

@@ -7,6 +7,7 @@
 #endif
 #endif
 
+#include <algorithm>
 #include "parts_engine.hpp"
 
 #ifdef APX_HAVE_BENCH_API
@@ -50,8 +51,74 @@ std::vector<apx_bench::FormRow> benchFormbook(int player)
 	return rows;
 }
 
-std::vector<apx_bench::SlotNeed> benchCraftSlots(int, uint32_t, int) { return {}; } // crafting: next slice
-bool benchCraft(int, uint32_t, int, const std::vector<std::pair<int, uint32_t>>&, std::string& why) { why = "crafting: next slice"; return false; }
+// C4 Assemble = craftSlots/craft with component candidates (05b 5.7)
+std::vector<apx_bench::SlotNeed> benchCraftSlots(int player, uint32_t form, int)
+{
+	std::vector<apx_bench::SlotNeed> rows;
+	std::vector<int> gates;
+	const std::vector<int> slots = apxPartsFamilySlots((int)form, &gates);
+	const int req = apxPartsRequiredCount((int)form);
+	for ( size_t k = 0; k < slots.size(); ++k )
+	{
+		apx_bench::SlotNeed n;
+		n.slot = slots[k]; n.name = apxPartsSlotName(slots[k]); n.required = (int)k < req; n.qgate = gates[k];
+		n.candidateUids = apxPartsComponentsForSlot(player, slots[k]);
+		rows.push_back(n);
+	}
+	return rows;
+}
+bool benchCraft(int player, uint32_t form, int station, const std::vector<std::pair<int, uint32_t>>& slotUid, std::string& why)
+{
+	return apxPartsAssemble(player, (int)form, station, slotUid, why) != nullptr;
+}
+
+// C4 Swap (05b 5.3, D87)
+std::vector<apx_bench::SwapSlot> benchSwapSlots(int player, const Item* item, int)
+{
+	std::vector<apx_bench::SwapSlot> rows;
+	if ( !item ) { return rows; }
+	for ( int k = 0; k < item->apx.nParts; ++k )
+	{
+		if ( !apxPartsSwapAllowed(item, k) ) { continue; }
+		apx_bench::SwapSlot s;
+		s.partIndex = k; s.name = apxPartsSlotName(item->apx.parts[k].slot);
+		s.candidateUids = apxPartsComponentsForSlot(player, item->apx.parts[k].slot);
+		rows.push_back(s);
+	}
+	return rows;
+}
+bool benchSwapPart(int player, Item* item, int part, uint32_t uid, std::string& why) { return apxPartsSwap(player, item, part, uid, why); }
+
+int benchStation = 4; // the station of the last makeOptions call (make carries no station); ASSUMED workbench
+// C5 Make (05b 5.8): option id = slot << 8 | material; slots of the known Forms x materials in the pouch
+std::vector<apx_bench::MakeOption> benchMakeOptions(int player, int station)
+{
+	benchStation = station;
+	std::vector<apx_bench::MakeOption> rows;
+	std::vector<int> slots;
+	for ( uint32_t f = 0; f < 64; ++f )
+	{
+		if ( apxPartsFormSuccesses(player, f) < 1 ) { continue; }
+		for ( int s : apxPartsFamilySlots((int)f, nullptr) ) { if ( std::find(slots.begin(), slots.end(), s) == slots.end() ) { slots.push_back(s); } }
+	}
+	for ( int s : slots )
+	{
+		for ( int m = 0; m < apxPartsMaterialCount(); ++m )
+		{
+			const int have = apxPartsLedgerMaterialGrams(player, m);
+			if ( have <= 0 ) { continue; }
+			apx_bench::MakeOption o;
+			o.id = s << 8 | m;
+			o.name = std::string(apxPartsMaterialName(m)) + " " + apxPartsSlotName(s);
+			const int cost = apxPartsMakeCost(s, m);
+			o.cost.push_back({ m, apxPartsMaterialName(m), (long long)cost });
+			o.affordable = have >= cost;
+			rows.push_back(o);
+		}
+	}
+	return rows;
+}
+bool benchMake(int player, int id, std::string& why) { return apxPartsMake(player, id >> 8, id & 0xFF, benchStation, 0, why) != nullptr; }
 
 bool benchSalvagePreview(int, const Item* item, int keepSlot, apx_bench::SalvagePreview& out)
 {
@@ -121,6 +188,10 @@ void apxPartsBenchRegister()
 	p.repair = &apxPartsRepair;
 	p.repairPaid = &apxPartsRepairPaid;
 	p.repairGrams = &apxPartsRepairGrams;
+	p.swapSlots = &benchSwapSlots;
+	p.swapPart = &benchSwapPart;
+	p.makeOptions = &benchMakeOptions;
+	p.make = &benchMake;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }
