@@ -17,3 +17,6 @@ Resume: build and run `tests/apx/test_move.cpp`, then `pwsh -NoProfile -File too
 Next: read remaining lines of `handlePlayerMovement` and `handlePlayerCameraUpdate` in `src/actplayer.cpp`, write `src/apx/in/in.hpp`, `src/apx/move/move.hpp`, `data/apx/move/move.json`, and `tests/apx/test_move.cpp`.
 
 
+
+## 2026-10-19 hostility lane (apx/hostility)
+In flight: nothing after this commit. apx::hostility (src/apx/hostility.cpp, data/apx/combat/hostility.json), gate tools/apx/hostility_gate.py. Resume: python tools/apx/hostility_gate.py --exe build/vs2022/Release/barony.exe. Next: COMBAT lane routes applyHit through apx::hostility::onHit; decide post-calm hits on a standing player.

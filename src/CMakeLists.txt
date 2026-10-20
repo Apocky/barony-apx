@@ -40,6 +40,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/bf3trial.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/flow.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tiers.cpp" # apx D74: creature tiers at run time, damage by tier
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/hostility.cpp" # apx D93: who fights whom
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_data.cpp" # apx F6: parts-based gear (pure)
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_roll.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_engine.cpp" # apx F6: Barony hooks
