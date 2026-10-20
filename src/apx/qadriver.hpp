@@ -14,6 +14,11 @@
 //   up <x> <y> [right]       move there and release it
 //   look <dx> <dy>           relative mouse motion (turn the view)
 //   wheel <n>                mouse wheel ticks (+ up, - down)
+//   act <action> <ms>        press the named action (data/apx/input/actions.json) for ms via apx::in's queue (raw SDL events
+//                            when apx::in is off: APX_INPUT_OLD=1); both events are timed in real time, so a press shorter
+//                            than a frame lands in one event batch, as a short real press does
+//   act <action> press|release  only the down or only the up event
+//   sdlact <action> <ms>     the same press as raw SDL events (tests the SDL path into apx::in)
 //   wait <ms>                pause the script
 //   shot <name>              screenshot to <dir>/<name>.png (the game's own back-buffer capture)
 //   console <text>           run a Barony console command (cheats allowed in QA, e.g. /spawnitem ...)

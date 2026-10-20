@@ -33,6 +33,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/looknet.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/selftest_all.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/qadriver.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in.cpp" # apx D93 C0: apx::in, the one owner of play input
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in_glue.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/visshots.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics.cpp"
@@ -44,7 +46,6 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/move/move.cpp" # apx M1: our own player movement
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/proj/proj.cpp" # apx S1: physical projectiles
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/magic/magic.cpp" # apx S1: our own casting
-	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in.cpp" # apx::in STUB (INPUT lane replaces)
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_data.cpp" # apx F6: parts-based gear (pure)
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_roll.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_engine.cpp" # apx F6: Barony hooks

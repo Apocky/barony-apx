@@ -1731,7 +1731,7 @@ bool initVideo()
 	}
 
 #ifndef EDITOR
-	if ( verticalSync && !apx::headlessOn ) // apx headless: never wait for vsync
+	if ( verticalSync && !apx::headlessOn && !getenv("APX_NOVSYNC") ) // apx headless: never wait for vsync; APX_NOVSYNC=1: tests that need frames faster than the display (input gate)
 #else
 	if ( verticalSync )
 #endif
