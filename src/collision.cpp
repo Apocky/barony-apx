@@ -1363,7 +1363,15 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 						else if ( apx::tactics::collideOn() && multiplayer != CLIENT && my->behavior == &actMonster && entity->behavior == &actMonster
 							&& !myStats->leader_uid && !yourStats->leader_uid )
 						{
-							// apx D80: hostile allied creatures block each other as bodies (APX_CROWD_COLLIDE=0, -apxvanilla: off)
+							// apx D80: hostile allied creatures block each other as bodies (APX_CROWD_COLLIDE=0, -apxvanilla: off).
+							// Two bodies that already overlap (spawned or summoned on one spot) may move apart: blocking them too
+							// locked both for good (d80b-s1: 12 creatures on 5 spawn tiles in a corridor, 0 attackers, about
+							// 5600 queue holds per arm). Only a move into a new overlap is blocked.
+							if ( entityInsideEntity(my, entity) )
+							{
+								++apx::tactics::C.body_unstacks;
+								continue;
+							}
 						}
 						else
 						{
