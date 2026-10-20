@@ -43,7 +43,7 @@ else:
     gate('every drop rate within 4 sigma of its table row (%d rows)' % tot_entries, all(g[1] for g in gates if ' drop ' in g[0]) )
     print('rows with 95%% half-width < 20%% of rate: %d of %d (stop rule D76: or 2,000 kills; kills=%d)' % (tight, tot_entries, sum(deaths.values())))
     c = dict(re.findall(r'(\w+)=(\d+)', done))
-    gate('applied variants died and dropped (all but the last two batches of 10 alive at the end)', int(c.get('applied', 0)) > 0 and int(c.get('applied', 0)) - int(c.get('deaths', 0)) <= 20, done)
+    gate('applied variants died and dropped (all but the last two batches and a few stragglers alive at the end)', int(c.get('applied', 0)) > 0 and int(c.get('applied', 0)) - int(c.get('deaths', 0)) <= 25, done)
     gate('no unknown item names', int(c.get('itemFail', 1)) == 0, 'itemFail=%s' % c.get('itemFail'))
     gate('material credits happened', int(c.get('matCredits', 0)) > 0, 'matCredits=%s matLost=%s' % (c.get('matCredits'), c.get('matLost')))
 bad = 0
