@@ -267,6 +267,15 @@ namespace combat_glue
 		return it == table().end() || it->second.zones.canAttack();
 	}
 
+	// apx::move: legs zone disabled = no sprint (F4c); downed = crawl state
+	inline bool legsDisabled(int playernum)
+	{
+		if ( !zonesOn() || !players[playernum] || !players[playernum]->entity ) return false;
+		auto it = table().find(players[playernum]->entity->getUID());
+		return it != table().end() && !it->second.zones.canRun();
+	}
+	inline bool isDowned(int playernum) { return downedOn() && downed(playernum).downed; }
+
 	inline real_t speedScale(int playernum)
 	{
 		real_t k = 1.0;
