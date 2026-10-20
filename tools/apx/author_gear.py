@@ -162,6 +162,34 @@ STATS = [  # id, unit, note
 ]
 ELEMENTAL_PCT = {"dmg_": 12, "resist_": 15}
 
+# ---- 05b section 4 affix rows: magnitude per rarity tier, resonance element, conflicts (by name, matched both ways)
+MAG_SCALE = [0.5, 0.75, 1.0, 1.4, 2.0]       # Uncommon, Rare, Epic, Legendary, Unique, times the affix pct
+ELEMENT_OF_STAT = {"fire": "fire", "frost": "frost", "storm": "storm", "arcane": "arcane", "death": "death", "life": "life"}
+CONFLICTS = [                                  # pairs that may not share a component (names exist in some pool)
+    ("heft", "lightness"), ("heft", "light"), ("heft", "snap"), ("quiet", "gleaming"), ("quiet", "glint"), ("quiet", "sheen"),
+    ("hush", "gleaming"), ("hush", "glint"), ("hush", "sheen"), ("silent", "gleaming"), ("serration", "hone"),
+    ("embers", "rime"), ("embers", "frostward"), ("bloom", "gloom"), ("warmth", "frostward"),
+]
+
+
+def mag_rows(pct):
+    rows = []
+    for k in MAG_SCALE:
+        mid = pct * k
+        lo, hi = max(1, int(round(mid * 0.8))), max(1, int(round(mid * 1.2)))
+        rows.append([min(255, lo), min(255, max(hi, lo))])
+    return rows
+
+
+def element_of(stat):
+    for key in ELEMENT_OF_STAT:
+        if stat.endswith("_" + key):
+            return ELEMENT_OF_STAT[key]
+    return None
+
+
+EXTRA_AFFIXES = []   # (pool, name, pct) appended inside their pool
+
 
 def load_affix_meta():
     meta = {}
@@ -169,8 +197,11 @@ def load_affix_meta():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        pool, name, pos, word, stat = [x.strip() for x in line.split("|")]
+        f = [x.strip() for x in line.split("|")]
+        pool, name, pos, word, stat = f[:5]
         meta[(pool, name)] = (pos, word, stat)
+        if len(f) == 6:
+            EXTRA_AFFIXES.append((pool, name, int(f[5])))
     return meta
 
 
@@ -212,6 +243,10 @@ def main():
             aff["pools"].append({"id": pid, "affixes": [{"name": n, "pct": pc} for (n, pc) in lst]})
     # D86 metadata on every entry (keys only; ids and order untouched), plus the appended "elemental" pool and the stats catalog
     meta = load_affix_meta()
+    for (pool_id, name, pct) in EXTRA_AFFIXES:
+        pool = next(p for p in aff["pools"] if p["id"] == pool_id)
+        if name not in {a["name"] for a in pool["affixes"]}:
+            pool["affixes"].append({"name": name, "pct": pct})
     if "elemental" not in {p["id"] for p in aff["pools"]}:
         ents = []
         for (pool, name), (pos, word, stat) in meta.items():
@@ -225,6 +260,19 @@ def main():
                 raise SystemExit("affix_meta.txt has no line for %s | %s" % (pool["id"], a["name"]))
             a["pos"], a["word"], a["stat"] = m
             a["weight"] = 15 if pool["id"] == "elemental" else max(5, 100 - 6 * a["pct"])
+    conf = {}
+    for x, y in CONFLICTS:
+        conf.setdefault(x, []).append(y); conf.setdefault(y, []).append(x)
+    names = {a["name"] for pool in aff["pools"] for a in pool["affixes"]}
+    for x in conf:
+        if x not in names:
+            raise SystemExit("CONFLICTS names an unknown affix: " + x)
+    for pool in aff["pools"]:
+        for a in pool["affixes"]:
+            a["mag"] = mag_rows(a["pct"])
+            el = element_of(a["stat"])
+            if el: a["element"] = el
+            if a["name"] in conf: a["conflicts"] = sorted(conf[a["name"]])
     aff["stats"] = [{"id": i, "unit": u, "note": n} for (i, u, n) in STATS]
     dump(D / "affixes.json", aff)
 

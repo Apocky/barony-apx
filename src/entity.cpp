@@ -16,6 +16,7 @@ See LICENSE for details.
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
+#include "apx/parts_engine.hpp"
 #include "items.hpp"
 #include "monster.hpp"
 #include "engine/audio/sound.hpp"
@@ -17847,6 +17848,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 	{
 		Compendium_t::Events_t::eventUpdateMonster(src->skill[2], Compendium_t::CPDM_KILLED_BY, this, 1);
 	}
+	if ( this->behavior == &actPlayer && src->behavior == &actMonster && root ) { apxPartsOnKill(this->skill[2]); } // apx F6 05b s3: the kill joins the weapon's parts' biography
 
 	if ( this->behavior == &actPlayer && root )
 	{

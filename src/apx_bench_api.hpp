@@ -23,6 +23,7 @@ namespace apx_bench
 	struct PouchRow { int material = -1; std::string name; long long grams = 0; };   // D85: the material pouch (F6 ledger)
 	struct SwapSlot { int partIndex = 0; std::string name; std::vector<uint32_t> candidateUids; bool quick = false; }; // D86 Swap (looted: quick slots only)
 	struct RepairOption { int partIndex = 0; std::string name; float integrity = 1.f; std::vector<PouchRow> cost; bool affordable = false; }; // 05b s5.8b
+	struct InfuseOption { int partIndex = 0; uint32_t crystalUid = 0; std::string affix; bool ok = false; std::string why; }; // C6 infuse (crucible, station 3)
 	struct MakeOption { int id = 0; std::string name; std::vector<PouchRow> cost; bool affordable = false; }; // D86 Make
 	struct SalvagePreview { std::vector<PartRow> parts; std::vector<YieldRow> yield; int dischargePct = 0, auraPct = 0; bool looted = false; };
 
@@ -51,7 +52,11 @@ namespace apx_bench
 		std::string (*displayName)(const Item* item) = nullptr;   // generated component / assembly name; "" = Barony's own
 		bool (*assemblePreview)(int player, uint32_t form, int station, const std::vector<std::pair<int, uint32_t>>& slotUid, int& power, int& cap, std::string& why) = nullptr;
 		std::vector<RepairOption> (*repairOptions)(int player, const Item* item, int station) = nullptr;
-		bool (*repairPart)(int player, Item* item, int partIndex, std::string& why) = nullptr;   // 05b s5.8b per component (F6 later); empty repairOptions = use repair below
+		bool (*repairPart)(int player, Item* item, int partIndex, std::string& why) = nullptr;
+		std::vector<InfuseOption> (*infuseOptions)(int player, const Item* item, int station) = nullptr; // C6: aura crystal x part
+		bool (*infuse)(int player, Item* item, int partIndex, uint32_t crystalUid, std::string& why) = nullptr;
+		bool (*extractGraft)(int player, Item* item, int station, std::string& why) = nullptr; // C7: Rare+ assembly -> graft component (item destroyed)
+		int  (*sockets)(const Item* item) = nullptr;                                          // C7: 0-4, for the tooltip   // 05b s5.8b per component (F6 later); empty repairOptions = use repair below
 		// BP1-2: Repair at a FIELD bench or an ANVIL: the cost in grams (-1 = cannot, why says), then repair
 		int  (*repairCost)(int player, const Item* item, std::string& why, std::string& material) = nullptr;
 		bool (*repair)(int player, Item* item, std::string& why) = nullptr;

@@ -8,14 +8,19 @@
 #include <vector>
 
 constexpr int APX_MAX_PARTS = 12;   // card: v1 cap; overflow is counted (parts_overflow)
+constexpr int APX_MAX_AFFIX = 5;    // 05b s3/s4: up to 4, Unique 5
 
 #pragma pack(push, 1)
 struct ApxPart
 {
 	uint8_t slot, material, quality, rarity /*0-5*/, integrity /*0-255 = 0.0-1.0*/, nAffix;
-	uint16_t affix[4];
+	uint16_t affix[APX_MAX_AFFIX];
+	uint8_t mag[APX_MAX_AFFIX]; // 05b s3: each affix's rolled magnitude (percent units of its stat)
 	uint8_t maker, pad;
 	uint32_t look; // BX1/C10: 0 = the procedural model from (form, slot, material, rollKey); else the FNV-1a of a player-built voxel model
+	uint16_t kills;             // 05b s3 biography: kills made while mounted on a wielded item
+	uint8_t floors, foundDepth; // floors carried (equipped at a level start); the depth it was found or made at
+	uint8_t pad2;
 };
 struct ApxItemData
 {
@@ -25,8 +30,8 @@ struct ApxItemData
 	ApxPart parts[APX_MAX_PARTS];
 };
 #pragma pack(pop)
-static_assert(sizeof(ApxPart) == 20, "ApxPart is 20 bytes (BX1 look, blob v2)");
-static_assert(sizeof(ApxItemData) == 252, "ApxItemData is 252 bytes");
+static_assert(sizeof(ApxPart) == 32, "ApxPart is 32 bytes (blob v3: 5 affixes, magnitudes, biography)");
+static_assert(sizeof(ApxItemData) == 396, "ApxItemData is 396 bytes");
 
 namespace apxparts {
 
@@ -48,7 +53,10 @@ struct AffixPool { std::string key; int firstId = 0, count = 0; };
 // the named stat or effect, and a rarity weight. Missing fields default to suffix / Capitalised name /
 // name / 1 (counted in DB::affixDefaults so the data lane can see what is still unset).
 enum AffixPos : uint8_t { AFFIX_PREFIX = 0, AFFIX_SUFFIX = 1 };
-struct AffixInfo { std::string name, label, stat; int pct = 0, weight = 1; AffixPos position = AFFIX_SUFFIX; };
+// magLo/magHi[rarity 1..5]: the magnitude range by tier ("mag": [[lo, hi] x 5] in the data; default ASSUMED:
+// pct x (2 + r) / 6 .. pct x (3 + r) / 6, at least 1); element: the tag for resonance (05b C9; "" = none);
+// conflicts: affix ids that may not share a component with this one ("conflicts": [names]).
+struct AffixInfo { std::string name, label, stat, element; int pct = 0, weight = 1; AffixPos position = AFFIX_SUFFIX; int magLo[6] = {}, magHi[6] = {}; std::vector<int> conflicts; };
 struct StandIn { std::string cls, item; int grams = 0; };
 struct SalvageParams { int lootedPct = 60, craftedPct = 100, dischargePct = 20, auraPerAffixPct = 25, lowIntegrityByte = 77, lowIntegrityFactorPct = 50; std::string auraItem; std::vector<StandIn> standIns; };
 
@@ -73,7 +81,7 @@ struct DB
 // Loads data/apx/{materials,forms,form_map,affixes,salvage}.json. "" = ok, else the error.
 std::string loadDB(const std::string& dataDir, DB& db);
 
-struct Counters { long long rolls = 0, rolls_rerolled = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, forbidden = 0; };
+struct Counters { long long affix_starved = 0, rolls = 0, rolls_rerolled = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, forbidden = 0; };
 
 uint64_t fnv1a64(const void* data, size_t n, uint64_t h = 1469598103934665603ULL);
 uint64_t rollKey(uint32_t realm, uint8_t depth, uint8_t source, uint32_t index);
@@ -90,7 +98,7 @@ std::string toString(const ApxItemData& it);
 bool fromString(const std::string& s, ApxItemData& it);
 int pack(const ApxItemData& it, uint8_t* out);
 bool unpack(const uint8_t* in, int len, ApxItemData& it);
-constexpr int PACK_ROW_V1 = 16, PACK_ROW = 20; // blob v2 rows carry look (u32 LE); v1 blobs (16-byte rows) still unpack, look 0
+constexpr int PACK_ROW_V1 = 16, PACK_ROW_V2 = 20, PACK_ROW = 32; // blob v3 written; v1 (no look) and v2 (look) still unpack
 constexpr int PACK_MAX = 1 + 8 + 2 + 1 + 1 + PACK_ROW * APX_MAX_PARTS;
 
 // Salvage (05 section 5, card BF6-6, D86): a crafted item returns EVERY part as a component item (no
@@ -108,6 +116,7 @@ struct SalvageResult
 	std::vector<ApxItemData> components;    // the component items handed over (D86)
 	int loosePart = -1;                     // quick salvage (keepPart -1, looted): the part that dropped loose, or -1
 	std::vector<uint16_t> auraAffixes;      // C6: the affix each aura crystal holds (auraCrystals == its size)
+	std::vector<uint8_t> auraMags;          // ... and its magnitude
 };
 // 05b section 5 step 5, QUICK SALVAGE (no choice): the highest-rarity part (lowest index on a tie) drops
 // loose as a component with the chance by its rarity: Common 0, Uncommon 10, Rare 25, Epic 50,
@@ -149,7 +158,9 @@ int graftSlot(const DB& db);
 // this slot can roll (any family's pool for the slot; ASSUMED) and not already on the part.
 int affixSlots(const ApxPart& p);
 bool affixFitsSlot(const DB& db, int slot, uint16_t affix);
-bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why);
+bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why, uint8_t mag = 0); // mag 0 = the bottom of the part's tier range
+bool affixConflicts(const DB& db, const ApxPart& p, uint16_t affix);
+int rollMagnitude(const DB& db, uint16_t affix, int rarity, uint64_t r); // r: any 64-bit draw
 
 // One part as a component item's data (D86).
 ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);

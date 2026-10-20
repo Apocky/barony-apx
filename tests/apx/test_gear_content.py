@@ -60,6 +60,11 @@ def lint(d):
     # D86 affixes: position, display word, a stat from the catalog, a rarity weight; pools keep >= 4 entries; names compose
     stats = {x["id"] for x in d["affixes"].get("stats", [])}
     if len(stats) < 30: e.append("affixes.json stats catalog missing or too small")
+    all_names = {a["name"] for p in d["affixes"]["pools"] for a in p["affixes"]}
+    by_name_conf = {}
+    for p in d["affixes"]["pools"]:
+        for a in p["affixes"]:
+            by_name_conf.setdefault(a["name"], set()).update(a.get("conflicts", []))
     for pool in d["affixes"]["pools"]:
         if len(pool["affixes"]) < 4: e.append("affix pool under 4: " + pool["id"])
         for a in pool["affixes"]:
@@ -71,6 +76,15 @@ def lint(d):
             if a.get("stat") not in stats: e.append("affix stat not in catalog: " + tag)
             if not (1 <= a.get("weight", 0) <= 100): e.append("affix weight: " + tag)
             if not (1 <= a.get("pct", 0) <= 100): e.append("affix pct: " + tag)
+            mg = a.get("mag")
+            if not (isinstance(mg, list) and len(mg) == 5 and all(isinstance(r, list) and len(r) == 2 and 1 <= r[0] <= r[1] <= 255 for r in mg)): e.append("affix mag: " + tag)
+            elif any(mg[i][0] > mg[i + 1][0] or mg[i][1] > mg[i + 1][1] for i in range(4)): e.append("affix mag not rising by tier: " + tag)
+            if "element" in a and a["element"] not in ("fire", "frost", "earth", "storm", "arcane", "life", "death"): e.append("affix element: " + tag)
+            for cn in a.get("conflicts", []):
+                if cn not in all_names: e.append("affix conflict names an unknown affix %s: %s" % (cn, tag))
+                elif a["name"] not in by_name_conf.get(cn, []): e.append("affix conflict not symmetric: %s / %s" % (a["name"], cn))
+                if cn == a["name"]: e.append("affix conflicts with itself: " + tag)
+        if len(pool["affixes"]) < 5: e.append("pool under 5 entries (a Unique takes 5): " + pool["id"])
         if not any(a.get("pos") == "prefix" for a in pool["affixes"]): e.append("pool has no prefix: " + pool["id"])
     if "elemental" not in {p["id"] for p in d["affixes"]["pools"]}: e.append("elemental pool missing")
     # a composed name reads "Keen Steel Blade of Embers"
@@ -147,6 +161,11 @@ def main():
     broken("an affix has a bad position", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(pos="middle"))
     broken("a suffix word without 'of'", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(pos="suffix", word="Lasting"))
     broken("an affix weight out of range", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(weight=0))
+    broken("an affix has no magnitude rows", lambda c: c["affixes"]["pools"][0]["affixes"][0].pop("mag"))
+    broken("a magnitude range is inverted", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(mag=[[5, 2]] * 5))
+    broken("a conflict names an unknown affix", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(conflicts=["nonexistent"]))
+    broken("a conflict is not symmetric", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(conflicts=["lightness"]))
+    broken("an affix element is unknown", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(element="plasma"))
     broken("salvage yield missing for a material", lambda c: c["salvage_materials"]["materials"].pop("oak"))
     missed = [l for l, n in ctrl if n == 0]
     ok = not errs and not missed

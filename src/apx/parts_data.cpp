@@ -185,6 +185,7 @@ std::string loadDB(const std::string& dir, DB& db)
 		db.typeForms.push_back({ p.first, tf });
 	}
 	std::sort(db.typeForms.begin(), db.typeForms.end(), [](const std::pair<std::string, TypeForm>& a, const std::pair<std::string, TypeForm>& b) { return a.first < b.first; });
+	std::vector<std::vector<std::string>> conflictNames;
 	for ( auto& p : af.arr("pools") )
 	{
 		AffixPool ap; ap.key = p.str("id"); ap.firstId = (int)db.affixPct.size();
@@ -207,11 +208,36 @@ std::string loadDB(const std::string& dir, DB& db)
 				for ( char ch : ai.name ) { ai.label += up ? (char)toupper((unsigned char)ch) : ch; up = ch == ' '; }
 				if ( ai.position == AFFIX_SUFFIX ) { ai.label = "of " + ai.label; }
 			}
+			ai.element = a.str("element");
+			for ( int t = 1; t <= 5; ++t ) // ASSUMED default tiers until the data carries "mag"
+			{
+				ai.magLo[t] = std::max(1, ai.pct * (2 + t) / 6);
+				ai.magHi[t] = std::max(ai.magLo[t], ai.pct * (3 + t) / 6);
+			}
+			int t = 1;
+			for ( auto& row : a.arr("mag") )
+			{
+				if ( t > 5 ) { break; }
+				if ( row.t == J::ARR && row.a.size() >= 2 ) { ai.magLo[t] = std::max(1, (int)row.a[0].n); ai.magHi[t] = std::max(ai.magLo[t], (int)row.a[1].n); }
+				++t;
+			}
+			std::vector<std::string> cn;
+			for ( auto& cc : a.arr("conflicts") ) { if ( cc.t == J::STR ) { cn.push_back(cc.s); } }
+			conflictNames.push_back(cn);
 			db.affixes.push_back(ai);
 		}
 		ap.count = (int)db.affixPct.size() - ap.firstId;
 		if ( ap.count < 4 ) { return "affixes.json: pool " + ap.key + " has under 4 affixes (Legendary takes 4)"; }
 		db.pools.push_back(ap);
+	}
+	for ( size_t i = 0; i < db.affixes.size() && i < conflictNames.size(); ++i ) // conflicts by name, both ways
+	{
+		for ( auto& nm : conflictNames[i] )
+		{
+			bool found = false;
+			for ( size_t j = 0; j < db.affixes.size(); ++j ) { if ( j != i && db.affixes[j].name == nm ) { db.affixes[i].conflicts.push_back((int)j); found = true; } }
+			if ( !found ) { return "affixes.json: affix " + db.affixes[i].name + " conflicts with unknown affix " + nm; }
+		}
 	}
 	SalvageParams& s = db.salvage;
 	s.lootedPct = sv.num("looted_return_pct", 60); s.craftedPct = sv.num("crafted_return_pct", 100);

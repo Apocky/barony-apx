@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class Item;
 class Entity;
@@ -10,7 +11,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, bio_kills = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -48,7 +49,8 @@ int apxPartsBundleGrams(const Item* item);
 Item* apxPartsDrawBundle(int player, int material, int grams, std::string& why); // debits the pouch
 void apxPartsBundlePickedUp(int player, const Item* item);   // itemPickup: a bundle arrived for player
 void apxPartsBundlesRegister(int player);                    // loadGame: bundles in the inventory stay items
-void apxPartsTick();                                         // game loop: absorb picked-up bundles
+void apxPartsTick();
+void apxPartsUseIdentifyTick();                               // C12: wielded/worn APX_USE_IDENTIFY_S seconds (default 60) identifies an item with parts                                         // game loop: absorb picked-up bundles
 const char* apxPartsBundleName(const Item* item);            // "bundle of iron (0.6 kg)"
 int apxPartsLedgerMaterialGrams(int player, int material);
 int apxPartsBundleValue(const Item* item);                    // gold: grams x material value_per_kg / 1000
@@ -62,10 +64,10 @@ const char* apxPartsComponentName(const Item* item);
 int apxPartsComponentGrams(const Item* item);
 int apxPartsComponentValue(const Item* item);
 struct ApxItemData;
-Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified = true); // into the player's inventory (itemPickup)
+Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified = true, short beatitude = 0); // into the inventory (itemPickup); C12: identification and curse/blessing ride along
 // Trade: loose items in no inventory (shop stock); the caller owns them. A bundle bought through
 // itemPickup goes back into the buyer's pouch by itself (apxPartsTick), or call apxPartsLedgerGive.
-Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true);
+Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true, short beatitude = 0);
 Item* apxPartsMakeBundle(int material, int grams);
 // D85: Barony tinkering reads the pouch: cls 0 = metal, 1 = magic (salvage.json grams per unit)
 int apxPartsPouchScrapUnits(int player, int cls);
@@ -77,9 +79,14 @@ bool apxPartsPouchTakeScrap(int player, int cls, int units);
 bool apxPartsIsAura(const Item* item);
 int apxPartsAuraAffix(const Item* item);
 const char* apxPartsAuraName(const Item* item);
-Item* apxPartsMakeAura(int affix, int count, bool identified = true);       // loose (shop stock)
+Item* apxPartsMakeAura(int affix, int count, bool identified = true, int mag = 0); // loose (shop stock); mag in appearance bits 16-23
+int apxPartsAuraMag(const Item* item);
+void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified, const std::vector<uint8_t>* mags = nullptr);
+void apxPartsOnKill(int player);                                           // Entity::awardXP: a player's kill (biography)
+void apxPartsBioFloor();                                                   // level start: equipped parts carried a floor
 void apxPartsGivePendingAura(int player);                                  // tinkering station: after it grants the scrap
 bool apxPartsInfuse(int player, Item* item, int part, uint32_t crystalUid, int station, std::string& why); // station 3 = crucible
+bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why); // dry run of the same rules
 // Trade lane (D73/D85): material ids index materials.json; Give/Take move grams in/out of the pouch
 // (server side; logged); Take is false when the pouch is short. The D85 bundle is apxPartsIsBundle.
 int apxPartsMaterialIndex(const char* id);
