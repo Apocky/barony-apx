@@ -452,8 +452,32 @@ void apxPartsBundlesRegister(int player)
 	for ( node_t* n = stats[player]->inventory.first; n; n = n->next ) { const Item* it = (const Item*)n->element; if ( apxPartsIsBundle(it) ) { drawnBundles[player].insert(it->uid); } }
 }
 
+namespace { std::unordered_map<Uint32, int> useTicks; }
+void apxPartsUseIdentifyTick()
+{
+	if ( !apxPartsEnabled() ) { return; }
+	static int need = -1;
+	if ( need < 0 ) { const char* v = getenv("APX_USE_IDENTIFY_S"); need = (v && *v ? atoi(v) : 60) * TICKS_PER_SECOND; }
+	for ( int p = 0; p < MAXPLAYERS; ++p )
+	{
+		if ( !stats[p] || !players[p] || !players[p]->isLocalPlayer() || client_disconnected[p] ) { continue; }
+		Item* worn[] = { stats[p]->weapon, stats[p]->shield, stats[p]->helmet, stats[p]->breastplate, stats[p]->gloves, stats[p]->shoes, stats[p]->cloak, stats[p]->mask };
+		for ( Item* it : worn )
+		{
+			if ( !it || it->identified || it->apx.nParts == 0 ) { continue; }
+			if ( ++useTicks[it->uid] < need ) { continue; }
+			it->identified = true;
+			useTicks.erase(it->uid);
+			++apxPartsCounters.use_identified;
+			messagePlayer(p, MESSAGE_INVENTORY, "You have come to know your %s.", it->getName());
+			printlog("apxparts: identified by use player %d uid %u \"%s\"\n", p, it->uid, it->getName());
+		}
+	}
+}
+
 void apxPartsTick()
 {
+	apxPartsUseIdentifyTick();
 	for ( int p = 0; p < MAXPLAYERS; ++p )
 	{
 		if ( !pendingAbsorb[p] || !stats[p] ) { continue; }
@@ -612,9 +636,10 @@ Item* apxPartsExtractGraft(int player, Item* item, int station, std::string& why
 	if ( !apxparts::extractGraft(db(), item->apx, g, why) ) { ++apxPartsCounters.graft_refused; return nullptr; }
 	const ApxItemData src = item->apx;
 	const bool known = item->identified;
+	const Sint16 beat = item->beatitude;
 	Item* gone = item;
 	consumeItem(gone, player);
-	Item* got = apxPartsGiveComponent(player, apxparts::componentOf(db(), g, src.rollKey ^ 0x6A2Fu, apxparts::FLAG_CRAFTED), known);
+	Item* got = apxPartsGiveComponent(player, apxparts::componentOf(db(), g, src.rollKey ^ 0x6A2Fu, apxparts::FLAG_CRAFTED), known, beat);
 	++apxPartsCounters.grafts;
 	printlog("apxparts: graft extracted player %d from form %s rarity %d -> %s\n", player, apxPartsFamilyName(src.form), (int)g.rarity, got ? got->getName() : "?");
 	return got;
@@ -679,11 +704,11 @@ int apxPartsComponentValue(const Item* item) // ASSUMED: material value x (1 + r
 	return std::max(1, (int)((long long)apxPartsComponentGrams(item) * v / 1000 * (1 + p.rarity)));
 }
 
-Item* apxPartsMakeComponent(const ApxItemData& data, bool identified)
+Item* apxPartsMakeComponent(const ApxItemData& data, bool identified, Sint16 beatitude)
 {
 	if ( !apxparts::isComponent(data) ) { return nullptr; }
 	const ApxPart& p = data.parts[0];
-	Item* c = newItem(GEM_GLASS, SERVICABLE, 0, 1, COMPONENT_TAG | ((Uint32)p.slot << 8) | (Uint32)p.material, identified, nullptr);
+	Item* c = newItem(GEM_GLASS, SERVICABLE, beatitude, 1, COMPONENT_TAG | ((Uint32)p.slot << 8) | (Uint32)p.material, identified, nullptr);
 	c->apx = data;
 	return c;
 }
@@ -694,11 +719,11 @@ Item* apxPartsMakeBundle(int material, int grams)
 	return newItem(GEM_GLASS, SERVICABLE, 0, 1, BUNDLE_TAG | ((Uint32)material << 20) | (Uint32)grams, true, nullptr);
 }
 
-Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified)
+Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified, Sint16 beatitude)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] || !apxparts::isComponent(data) ) { return nullptr; }
 	const ApxPart& p = data.parts[0];
-	Item* c = apxPartsMakeComponent(data, identified);
+	Item* c = apxPartsMakeComponent(data, identified, beatitude);
 	Item* got = itemPickup(player, c); // itemPickup copies apx (the picked-up copy keeps its parts)
 	free(c);
 	++apxPartsCounters.components_given;
@@ -709,9 +734,9 @@ Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified
 }
 
 namespace {
-void giveComponents(int player, const apxparts::SalvageResult& r, bool identified = true)
+void giveComponents(int player, const apxparts::SalvageResult& r, bool identified = true, Sint16 beatitude = 0)
 {
-	for ( auto& c : r.components ) { apxPartsGiveComponent(player, c, identified); } // a part keeps its item's identification
+	for ( auto& c : r.components ) { apxPartsGiveComponent(player, c, identified, beatitude); } // a part keeps its item's identification and curse/blessing (C12)
 }
 }
 
@@ -783,7 +808,9 @@ Item* apxPartsAssemble(int player, int family, int station, const std::vector<st
 		printlog("apxparts: assemble refused player %d form %s: %s\n", player, apxPartsFamilyName((uint32_t)family), why.c_str());
 		return nullptr;
 	}
-	Item* made = newItem(familyItemType(family), SERVICABLE, 0, 1, local_rng.rand(), true, nullptr);
+	Sint16 beat = 0; bool known = true;
+	for ( size_t k = 0; k < used.size(); ++k ) { beat = k ? std::min(beat, used[k]->beatitude) : used[k]->beatitude; known = known && used[k]->identified; }
+	Item* made = newItem(familyItemType(family), SERVICABLE, beat, 1, local_rng.rand(), known, nullptr); // C12: curse and identification follow the components
 	made->apx = a;
 	for ( Item* c : used ) { Item* gone = c; consumeItem(gone, player); }
 	Item* got = itemPickup(player, made);
@@ -806,9 +833,10 @@ int apxPartsStrip(int player, Item* item, std::string& why)
 	if ( !apxparts::stripParts(db(), d, removed, consumed, why) ) { return -1; }
 	const ApxItemData before = item->apx;
 	const bool known = item->identified;
+	const Sint16 beat = item->beatitude;
 	if ( consumed ) { Item* gone = item; consumeItem(gone, player); }
 	else { item->apx = d; }
-	for ( size_t k = 0; k < removed.size(); ++k ) { apxPartsGiveComponent(player, apxparts::componentOf(db(), removed[k], before.rollKey + 211u * (uint32_t)(k + 1), before.flags), known); }
+	for ( size_t k = 0; k < removed.size(); ++k ) { apxPartsGiveComponent(player, apxparts::componentOf(db(), removed[k], before.rollKey + 211u * (uint32_t)(k + 1), before.flags), known, beat); }
 	++apxPartsCounters.stripped;
 	printlog("apxparts: strip player %d parts %d -> %d components (item %s)\n", player, (int)before.nParts, (int)removed.size(), consumed ? "gone" : "kept");
 	return (int)removed.size();
@@ -863,9 +891,13 @@ bool apxPartsSwap(int player, Item* item, int part, Uint32 componentUid, std::st
 	if ( !c ) { why = "the component is not in the inventory"; return false; }
 	ApxPart old{};
 	if ( !apxparts::swapPart(db(), item->apx, part, c->apx.parts[0], depthCap(), old, why) ) { ++apxPartsCounters.swap_refused; return false; }
+	const Sint16 compBeat = c->beatitude;
+	const bool compKnown = c->identified;
 	Item* gone = c;
 	consumeItem(gone, player);
-	apxPartsGiveComponent(player, apxparts::componentOf(db(), old, item->apx.rollKey + 101u * (uint32_t)(part + 1), item->apx.flags));
+	apxPartsGiveComponent(player, apxparts::componentOf(db(), old, item->apx.rollKey + 101u * (uint32_t)(part + 1), item->apx.flags), item->identified, item->beatitude);
+	item->beatitude = std::min(item->beatitude, compBeat); // C12 ASSUMED: the lowest wins (a cursed part curses the item)
+	item->identified = item->identified && compKnown;
 	++apxPartsCounters.swapped;
 	printlog("apxparts: swap player %d part %d (%s) power %d blob %016llx\n", player, part, apxPartsSlotName(old.slot), (int)item->apx.power,
 		(unsigned long long)apxparts::fnv1a64(&item->apx, sizeof(item->apx)));
@@ -985,9 +1017,10 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	printlog("apxparts: salvage-keep player %d type %d parts %d keep %d crafted %d -> components %d metal %d magic %d aura %d (mass %d -> %d g; ledger %lld g)\n", player, (int)item->type,
 		(int)item->apx.nParts, keepPart, (int)r.crafted, (int)r.components.size(), metal, magic, r.auraCrystals, r.massIn, r.massOut, apxPartsLedgerGrams(player));
 	const bool known = item->identified;
+	const Sint16 beat = item->beatitude;
 	Item* consumed = item; // D86: no husk; the chosen part (or every part, crafted) is its own item now
 	consumeItem(consumed, player);
-	giveComponents(player, r, known);
+	giveComponents(player, r, known, beat);
 	return true;
 }
 
@@ -1465,6 +1498,51 @@ void apxPartsProbeTick()
 				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d, infuse ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0, infOk ? 1 : 0);
 				provNote = nb;
 			}
+			// C12: a cursed unidentified looted item -> its component is cursed and unidentified; assembling with it
+			// gives a cursed unidentified item; equipped, Barony's curse binding holds it; worn long enough, use identifies it
+			bool c12Ok = false;
+			char c12Note[200] = "";
+			{
+				auto li = rollProbeItems(1, &stats[0]->inventory, "Blades", 10);
+				if ( !li.empty() && fam >= 0 )
+				{
+					li[0]->beatitude = -2; li[0]->identified = false;
+					li[0]->apx.flags = (uint8_t)((li[0]->apx.flags & ~apxparts::FLAG_CRAFTED) | apxparts::FLAG_LOOTED);
+					const int keepSlot = li[0]->apx.parts[0].slot;
+					std::string w;
+					apxPartsSalvageItem(0, li[0], 0, w);
+					Item* cc = nullptr;
+					for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { Item* it = (Item*)nd->element; if ( apxPartsIsComponent(it) && it->apx.parts[0].slot == keepSlot && it->beatitude == -2 ) { cc = it; } }
+					const bool compCursed = cc && !cc->identified;
+					// assemble: the cursed component + fresh components for the other required slots
+					std::vector<std::pair<int, Uint32>> picks;
+					if ( cc ) { picks.push_back({ keepSlot, cc->uid }); }
+					for ( int k = 0; k < req; ++k )
+					{
+						if ( slots[(size_t)k] == keepSlot ) { continue; }
+						apxPartsLedgerCredit(0, iron, apxPartsMakeCost(slots[(size_t)k], iron));
+						if ( Item* c = apxPartsMake(0, slots[(size_t)k], iron, 1, 0, w) ) { picks.push_back({ slots[(size_t)k], c->uid }); }
+					}
+					bool slotOnForm = false; for ( int k = 0; k < req; ++k ) { slotOnForm = slotOnForm || slots[(size_t)k] == keepSlot; }
+					Item* ca = compCursed && slotOnForm ? apxPartsAssemble(0, fam, 4, picks, w) : nullptr;
+					const bool asmCursed = ca && ca->beatitude == -2 && !ca->identified;
+					// equip it; a cursed weapon will not come off (Barony's own rule)
+					bool bound = false, identified = false;
+					if ( ca )
+					{
+						const Uint32 caUid = ca->uid;
+						useItem(ca, 0);
+						Item* w1 = stats[0]->weapon;
+						bound = w1 && w1->uid == caUid;
+						if ( bound ) { useItem(w1, 0); bound = stats[0]->weapon && stats[0]->weapon->uid == caUid; }
+						for ( int t = 0; t < 60 * TICKS_PER_SECOND + 1 && stats[0]->weapon && !stats[0]->weapon->identified; ++t ) { apxPartsUseIdentifyTick(); }
+						identified = stats[0]->weapon && stats[0]->weapon->uid == caUid && stats[0]->weapon->identified;
+					}
+					c12Ok = compCursed && asmCursed && bound && identified;
+					snprintf(c12Note, sizeof(c12Note), "component cursed+unknown %d, assembly cursed+unknown %d (slot on form %d), curse binds %d, identified by use %d",
+						compCursed ? 1 : 0, asmCursed ? 1 : 0, slotOnForm ? 1 : 0, bound ? 1 : 0, identified ? 1 : 0);
+				}
+			}
 			// STRIP the crafted assembly: every part back as a component, the item gone (05b 5.4)
 			int stripGot = -1, stripWant = a ? a->apx.nParts : 0;
 			if ( a ) { std::string w3; stripGot = apxPartsStrip(0, a, w3); a = nullptr; }
@@ -1487,10 +1565,10 @@ void apxPartsProbeTick()
 				}
 			}
 			const bool hideOk = hiddenName[0] && shownName[0] && strlen(hiddenName) < strlen(shownName) && !strstr(hiddenName, " of ");
-			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk && provOk && graftOk;
-			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"provider\":\"%s\",\"provider_ok\":%d,\"graft_ok\":%d,\"graft\":\"%s\",\"pass\":%s}",
+			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk && provOk && graftOk && c12Ok;
+			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"provider\":\"%s\",\"provider_ok\":%d,\"graft_ok\":%d,\"graft\":\"%s\",\"c12\":\"%s\",\"c12_ok\":%d,\"pass\":%s}",
 				fam >= 0 ? apxPartsFamilyName((uint32_t)fam) : "?", req, made, spent, costs, asmOk ? 1 : 0, asmName, asmPower, craftWhy.c_str(),
-				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, provNote.c_str(), provOk ? 1 : 0, graftOk ? 1 : 0, graftName, craftPass ? "true" : "false");
+				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, provNote.c_str(), provOk ? 1 : 0, graftOk ? 1 : 0, graftName, c12Note, c12Ok ? 1 : 0, craftPass ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("bundle") != std::string::npos && on )
@@ -1660,7 +1738,7 @@ bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, 
 	if ( metal ) { *metal = mu; }
 	if ( magic ) { *magic = gu; }
 	if ( auraCrystals ) { *auraCrystals = r.auraCrystals; }
-	giveComponents(player, r, item->identified); // D86: a crafted item's parts come back as component items
+	giveComponents(player, r, item->identified, item->beatitude); // D86: a crafted item's parts come back as component items
 	if ( player >= 0 && player < MAXPLAYERS ) { pendingAura[player] = r.auraAffixes; }
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;

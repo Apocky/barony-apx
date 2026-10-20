@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -48,7 +48,8 @@ int apxPartsBundleGrams(const Item* item);
 Item* apxPartsDrawBundle(int player, int material, int grams, std::string& why); // debits the pouch
 void apxPartsBundlePickedUp(int player, const Item* item);   // itemPickup: a bundle arrived for player
 void apxPartsBundlesRegister(int player);                    // loadGame: bundles in the inventory stay items
-void apxPartsTick();                                         // game loop: absorb picked-up bundles
+void apxPartsTick();
+void apxPartsUseIdentifyTick();                               // C12: wielded/worn APX_USE_IDENTIFY_S seconds (default 60) identifies an item with parts                                         // game loop: absorb picked-up bundles
 const char* apxPartsBundleName(const Item* item);            // "bundle of iron (0.6 kg)"
 int apxPartsLedgerMaterialGrams(int player, int material);
 int apxPartsBundleValue(const Item* item);                    // gold: grams x material value_per_kg / 1000
@@ -62,10 +63,10 @@ const char* apxPartsComponentName(const Item* item);
 int apxPartsComponentGrams(const Item* item);
 int apxPartsComponentValue(const Item* item);
 struct ApxItemData;
-Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified = true); // into the player's inventory (itemPickup)
+Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified = true, short beatitude = 0); // into the inventory (itemPickup); C12: identification and curse/blessing ride along
 // Trade: loose items in no inventory (shop stock); the caller owns them. A bundle bought through
 // itemPickup goes back into the buyer's pouch by itself (apxPartsTick), or call apxPartsLedgerGive.
-Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true);
+Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true, short beatitude = 0);
 Item* apxPartsMakeBundle(int material, int grams);
 // D85: Barony tinkering reads the pouch: cls 0 = metal, 1 = magic (salvage.json grams per unit)
 int apxPartsPouchScrapUnits(int player, int cls);
