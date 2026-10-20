@@ -969,6 +969,7 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y, int bottom)
 			}
 		}
 	}
+	if ( int sk = apx_bench::provider().sockets(it) ) { L.push_back({ "Sockets: " + std::to_string(sk), makeColor(150, 200, 255, 255) }); } // C7
 	// D88: every modifier the item gives, read from Barony's own tooltip builder (attributes, skills,
 	// resistances, speed, effects): run it for this item into its hidden frame and copy its text
 	int vanillaLines = 0;
