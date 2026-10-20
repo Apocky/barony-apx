@@ -9,7 +9,8 @@ class Entity;
 struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
-		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0;
+		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
+		salvage_grams_out = 0, salvage_grams_paid = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -34,7 +35,8 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex);
 // scrap come from the parts salvage rules (05 section 5); aura crystals are returned for the caller to
 // give (GEM_ROCK stand-in). v1 has no keep-one-part choice (that needs the BU1 bench UI): every part
 // returns. False = a vanilla item, the caller keeps its vanilla numbers.
-bool apxPartsSalvageValue(const Item* item, int* metal, int* magic, int* auraCrystals);
+bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, int* auraCrystals);
+long long apxPartsLedgerGrams(int player); // salvaged material grams held for the player (not yet items)
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);

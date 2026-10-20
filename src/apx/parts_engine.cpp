@@ -173,6 +173,9 @@ std::unordered_map<uint64_t, std::string> sidecar; // (player << 32 | index) -> 
 constexpr int MAX_FORMS = 64;
 uint8_t formbook[MAXPLAYERS][MAX_FORMS] = {};
 uint8_t sidecarFormbook[MAXPLAYERS][MAX_FORMS] = {}; // read with a save; applied by loadGame only
+constexpr int MAX_MATS = 256;
+uint32_t ledger[MAXPLAYERS][MAX_MATS] = {};         // salvaged material grams not yet paid out as items
+uint32_t sidecarLedger[MAXPLAYERS][MAX_MATS] = {};
 bool sidecarHasFormbook[MAXPLAYERS] = {};
 }
 
@@ -180,6 +183,7 @@ void apxPartsFormbookFromSave(int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return; }
 	memcpy(formbook[player], sidecarFormbook[player], MAX_FORMS); // a save without a book clears it
+	memcpy(ledger[player], sidecarLedger[player], sizeof(ledger[player]));
 	printlog("apxparts: formbook loaded player %d hash %016llx\n", player, (unsigned long long)apxparts::fnv1a64(formbook[player], MAX_FORMS));
 }
 
@@ -201,6 +205,7 @@ void apxPartsSidecarSave(const char* savePath)
 			if ( !s.empty() ) { fprintf(fp, "%d %d %s\n", c, index, s.c_str()); ++rows; }
 		}
 		for ( int f = 0; f < MAX_FORMS; ++f ) { if ( formbook[c][f] ) { fprintf(fp, "fb %d %d %d\n", c, f, formbook[c][f]); ++rows; } }
+		for ( int m = 0; m < MAX_MATS; ++m ) { if ( ledger[c][m] ) { fprintf(fp, "ml %d %d %u\n", c, m, ledger[c][m]); ++rows; } }
 	}
 	fclose(fp);
 	printlog("apxparts: sidecar %s rows %d\n", path.c_str(), rows);
@@ -210,6 +215,7 @@ void apxPartsSidecarLoad(const char* savePath)
 {
 	sidecar.clear();
 	memset(sidecarFormbook, 0, sizeof(sidecarFormbook));
+	memset(sidecarLedger, 0, sizeof(sidecarLedger));
 	if ( !savePath ) { return; }
 	FILE* fp = fopen((std::string(savePath) + ".apxparts").c_str(), "rb");
 	if ( !fp ) { return; }
@@ -218,6 +224,13 @@ void apxPartsSidecarLoad(const char* savePath)
 	{
 		int c = -1, index = -1, used = 0;
 		int f = -1, succ = 0;
+		if ( line[0] == 'm' && line[1] == 'l' )
+		{
+			unsigned g = 0;
+			if ( sscanf(line, "ml %d %d %u", &c, &f, &g) == 3 && c >= 0 && c < MAXPLAYERS && f >= 0 && f < MAX_MATS ) { sidecarLedger[c][f] = g; }
+			else { ++apxPartsCounters.save_blob_dropped; }
+			continue;
+		}
 		if ( line[0] == 'f' && line[1] == 'b' )
 		{
 			if ( sscanf(line, "fb %d %d %d", &c, &f, &succ) == 3 && c >= 0 && c < MAXPLAYERS && f >= 0 && f < MAX_FORMS && succ >= 0 && succ <= 5 ) { sidecarFormbook[c][f] = (uint8_t)succ; }
@@ -328,6 +341,46 @@ void apxPartsFormbookRecv(const uint8_t* d, int len)
 	printlog("apxparts: formbook recv player %d forms %d hash %016llx\n", player, n, (unsigned long long)apxPartsFormbookHash(player));
 }
 
+// Salvage settlement: every returned gram goes into the player's material ledger (no mass is lost to
+// rounding or to materials without a Barony stand-in); whole stand-in units (metal scrap, magic scrap,
+// salvage.json grams each) are paid out of it. The ledger is saved in the sidecar ("ml" rows).
+namespace {
+void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& magicUnits)
+{
+	const apxparts::DB& d = db();
+	metalUnits = magicUnits = 0;
+	if ( player < 0 || player >= MAXPLAYERS ) { return; }
+	for ( auto& mg : r.grams ) { if ( mg.first >= 0 && mg.first < MAX_MATS ) { ledger[player][mg.first] += (uint32_t)std::max(0, mg.second); } }
+	apxPartsCounters.salvage_grams_out += r.massOut;
+	int per[2] = { 400, 200 };
+	for ( auto& s : d.salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
+	for ( int k = 0; k < 2; ++k )
+	{
+		const char* cls = k == 0 ? "metal" : "magic";
+		long long have = 0;
+		for ( size_t m = 0; m < d.materials.size() && m < (size_t)MAX_MATS; ++m ) { if ( d.materials[m].salvageClass == cls ) { have += ledger[player][m]; } }
+		const int units = (int)(have / per[k]);
+		long long owe = (long long)units * per[k];
+		for ( size_t m = 0; m < d.materials.size() && m < (size_t)MAX_MATS && owe > 0; ++m )
+		{
+			if ( d.materials[m].salvageClass != cls ) { continue; }
+			const long long take = std::min<long long>(owe, ledger[player][m]);
+			ledger[player][m] -= (uint32_t)take;
+			owe -= take;
+		}
+		(k == 0 ? metalUnits : magicUnits) = units;
+		apxPartsCounters.salvage_grams_paid += (long long)units * per[k];
+	}
+}
+}
+
+long long apxPartsLedgerGrams(int player)
+{
+	long long g = 0;
+	if ( player >= 0 && player < MAXPLAYERS ) { for ( int m = 0; m < MAX_MATS; ++m ) { g += ledger[player][m]; } }
+	return g;
+}
+
 bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 {
 	if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item: the vanilla station path"; return false; }
@@ -341,15 +394,8 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	const uint64_t seed = apxparts::fnv1a64("salvage", 7, apxparts::fnv1a64(key, sizeof(key)));
 	const bool symmetric = getenv("APX_SALVAGE_SYMMETRIC") && *getenv("APX_SALVAGE_SYMMETRIC") == '1';
 	const apxparts::SalvageResult r = apxparts::salvage(d, item->apx, keepPart, seed, symmetric);
-	long long g[2] = { 0, 0 };
-	for ( auto& mg : r.grams )
-	{
-		const std::string& cls = d.materials[mg.first].salvageClass;
-		if ( cls == "metal" ) { g[0] += mg.second; } else if ( cls == "magic" ) { g[1] += mg.second; }
-	}
-	int per[2] = { 400, 200 };
-	for ( auto& s : d.salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
-	const int metal = (int)(g[0] / per[0]), magic = (int)(g[1] / per[1]);
+	int metal = 0, magic = 0;
+	settle(player, r, metal, magic);
 	auto give = [&](ItemType t, int count) {
 		if ( count <= 0 ) { return; }
 		Item* it = newItem(t, DECREPIT, 0, (Sint16)count, 0, true, nullptr);
@@ -361,8 +407,8 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	give(GEM_ROCK, r.auraCrystals);
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
-	printlog("apxparts: salvage-keep player %d type %d parts %d keep %d -> metal %d magic %d aura %d (mass %d -> %d g)\n", player, (int)item->type,
-		(int)item->apx.nParts, keepPart, metal, magic, r.auraCrystals, r.massIn, r.massOut);
+	printlog("apxparts: salvage-keep player %d type %d parts %d keep %d -> metal %d magic %d aura %d (mass %d -> %d g; ledger %lld g)\n", player, (int)item->type,
+		(int)item->apx.nParts, keepPart, metal, magic, r.auraCrystals, r.massIn, r.massOut, apxPartsLedgerGrams(player));
 	if ( keepPart >= 0 ) { item->apx = r.kept; } // the item now holds only the kept part
 	else { Item* consumed = item; consumeItem(consumed, player); }
 	return true;
@@ -558,6 +604,7 @@ void apxPartsProbeTick()
 		{
 			const int metal0 = countType(0, TOOL_METAL_SCRAP), magic0 = countType(0, TOOL_MAGIC_SCRAP), gem0 = countType(0, GEM_ROCK);
 			const long long salv0 = apxPartsCounters.salvaged, aura0 = apxPartsCounters.aura_stand_in;
+			const long long out0 = apxPartsCounters.salvage_grams_out, paid0 = apxPartsCounters.salvage_grams_paid, ledger0 = apxPartsLedgerGrams(0);
 			auto items = rollProbeItems(20, &stats[0]->inventory);
 			int station = 0, bench = 0, keptOne = 0;
 			for ( size_t k = 0; k < items.size(); ++k )
@@ -572,10 +619,12 @@ void apxPartsProbeTick()
 			}
 			const int metal = countType(0, TOOL_METAL_SCRAP) - metal0, magic = countType(0, TOOL_MAGIC_SCRAP) - magic0, gems = countType(0, GEM_ROCK) - gem0;
 			const long long salvaged = apxPartsCounters.salvaged - salv0, aura = apxPartsCounters.aura_stand_in - aura0;
-			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 20 && gems == aura && metal + magic > 0);
+			const long long gramsOut = apxPartsCounters.salvage_grams_out - out0, gramsPaid = apxPartsCounters.salvage_grams_paid - paid0, ledgerGain = apxPartsLedgerGrams(0) - ledger0;
+			const bool conserved = gramsOut == gramsPaid + ledgerGain; // no salvaged gram is lost
+			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 20 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"salvage\",\"parts_on\":%d,\"station_ok\":%d,\"bench_ok\":%d,\"bench_kept_one_part\":%d,\"parts_salvaged\":%lld,"
-				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"pass\":%s}",
-				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, salvageOk ? "true" : "false");
+				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"pass\":%s}",
+				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, salvageOk ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("net") == std::string::npos ) { exit(pass && salvageOk ? 0 : 3); }
@@ -631,7 +680,7 @@ void apxPartsProbeTick()
 	}
 }
 
-bool apxPartsSalvageValue(const Item* item, int* metal, int* magic, int* auraCrystals)
+bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, int* auraCrystals)
 {
 	if ( !item || !apxPartsEnabled() || item->apx.nParts == 0 ) { return false; }
 	const apxparts::DB& d = db();
@@ -643,20 +692,14 @@ bool apxPartsSalvageValue(const Item* item, int* metal, int* magic, int* auraCry
 	const uint64_t seed = apxparts::fnv1a64("salvage", 7, apxparts::fnv1a64(key, sizeof(key)));
 	const bool symmetric = getenv("APX_SALVAGE_SYMMETRIC") && *getenv("APX_SALVAGE_SYMMETRIC") == '1';
 	const apxparts::SalvageResult r = apxparts::salvage(d, item->apx, -1, seed, symmetric);
-	long long g[2] = { 0, 0 }; // metal, magic grams
-	for ( auto& mg : r.grams )
-	{
-		const std::string& cls = d.materials[mg.first].salvageClass;
-		if ( cls == "metal" ) { g[0] += mg.second; } else if ( cls == "magic" ) { g[1] += mg.second; }
-	}
-	int per[2] = { 400, 200 };
-	for ( auto& s : d.salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
-	if ( metal ) { *metal = (int)(g[0] / per[0]); }
-	if ( magic ) { *magic = (int)(g[1] / per[1]); }
+	int mu = 0, gu = 0;
+	settle(player, r, mu, gu);
+	if ( metal ) { *metal = mu; }
+	if ( magic ) { *magic = gu; }
 	if ( auraCrystals ) { *auraCrystals = r.auraCrystals; }
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
-	printlog("apxparts: salvage type %d parts %d mass %d g -> %d g (looted %d, discharged %d) metal %lld g magic %lld g aura %d\n",
-		(int)item->type, (int)item->apx.nParts, r.massIn, r.massOut, (int)r.looted, (int)r.discharged, g[0], g[1], r.auraCrystals);
+	printlog("apxparts: salvage type %d parts %d mass %d g -> %d g (looted %d, discharged %d) metal %d magic %d aura %d ledger %lld g\n",
+		(int)item->type, (int)item->apx.nParts, r.massIn, r.massOut, (int)r.looted, (int)r.discharged, mu, gu, r.auraCrystals, apxPartsLedgerGrams(player));
 	return true;
 }

@@ -10752,7 +10752,7 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	int magic = 0;
 	tinkeringGetItemValue(item, &metal, &magic);
 	int apxAura = 0;
-	apxPartsSalvageValue(item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5)
+	apxPartsSalvageValue(player, item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5)
 	bool didCraft = false;
 	int skillLVL = 0;
 	int bonusMetalScrap = 0;
