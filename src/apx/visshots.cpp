@@ -7,6 +7,8 @@
 #include "vision.hpp"
 #include "vox/heldmodel.hpp"
 #include "vox/builder.hpp"
+#include "vox/looknet.hpp"
+#include "../net.hpp"
 #include "vox/bx1.hpp"
 #include <cstring>
 #include "parts_engine.hpp"
@@ -69,6 +71,47 @@ namespace vis
 	void armProbe() { g_probe = true; }
 	void armVoxShot() { g_voxShot = true; }
 	void armBuilderShot() { g_buildShot = true; }
+
+	// APX_LOOK_TEST=host|client (BX1 LOOK packet test, headless host + client on this PC): the host, once a client is in
+	// the game, builds a blade in the voxel builder (which announces the look); the client quits once it has received and
+	// stored the model ("[apx-vox] LOOK ... received"), or after a timeout. Both log the outcome and quit.
+	static void lookTestTick()
+	{
+		static const char* role = std::getenv("APX_LOOK_TEST");
+		static int t = 0;
+		static bool done = false;
+		if ( !role || done || intro || !players[0] || !stats[0] ) { return; }
+		++t;
+		if ( !strcmp(role, "host") )
+		{
+			static int connectedAt = -1;
+			if ( connectedAt < 0 ) { if ( multiplayer == SERVER && !client_disconnected[1] && players[1] && players[1]->entity ) { connectedAt = t; } return; }
+			if ( t == connectedAt + 150 )
+			{
+				int blade = -1, iron = -1;
+				for ( int i = 0; i < 64 && blade < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { blade = i; } }
+				for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+				apxPartsLedgerCredit(0, iron, 100000);
+				apx::vox::builder::open(0, blade << 8 | iron);
+				if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 10; z < s->model.sz; ++z ) { s->add(3, z); if ( z < s->model.sz - 3 ) { s->add(2, z); s->add(4, z); } } }
+				std::string why;
+				Item* made = apx::vox::builder::build(0, why);
+				printlog("[apx-vox] looktest host: build %s, look %08x, announced %d, chunks %d", made ? "made" : why.c_str(), made && made->apx.nParts ? made->apx.parts[0].look : 0u,
+					apx::vox::looknet::stats().announced, apx::vox::looknet::stats().chunksSent);
+			}
+			if ( t == connectedAt + 600 ) { done = true; printlog("[apx-vox] looktest host done"); mainloop = 0; }
+		}
+		else if ( !strcmp(role, "client") )
+		{
+			const auto& st = apx::vox::looknet::stats();
+			if ( st.received > 0 || st.rejected > 0 || t > 6000 )
+			{
+				done = true;
+				printlog("[apx-vox] looktest client: received %d, rejected %d after %d ticks", st.received, st.rejected, t);
+				mainloop = 0;
+			}
+		}
+	}
 
 	// -apxbuildershot (BX1): the builder panel, half-built (not valid yet) and finished (valid), then Build; two shots
 	static void builderShotTick(bool ready)
@@ -164,6 +207,7 @@ namespace vis
 		probeTick(ready);
 		voxShotTick(ready);
 		builderShotTick(ready);
+		lookTestTick();
 		if ( !g_armed || g_phase >= 3 ) { return; }
 		if ( !ready ) { g_ticks = 0; return; }
 		++g_ticks;

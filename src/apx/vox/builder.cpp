@@ -5,6 +5,7 @@
 #include "bx1.hpp"
 #include "heldmodel.hpp"
 #include "builder.hpp"
+#include "looknet.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -64,6 +65,7 @@ namespace builder
 		const uint32_t look = storeLook(st.s.model);
 		if ( !look ) { why = "could not save the model"; ++g_stats.refused; return nullptr; }
 		registerModel(st.s.model);
+		looknet::announce(look, st.s.model); // the other players get the model (no-op in single player)
 		Item* made = apxPartsBenchMakeLook(player, st.option, look, why);
 		if ( !made ) { ++g_stats.refused; return nullptr; }
 		st.active = false;

@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "apx/parts_engine.hpp"
+#include "apx/vox/looknet.hpp" // apx BX1
 #include "main.hpp"
 #include "draw.hpp"
 #include "game.hpp"
@@ -2645,6 +2646,9 @@ static void changeLevel() {
 }
 
 static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
+	// apx BX1: a player-built voxel model from the server
+	{'LOOK', [](){ apx::vox::looknet::clientRecv(); }},
+
 	// apx: stamina / move state relayed by the host
 	{'APXS', [](){
 		apx::onPacket();
@@ -6949,6 +6953,9 @@ void clientHandleMessages(Uint32 framerateBreakInterval)
 -------------------------------------------------------------------------------*/
 
 static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
+	// apx BX1: a client's player-built voxel model (stored, then relayed to the other clients)
+	{'LOOK', [](){ apx::vox::looknet::serverRecv(); }},
+
 	// apx F6: an owner client's Formbook
 	{'FBOK', [](){ apxPartsFormbookRecv(net_packet->data, net_packet->len); }},
 
