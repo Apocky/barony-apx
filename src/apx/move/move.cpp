@@ -57,6 +57,7 @@ namespace
 		int sprintStarts = 0, exhaustions = 0;
 		double sprintDrained = 0.0;
 		long long tickCount = 0, stuckTicks = 0, blockedTicks = 0;
+		int stuckStreak = 0;
 		// impulse test hook
 		bool testPending = false; Vec2 testStart; float testSpeed = 0.f; int testTicks = 0; float testRun = 0.f; Uint32 testBegin = 0;
 		bool lastSprintOn = false;
@@ -456,31 +457,35 @@ double collide(Entity* my, double vx, double vy)
 	else
 	{
 		const hit_t first = hit;
+		// advance toward a displacement until contact (bisection); returns the fraction moved (1 = all of it)
+		auto advance = [&](double dx, double dy) -> double {
+			const double l = std::sqrt(dx * dx + dy * dy);
+			if ( l < 1e-9 ) { return 0.0; }
+			if ( barony_clear(x + dx, y + dy, my) ) { x += dx; y += dy; return 1.0; }
+			if ( !barony_clear(x + dx / l * 0.02, y + dy / l * 0.02, my) ) { return 0.0; } // already flush: one call, not six
+			double lo = 0.0, hi = 1.0;
+			for ( int i = 0; i < T.bisectSteps; ++i )
+			{
+				const double mid = (lo + hi) * 0.5;
+				if ( barony_clear(x + dx * mid, y + dy * mid, my) ) { lo = mid; } else { hi = mid; }
+			}
+			x += dx * lo; y += dy * lo;
+			return lo;
+		};
 		// into contact along the whole move, so a wall is met flush instead of a step short
-		double lo = 0.0, hi = 1.0;
-		for ( int i = 0; i < T.bisectSteps; ++i )
-		{
-			const double mid = (lo + hi) * 0.5;
-			if ( barony_clear(x + vx * mid, y + vy * mid, my) ) { lo = mid; } else { hi = mid; }
-		}
-		x += vx * lo; y += vy * lo;
+		const double lo = advance(vx, vy);
 		const double rx = vx * (1.0 - lo), ry = vy * (1.0 - lo);
 		bool slid = false, slidX = false, slidY = false;
-		auto tryMove = [&](double dx, double dy) -> bool {
-			if ( std::fabs(dx) + std::fabs(dy) < 1e-9 ) { return false; }
-			if ( barony_clear(x + dx, y + dy, my) ) { x += dx; y += dy; return true; }
-			return false;
-		};
-		// slide along the free axis (full tangent component: the part already travelled counts)
+		// slide along each axis, also into contact (the tangent component counts in full: the part already travelled is in x, y)
 		if ( std::fabs(rx) >= std::fabs(ry) )
 		{
-			if ( tryMove(rx, 0.0) ) { slid = slidX = true; }
-			if ( tryMove(0.0, ry) ) { slid = slidY = true; }
+			if ( advance(rx, 0.0) > 0.0 ) { slid = slidX = true; }
+			if ( advance(0.0, ry) > 0.0 ) { slid = slidY = true; }
 		}
 		else
 		{
-			if ( tryMove(0.0, ry) ) { slid = slidY = true; }
-			if ( tryMove(rx, 0.0) ) { slid = slidX = true; }
+			if ( advance(0.0, ry) > 0.0 ) { slid = slidY = true; }
+			if ( advance(rx, 0.0) > 0.0 ) { slid = slidX = true; }
 		}
 		// both axes blocked and the move was real: a corner. Shift sideways to the nearest free line and carry on (no snag)
 		if ( !slid && std::fabs(rx) + std::fabs(ry) > 0.02 )
@@ -567,22 +572,28 @@ void logTick(int pn)
 	const float steady = core::steadySpeed(g_table, c.base, multOf(g_table, st == State::Knocked ? resolveState(S, c, sprintOn, false) : st, c));
 	const float expect = steady * c.wishLen;
 
-	// stuck: input wants motion, the body did not move, and a step of 0.5 unit in a direction the player wants IS free
+	// stuck: for several ticks the body moves less than half of what a free direction (a 0.5 unit step is clear) would let it keep of the
+	// wanted speed. Pressing flat into a wall is not stuck (nothing free to slide along), sliding at the tangent component is not stuck.
 	bool stuck = false, blocked = false;
-	if ( c.wishLen > 0.f && !knocked && disp < 0.25f * expect )
+	if ( c.wishLen > 0.f && !knocked )
 	{
-		blocked = true;
+		if ( disp < 0.97f * expect ) { blocked = true; }
 		const hit_t keep = hit;
 		const float wl = c.wishLen;
-		for ( int i = 0; i < 16 && !stuck; ++i )
+		float best = 0.f;
+		for ( int i = 0; i < 16; ++i )
 		{
 			const float a = (float)i * (float)(PI / 8.0);
 			const Vec2 d = { std::cos(a), std::sin(a) };
-			if ( core::dot(d, c.wishV) / wl > 0.1f && barony_clear(my->x + 0.5f * d.x, my->y + 0.5f * d.y, my) ) { stuck = true; }
+			const float proj = core::dot(d, c.wishV) / wl * expect;
+			if ( proj > best && barony_clear(my->x + 0.5f * d.x, my->y + 0.5f * d.y, my) ) { best = proj; }
 		}
 		hit = keep;
+		const bool under = best > 0.05f && disp < 0.5f * best;
+		S.stuckStreak = under ? S.stuckStreak + 1 : 0;
+		stuck = S.stuckStreak >= 6; // longer than the accel curve (5 ticks)
 	}
-	else if ( c.wishLen > 0.f && !knocked && disp < 0.97f * expect ) { blocked = true; }
+	else { S.stuckStreak = 0; }
 	++S.tickCount; if ( stuck ) { ++S.stuckTicks; } if ( blocked ) { ++S.blockedTicks; }
 
 	logRow("{\"t\":%u,\"x\":%.3f,\"y\":%.3f,\"yaw\":%.4f,\"vx\":%.4f,\"vy\":%.4f,\"disp\":%.4f,\"st\":\"%s\",\"wl\":%.3f,\"fw\":%.2f,\"sd\":%.2f,\"base\":%.3f,\"exp\":%.4f,"
@@ -615,7 +626,12 @@ namespace
 		float run = 0.f;
 		for ( float d = 2.f; d <= maxUnits; d += 2.f )
 		{
-			if ( !barony_clear(my->x + std::cos(ang) * d, my->y + std::sin(ang) * d, my) ) { break; }
+			const double px = my->x + std::cos(ang) * d, py = my->y + std::sin(ang) * d;
+			if ( !barony_clear(px, py, my) ) { break; }
+			const int tx = (int)(px / 16), ty = (int)(py / 16);
+			if ( tx < 0 || ty < 0 || tx >= (int)map.width || ty >= (int)map.height ) { break; }
+			const int tile = map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height];
+			if ( !tile || swimmingtiles[tile] || lavatiles[tile] ) { break; } // routes stay on dry floor
 			run = d;
 		}
 		hit = keep;
@@ -623,13 +639,13 @@ namespace
 	}
 }
 
-static ConsoleCommand ccmd_apxmove_face("/apxmove_face", "apx: set the player's facing for a gate route: open | wall | <degrees>", [](int argc, const char** argv) {
+static ConsoleCommand ccmd_apxmove_face("/apxmove_face", "apx: set the player's facing for a gate route: open | open_right (strafe-right is the open way) | wall | <degrees>", [](int argc, const char** argv) {
 	if ( !players[0] || !players[0]->entity ) { return; }
 	Entity* my = players[0]->entity;
 	const std::string a = argc > 1 ? argv[1] : "open";
 	double yaw = my->yaw;
 	float run = 0.f;
-	if ( a == "open" )
+	if ( a == "open" || a == "open_right" )
 	{
 		for ( int i = 0; i < 32; ++i )
 		{
@@ -637,6 +653,7 @@ static ConsoleCommand ccmd_apxmove_face("/apxmove_face", "apx: set the player's 
 			const float r = runLength(my, ang);
 			if ( r > run + 1e-3f ) { run = r; yaw = ang; }
 		}
+		if ( a == "open_right" ) { yaw -= PI / 2.0; } // the player's right (strafe) side points down the open run
 	}
 	else if ( a == "wall" )
 	{
@@ -680,4 +697,35 @@ static ConsoleCommand ccmd_apxmove_impulse("/apxmove_impulse", "apx: apply an im
 	auto& S = apx::move::g_ps_test(0);
 	S.testPending = true; S.testStart = { (float)my->x, (float)my->y }; S.testSpeed = speed; S.testTicks = n; S.testRun = run; S.testBegin = ticks;
 	apx::move::impulse(my, speed * (float)std::cos(bestAng), speed * (float)std::sin(bestAng), n);
+});
+
+static ConsoleCommand ccmd_apxmove_dry("/apxmove_dry", "apx: if player 0 stands in water or lava, move to the nearest dry floor with room to walk (gate set-up)", [](int, const char**) {
+	if ( !players[0] || !players[0]->entity ) { return; }
+	Entity* my = players[0]->entity;
+	auto dry = [&](int tx, int ty) {
+		if ( tx < 1 || ty < 1 || tx >= (int)map.width - 1 || ty >= (int)map.height - 1 ) { return false; }
+		const int tile = map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height];
+		return tile != 0 && !swimmingtiles[tile] && !lavatiles[tile] && !map.tiles[OBSTACLELAYER + ty * MAPLAYERS + tx * MAPLAYERS * map.height];
+	};
+	const int sx = (int)(my->x / 16), sy = (int)(my->y / 16);
+	if ( dry(sx, sy) ) { printlog("[apx-move] dry: already on dry floor at tile %d,%d", sx, sy); return; }
+	for ( int r = 1; r < 40; ++r )
+	{
+		for ( int dy = -r; dy <= r; ++dy )
+		{
+			for ( int dx = -r; dx <= r; ++dx )
+			{
+				if ( std::max(std::abs(dx), std::abs(dy)) != r ) { continue; }
+				const int tx = sx + dx, ty = sy + dy;
+				if ( !dry(tx, ty) ) { continue; }
+				int ok = 0; // a 5x5 tile neighbourhood that is mostly dry floor
+				for ( int j = -2; j <= 2; ++j ) { for ( int i = -2; i <= 2; ++i ) { ok += dry(tx + i, ty + j) ? 1 : 0; } }
+				if ( ok < 20 ) { continue; }
+				my->x = tx * 16 + 8; my->y = ty * 16 + 8; my->vel_x = 0; my->vel_y = 0;
+				printlog("[apx-move] dry: moved from tile %d,%d to dry tile %d,%d (set-up only)", sx, sy, tx, ty);
+				return;
+			}
+		}
+	}
+	printlog("[apx-move] dry: no dry floor within 40 tiles");
 });

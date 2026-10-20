@@ -39,7 +39,9 @@ console /enablecheats
 wait 300
 console /killmonsters
 wait 500
-# --- walk forward (plain)
+# --- walk forward (plain), from dry floor
+console /apxmove_dry
+wait 500
 console /apxmove_face open
 wait 300
 kdown W
@@ -75,7 +77,7 @@ wait 1000
 kup S
 wait 900
 # --- strafe right
-console /apxmove_face open
+console /apxmove_face open_right
 wait 300
 kdown D
 wait 1000
@@ -91,9 +93,9 @@ kup W
 kup D
 wait 900
 # --- sprint to zero stamina (8 stamina = 2 s), key held for 3.5 s: it must stop at 0 and stay off
-console /apxmove_stamina 8
 console /apxmove_face open
 wait 300
+console /apxmove_stamina 8
 kdown W
 kdown Left Shift
 wait 3500
@@ -203,7 +205,9 @@ def analyse(rows, events):
     for a, b in zip(starts, stops):
         dur = (b["t"] - a["t"]) / 50.0
         if dur >= 0.8:
-            sp.append({"seconds": round(dur, 2), "drained": round(a["stam"] - b["stam"], 3), "rate": round((a["stam"] - b["stam"]) / dur, 3),
+            # the start row is written after that tick's drain, so n ticks on = n - 1 drains between start and stop
+            ndrain = max(1, b["t"] - a["t"] - 1) / 50.0
+            sp.append({"seconds": round(dur, 2), "stam_start": a["stam"], "drained": round(a["stam"] - b["stam"], 3), "rate": round((a["stam"] - b["stam"]) / ndrain, 3),
                        "exhausted": b["exhausted"], "stam_end": b["stam"]})
     res["sprint"] = sp
     # after exhaustion with the key held: never sprint again
@@ -240,7 +244,7 @@ def verdict(res, mode):
     full = [s for s in res["sprint"] if not s["exhausted"]]
     zero = [s for s in res["sprint"] if s["exhausted"]]
     chk("sprint_drain_4_per_s", bool(res["sprint"]) and all(abs(s["rate"] - 4.0) <= 0.08 for s in res["sprint"]), res["sprint"])
-    chk("sprint_stops_at_zero", bool(zero) and all(s["stam_end"] <= 0.05 and abs(s["seconds"] - 2.0) <= 0.15 for s in zero), zero if zero else "no exhausted sprint")
+    chk("sprint_stops_at_zero", bool(zero) and all(s["stam_end"] <= 0.05 and abs(s["seconds"] - s["stam_start"] / 4.0) <= 0.15 for s in zero), zero if zero else "no exhausted sprint")
     chk("sprint_stays_off_after_zero", bool(zero) and res["sprint_after_exhaustion_ticks"] == 0, res["sprint_after_exhaustion_ticks"])
     usable = [i for i in res["impulses"] if i["open_run"] >= i["tabled"] + 16]
     chk("impulse_distance_within_2pct", len(usable) >= 2 and all(abs(i["err_pct"]) <= 2.0 for i in usable), res["impulses"])

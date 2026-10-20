@@ -36,6 +36,11 @@ namespace in
 			{
 				r.moveX = (float)(input.binary("Move Right") - input.binary("Move Left"));
 				r.moveY = (float)(input.binary("Move Forward") - input.binary("Move Backward"));
+				if ( getenv("APX_MOVE_DEBUGIN") && (r.moveX != 0.f || r.moveY != 0.f) && ticks % 25 == 0 )
+				{
+					printlog("[apx-in-stub] tick=%u F=%d B=%d L=%d R=%d => moveX=%.1f moveY=%.1f yaw=%.3f", (unsigned)ticks, (int)input.binary("Move Forward"), (int)input.binary("Move Backward"),
+						(int)input.binary("Move Left"), (int)input.binary("Move Right"), r.moveX, r.moveY, players[p]->entity ? (double)players[p]->entity->yaw : -1.0);
+				}
 				if ( keystatus[SDLK_LSHIFT] ) { r.held |= 1ull << B_Sprint; }
 			}
 			else
