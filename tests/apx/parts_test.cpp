@@ -311,7 +311,7 @@ int main(int argc, char** argv)
 		DB t = db;
 		for ( auto& pl : t.pools ) { for ( int j = 0; j < pl.count; ++j ) { AffixInfo& a = t.affixes[(size_t)(pl.firstId + j)]; a.position = j % 2 ? AFFIX_SUFFIX : AFFIX_PREFIX; a.weight = j == 0 ? 97 : 1; a.label = j % 2 ? "of W" + std::to_string(j) : "P" + std::to_string(j); } }
 		Counters c; ApxItemData it;
-		int names = 0, bad = 0, commonOk = 0, commons = 0, order = 0, orderN = 0; long long first0 = 0, firstN = 0;
+		int names = 0, bad = 0, commonOk = 0, commons = 0, order = 0, orderN = 0, proper = 0, properOk = 0; long long first0 = 0, firstN = 0; std::string properEx;
 		std::string example;
 		for ( uint32_t i = 0; names < 1000 || firstN < 20000; ++i )
 		{
@@ -328,7 +328,8 @@ int main(int argc, char** argv)
 					for ( size_t z = 0; z <= nm.size(); ++z ) { if ( z == nm.size() || nm[z] == ' ' ) { if ( !w.empty() && w == prev && w != "of" ) { b = true; } prev = w; w.clear(); } else { w += nm[z]; } }
 					bad += b;
 					if ( q.nAffix == 0 ) { ++commons; commonOk += nm.find(" of ") == std::string::npos && std::count(nm.begin(), nm.end(), ' ') <= 3; }
-					if ( q.nAffix >= 2 && example.empty() ) { example = nm; }
+					if ( q.nAffix >= 2 && q.rarity < 3 && example.empty() ) { example = nm; }
+					if ( q.rarity >= 3 ) { ++proper; properOk += nm.find("'s ") != std::string::npos && nm.find('-') != std::string::npos; if ( properEx.empty() ) { properEx = nm; } }
 				}
 				if ( q.nAffix >= 2 )
 				{
@@ -347,7 +348,7 @@ int main(int argc, char** argv)
 		// entry 0 is a prefix with weight 97 among the pool's prefixes (the rest weight 1): expected share 97 / (97 + prefixes - 1)
 		double expect = 0; { const AffixPool& pl = t.pools[0]; int pre = (pl.count + 1) / 2; expect = 97.0 / (97 + pre - 1); }
 		const double share = firstN ? (double)first0 / firstN : 0;
-		gate("C_name", bad == 0 && commons > 0 && commonOk == commons, kv("names", names) + "," + kv("bad", bad) + "," + kv("commons_plain", commonOk) + "/" + std::to_string(commons) + ",\"example\":\"" + example + "\"");
+		gate("C_name", bad == 0 && commons > 0 && commonOk == commons && proper > 0 && properOk == proper, kv("names", names) + "," + kv("bad", bad) + "," + kv("commons_plain", commonOk) + "/" + std::to_string(commons) + ",\"example\":\"" + example + "\"," + kv("epic_up_proper", properOk) + "/" + std::to_string(proper) + ",\"proper_example\":\"" + properEx + "\"");
 		gate("C2_fill_order_prefix_then_suffix", orderN > 1000 && order == orderN, kv("components", orderN) + "," + kv("ordered", order));
 		gate("C2_weight", firstN > 0 && std::fabs(share - expect) < 0.03, "\"first_pick_share\":" + std::to_string(share) + ",\"approx_expected\":" + std::to_string(expect) + ",\"note\":\"pools differ in size; tolerance 0.03\"");
 	}
@@ -444,6 +445,20 @@ int main(int argc, char** argv)
 		const std::string ms = toString(mi);
 		const bool modelSaved = fromString(ms, mo) && !memcmp(&mi, &mo, sizeof(mi)) && mo.parts[0].model == 7;
 		gate("C5_make", makes > 0 && makeOk == makes && rare > 0 && modelSaved, join({ kv("makes", makes), kv("ok", makeOk), kv("rare_at_masterwork", rare), kv("model_id_saved", modelSaved ? 1 : 0), "\"save_string\":\"" + ms + "\"" }));
+	}
+	{
+		// assembly names (05b section 4): best component; prefix + form + suffix up to Rare, proper name from Epic
+		Counters c; ApxItemData it; int plain = 0, plainOk = 0, proper = 0, properOk = 0; std::string ex1, ex2;
+		for ( uint32_t i = 0; i < 5000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 23, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			int b = 0; for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[b].rarity ) { b = k; } }
+			const std::string n = assemblyName(db, it, "longsword");
+			if ( it.parts[b].rarity >= 3 ) { ++proper; properOk += n.find("'s ") != std::string::npos && n.find("longsword") == std::string::npos; if ( ex2.empty() ) { ex2 = n; } }
+			else { ++plain; properOk += 0; plainOk += n.find("longsword") != std::string::npos && (it.parts[b].nAffix == 0 ? n == "longsword" : n.size() > 9); if ( ex1.empty() && it.parts[b].nAffix ) { ex1 = n; } }
+		}
+		gate("C_assembly_name", plain > 0 && plainOk == plain && proper > 0 && properOk == proper, join({ kv("plain_ok", plainOk) + "/" + std::to_string(plain), kv("proper_ok", properOk) + "/" + std::to_string(proper), "\"examples\":[\"" + ex1 + "\",\"" + ex2 + "\"]" }));
 	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;

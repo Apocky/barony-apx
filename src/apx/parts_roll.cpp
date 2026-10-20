@@ -385,6 +385,7 @@ std::string componentName(const DB& db, const ApxPart& p)
 	auto cap = [](std::string s) { if ( !s.empty() ) { s[0] = (char)toupper((unsigned char)s[0]); } for ( auto& ch : s ) { if ( ch == '_' ) { ch = ' '; } } return s; };
 	// 05b section 4 / content-lane lint: prefix words in affix order + Material + Slot + suffix words; at most
 	// 2 prefixes and 2 suffixes shown; a second suffix drops its "of": "of Embers and Bleeding"
+	if ( p.rarity >= 3 ) { ApxItemData t{}; t.nParts = 1; t.parts[0] = p; return properName(db, t); } // Epic and up: a proper name (D87)
 	std::string pre, suf;
 	int nPre = 0, nSuf = 0;
 	for ( int a = 0; a < p.nAffix && a < 4; ++a )
@@ -486,6 +487,47 @@ ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolP
 	p.integrity = 255;
 	p.model = modelId;
 	return p;
+}
+
+} // namespace apxparts
+
+namespace apxparts {
+
+namespace {
+int bestPart(const ApxItemData& it)
+{
+	int b = 0;
+	for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[b].rarity ) { b = k; } }
+	return b;
+}
+}
+
+std::string properName(const DB& db, const ApxItemData& it)
+{
+	static const char* const OWNER[] = { "Vey", "Orm", "Sabine", "Kael", "Idris", "Maren", "Tovah", "Ulric", "Nessa", "Brannoc", "Yselde", "Corvin", "Halde", "Rook", "Ilse", "Dunmar" };
+	static const char* const FIRST[] = { "Ember", "Frost", "Grave", "Storm", "Ash", "Iron", "Moon", "Blood", "Thorn", "Gloom", "Star", "Wyrm", "Hollow", "Bright", "Raven", "Salt" };
+	static const char* const SECOND[] = { "Tongue", "Fang", "Song", "Ward", "Bite", "Whisper", "Brand", "Heart", "Crown", "Wake", "Thirst", "Mark", "Veil", "Root", "Edge", "Call" };
+	uint64_t h = fnv1a64(&it.rollKey, sizeof(it.rollKey), fnv1a64("propername", 10));
+	for ( int k = 0; k < it.nParts; ++k ) { h = fnv1a64(&it.parts[k], sizeof(ApxPart), h); }
+	std::string n = std::string(OWNER[h % 16]) + "'s " + FIRST[(h >> 8) % 16] + "-" + SECOND[(h >> 16) % 16];
+	(void)db;
+	return n;
+}
+
+std::string assemblyName(const DB& db, const ApxItemData& it, const std::string& formName)
+{
+	if ( it.nParts == 0 || isComponent(it) ) { return formName; }
+	const ApxPart& b = it.parts[bestPart(it)];
+	if ( b.rarity >= 3 ) { return properName(db, it); }
+	std::string pre, suf;
+	for ( int a = 0; a < b.nAffix && a < 4; ++a )
+	{
+		if ( b.affix[a] >= db.affixes.size() ) { continue; }
+		const AffixInfo& ai = db.affixes[b.affix[a]];
+		if ( ai.position == AFFIX_PREFIX && pre.empty() ) { pre = ai.label + " "; }
+		else if ( ai.position == AFFIX_SUFFIX && suf.empty() ) { suf = " " + (ai.label.compare(0, 3, "of ") ? "of " + ai.label : ai.label); }
+	}
+	return pre + formName + suf;
 }
 
 } // namespace apxparts

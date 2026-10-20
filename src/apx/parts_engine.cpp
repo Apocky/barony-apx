@@ -498,6 +498,14 @@ const char* apxPartsComponentName(const Item* item)
 	return buf;
 }
 
+void apxPartsDecorateName(const Item* item, char* name, size_t size)
+{
+	if ( !item || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; }
+	if ( getenv("APX_PARTS_NAMES") && *getenv("APX_PARTS_NAMES") == '0' ) { return; } // control: vanilla names
+	const std::string n = apxparts::assemblyName(db(), item->apx, name);
+	snprintf(name, size, "%s", n.c_str());
+}
+
 int apxPartsComponentGrams(const Item* item) { return apxPartsIsComponent(item) ? apxparts::partMassGrams(db(), item->apx.parts[0]) : 0; }
 
 int apxPartsComponentValue(const Item* item) // ASSUMED: material value x (1 + rarity)

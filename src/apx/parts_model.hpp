@@ -134,5 +134,10 @@ ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolP
 ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);
 // "Keen Steel Blade of Embers": prefixes, Material, Slot, "of" suffixes joined by "and".
 std::string componentName(const DB& db, const ApxPart& p);
+// Assembly names (05b section 4, D87): up to Rare "[best prefix] <form name> [best suffix]" from the best
+// component (highest rarity, lowest index on a tie); Epic and up get a generated proper name from rollKey,
+// "Vey's Ember-Tongue" style (ASSUMED grammar until Apocky sets the style, 05b section 14).
+std::string assemblyName(const DB& db, const ApxItemData& it, const std::string& formName);
+std::string properName(const DB& db, const ApxItemData& it);
 
 } // namespace apxparts

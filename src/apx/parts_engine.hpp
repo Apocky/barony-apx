@@ -57,6 +57,7 @@ void apxPartsLedgerCredit(int player, int material, int grams); // selftest seed
 // appearance 0xC tag | slot << 8 | material, cosmetic only). Saves, packets and floor items carry it like
 // any item with parts; it never stacks. Name from its affixes ("Keen Steel Blade of Embers").
 bool apxPartsIsComponent(const Item* item);
+void apxPartsDecorateName(const Item* item, char* name, size_t size); // Item::getName: assembly names (05b section 4); APX_PARTS_NAMES=0 = vanilla
 const char* apxPartsComponentName(const Item* item);
 int apxPartsComponentGrams(const Item* item);
 int apxPartsComponentValue(const Item* item);
