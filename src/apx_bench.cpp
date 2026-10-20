@@ -247,17 +247,17 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
 		e.push_back(header(std::string(selectedOwn->getName()) + ": repair"));
 		auto opts = pv.repairOptions(player, selectedOwn, station);
-		if ( opts.empty() )
+		// BP1-2 (props lane): one condition step of the whole item at a FIELD bench or an ANVIL, paid from the
+		// pouch. Always offered there: the item's condition and its components' integrity are separate repairs
+		// (F6's per-component rows follow), so filling one never hides the other
+		if ( station == apx_logic::FIELD || station == apx_logic::ANVIL )
 		{
-			// BP1-2 (props lane): one condition step of the whole item at a FIELD bench or an ANVIL, paid from the pouch
-			if ( station == apx_logic::FIELD || station == apx_logic::ANVIL )
-			{
-				std::string why, mat;
-				int g = pv.repairCost(player, selectedOwn, why, mat);
-				e.push_back(line(g >= 0 ? ">> Repair one step: " + std::to_string(g) + " g of " + mat : "   Cannot repair: " + why, 0, 0, g >= 0 ? apx_logic::ROW_REPAIR_STEP : apx_logic::ROW_INFO));
-			}
-			else { e.push_back(line("Repair here: a field bench or an anvil.")); }
+			std::string why, mat;
+			int g = pv.repairCost(player, selectedOwn, why, mat);
+			e.push_back(line(g >= 0 ? ">> Repair one step: " + std::to_string(g) + " g of " + mat : "   Cannot repair: " + why, 0, 0, g >= 0 ? apx_logic::ROW_REPAIR_STEP : apx_logic::ROW_INFO));
 		}
+		else if ( opts.empty() ) { e.push_back(line("Repair here: a field bench or an anvil.")); }
+		if ( !opts.empty() ) { e.push_back(header("Components")); }
 		for ( auto& o : opts )
 		{
 			int pct = (int)(o.integrity * 100.f + 0.5f);

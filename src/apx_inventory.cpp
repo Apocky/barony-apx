@@ -746,7 +746,7 @@ static void runLive86(int dt)
 	static Uint32 swordUid = 0, compUid = 0, bundleUid = 0;
 	static long long g0 = -1, g1 = -1, g2 = -1, g3 = -1;
 	static int comps0 = -1, comps1 = -1, compRowRarity = -9, compParts = -1, rows0 = 0, rows1 = 0, rows2 = 0, rows3 = 0, keep = -2, bundleMat = -1, salvaged = 0, picked = 0;
-	static std::string compName, why, repairRow, repairMsg;
+	static std::string compName, why, repairRow, repairMsg, repairDump;
 	static Uint32 helmUid = 0;
 	static int helmBefore = -1, helmAfter = -1, station = -1, ironMat = -1, ironBefore = -1, ironAfter = -1;
 	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
@@ -844,6 +844,12 @@ static void runLive86(int dt)
 	{
 		auto e = benchRowsForTest(0);
 		for ( auto& x : e ) { if ( !x.header && x.row.name.find("epair") != std::string::npos ) { repairRow = x.row.name; } }
+		// what the bench showed (a gate that fails names what it saw)
+		Item* selItem = nullptr;
+		{ auto own = ownRowsForTest(0); int si = listState(0).selected; if ( si >= 0 && si < (int)own.size() ) { selItem = uidToItem(own[si].row.uid); } }
+		repairDump = "sel=" + std::to_string(listState(0).selected) + (selItem && selItem->uid == helmUid ? " (helm)" : " (not helm)") + " tab=" + std::to_string(viewState(0).benchTab) + " bench=" + std::to_string((int)viewState(0).benchShown) + " st=" + std::to_string(viewState(0).station) + " |";
+		for ( auto& x : e ) { repairDump += (x.header ? "#" : "-") + x.row.name + "|"; }
+		for ( auto& c : repairDump ) { if ( c == '"' || c == '\\' ) { c = '\''; } }
 		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 13 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
 		repairMsg = viewState(0).lastBenchMsg;
 	}
@@ -859,12 +865,12 @@ static void runLive86(int dt)
 			fprintf(f, "{\"test\":\"live86\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"keep\":%d,\"salvaged\":%d,\"components\":[%d,%d],\"component\":{\"name\":\"%s\",\"parts\":%d,\"row_rarity\":%d},"
 				"\"pouch_g\":[%lld,%lld,%lld,%lld],\"bundle\":{\"material\":%d,\"drawn\":%d,\"picked\":%d,\"why\":\"%s\"},\"rows_sum_ok\":[%d,%d,%d,%d],"
 				"\"pouch_grew\":%d,\"bundle_debited\":%d,\"pickup_restored\":%d,\"make\":\"not in F6 engine yet\",\"swap\":\"not in F6 engine yet\","
-				"\"repair\":{\"station\":%d,\"row\":\"%s\",\"msg\":\"%s\",\"status\":[%d,%d],\"one_step\":%d,\"iron_g\":[%d,%d],\"paid_from_pouch\":%d}}\n",
+				"\"repair\":{\"station\":%d,\"row\":\"%s\",\"msg\":\"%s\",\"status\":[%d,%d],\"one_step\":%d,\"iron_g\":[%d,%d],\"paid_from_pouch\":%d,\"dump\":\"%s\"}}\n",
 				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, keep, salvaged, comps0, comps1, compName.c_str(), compParts, compRowRarity,
 				g0, g1, g2, g3, bundleMat, bundleUid ? 1 : 0, picked, why.c_str(), rows0, rows1, rows2, rows3,
 				g1 > g0 ? 1 : 0, bundleUid && g2 == g1 - 10 ? 1 : 0, bundleUid && picked && g3 == g1 ? 1 : 0,
 				station, repairRow.c_str(), repairMsg.c_str(), helmBefore, helmAfter, helmAfter == helmBefore + 1 ? 1 : 0,
-				ironBefore, ironAfter, ironMat >= 0 && ironAfter < ironBefore ? 1 : 0);
+				ironBefore, ironAfter, ironMat >= 0 && ironAfter < ironBefore ? 1 : 0, repairDump.c_str());
 			fclose(f);
 		}
 		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
