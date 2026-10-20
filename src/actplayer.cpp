@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/vox/heldmodel.hpp"
 #include "apx_inventory.hpp"
 #include "apx_bench_api.hpp"
 #include "game.hpp"
@@ -13313,6 +13314,10 @@ void actPlayer(Entity* my)
 						{
 							entity->sprite = itemModel(stats[PLAYER_NUM]->weapon);
 							apxPartsApplyTint(entity, stats[PLAYER_NUM]->weapon); // apx F6 palette tint
+							{ // apx BX1 (C10): the weapon drawn from its parts' voxel models, instead of the tint
+								const int apxHeld = apx::vox::heldModel(stats[PLAYER_NUM]->weapon, false, entity->sprite);
+								if ( apxHeld != (int)entity->sprite ) { entity->sprite = apxHeld; entity->lightBonus = vec4(0.f, 0.f, 0.f, 0.f); }
+							}
 							if ( itemCategory(stats[PLAYER_NUM]->weapon) == SPELLBOOK )
 							{
 								entity->flags[INVISIBLE] = true;

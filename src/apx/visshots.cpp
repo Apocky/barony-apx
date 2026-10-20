@@ -5,6 +5,14 @@
 #include "../player.hpp"
 #include "visshots.hpp"
 #include "vision.hpp"
+#include "vox/heldmodel.hpp"
+#include "vox/builder.hpp"
+#include "vox/looknet.hpp"
+#include "../net.hpp"
+#include "vox/bx1.hpp"
+#include <cstring>
+#include "parts_engine.hpp"
+#include "../items.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -19,6 +27,10 @@ namespace vis
 	{
 		bool g_armed = false;
 		bool g_probe = false;          // -apxlightprobe
+		bool g_voxShot = false;        // -apxvoxshot (BX1)
+		bool g_buildShot = false;      // -apxbuildershot (BX1)
+		int g_buildTicks = 0;
+		int g_voxTicks = 0;
 		int g_probeTicks = 0;
 		int g_ticks = 0;
 		int g_phase = 0;               // 0 settle, 1 far view, 2 near view, 3 done
@@ -57,6 +69,102 @@ namespace vis
 	void arm() { g_armed = true; }
 	bool armed() { return g_armed; }
 	void armProbe() { g_probe = true; }
+	void armVoxShot() { g_voxShot = true; }
+	void armBuilderShot() { g_buildShot = true; }
+
+	// APX_LOOK_TEST=host|client (BX1 LOOK packet test, headless host + client on this PC): the host, once a client is in
+	// the game, builds a blade in the voxel builder (which announces the look); the client quits once it has received and
+	// stored the model ("[apx-vox] LOOK ... received"), or after a timeout. Both log the outcome and quit.
+	static void lookTestTick()
+	{
+		static const char* role = std::getenv("APX_LOOK_TEST");
+		static int t = 0;
+		static bool done = false;
+		if ( !role || done || intro || !players[0] || !stats[0] ) { return; }
+		++t;
+		if ( !strcmp(role, "host") )
+		{
+			static int connectedAt = -1;
+			if ( connectedAt < 0 ) { if ( multiplayer == SERVER && !client_disconnected[1] && players[1] && players[1]->entity ) { connectedAt = t; } return; }
+			if ( t == connectedAt + 150 )
+			{
+				int blade = -1, iron = -1;
+				for ( int i = 0; i < 64 && blade < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { blade = i; } }
+				for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+				apxPartsLedgerCredit(0, iron, 100000);
+				apx::vox::builder::open(0, blade << 8 | iron);
+				if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 10; z < s->model.sz; ++z ) { s->add(3, z); if ( z < s->model.sz - 3 ) { s->add(2, z); s->add(4, z); } } }
+				std::string why;
+				Item* made = apx::vox::builder::build(0, why);
+				printlog("[apx-vox] looktest host: build %s, look %08x, announced %d, chunks %d", made ? "made" : why.c_str(), made && made->apx.nParts ? made->apx.parts[0].look : 0u,
+					apx::vox::looknet::stats().announced, apx::vox::looknet::stats().chunksSent);
+			}
+			if ( t == connectedAt + 600 ) { done = true; printlog("[apx-vox] looktest host done"); mainloop = 0; }
+		}
+		else if ( !strcmp(role, "client") )
+		{
+			const auto& st = apx::vox::looknet::stats();
+			if ( st.received > 0 || st.rejected > 0 || t > 6000 )
+			{
+				done = true;
+				printlog("[apx-vox] looktest client: received %d, rejected %d after %d ticks", st.received, st.rejected, t);
+				mainloop = 0;
+			}
+		}
+	}
+
+	// -apxbuildershot (BX1): the builder panel, half-built (not valid yet) and finished (valid), then Build; two shots
+	static void builderShotTick(bool ready)
+	{
+		if ( !g_buildShot || !ready ) { return; }
+		++g_buildTicks;
+		static int blade = -1, iron = -1;
+		if ( g_buildTicks == 60 )
+		{
+			for ( int i = 0; i < 64 && blade < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { blade = i; } }
+			for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+			apxPartsLedgerCredit(0, iron, 100000);
+			apx::vox::builder::open(0, blade << 8 | iron);
+			if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 8; z < 30; ++z ) { s->add(3, z); if ( z > 10 ) { s->add(2, z); s->add(4, z); } } }
+		}
+		if ( g_buildTicks == 120 ) { g_shot = "vox-builder-open.png"; }
+		if ( g_buildTicks == 125 ) { if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 30; z < s->model.sz; ++z ) { s->add(3, z); if ( z < s->model.sz - 3 ) { s->add(2, z); s->add(4, z); } } s->layerUp(); s->add(3, 20); } }
+		if ( g_buildTicks == 160 ) { g_shot = "vox-builder-valid.png"; }
+		if ( g_buildTicks == 165 )
+		{
+			std::string why;
+			Item* made = apx::vox::builder::build(0, why);
+			printlog("[apx-vox] buildershot: build %s (%s)", made ? "made" : "refused", why.c_str());
+		}
+		if ( g_buildTicks == 175 ) { g_buildShot = false; mainloop = 0; }
+	}
+
+	// -apxvoxshot (BX1, C10): equip a steel sword with rolled parts, face the longest open line, shoot the first-person
+	// view ("vox-held.png"), log the sprite, quit. APX_VOX_HELD=0 gives the same shot with the tinted vanilla sword.
+	static void voxShotTick(bool ready)
+	{
+		if ( !g_voxShot || !ready ) { return; }
+		Entity* me = players[0]->entity;
+		++g_voxTicks;
+		if ( g_voxTicks == 60 )
+		{
+			Item* sword = newItem(STEEL_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+			apxPartsBind(sword, 0, 5);
+			equipItem(sword, &stats[0]->weapon, 0, false);
+			real_t best = -1, yaw = 0;
+			for ( int k = 0; k < 72; ++k ) { const real_t y = k * 2 * PI / 72, d = ray(me->x, me->y, y); if ( d > best ) { best = d; yaw = y; } }
+			me->yaw = yaw; me->pitch = 0;
+			printlog("[apx-vox] voxshot: sword parts %d, rollKey %u", sword ? (int)sword->apx.nParts : -1, sword ? sword->apx.rollKey : 0u);
+		}
+		if ( g_voxTicks == 160 ) { g_shot = "vox-held.png"; }
+		if ( g_voxTicks == 166 )
+		{
+			const Entity* hud = players[0]->hud.weapon;
+			printlog("[apx-vox] voxshot done: hud weapon sprite %d, base models %u, nummodels %u", hud ? (int)hud->sprite : -1, apx::vox::baseModelCount(), nummodels);
+			g_voxShot = false;
+			mainloop = 0;
+		}
+	}
 
 	// -apxlightprobe: the light monsters see (entityLightAt) on every open tile of the test floor, written as one
 	// JSON row of per-tile values, then quit. Two launches (APX_VIS_FALLOFF=0 vs on) give the change in how far
@@ -97,6 +205,9 @@ namespace vis
 	void tick(bool ready)
 	{
 		probeTick(ready);
+		voxShotTick(ready);
+		builderShotTick(ready);
+		lookTestTick();
 		if ( !g_armed || g_phase >= 3 ) { return; }
 		if ( !ready ) { g_ticks = 0; return; }
 		++g_ticks;

@@ -280,6 +280,14 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex)
 }
 
 // ---------------------------------------------------------------- palette tint (D79 stand-in)
+bool apxPartsMaterialTint(int material, float out[3])
+{
+	const auto& mats = db().materials;
+	if ( material < 0 || material >= (int)mats.size() ) { return false; }
+	for ( int c = 0; c < 3; ++c ) { out[c] = mats[material].tint[c]; }
+	return true;
+}
+
 void apxPartsApplyTint(Entity* entity, const Item* item)
 {
 	static std::unordered_map<Uint32, bool> tinted; // entities whose lightBonus F6 set

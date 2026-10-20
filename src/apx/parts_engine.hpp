@@ -115,7 +115,9 @@ const char* apxPartsAffixWord(const Item* item, int part, int a);
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);
-void apxPartsBenchRegister();                            // F6 provider into the BU1 bench shell (parts_bench.cpp)
+bool apxPartsMaterialTint(int material, float out[3]); // the material's colour (materials.json tint), for BX1 part models
+void apxPartsBenchRegister();
+Item* apxPartsBenchMakeLook(int player, int optionId, uint32_t look, std::string& why); // BX1: Make with a built model (optionId = slot << 8 | material)                            // F6 provider into the BU1 bench shell (parts_bench.cpp)
 const char* apxPartsShotRequest();                       // the probe's framebuffer shot path, once (game.cpp frame end)
 void apxPartsProbeTick();                                // APX_BF6_PROBE, once floor 1 is up (game loop)
 
