@@ -1600,11 +1600,12 @@ void apxPartsProbeTick()
 				Entity* me = players[0]->entity;
 				char mb[400] = "";
 				bool ok = false;
-				if ( !wv.empty() && !hv.empty() && me && !stats[0]->weapon )
+				if ( !wv.empty() && !hv.empty() && me )
 				{
 					Item* w = wv[0]; Item* h = hv[0];
 					w->beatitude = 0; h->beatitude = 0; w->identified = h->identified = true;
-					useItem(w, 0); useItem(h, 0);
+					Item* oldW = stats[0]->weapon; Item* oldH = stats[0]->helmet; // the slots, swapped directly (no equip side effects), restored below
+					stats[0]->weapon = w; stats[0]->helmet = h;
 					const bool worn = stats[0]->weapon == w && stats[0]->helmet == h;
 					setMaker(w, 0); setMaker(h, 0);
 					const int a0 = Entity::getAttack(me, stats[0], true, 0), ac0 = AC(stats[0]), dex0 = statGetDEX(stats[0], me);
@@ -1633,7 +1634,7 @@ void apxPartsProbeTick()
 					ok = worn && deepOk && silverOk && runeOk && hephOk && ashOk;
 					snprintf(mb, sizeof(mb), "worn %d; Deepanvil attack %d -> %d (want %d), AC %d -> %d; Silverbough DEX %d -> %d; Runecourt kill MP +%d; Hephaesteum no wear %d (off again %d); Ashgrave low HP attack %d vs %d (want %d)%s",
 						worn ? 1 : 0, a0, a1, a0 * 123 / 100, ac0, ac1, dex0, dex1, mpGain, noWear ? 1 : 0, wearBack ? 1 : 0, aLow, aHigh, a0 * 120 / 100, off ? " [APX_MAKERS=0]" : "");
-					useItem(stats[0]->weapon, 0); useItem(stats[0]->helmet, 0); // unequip for the C12 phase
+					stats[0]->weapon = oldW; stats[0]->helmet = oldH;
 				}
 				// regression (C9 crash, game.cpp floor-value tally): an Item never zeroed carries garbage apx; every reader
 				// must treat it as vanilla and count it, never walk past ApxItemData::parts
