@@ -62,6 +62,9 @@ namespace apx_bench
 	};
 	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub
+// BX1 (C10): set by the voxel builder; a Make row first offers the option to it (true = a build was opened, the
+// component is made when the player presses Build there); null or false = make at once, as before
+extern bool (*makeOpenHook)(int player, int optionId);
 	const Provider& provider();            // always complete (stub fills the gaps)
 	const Provider& stubProvider();
 }

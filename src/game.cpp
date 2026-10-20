@@ -101,6 +101,7 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
 #include "apx/vox/builder.hpp"
+#include "apx/vox/builder_ui.hpp"
 #include "apx/vox/bx1.hpp"
 #include "apx/tiers.hpp"
 #include "apx_combat.hpp"
@@ -1136,6 +1137,7 @@ void gameLogic(void)
 	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
 	apx::selftestall::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx D77
 	apx::vis::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx BVIS1
+	apx::vox::builderui::tick(); // apx BX1: the voxel builder panel
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -7510,6 +7512,10 @@ int main(int argc, char** argv)
 					else if ( !strcmp(argv[c], "-apximpacttest") )
 					{
 						apxImpactTest = true;
+					}
+					else if ( !strcmp(argv[c], "-apxbuildershot") )
+					{
+						apx::vis::armBuilderShot(); // apx BX1: builder panel screenshots, then quit
 					}
 					else if ( !strcmp(argv[c], "-apxvoxshot") )
 					{

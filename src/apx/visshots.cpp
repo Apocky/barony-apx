@@ -6,6 +6,9 @@
 #include "visshots.hpp"
 #include "vision.hpp"
 #include "vox/heldmodel.hpp"
+#include "vox/builder.hpp"
+#include "vox/bx1.hpp"
+#include <cstring>
 #include "parts_engine.hpp"
 #include "../items.hpp"
 #include <cstdio>
@@ -23,6 +26,8 @@ namespace vis
 		bool g_armed = false;
 		bool g_probe = false;          // -apxlightprobe
 		bool g_voxShot = false;        // -apxvoxshot (BX1)
+		bool g_buildShot = false;      // -apxbuildershot (BX1)
+		int g_buildTicks = 0;
 		int g_voxTicks = 0;
 		int g_probeTicks = 0;
 		int g_ticks = 0;
@@ -63,6 +68,33 @@ namespace vis
 	bool armed() { return g_armed; }
 	void armProbe() { g_probe = true; }
 	void armVoxShot() { g_voxShot = true; }
+	void armBuilderShot() { g_buildShot = true; }
+
+	// -apxbuildershot (BX1): the builder panel, half-built (not valid yet) and finished (valid), then Build; two shots
+	static void builderShotTick(bool ready)
+	{
+		if ( !g_buildShot || !ready ) { return; }
+		++g_buildTicks;
+		static int blade = -1, iron = -1;
+		if ( g_buildTicks == 60 )
+		{
+			for ( int i = 0; i < 64 && blade < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { blade = i; } }
+			for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+			apxPartsLedgerCredit(0, iron, 100000);
+			apx::vox::builder::open(0, blade << 8 | iron);
+			if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 8; z < 30; ++z ) { s->add(3, z); if ( z > 10 ) { s->add(2, z); s->add(4, z); } } }
+		}
+		if ( g_buildTicks == 120 ) { g_shot = "vox-builder-open.png"; }
+		if ( g_buildTicks == 125 ) { if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 30; z < s->model.sz; ++z ) { s->add(3, z); if ( z < s->model.sz - 3 ) { s->add(2, z); s->add(4, z); } } s->layerUp(); s->add(3, 20); } }
+		if ( g_buildTicks == 160 ) { g_shot = "vox-builder-valid.png"; }
+		if ( g_buildTicks == 165 )
+		{
+			std::string why;
+			Item* made = apx::vox::builder::build(0, why);
+			printlog("[apx-vox] buildershot: build %s (%s)", made ? "made" : "refused", why.c_str());
+		}
+		if ( g_buildTicks == 175 ) { g_buildShot = false; mainloop = 0; }
+	}
 
 	// -apxvoxshot (BX1, C10): equip a steel sword with rolled parts, face the longest open line, shoot the first-person
 	// view ("vox-held.png"), log the sprite, quit. APX_VOX_HELD=0 gives the same shot with the tinted vanilla sword.
@@ -131,6 +163,7 @@ namespace vis
 	{
 		probeTick(ready);
 		voxShotTick(ready);
+		builderShotTick(ready);
 		if ( !g_armed || g_phase >= 3 ) { return; }
 		if ( !ready ) { g_ticks = 0; return; }
 		++g_ticks;
