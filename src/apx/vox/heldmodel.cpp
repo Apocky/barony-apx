@@ -111,8 +111,19 @@ namespace vox
 		std::stable_sort(pieces.begin(), pieces.end(), [](const Piece& a, const Piece& b) { return a.order < b.order; });
 
 		// stack tip to hand along z, centred in x and y; each piece gets its own 6 palette entries
+		// each piece contributes only its occupied z range (generators leave empty layers at the tip)
+		std::vector<std::pair<int, int>> zr(pieces.size());
 		int X = 0, Y = 0, Z = 0;
-		for ( auto& p : pieces ) { X = std::max(X, p.m.sx); Y = std::max(Y, p.m.sy); Z += p.m.sz; }
+		for ( size_t k = 0; k < pieces.size(); ++k )
+		{
+			const bx1::VoxModel& m = pieces[k].m;
+			int lo = m.sz, hi = -1;
+			for ( int z = 0; z < m.sz; ++z ) { bool any = false; for ( int x = 0; x < m.sx && !any; ++x ) for ( int y = 0; y < m.sy && !any; ++y ) { any = m.get(x, y, z) != 255; } if ( any ) { lo = std::min(lo, z); hi = z; } }
+			if ( hi < lo ) { lo = 0; hi = -1; }
+			zr[k] = { lo, hi };
+			X = std::max(X, m.sx); Y = std::max(Y, m.sy); Z += hi - lo + 1;
+		}
+		if ( Z <= 0 ) { g_composed[key] = -1; return vanillaModel; }
 		bx1::VoxModel full; full.resize(X, Y, Z);
 		int z0 = 0;
 		for ( size_t k = 0; k < pieces.size() && k < 40; ++k )
@@ -121,12 +132,12 @@ namespace vox
 			const int base = 1 + (int)k * 6;
 			for ( int c = 1; c <= 6; ++c ) { for ( int ch = 0; ch < 3; ++ch ) { full.pal[(base + c - 1) * 3 + ch] = m.pal[c * 3 + ch]; } }
 			const int ox = (X - m.sx) / 2, oy = (Y - m.sy) / 2;
-			for ( int x = 0; x < m.sx; ++x ) for ( int y = 0; y < m.sy; ++y ) for ( int z = 0; z < m.sz; ++z )
+			for ( int x = 0; x < m.sx; ++x ) for ( int y = 0; y < m.sy; ++y ) for ( int z = zr[k].first; z <= zr[k].second; ++z )
 			{
 				const uint8_t c = m.get(x, y, z);
-				if ( c != 255 && c >= 1 && c <= 6 ) { full.set(ox + x, oy + y, z0 + z, (uint8_t)(base + c - 1)); }
+				if ( c != 255 && c >= 1 && c <= 6 ) { full.set(ox + x, oy + y, z0 + z - zr[k].first, (uint8_t)(base + c - 1)); }
 			}
-			z0 += m.sz;
+			z0 += zr[k].second - zr[k].first + 1;
 		}
 
 		// resample into the vanilla model's box: a target cell is filled when enough of its source cells are,
@@ -148,6 +159,11 @@ namespace vox
 				if ( col != 255 ) { ++filled; ++hist[col]; }
 			}
 			if ( filled * 3 >= cells && filled > 0 ) { out.set(x, y, z, (uint8_t)(std::max_element(hist.begin(), hist.end()) - hist.begin())); }
+		}
+		if ( const char* dump = std::getenv("APX_VOX_DUMP") ) // inspection: write the stacked and the resampled model
+		{
+			bx1::write(std::string(dump) + "/composed-" + key.substr(0, key.find(':')) + "-full.vox", full);
+			bx1::write(std::string(dump) + "/composed-" + key.substr(0, key.find(':')) + ".vox", out);
 		}
 		const int idx = registerModel(out);
 		g_composed[key] = idx;

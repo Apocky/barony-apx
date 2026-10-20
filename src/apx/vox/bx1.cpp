@@ -133,7 +133,7 @@ namespace bx1
 			const SlotRule& R = slotRule(Slot::Blade);
 			v.resize(R.sx, R.sy, R.sz);
 			const int L = r.range(24, 39);                    // blade length; tang occupies the last 3 cells
-			const int w0 = r.range(2, 3);                     // half width at the base (x = 3 +- w0)
+			const int w0 = r.range(1, 2);                     // half width at the base (x = 3 +- w0): 3 or 5 wide, like Barony's blades
 			const int tip = r.range(0, 2);                    // 0 point, 1 clipped, 2 round
 			const double curve = r.unit() < 0.35 ? r.range(1, 2) : 0.0;
 			const bool fuller = r.unit() < 0.6;
@@ -151,8 +151,9 @@ namespace bx1
 				{
 					const int x = std::min(R.sx - 1, std::max(0, 3 + dx + off));
 					const bool edge = std::abs(dx) == half && half > 0;
+					// one voxel thick (Barony's blades are flat); a centre ridge or fuller on the face side
 					v.set(x, 1, z, edge ? EDGE : (fuller && dx == 0 && t > 0.1 && t < 0.75 ? DARK : BASE));
-					if ( !edge && half > 0 && std::abs(dx) < half - 0 ) { v.set(x, 0, z, LIGHT); v.set(x, 2, z, BASE); }
+					if ( dx == 0 && half > 0 && !fuller ) { v.set(x, 0, z, LIGHT); }
 				}
 				v.set(std::min(R.sx - 1, std::max(0, 3 + off)), 1, z, z >= R.sz - 3 ? DARK : v.get(std::min(R.sx - 1, std::max(0, 3 + off)), 1, z));
 			}
@@ -189,7 +190,7 @@ namespace bx1
 		{
 			const SlotRule& R = slotRule(Slot::Guard);
 			v.resize(R.sx, R.sy, R.sz);
-			const int half = r.range(3, 7);
+			const int half = r.range(5, 7);                    // the guard sets the composed width (Barony's spans the box)
 			const bool upturn = r.unit() < 0.5;
 			const bool knobs = r.unit() < 0.4;
 			const bool thin = r.unit() < 0.3;
