@@ -107,6 +107,14 @@ namespace qa
 				later(60, up);
 				g_waitUntil = SDL_GetTicks() + 120;
 			}
+			else if ( op == "down" || op == "up" )
+			{
+				std::string which; in >> g_x >> g_y >> which;
+				const Uint8 b = which == "right" ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT;
+				pushMotion(g_x, g_y, 0, 0);
+				pushButton(g_x, g_y, b, op == "down");
+				g_waitUntil = SDL_GetTicks() + 30;
+			}
 			else if ( op == "drag" )
 			{
 				int x0, y0, x1, y1; in >> x0 >> y0 >> x1 >> y1;
@@ -147,6 +155,22 @@ namespace qa
 	}
 
 	bool armed() { return g_on; }
+
+	void send(const char* line)
+	{
+		if ( !g_on || !line ) { return; }
+		std::ofstream(g_dir + "/cmd.txt", std::ios::app) << line << "\n";
+	}
+
+	bool idle()
+	{
+		if ( !g_on ) { return true; }
+		if ( !g_timed.empty() || !SDL_TICKS_PASSED(SDL_GetTicks(), g_waitUntil) || !g_shot.empty() ) { return false; }
+		std::ifstream f(g_dir + "/cmd.txt");
+		std::string line; size_t n = 0;
+		while ( std::getline(f, line) ) { ++n; }
+		return n <= g_linesDone;
+	}
 
 	void arm(const char* dir)
 	{

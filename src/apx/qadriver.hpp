@@ -9,6 +9,8 @@
 //   move <x> <y>             move the game's mouse pointer to window pixel (x, y)
 //   click <x> <y> [right]    move there, press and release the left (or right) button
 //   drag <x0> <y0> <x1> <y1> left-button drag
+//   down <x> <y> [right]     move there and press the left (or right) button, held until "up"
+//   up <x> <y> [right]       move there and release it
 //   look <dx> <dy>           relative mouse motion (turn the view)
 //   wheel <n>                mouse wheel ticks (+ up, - down)
 //   wait <ms>                pause the script
@@ -28,5 +30,7 @@ namespace qa
 	void pump();                   // once per frame, before SDL_PollEvent: pushes due input events
 	const char* takeShot();        // a file path when a screenshot is wanted now, else nullptr
 	void afterWindow(SDL_Window* w); // make the window non-activating and park it out of the way
+	void send(const char* line);   // append a command to cmd.txt (an in-game self-test driving the same queue)
+	bool idle();                   // every command run, no button/key release still due, no wait running
 } // namespace qa
 } // namespace apx

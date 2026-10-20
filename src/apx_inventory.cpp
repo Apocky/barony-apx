@@ -19,6 +19,9 @@
 #include "ui/GameUI.hpp"
 #include "ui/Button.hpp"
 #include "apx/vox/builder.hpp"
+#include "apx/qadriver.hpp"
+#include <filesystem>
+#include <fstream>
 #include "apx/vox/bx1.hpp"
 #include "apx/headless.hpp"
 #include <cmath>
@@ -224,6 +227,14 @@ void selfTestTick()
 	// between: headless runs 50 logic ticks per UI pass, and a windowed run can also fit several ticks
 	// in one frame (D88: press, move and release of the menu gate landed in one frame)
 	static unsigned seenUiFrame = 0;
+	// D88 gates drive the mouse through the QA driver (real SDL events into the game's own queue): the
+	// clock waits while it works, then two more UI frames so the game has handled the events
+	static int qaSettle = 0;
+	if ( apx::qa::armed() && g_phase >= 1 )
+	{
+		if ( !apx::qa::idle() ) { qaSettle = 2; return; }
+		if ( qaSettle > 0 ) { if ( uiFrames() != seenUiFrame ) { seenUiFrame = uiFrames(); --qaSettle; } return; }
+	}
 	if ( g_phase >= 1 )
 	{
 		if ( uiFrames() == seenUiFrame ) { return; }
@@ -1129,14 +1140,21 @@ static void runD88(int dt)
 
 // D88 menu gate: right click a grid cell, move onto entry k, release; Barony's own hover and release
 // code must run options[k]. The mouse is driven through the state an SDL event sets (mousex/mousey,
-// Input::mouseButtons); the real cursor is never moved.
-static void setMouseVirtual(int vx, int vy)
+// Input::mouseButtons); the real cursor is never moved. Since the QA driver landed (props 7fbc3efe) the gates
+// send it commands: real SDL mouse events pushed into the game's own queue, handled by handleEvents.
+// the QA driver's window pixels for a virtual-screen point
+static int qaX(int vx) { return (int)((long long)vx * xres / Frame::virtualScreenX); }
+static int qaY(int vy) { return (int)((long long)vy * yres / Frame::virtualScreenY); }
+static void qaSend(const std::string& line) { apx::qa::send(line.c_str()); }
+static void qaArm()
 {
-	mousex = (Sint32)((long long)vx * xres / Frame::virtualScreenX);
-	mousey = (Sint32)((long long)vy * yres / Frame::virtualScreenY);
-	inputs.getVirtualMouse(0)->draw_cursor = true;
-	inputs.getVirtualMouse(0)->lastMovementFromController = false;
+	if ( apx::qa::armed() ) { return; }
+	std::error_code ec;
+	std::filesystem::create_directories("qa-u1", ec);
+	std::ofstream("qa-u1/cmd.txt", std::ios::trunc).close(); // a fresh script for this run
+	apx::qa::arm("qa-u1");
 }
+static int g_entryX = 0, g_entryY = 0; // the menu entry under test, in window pixels
 static void runMenu(int dt)
 {
 	auto& pl = *players[0];
@@ -1166,6 +1184,7 @@ static void runMenu(int dt)
 		return;
 	}
 	if ( dt > 538 || (nOpts >= 0 && k > nOpts) ) { return; }
+	if ( dt == 480 ) { qaArm(); }
 	if ( step == 0 )
 	{
 		// a fresh iron sword each entry (drop, break and use change or remove it)
@@ -1194,13 +1213,17 @@ static void runMenu(int dt)
 		int idx = -1;
 		auto e = ownRowsForTest(0);
 		for ( size_t i = 0; i < e.size(); ++i ) { if ( e[i].row.uid == uid ) { idx = (int)i; } }
-		if ( idx >= 0 && cellRectForTest(0, idx, a) ) { ++cellFound; setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2); }
 		resetMenuOptionForTest(0);
-		Input::mouseButtons[SDL_BUTTON_RIGHT] = 1;
+		if ( idx >= 0 && cellRectForTest(0, idx, a) )
+		{
+			++cellFound;
+			const int x = qaX(a.x + a.w / 2), y = qaY(a.y + a.h / 2);
+			qaSend("move " + std::to_string(x) + " " + std::to_string(y)); // hovered first, as a hand would
+			qaSend((holdMode ? "down " : "click ") + std::to_string(x) + " " + std::to_string(y) + " right"); // click: a tap
+		}
 	}
 	else if ( step == 3 )
 	{
-		if ( !holdMode ) { Input::mouseButtons[SDL_BUTTON_RIGHT] = 0; } // click mode: a tap (the menu must stay open)
 		auto* ui = inputs.getUIInteraction(0);
 		if ( ui->itemMenuOpen && ui->itemMenuItem == uid ) { ++opened; }
 
@@ -1213,14 +1236,18 @@ static void runMenu(int dt)
 		const int entry = holdMode ? 1 : k;
 		char nm[32]; snprintf(nm, sizeof(nm), "interact option %d", entry + 1);
 		Field* fl = pl.inventoryUI.interactFrame ? pl.inventoryUI.interactFrame->findField(nm) : nullptr;
-		if ( fl ) { SDL_Rect a = fl->getAbsoluteSize(); setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2 + 2); }
-		if ( !holdMode ) { Input::mouseButtons[SDL_BUTTON_LEFT] = 1; } // click mode: left button down on the entry
+		if ( fl )
+		{
+			SDL_Rect a = fl->getAbsoluteSize();
+			g_entryX = qaX(a.x + a.w / 2); g_entryY = qaY(a.y + a.h / 2 + 2);
+			qaSend("move " + std::to_string(g_entryX) + " " + std::to_string(g_entryY));
+			if ( !holdMode ) { qaSend("click " + std::to_string(g_entryX) + " " + std::to_string(g_entryY)); } // click mode: left click the entry
+		}
 	}
 	else if ( holdMode && step == 11 ) { g_shot = "apx-d88-menu.png"; } // the menu up for several frames, the cursor on an entry
 	else if ( step == releaseStep )
 	{
-		if ( holdMode ) { Input::mouseButtons[SDL_BUTTON_RIGHT] = 0; } // hold mode: release over the entry
-		else { Input::mouseButtons[SDL_BUTTON_LEFT] = 0; }
+		if ( holdMode ) { qaSend("wait 250"); qaSend("up " + std::to_string(g_entryX) + " " + std::to_string(g_entryY) + " right"); } // hold mode: release over the entry
 	}
 	else if ( step == checkStep )
 	{
@@ -1240,8 +1267,10 @@ static void runMenu(int dt)
 // Targets: OPEN MAP, OPEN LOG, Skills List, Spells, each of our 8 category tabs, and OPEN MAP with an
 // item menu left open (Barony blocks clicks while a menu is up: that click must close it; the next
 // click must open the map).
+static int g_btnX = 0, g_btnY = 0;
 static void runButtons(int dt)
 {
+	if ( dt == 540 ) { qaArm(); }
 	auto& pl = *players[0];
 	enum { T_MAP, T_LOG, T_SKILLS, T_SPELLS, T_TAB0, T_MENU_DISMISS = T_TAB0 + 8, T_MAP_AFTER, T_COUNT };
 	static int okCount = 0;
@@ -1309,23 +1338,22 @@ static void runButtons(int dt)
 	if ( i >= T_COUNT ) { return; }
 	if ( step == 0 )
 	{
-		if ( i != T_MAP_AFTER ) { closeAll(); }
+		closeAll(); // (the dismiss click may have opened the map too: the next click must open it again)
 		if ( i >= T_TAB0 && i < T_TAB0 + 8 ) { setTab(0, i == T_TAB0 ? 1 : 0); } // a different tab first, so the click must change it
 		if ( i == T_MENU_DISMISS && stats[0]->inventory.first ) { openRowMenu(0, (Item*)stats[0]->inventory.first->element, true); } // setup: a menu left open (QA s2)
 	}
 	else if ( step == 1 )
 	{
 		SDL_Rect a{};
-		if ( target(i, a) ) { setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2); } // hovered a frame before the press
+		if ( target(i, a) ) { g_btnX = qaX(a.x + a.w / 2); g_btnY = qaY(a.y + a.h / 2); qaSend("move " + std::to_string(g_btnX) + " " + std::to_string(g_btnY)); } // hovered first
 		else { rows += std::string(names[i]) + "=NOT FOUND|"; }
 	}
-	else if ( step == 2 ) { mousestatus[SDL_BUTTON_LEFT] = 1; Input::mouseButtons[SDL_BUTTON_LEFT] = 1; } // press
-	else if ( step == 3 ) { mousestatus[SDL_BUTTON_LEFT] = 0; Input::mouseButtons[SDL_BUTTON_LEFT] = 0; } // release
+	else if ( step == 2 ) { qaSend("click " + std::to_string(g_btnX) + " " + std::to_string(g_btnY)); } // press and release (the driver)
 	else if ( step == 5 )
 	{
 		const bool ok = done(i);
 		okCount += ok ? 1 : 0;
-		rows += std::string(names[i]) + "=" + (ok ? "ok" : "NOTHING") + "|";
+		rows += std::string(names[i]) + "=" + (ok ? "ok" : "NOTHING") + (i == T_MENU_DISMISS ? (pl.minimap.mapWindow ? "(map opened too)" : "(map not opened)") : "") + "|";
 	}
 }
 
