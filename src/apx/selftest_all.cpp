@@ -20,6 +20,7 @@ namespace selftestall
 		Result g_result[NUM_STAGES];
 		InlineStage g_inline[NUM_STAGES] = {};
 		StageBeginHook g_beginHook = nullptr;
+		bool g_sweeping = false;
 		std::chrono::steady_clock::time_point g_launch = std::chrono::steady_clock::now();
 		std::chrono::steady_clock::time_point g_stageStart;
 		bool g_finished = false;
@@ -97,6 +98,7 @@ namespace selftestall
 
 	void setInline(Stage s, InlineStage fn) { if ( s >= 0 && s < NUM_STAGES ) { g_inline[s] = fn; } }
 	void setStageBeginHook(StageBeginHook fn) { g_beginHook = fn; }
+	bool sweeping() { return g_sweeping; }
 
 	void done(Stage s, bool pass, const std::string& fields)
 	{
@@ -125,6 +127,13 @@ namespace selftestall
 			if ( !ready ) { g_settle = 0; return; }
 			if ( ++g_settle < 50 ) { return; } // let the floor settle for one second of game time
 			begin(0);
+		}
+		// Barony spawns new monsters while a long stage runs (the moves stage is ~4900 ticks); one that walks up to the standing
+		// player kills it (observed under load: "player 0 gone during this stage"). Sweep the test floor every half second.
+		if ( g_stage == MOVES && g_beginHook && ready ) // only here: the f4c stage spawns hostile test targets itself
+		{
+			static int n = 0;
+			if ( ++n % 25 == 0 ) { g_sweeping = true; g_beginHook((Stage)g_stage); g_sweeping = false; }
 		}
 		if ( !ready ) // player 0 died (or left the floor): the stage cannot go on, nor can the ones after it
 		{

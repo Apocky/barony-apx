@@ -156,7 +156,7 @@ static void apxSelftestClearHostiles(apx::selftestall::Stage s)
 		e->setHP(0);
 		++cleared;
 	}
-	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+	if ( !apx::selftestall::sweeping() || cleared > 0 ) { printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters%s (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared, apx::selftestall::sweeping() ? " (sweep: spawned since)" : ""); }
 }
 
 // voxel (BX1, C10): a steel sword with rolled parts is drawn from its parts' voxel models: the first-person and
