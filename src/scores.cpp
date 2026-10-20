@@ -6617,6 +6617,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 		}
 	}
 
+	if ( !info.hiscore_dummy_loading ) { apxPartsBundlesRegister(statsPlayer); } // apx F6 D85: loaded bundles stay items
 	// void chest inventory
 	for ( auto& item : p.void_chest_inventory ) {
 		ItemType type = static_cast<ItemType>(item.type);

@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <set>
 #include <unordered_map>
 
 #ifndef APX_PARTS_DATA_DIR
@@ -112,6 +113,7 @@ void apxPartsBindInventory(void* listPtr, int source)
 void apxPartsToFloor(Entity* entity, const Item* item)
 {
 	if ( !entity || !item || !apxPartsEnabled() || multiplayer == CLIENT ) { return; }
+	if ( apxPartsIsBundle(item) ) { printlog("apxparts: bundle on floor %s %d g appearance %08x\n", apxPartsMaterialName(apxPartsBundleMaterial(item)), apxPartsBundleGrams(item), item->appearance); }
 	if ( item->apx.nParts > 0 ) { floorParts[entity->getUID()] = item->apx; }
 	else { floorParts.erase(entity->getUID()); }
 }
@@ -374,6 +376,85 @@ void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& 
 }
 }
 
+// ---------------------------------------------------------------- D85 bundles
+namespace {
+constexpr Uint32 BUNDLE_TAG = 0xBu << 28;
+std::set<Uint32> drawnBundles[MAXPLAYERS]; // uids of bundles this player drew (or loaded): they stay items
+bool pendingAbsorb[MAXPLAYERS] = {};
+}
+
+bool apxPartsIsBundle(const Item* item) { return item && item->type == GEM_GLASS && (item->appearance & 0xF0000000u) == BUNDLE_TAG; }
+int apxPartsBundleMaterial(const Item* item) { return apxPartsIsBundle(item) ? (int)((item->appearance >> 20) & 0xFF) : -1; }
+int apxPartsBundleGrams(const Item* item) { return apxPartsIsBundle(item) ? (int)(item->appearance & 0xFFFFF) : 0; }
+int apxPartsLedgerMaterialGrams(int player, int m) { return player >= 0 && player < MAXPLAYERS && m >= 0 && m < MAX_MATS ? (int)ledger[player][m] : 0; }
+
+int apxPartsBundleValue(const Item* item)
+{
+	const int m = apxPartsBundleMaterial(item);
+	return m >= 0 && m < (int)db().materials.size() ? (int)((long long)apxPartsBundleGrams(item) * db().materials[m].valuePerKg / 1000) : 0;
+}
+
+const char* apxPartsBundleName(const Item* item)
+{
+	static char buf[96];
+	snprintf(buf, sizeof(buf), "bundle of %s (%.1f kg)", apxPartsMaterialName(apxPartsBundleMaterial(item)), apxPartsBundleGrams(item) / 1000.0);
+	return buf;
+}
+
+Item* apxPartsDrawBundle(int player, int material, int grams, std::string& why)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { why = "no player"; return nullptr; }
+	if ( material < 0 || material >= MAX_MATS || material >= (int)db().materials.size() ) { why = "no such material"; return nullptr; }
+	if ( grams <= 0 || grams > 0xFFFFF ) { why = "grams out of range (1 .. 1,048,575)"; return nullptr; }
+	if ( (int)ledger[player][material] < grams ) { why = "not that much in the pouch"; return nullptr; }
+	ledger[player][material] -= (uint32_t)grams;
+	Item* b = newItem(GEM_GLASS, SERVICABLE, 0, 1, BUNDLE_TAG | ((Uint32)material << 20) | (Uint32)grams, true, &stats[player]->inventory);
+	drawnBundles[player].insert(b->uid);
+	printlog("apxparts: bundle drawn player %d %s %d g appearance %08x\n", player, apxPartsMaterialName(material), grams, b->appearance);
+	return b;
+}
+
+void apxPartsBundlePickedUp(int player, const Item* item)
+{
+	if ( !apxPartsIsBundle(item) || player < 0 || player >= MAXPLAYERS || !players[player] || !players[player]->isLocalPlayer() ) { return; }
+	pendingAbsorb[player] = true; // absorbed next frame, after the caller has finished with the item
+}
+
+void apxPartsBundlesRegister(int player)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { return; }
+	drawnBundles[player].clear();
+	for ( node_t* n = stats[player]->inventory.first; n; n = n->next ) { const Item* it = (const Item*)n->element; if ( apxPartsIsBundle(it) ) { drawnBundles[player].insert(it->uid); } }
+}
+
+void apxPartsTick()
+{
+	for ( int p = 0; p < MAXPLAYERS; ++p )
+	{
+		if ( !pendingAbsorb[p] || !stats[p] ) { continue; }
+		pendingAbsorb[p] = false;
+		node_t* next = nullptr;
+		for ( node_t* n = stats[p]->inventory.first; n; n = next )
+		{
+			next = n->next;
+			Item* it = (Item*)n->element;
+			if ( !apxPartsIsBundle(it) || drawnBundles[p].count(it->uid) ) { continue; }
+			const int m = apxPartsBundleMaterial(it), g = apxPartsBundleGrams(it); // bundles never stack
+			if ( m >= 0 && m < MAX_MATS ) { ledger[p][m] += (uint32_t)g; }
+			printlog("apxparts: bundle absorbed player %d %s %d g appearance %08x pouch %lld g\n", p, apxPartsMaterialName(m), g, it->appearance, apxPartsLedgerGrams(p));
+			Item* gone = it;
+			consumeItem(gone, p);
+		}
+	}
+}
+
+void apxPartsLedgerCredit(int player, int material, int grams) // selftest seed for the pouch, logged
+{
+	if ( player < 0 || player >= MAXPLAYERS || material < 0 || material >= MAX_MATS || grams <= 0 ) { return; }
+	ledger[player][material] += (uint32_t)grams;
+	printlog("apxparts: pouch test credit player %d %s %d g\n", player, apxPartsMaterialName(material), grams);
+}
+
 int apxPartsPouchWeight(int player)
 {
 	return apxPartsEnabled() ? (int)(apxPartsLedgerGrams(player) / 100) : 0;
@@ -485,6 +566,8 @@ const char* apxPartsShotRequest()
 	shotRequest.clear();
 	return handed.c_str();
 }
+
+namespace { bool bundlePass = false, bundleDrawOk = false; long long bundlePouchBeforePickup = 0; char bundleRow[512] = ""; }
 
 void apxPartsProbeTick()
 {
@@ -648,9 +731,64 @@ void apxPartsProbeTick()
 				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, pouchUnits, charWeight, itemWeight, weightOk ? 1 : 0, pouchBefore, pouchAfter, pouchOk ? 1 : 0, salvageOk ? "true" : "false");
 			probeRow(buf);
 		}
+		if ( probes.find("bundle") != std::string::npos && on )
+		{
+			// D85: draw two bundles from the pouch, save/load (they stay items), then pick a fresh one up
+			bundlePass = pass && salvageOk;
+			int mats[2] = { -1, -1 };
+			for ( int m = 0; m < (int)db().materials.size(); ++m )
+			{
+				const int g = apxPartsLedgerMaterialGrams(0, m);
+				if ( mats[0] < 0 || g > apxPartsLedgerMaterialGrams(0, mats[0]) ) { mats[1] = mats[0]; mats[0] = m; }
+				else if ( mats[1] < 0 || g > apxPartsLedgerMaterialGrams(0, mats[1]) ) { mats[1] = m; }
+			}
+			if ( mats[1] < 0 || apxPartsLedgerMaterialGrams(0, mats[1]) < 2 ) { apxPartsLedgerCredit(0, db().material("oak"), 400); mats[1] = db().material("oak"); }
+			const long long pouch0 = apxPartsLedgerGrams(0);
+			std::string why;
+			Uint32 app[2] = { 0, 0 };
+			int drawnGrams = 0;
+			for ( int k = 0; k < 2; ++k )
+			{
+				const int g = std::max(1, apxPartsLedgerMaterialGrams(0, mats[k]) / 2);
+				Item* b = apxPartsDrawBundle(0, mats[k], g, why);
+				if ( b ) { app[k] = b->appearance; drawnGrams += g; }
+			}
+			const long long pouch1 = apxPartsLedgerGrams(0);
+			char nm[2][96] = { "", "" };
+			for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next )
+			{
+				const Item* it = (const Item*)nd->element;
+				for ( int k = 0; k < 2; ++k ) { if ( apxPartsIsBundle(it) && it->appearance == app[k] ) { snprintf(nm[k], sizeof(nm[k]), "%s", it->getName()); } }
+			}
+			const int saved3 = saveGame(0);
+			const SaveGameInfo info3 = getSaveGameInfo(multiplayer == SINGLE, 0);
+			const int loaded3 = info3.game_version == -1 ? 1 : loadGame(0, info3);
+			int kept = 0;
+			for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { const Item* it = (const Item*)nd->element; kept += apxPartsIsBundle(it) && (it->appearance == app[0] || it->appearance == app[1]); }
+			bundleDrawOk = app[0] && app[1] && pouch0 - pouch1 == drawnGrams && saved3 == 0 && loaded3 == 0 && kept == 2;
+			// a bundle from outside (a partner's, a chest's) picked up: back to the pouch next frame
+			bundlePouchBeforePickup = apxPartsLedgerGrams(0);
+			Item* incoming = newItem(GEM_GLASS, SERVICABLE, 0, 1, (0xBu << 28) | ((Uint32)db().material("iron") << 20) | 250u, true, nullptr);
+			itemPickup(0, incoming);
+			free(incoming);
+			snprintf(bundleRow, sizeof(bundleRow), "\"drawn\":[\"%08x\",\"%08x\"],\"names\":[\"%s\",\"%s\"],\"drawn_grams\":%d,\"pouch_drop\":%lld,"
+				"\"kept_after_load\":%d,\"draw_ok\":%d", app[0], app[1], nm[0], nm[1], drawnGrams, pouch0 - pouch1, kept, bundleDrawOk ? 1 : 0);
+			state = 20;
+			return;
+		}
 		if ( probes.find("net") == std::string::npos ) { exit(pass && salvageOk ? 0 : 3); }
-		if ( probes.find("net") == std::string::npos ) { exit(pass ? 0 : 3); }
 		return;
+	}
+	if ( state == 20 ) // the frame after the pickup: apxPartsTick has absorbed it
+	{
+		const long long gain = apxPartsLedgerGrams(0) - bundlePouchBeforePickup;
+		int bundlesLeft = 0;
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { bundlesLeft += apxPartsIsBundle((const Item*)nd->element); }
+		const bool absorbOk = gain == 250 && bundlesLeft == 2;
+		snprintf(buf, sizeof(buf), "{\"probe\":\"bundle\",%s,\"pickup_gain\":%lld,\"bundles_in_inventory\":%d,\"absorb_ok\":%d,\"pass\":%s}",
+			bundleRow, gain, bundlesLeft, absorbOk ? 1 : 0, bundleDrawOk && absorbOk ? "true" : "false");
+		probeRow(buf);
+		exit(bundlePass && bundleDrawOk && absorbOk ? 0 : 3);
 	}
 	if ( state <= 2 && probes.find("net") != std::string::npos && multiplayer == SERVER )
 	{
@@ -666,8 +804,22 @@ void apxPartsProbeTick()
 			itemPickup(1, it); // the real server -> client pickup path: ITEM packet with the parts blob
 			free(it);
 		}
-		snprintf(buf, sizeof(buf), "{\"probe\":\"net\",\"role\":\"host\",\"parts_on\":%d,\"given\":%d,\"with_parts\":%d,\"net_blob_sent\":%lld,\"net_blob_dropped\":%lld}",
-			on ? 1 : 0, (int)rolled.size(), withParts, apxPartsCounters.net_blob_sent, apxPartsCounters.net_blob_dropped);
+		Uint32 sentBundle = 0;
+		if ( on )
+		{
+			// D85: a bundle from the host's pouch to the client (ITEM packet); the client's pouch must absorb it
+			std::string why;
+			apxPartsLedgerCredit(0, db().material("iron"), 1000);
+			if ( Item* b = apxPartsDrawBundle(0, db().material("iron"), 600, why) )
+			{
+				sentBundle = b->appearance;
+				itemPickup(1, b);
+				Item* gone = b;
+				consumeItem(gone, 0);
+			}
+		}
+		snprintf(buf, sizeof(buf), "{\"probe\":\"net\",\"role\":\"host\",\"parts_on\":%d,\"given\":%d,\"with_parts\":%d,\"net_blob_sent\":%lld,\"net_blob_dropped\":%lld,\"bundle_sent\":\"%08x\"}",
+			on ? 1 : 0, (int)rolled.size(), withParts, apxPartsCounters.net_blob_sent, apxPartsCounters.net_blob_dropped, sentBundle);
 		probeRow(buf);
 	}
 	// client side of the net probe: once the host's 40 items are in, break 3 (FBOK), drop 5 (DROP blobs), equip 1 (EQUI blob)
@@ -695,8 +847,14 @@ void apxPartsProbeTick()
 			if ( !equipped && itemCategory(it) == WEAPON ) { useItem(it, clientnum); ++equipped; }
 			if ( dropped >= 5 && equipped ) { break; }
 		}
-		snprintf(buf, sizeof(buf), "{\"probe\":\"netclient\",\"role\":\"client\",\"received_with_parts\":%d,\"broke\":%d,\"dropped\":%d,\"equipped\":%d,\"formbook\":\"%016llx\"}",
-			(int)withParts.size(), broke, dropped, equipped, (unsigned long long)apxPartsFormbookHash(clientnum));
+		Uint32 droppedBundle = 0;
+		{
+			std::string why;
+			apxPartsLedgerCredit(clientnum, db().material("oak"), 500);
+			if ( Item* b = apxPartsDrawBundle(clientnum, db().material("oak"), 450, why) ) { droppedBundle = b->appearance; dropItem(b, clientnum); }
+		}
+		snprintf(buf, sizeof(buf), "{\"probe\":\"netclient\",\"role\":\"client\",\"received_with_parts\":%d,\"broke\":%d,\"dropped\":%d,\"equipped\":%d,\"formbook\":\"%016llx\",\"bundle_dropped\":\"%08x\"}",
+			(int)withParts.size(), broke, dropped, equipped, (unsigned long long)apxPartsFormbookHash(clientnum), droppedBundle);
 		probeRow(buf);
 	}
 }

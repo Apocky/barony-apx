@@ -4287,6 +4287,7 @@ bool handleEvents(void)
 	}
 	fps = (d / AVERAGEFRAMES) * 1000;
 	apxgenFrameTick();
+	apxPartsTick(); // apx F6 D85: picked-up bundles back to the pouch
 	apxPartsProbeTick(); // apx F6 probe (APX_BF6_PROBE)
 
 	if (initialized) {
