@@ -26,6 +26,7 @@ param(
     [ValidateSet('vs', 'none', 'sccache', 'ccache')]
     [string]$Cache = 'vs',
     [string]$CacheRoot = 'C:\Apocrypha\cache',
+    [string]$SteamworksDir,
     [string]$VcVars = 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 )
 
@@ -36,7 +37,7 @@ function Step([string]$msg) { Write-Host "[build] $msg" }
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $ninja = $Cache -ne 'vs'
 if (-not $BuildDir) {   # build/* is git-ignored upstream
-    $BuildDir = if ($ninja) { Join-Path $repo "build\ninja-$Cache" } else { Join-Path $repo 'build\vs2022' }
+    $BuildDir = if ($ninja) { Join-Path $repo ("build\ninja-$Cache" + $(if ($SteamworksDir) { '-steam' } else { '' })) } else { Join-Path $repo 'build\vs2022' }
 }
 
 # Tools installed by winget are on the user PATH, which a shell started before the install may lack.
@@ -104,10 +105,19 @@ if (-not $NoFmod) {
     $soundArgs = @('-DFMOD_ENABLED=ON')
 }
 
+# Steamworks (DLC ownership and the rest from Steam): -SteamworksDir <SDK root with public\ and redistributable_bin\>
+$steamArgs = @('-DSTEAMWORKS_ENABLED=0')
+if ($SteamworksDir) {
+    $steamArgs = @('-DSTEAMWORKS_ENABLED=1', "-DSTEAMWORKS_INCLUDE_DIR=$(Join-Path $SteamworksDir 'public')", "-DSTEAMWORKS_LIBRARIES=$(Join-Path $SteamworksDir 'redistributable_bin\win64\steam_api64.lib')", "-DSTEAMWORKS_LIBRARY=$(Join-Path $SteamworksDir 'redistributable_bin\win64\steam_api64.lib')")
+    # Barony's Steam build also links nativefiledialog (Workshop upload dialogs): built into <deps>\nfd (nfd.lib + include\nfd.h)
+    $nfd = Join-Path $DepsRoot 'nfd'
+    if (-not (Test-Path (Join-Path $nfd 'nfd.lib'))) { throw "nativefiledialog not built under $nfd (see tools\apx\README.md, Steam build)" }
+    $steamArgs += @("-DNFD_INCLUDE_DIR=$(Join-Path $nfd 'include')", "-DNFD_INCLUDE_DIRS=$(Join-Path $nfd 'include')", "-DNFD_LIBRARY=$(Join-Path $nfd 'nfd.lib')", "-DNFD_LIBRARIES=$(Join-Path $nfd 'nfd.lib')")
+}
 if ($ninja) { $Generator = 'Ninja'; $platformArgs = @() } else { $platformArgs = @('-A', 'x64') }
 Step "configure $BuildDir ($Generator, cache $Cache, x64, $($soundArgs -join ' '))"
 & cmake -S $repo -B $BuildDir -G $Generator @platformArgs @launcherArgs `
-    -DSTEAMWORKS_ENABLED=0 -DEOS_ENABLED=0 -DPLAYFAB_ENABLED=0 -DCURL_ENABLED=0 -DOPUS_ENABLED=0 `
+    @steamArgs -DEOS_ENABLED=0 -DPLAYFAB_ENABLED=0 -DCURL_ENABLED=0 -DOPUS_ENABLED=0 `
     -DTHEORAPLAYER_ENABLED=0 -DOPENAL_ENABLED=OFF @soundArgs
 if ($LASTEXITCODE -ne 0) { throw 'configure failed' }
 
@@ -144,6 +154,10 @@ elseif ($Cache -eq 'ccache') { $cacheStats = (& $cacheTool --show-stats) -join "
 if ($cacheStats) { Step "$Cache stats:`n$cacheStats" }
 Copy-Item (Join-Path $prefix 'bin\*.dll') $out -Force
 if (-not $NoFmod) { Copy-Item (Join-Path $FmodDir 'api\core\lib\x64\fmod.dll') $out -Force }
+if ($SteamworksDir) {   # the Steam API runtime and Barony's app id, so Steam reports the player's DLC
+    Copy-Item (Join-Path $SteamworksDir 'redistributable_bin\win64\steam_api64.dll') $out -Force
+    Set-Content (Join-Path $out 'steam_appid.txt') '371970' -Encoding ascii
+}
 
 $exe = Join-Path $out 'barony.exe'
 $info = [ordered]@{

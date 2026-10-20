@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/headless.hpp" // apx: noInputGrab
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -595,10 +596,10 @@ void SteamServerClientWrapper::OnGameOverlayActivated(GameOverlayActivated_t* ca
                     SDL_GetWindowSize(screen, &w, &h);
                     if (mouse_x < x || mouse_x >= x + w ||
                         mouse_y < y || mouse_y >= y + h) {
-                        SDL_WarpMouseInWindow(screen, w/2, h/2);
+                        if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, w/2, h/2); } // apx
                     }
                 }
-				SDL_SetRelativeMouseMode(EnableMouseCapture); //Recapture mouse.
+				SDL_SetRelativeMouseMode(apx::noInputGrab ? SDL_FALSE : EnableMouseCapture); //Recapture mouse. (apx)
 			}
 		}
 		SDL_ShowCursor(EnableMouseCapture == SDL_FALSE ? SDL_ENABLE : SDL_DISABLE);

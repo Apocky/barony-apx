@@ -131,6 +131,27 @@ static bool apxSelftestFeatures(std::string& fields)
 
 static bool apxSelftestImpact(std::string& fields) { return apxRunImpactSelfTest(&fields); }
 
+// Test setting for -apxselftest=all: as each stage begins, every hostile monster on the floor dies (setHP(0), as the
+// /killmonsters cheat does) -- allies and training dummies stay. The stages then spawn what they test; wandering
+// monsters can no longer reach player 0 mid-stage (they killed it during the moves stage). Logged per stage.
+// APX_SELFTEST_CLEAR=0 keeps them (the control).
+static void apxSelftestClearHostiles(apx::selftestall::Stage s)
+{
+	static const bool off = getenv("APX_SELFTEST_CLEAR") && getenv("APX_SELFTEST_CLEAR")[0] == '0';
+	if ( off ) { printlog("[apx-selftest] stage %s: hostiles kept (APX_SELFTEST_CLEAR=0)", apx::selftestall::name(s)); return; }
+	int cleared = 0;
+	for ( node_t* node = map.entities->first; node; node = node->next )
+	{
+		Entity* e = (Entity*)node->element;
+		if ( !e || e->behavior != &actMonster || e->monsterAllyGetPlayerLeader() ) { continue; }
+		Stat* st = e->getStats();
+		if ( !st || st->type == DUMMYBOT || st->HP <= 0 ) { continue; }
+		e->setHP(0);
+		++cleared;
+	}
+	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+}
+
 // tierdmg (D74): a hostile rat, tagged fodder the way the director tags its creatures, hits player 0 for 20 with
 // the rule as the knob says, then with the rule forced off (vanilla); the rule must lower fodder damage.
 // APX_TIER_DAMAGE=0 makes the two equal: FAIL.
@@ -5181,7 +5202,7 @@ bool handleEvents(void)
 				}
 #ifdef STEAMWORKS
                 // on steam deck, player 1 always needs a controller.
-                if (SteamUtils()->IsSteamRunningOnSteamDeck()) {
+                if (SteamUtils()->IsRunningOnSteamHardware() == k_ESteamHardwareTypeSteamDeck) {
                     if (id >= 0 && !inputs.hasController(0)) {
                         bindControllerToPlayer(id, 0);
                     }
@@ -5599,10 +5620,10 @@ void pauseGame(int mode /* 0 == toggle, 1 == force unpause, 2 == force pause */,
                 SDL_GetWindowSize(screen, &w, &h);
                 if (mouse_x < x || mouse_x >= x + w ||
                     mouse_y < y || mouse_y >= y + h) {
-                    SDL_WarpMouseInWindow(screen, w/2, h/2);
+                    if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, w/2, h/2); } // apx
                 }
             }
-			SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
+			SDL_SetRelativeMouseMode(apx::noInputGrab ? SDL_FALSE : EnableMouseCapture); // apx: automated launches never grab the user's mouse
 		}
 		if (keystatus[SDLK_ESCAPE]) {
 			keystatus[SDLK_ESCAPE] = 0;
@@ -6268,10 +6289,10 @@ void ingameHud()
                         SDL_GetWindowSize(screen, &w, &h);
                         if (mouse_x < x || mouse_x >= x + w ||
                             mouse_y < y || mouse_y >= y + h) {
-                            SDL_WarpMouseInWindow(screen, w/2, h/2);
+                            if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, w/2, h/2); } // apx
                         }
                     }
-				    SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
+				    SDL_SetRelativeMouseMode(apx::noInputGrab ? SDL_FALSE : EnableMouseCapture); // apx: automated launches never grab the user's mouse
 				}
 			}
 
@@ -7450,6 +7471,7 @@ int main(int argc, char** argv)
 							apx::selftestall::setInline(apx::selftestall::FEATURES, apxSelftestFeatures);
 							apx::selftestall::setInline(apx::selftestall::IMPACT, apxSelftestImpact);
 							apx::selftestall::setInline(apx::selftestall::TIERDMG, apxSelftestTierDamage);
+							apx::selftestall::setStageBeginHook(apxSelftestClearHostiles);
 						}
 						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
 					}
@@ -7504,6 +7526,9 @@ int main(int argc, char** argv)
 		printlog("Data path is %s", datadir);
 		printlog("Output path is %s", outputdir);
 		apx::headlessInit(apxHeadlessFlag);
+		// apx: automated launches (headless, test floor, quickstart, self-tests) must never move or grab the user's mouse
+		apx::noInputGrab = apx::headlessOn || apxFloor > 0 || strlen(classtoquickstart) > 0 || getenv("APX_SELFTEST") != nullptr || getenv("APX_F4C_SELFTEST") != nullptr;
+		if ( apx::noInputGrab ) { printlog("[apx] input: automated launch, the mouse is never warped or grabbed"); }
 		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
 
         // init sdl

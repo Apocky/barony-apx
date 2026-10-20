@@ -18408,7 +18408,7 @@ failed:
 			image->draw(nullptr, SDL_Rect{ x - w / 2, y - h / 2, w, h }, viewport);
 #else
 #ifdef STEAMWORKS
-            const bool steamdeck = SteamUtils()->IsSteamRunningOnSteamDeck();
+            const bool steamdeck = SteamUtils()->IsRunningOnSteamHardware() == k_ESteamHardwareTypeSteamDeck;
 #else
             constexpr bool steamdeck = false;
 #endif
@@ -31084,7 +31084,7 @@ failed:
 			button->setBackground("*#images/ui/Main Menus/Mods/Upload/Button_00.png");
 			button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Upload/Button_High00.png");
 			button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Upload/Button_Press00.png");
-            if (SteamUtils()->IsSteamRunningOnSteamDeck()) {
+            if (SteamUtils()->IsRunningOnSteamHardware() == k_ESteamHardwareTypeSteamDeck) {
                 button->setTextColor(makeColorRGB(127, 127, 127));
                 button->setHighlightColor(makeColorRGB(127, 127, 127));
                 button->setColor(makeColorRGB(127, 127, 127));
@@ -31168,7 +31168,7 @@ failed:
 				}
 			});
 			button->setCallback([](Button& button) {
-                if (SteamUtils()->IsSteamRunningOnSteamDeck()) {
+                if (SteamUtils()->IsRunningOnSteamHardware() == k_ESteamHardwareTypeSteamDeck) {
                     soundError();
                     return;
                 }

@@ -268,10 +268,16 @@ int initApp(char const * const title, int fullscreen)
 		return 1;
 	}
 	steam_init = true;
+	// apx: DLC ownership straight from Steam at startup (the main menu also re-checks every tick), logged once
+	enabledDLCPack1 = SteamApps()->BIsDlcInstalled(1010820);
+	enabledDLCPack2 = SteamApps()->BIsDlcInstalled(1010821);
+	enabledDLCPack3 = SteamApps()->BIsDlcInstalled(1010822);
+	printlog("[apx] Steam DLC: Myths and Outcasts %d, Legends and Pariahs %d, Deserters and Disciples %d\n",
+		enabledDLCPack1 ? 1 : 0, enabledDLCPack2 ? 1 : 0, enabledDLCPack3 ? 1 : 0);
 	g_SteamLeaderboards = new CSteamLeaderboards();
 	g_SteamWorkshop = new CSteamWorkshop();
 	g_SteamStatistics = new CSteamStatistics(g_SteamStats, g_SteamAPIGlobalStats, NUM_STEAM_STATISTICS);
-    if (xres == 1280 && yres == 720 && SteamUtils()->IsSteamRunningOnSteamDeck()) {
+    if (xres == 1280 && yres == 720 && SteamUtils()->IsRunningOnSteamHardware() == k_ESteamHardwareTypeSteamDeck) {
         // default steam deck native resolution
         xres = 1280;
         yres = 800;

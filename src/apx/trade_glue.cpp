@@ -10,6 +10,7 @@
 #include "../shops.hpp"
 #include "trade_glue.hpp"
 #include "trade_rules.hpp"
+#include "parts_engine.hpp"
 
 #include <cstdlib>
 #include <cstring>
@@ -66,16 +67,31 @@ namespace
 		newItem(static_cast<ItemType>(t), status, 0, (Sint16)std::min(count, 30000), 0, identified, &st->inventory);
 		++counters.rowsRealized;
 	}
-	// one stock row -> items the engine can show today. Material lots, reagents, components and services need F6's pouch and
-	// a service UI (D85, BT1-3); until they exist they stay rows and are COUNTED, never dropped silently.
+	// puts a loose item (built by F6 in no inventory) on the shopkeeper's shelf, the way newItem(..., &inventory) does
+	void attach(Stat* st, Item* item)
+	{
+		node_t* node = list_AddNodeLast(&st->inventory);
+		node->element = item;
+		node->deconstructor = &defaultDeconstructor;
+		node->size = sizeof(Item);
+		item->node = node;
+	}
+	// one stock row -> items. Material lots and reagents become F6 bundles (D85: buying one puts the grams in the buyer's pouch),
+	// food, light and the rare piece stay vanilla items. Components wait for F6's single-part roll and services for a service UI:
+	// those rows are COUNTED (rows_pending_*), never dropped silently.
 	void realize(Stat* st, const trade::StockRow& r)
 	{
 		if ( r.cls == "provision" || r.cls == "light" ) { addItem(st, r.id, r.units, EXCELLENT, true); return; }
 		if ( r.cls == "rare" ) { addItem(st, r.id, 1, SERVICABLE, true); return; }
-		if ( r.cls == "material" && r.detail == "metal" ) { addItem(st, "TOOL_METAL_SCRAP", std::max(1, r.units / 400), EXCELLENT, true); return; }
-		if ( r.cls == "material" && materialIsMagic(r.id) ) { addItem(st, "TOOL_MAGIC_SCRAP", std::max(1, r.units / 200), EXCELLENT, true); return; }
+		if ( r.cls == "material" || r.cls == "reagent" )
+		{
+			int mi = apxPartsMaterialIndex(r.id.c_str());
+			Item* b = mi >= 0 ? apxPartsMakeBundle(mi, r.units) : nullptr;
+			if ( b ) { attach(st, b); ++counters.rowsRealized; ++counters.bundles; return; }
+			++counters.rowsPendingPouch; return;
+		}
 		if ( r.cls == "service" ) { ++counters.rowsPendingService; return; }
-		++counters.rowsPendingPouch;
+		++counters.rowsPendingPouch;   // component rows
 	}
 }
 
@@ -133,6 +149,7 @@ namespace
 	{
 		if ( !on() || !item || !tradeOfPlayerShop(player) ) { return vanilla; }
 		double v = vanilla;
+		if ( apxPartsIsBundle(item) ) { return std::max(1, (int)std::lround(apxPartsBundleValue(item) * (double)trade::kLotMarkup)); }   // a lot is one of a kind: no stack factor
 		if ( !isHamlet() ) { v *= trade::priceFactor(kDemandRef, std::max(1, (int)item->count)); }
 		if ( !item->playerSoldItemToShop )
 		{
@@ -146,6 +163,7 @@ namespace
 	int sellValue(const Item* item, int player, int vanilla)
 	{
 		if ( !on() || !item || player < 0 || !tradeOfPlayerShop(player) ) { return vanilla; }
+		if ( apxPartsIsBundle(item) ) { return trade::offerFor(std::max(1, (int)std::lround(apxPartsBundleValue(item) * (double)trade::kLotMarkup))); }
 		return trade::offerFor(vanilla);   // about a third of what the item is worth (D73 rule 3)
 	}
 	bool sellable(int player, const Item* item)
@@ -153,7 +171,13 @@ namespace
 		const trade::TradeRow* t = tradeOfPlayerShop(player);
 		if ( !on() || !item || !t ) { return true; }   // caller keeps the vanilla answer
 		int idx = (int)item->type;
-		bool ok = trade::canBuyClass(*t, trade::classOfItem(idx));
+		std::string cls = trade::classOfItem(idx);
+		if ( apxPartsIsBundle(item) || apxPartsIsComponent(item) )   // the carrier type is GEM_GLASS: class by the material inside
+		{
+			int mat = apxPartsIsBundle(item) ? apxPartsBundleMaterial(item) : (int)item->apx.parts[0].material;
+			if ( mat >= 0 && mat < (int)trade::kMats.size() ) { cls = trade::kMats[mat].cat; }
+		}
+		bool ok = trade::canBuyClass(*t, cls);
 		if ( !ok ) { ++counters.classRefused; }
 		return ok;
 	}

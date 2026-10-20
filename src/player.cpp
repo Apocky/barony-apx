@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/headless.hpp" // apx: noInputGrab
 #include "player.hpp"
 #include "apx_inventory.hpp"
 #include "game.hpp"
@@ -6245,17 +6246,17 @@ void Inputs::warpMouse(const int player, const Sint32 x, const Sint32 y, Uint32 
                 SDL_GetWindowSize(screen, &w, &h);
                 if (mouse_x < x || mouse_x >= x + w ||
                     mouse_y < y || mouse_y >= y + h) {
-                    SDL_WarpMouseInWindow(screen, w/2, h/2);
+                    if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, w/2, h/2); } // apx
                 }
             }
-			SDL_SetRelativeMouseMode(EnableMouseCapture);
+			SDL_SetRelativeMouseMode(apx::noInputGrab ? SDL_FALSE : EnableMouseCapture); // apx
 		}
         int w, h, gw, gh;
         SDL_GetWindowSize(screen, &w, &h);
         SDL_GL_GetDrawableSize(screen, &gw, &gh);
 		if ( !inputs.hasController(player) )
 		{
-			SDL_WarpMouseInWindow(screen, (x * w) / gw, (y * h) / gh); // this pushes to the SDL event queue
+			if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, (x * w) / gw, (y * h) / gh); } // apx // this pushes to the SDL event queue
 		}
 		
 		// if we don't set mousex/y here, the mouse will flicker until the event is popped
