@@ -117,6 +117,10 @@ void apxPartsBenchRegister()
 	p.pouch = &benchPouch;
 	p.drawBundle = &benchDrawBundle;
 	p.componentOf = &benchComponentOf;
+	p.repairCost = &apxPartsRepairCost;
+	p.repair = &apxPartsRepair;
+	p.repairPaid = &apxPartsRepairPaid;
+	p.repairGrams = &apxPartsRepairGrams;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }

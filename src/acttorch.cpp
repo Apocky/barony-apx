@@ -13,6 +13,7 @@
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
+#include "apx/props.hpp"
 #include "engine/audio/sound.hpp"
 #include "net.hpp"
 #include "collision.hpp"
@@ -71,7 +72,7 @@ void actTorch(Entity* my)
 	}
 #endif
 
-	if ( flickerLights || my->ticks % TICKS_PER_SECOND == 1 )
+	if ( (flickerLights || my->ticks % TICKS_PER_SECOND == 1) && !apx::props::torchDark(my) ) // apx BP1-2: no flame in a dark sconce
 	{
 		if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
 		{
@@ -95,6 +96,13 @@ void actTorch(Entity* my)
 		return;
 	}
 
+	// apx BP1-2: a dark sconce (its torch taken) gives no light and no flame until relit
+	if ( apx::props::torchDark(my) )
+	{
+		my->removeLightField();
+		TORCH_LIGHTING = 1;
+		TORCH_FLICKER = 1000;
+	}
 	// lighting
 	if ( !TORCH_LIGHTING )
 	{
@@ -132,6 +140,8 @@ void actTorch(Entity* my)
 			{
 				if (inrange[i])
 				{
+					if ( apx::props::torchUse(my, i) ) { return; } // apx BP1-2: relight a dark sconce
+					if ( apx::props::torchDark(my) ) { return; }
 					bool trySalvage = false;
 					if ( static_cast<Uint32>(my->itemAutoSalvageByPlayer) == players[i]->entity->getUID() )
 					{
@@ -180,6 +190,7 @@ void actTorch(Entity* my)
 					{
 						messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(589));
 						Compendium_t::Events_t::eventUpdate(i, Compendium_t::CPDM_TORCH_WALLS, TOOL_TORCH, 1);
+						if ( apx::props::torchTaken(my) ) { itemPickup(i, item); free(item); return; } // apx BP1-2: the sconce stays, dark
 						list_RemoveNode(my->light->node);
 						list_RemoveNode(my->mynode);
 						itemPickup(i, item);

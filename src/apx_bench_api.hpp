@@ -44,6 +44,13 @@ namespace apx_bench
 		bool (*swapPart)(int player, Item* item, int partIndex, uint32_t componentUid, std::string& why) = nullptr; // the old part returns as a component
 		std::vector<MakeOption> (*makeOptions)(int player, int station) = nullptr;
 		bool (*make)(int player, int optionId, std::string& why) = nullptr;                       // spends pouch grams, adds a component item
+		// BP1-2: Repair at a FIELD bench or an ANVIL: the cost in grams (-1 = cannot, why says), then repair
+		int  (*repairCost)(int player, const Item* item, std::string& why, std::string& material) = nullptr;
+		bool (*repair)(int player, Item* item, std::string& why) = nullptr;
+		// the same checks and one-step rule, the ledger untouched: a merchant service charges gold first (trade lane)
+		bool (*repairPaid)(int player, Item* item, std::string& why) = nullptr;
+		// grams for one condition step with NO ledger check (a merchant's price); -1 + why when it cannot be repaired
+		int  (*repairGrams)(const Item* item, std::string& why, std::string& material) = nullptr;
 	};
 	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub

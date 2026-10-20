@@ -60,6 +60,11 @@ int main()
 		for ( int h : hits ) { lo = h < lo ? h : lo; hi = h > hi ? h : hi; }
 		CHECK(lo > 50 && hi < 150, "spread over 60 rows (min %d max %d)", lo, hi);
 	}
+	// BP1-2 repair cost and table flip rule
+	CHECK(repairCostGrams(1200, 2) == 180, "repair: 15 percent of a 1200 g main part per step");
+	CHECK(repairCostGrams(4, 0) == 1, "repair: at least 1 g");
+	CHECK(repairCostGrams(1200, 4) == -1, "repair: excellent needs none");
+	CHECK(tableFlips(true, false) && !tableFlips(false, false) && !tableFlips(true, true), "flip only with a hostile in sight, once");
 	// every use verb has a label (the world prompt)
 	for ( auto& p : kPropTable )
 		if ( p.verb == "rest" || p.verb == "sit" || p.verb == "bench" || p.verb == "read" ) CHECK(!p.label.empty(), "%s has a label", p.id.c_str());
