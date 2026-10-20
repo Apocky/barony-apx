@@ -274,6 +274,8 @@ void setFocus(int player, int focus, int row)
 }
 
 static int g_menuOpens[MAXPLAYERS] = {};
+static bool g_menuFromMouse[MAXPLAYERS] = {};
+static int g_menuRmbHeld[MAXPLAYERS] = {};   // frames the opening right press was held; -1 once released
 bool openRowMenu(int player, Item* item, bool atMouse)
 {
 	if ( !item ) { return false; }
@@ -283,13 +285,13 @@ bool openRowMenu(int player, Item* item, bool atMouse)
 	ui->itemMenuFromHotbar = false;
 	ui->itemMenuItem = item->uid;
 	ui->itemMenuSelected = 0;
-	// D88 fix: Barony activates an entry when the right button is up and toggleclick is false (hold, move
-	// onto the entry, release; a tap picks the first entry). toggleclick = true here (before) meant no entry
-	// could ever be chosen with the mouse: nothing on the inventory path clears it.
-	// The gamepad/keyboard menu is chosen with confirm and must not close on "right button up": there
-	// toggleclick stays true, as before.
-	static const bool oldMenu = getenv("APX_MENU_OLD") && getenv("APX_MENU_OLD")[0] == '1'; // control: the broken behaviour
-	ui->toggleclick = atMouse ? oldMenu : true;
+	// D88: Barony runs an entry when the right button is up and toggleclick is false. The menu opens with
+	// toggleclick = true (it stays open after a right-click tap); menuMouseUpdate() then clears it for the
+	// entry the player picks: a left click on it, or a held right press released over it. Before, nothing
+	// on the inventory path ever cleared it, so no entry could be chosen with the mouse (Apocky's bug).
+	ui->toggleclick = true;
+	g_menuFromMouse[player] = atMouse;
+	g_menuRmbHeld[player] = 0;
 	int x = 0, y = 0;
 	if ( atMouse )
 	{
@@ -325,6 +327,40 @@ bool openRowMenu(int player, Item* item, bool atMouse)
 	return true;
 }
 int menuOpensForTest(int player) { return g_menuOpens[player]; }
+
+// an item menu opened from the grid with the mouse: pick an entry with a left click (or a held right press
+// released over it); a left click off the entries closes it. APX_MENU_OLD=1 is the control (never picks).
+static int g_menuPicks[MAXPLAYERS] = {};
+static void menuMouseUpdate(int player)
+{
+	auto* ui = inputs.getUIInteraction(player);
+	if ( !ui->itemMenuOpen || !g_menuFromMouse[player] ) { g_menuFromMouse[player] = ui->itemMenuOpen && g_menuFromMouse[player]; return; }
+	static const bool oldMenu = getenv("APX_MENU_OLD") && getenv("APX_MENU_OLD")[0] == '1';
+	auto& in = Input::inputs[player];
+	bool pick = false;
+	if ( g_menuRmbHeld[player] >= 0 )
+	{
+		if ( in.binary("MenuRightClick") ) { ++g_menuRmbHeld[player]; }
+		else
+		{
+			// released: a held press (drag onto an entry) picks it; a tap leaves the menu open for a click
+			pick = g_menuRmbHeld[player] >= 12 && ui->itemMenuSelected >= 0;
+			g_menuRmbHeld[player] = -1;
+		}
+	}
+	if ( !oldMenu && in.binaryToggle("MenuLeftClick") )
+	{
+		in.consumeBinaryToggle("MenuLeftClick");
+		if ( ui->itemMenuSelected >= 0 ) { pick = true; }
+		else if ( !oldMenu ) { ui->itemMenuOpen = false; ui->itemMenuItem = 0; g_menuFromMouse[player] = false; } // clicked off the menu: close (Barony's click blocker goes with it)
+	}
+	if ( pick && !oldMenu )
+	{
+		ui->toggleclick = false; // Barony runs the entry under the cursor on its next update (button up)
+		++g_menuPicks[player];
+	}
+}
+int menuPicksForTest(int player) { return g_menuPicks[player]; }
 static int g_lastMenuOption[MAXPLAYERS] = { -1, -1, -1, -1 };
 static Uint32 g_lastMenuItem[MAXPLAYERS] = {};
 void noteMenuOption(int player, int prompt, Uint32 uid) { if ( player >= 0 && player < MAXPLAYERS ) { g_lastMenuOption[player] = prompt; g_lastMenuItem[player] = uid; } }
@@ -1275,6 +1311,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 			g_keyHeld[player][k] = down;
 		}
 	}
+	menuMouseUpdate(player);
 	if ( list->capturesMouseInRealtimeCoords() || (other && !other->isDisabled() && other->capturesMouseInRealtimeCoords()) )
 	{
 		for ( int dir = -1; dir <= 1; dir += 2 )

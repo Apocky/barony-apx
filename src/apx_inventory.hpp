@@ -65,6 +65,7 @@ namespace apx_inv
 	void breakItem(int player, Item* item);
 	bool openRowMenu(int player, Item* item, bool atMouse); // Barony's context menu for an item of the grid (at the cursor, or beside the cell)
 	int menuOpensForTest(int player);
+	int menuPicksForTest(int player);
 	bool cellRectForTest(int player, int index, SDL_Rect& out); // the own grid's cell of entry index, absolute
 	void noteMenuOption(int player, int prompt, Uint32 uid); // called by Barony's activateItemContextMenuOption
 	Uint32 lastMenuItemForTest(int player);

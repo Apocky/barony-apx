@@ -16,6 +16,10 @@
 #include "menu.hpp"
 #include "monster.hpp"
 #include "apx_bench_api.hpp"
+#include "ui/GameUI.hpp"
+#include "ui/Button.hpp"
+#include "apx/vox/builder.hpp"
+#include "apx/vox/bx1.hpp"
 #include "apx/headless.hpp"
 #include <cmath>
 #include "interface/interface.hpp"
@@ -23,6 +27,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <set>
+#include <map>
 #include <sstream>
 
 namespace apx_inv
@@ -901,6 +906,7 @@ static std::string pressRow(int kind)
 	activateSelected(0);
 	return viewState(0).lastBenchMsg;
 }
+static std::string finishVoxBuild(const std::string& benchMsg); // below: finishes a voxel-builder Make the way a player does
 static void runLiveF6(int dt)
 {
 	auto& pl = *players[0];
@@ -908,7 +914,8 @@ static void runLiveF6(int dt)
 	static Uint32 salvUid = 0, newItemUid = 0;
 	static int comps0 = -1, compsSalv = -1, compsMake = -1, compsAsm = -1, items0 = -1, itemsAsm = -1, compRarity = -9, swapRows = -1, ironMat = -1;
 	static long long pouch0 = -1, pouchMake = -1, pouchDraw = -1, pouchPick = -1;
-	static std::string mBreak, mSalv, mMake, mAsm, mSwap, mDraw, compName, asmName, makeName;
+	static std::string mBreak, mSalv, mMake, mAsm, mSwap, mDraw, compName, asmName, makeName, mMakeBlade;
+	static std::set<Uint32> madeUids;
 	static int makeOptions = -1;
 	static std::string mSpare;
 	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
@@ -954,7 +961,24 @@ static void runLiveF6(int dt)
 		}
 		makeOptions = 0;
 		for ( auto& x : e ) { if ( !x.header && x.row.kind == apx_logic::ROW_MAKE ) { ++makeOptions; } }
-		if ( pick >= 0 ) { makeName = e[pick].row.name; setFocus(0, 2, pick); activateSelected(0); mMake = viewState(0).lastBenchMsg; } else { mMake = "(no affordable option)"; }
+		std::set<Uint32> before;
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { before.insert(((Item*)nd->element)->uid); }
+		if ( pick >= 0 ) { makeName = e[pick].row.name; setFocus(0, 2, pick); activateSelected(0); mMake = finishVoxBuild(viewState(0).lastBenchMsg); } else { mMake = "(no affordable option)"; }
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { Item* it = (Item*)nd->element; if ( !before.count(it->uid) && apxPartsIsComponent(it) ) { madeUids.insert(it->uid); } }
+	}
+	else if ( dt == 451 )
+	{
+		// a Blade of our own as well: a salvaged found item's Blade can be foreign, and a Common assembly takes none
+		auto e = benchRowsForTest(0);
+		std::set<Uint32> before;
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { before.insert(((Item*)nd->element)->uid); }
+		for ( size_t i = 0; i < e.size(); ++i )
+		{
+			std::string n = e[i].row.name;
+			for ( auto& c : n ) { c = (char)tolower(c); }
+			if ( !e[i].header && e[i].row.kind == apx_logic::ROW_MAKE && n.rfind(">> ", 0) == 0 && n.find("blade") != std::string::npos ) { setFocus(0, 2, (int)i); activateSelected(0); mMakeBlade = finishVoxBuild(viewState(0).lastBenchMsg); break; }
+		}
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { Item* it = (Item*)nd->element; if ( !before.count(it->uid) && apxPartsIsComponent(it) ) { madeUids.insert(it->uid); } }
 	}
 	else if ( dt == 452 ) { compsMake = countWhere(true); pouchMake = apx_bench::provider().pouchGrams(0); items0 = countWhere(false); setBenchTab(0, apx_logic::TAB_ASSEMBLE); }
 	else if ( dt == 454 ) { pressRow(apx_logic::ROW_FORM); }                              // the Blades Form
@@ -962,13 +986,24 @@ static void runLiveF6(int dt)
 	{
 		// one candidate per slot (the view lists them under each slot header)
 		auto e = benchRowsForTest(0);
-		std::set<int> done;
+		std::map<int, int> pickFor; // slot -> row: one we made, else the first candidate
 		for ( size_t i = 0; i < e.size(); ++i )
 		{
-			if ( !e[i].header && e[i].row.kind == apx_logic::ROW_ASM_PICK && !done.count(e[i].row.slot) ) { done.insert(e[i].row.slot); setFocus(0, 2, (int)i); activateSelected(0); }
+			if ( e[i].header || e[i].row.kind != apx_logic::ROW_ASM_PICK ) { continue; }
+			auto f = pickFor.find(e[i].row.slot);
+			if ( f == pickFor.end() || (madeUids.count(e[i].row.uid) && !madeUids.count(e[f->second].row.uid)) ) { pickFor[e[i].row.slot] = (int)i; }
+		}
+		for ( auto& kv : pickFor ) { setFocus(0, 2, kv.second); activateSelected(0); }
+	}
+	else if ( dt == 458 )
+	{
+		mAsm = pressRow(apx_logic::ROW_ASSEMBLE);
+		if ( mAsm == "(no row)" ) // name what the Assemble view showed
+		{
+			std::string d; for ( auto& x : benchRowsForTest(0) ) { d += (x.header ? "#" : "-") + x.row.name + "|"; }
+			printlog("[apx-liveF6] assemble: no Assemble row; builder active %d; rows: %s", (int)apx::vox::builder::active(0), d.c_str());
 		}
 	}
-	else if ( dt == 458 ) { mAsm = pressRow(apx_logic::ROW_ASSEMBLE); }
 	else if ( dt == 460 )
 	{
 		compsAsm = countWhere(true); itemsAsm = countWhere(false);
@@ -986,7 +1021,7 @@ static void runLiveF6(int dt)
 		{
 			std::string n = e[i].row.name;
 			for ( auto& c : n ) { c = (char)tolower(c); }
-			if ( !e[i].header && e[i].row.kind == apx_logic::ROW_MAKE && n.rfind(">> ", 0) == 0 && n.find("blade") != std::string::npos ) { setFocus(0, 2, (int)i); activateSelected(0); mSpare = viewState(0).lastBenchMsg; break; }
+			if ( !e[i].header && e[i].row.kind == apx_logic::ROW_MAKE && n.rfind(">> ", 0) == 0 && n.find("blade") != std::string::npos ) { setFocus(0, 2, (int)i); activateSelected(0); mSpare = finishVoxBuild(viewState(0).lastBenchMsg); break; }
 		}
 		selectUid(newItemUid);
 		setBenchTab(0, apx_logic::TAB_SWAP);
@@ -1111,8 +1146,13 @@ static void runMenu(int dt)
 	static std::vector<int> opts;
 	static std::vector<std::string> labels;
 	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
-	const int step = (dt - 480) % 7;
-	if ( dt == 518 )
+	// click mode, one pass per entry: tap right on the cell, left click the entry (7 frames). Then one
+	// hold pass (entry 1): hold right, drag onto the entry, release after 14 frames held (19 frames)
+	static int cycStart = 480;
+	const bool holdMode = nOpts >= 0 && k == nOpts;
+	const int step = dt - cycStart;
+	const int releaseStep = holdMode ? 16 : 5, checkStep = releaseStep + (holdMode ? 2 : 1), lastStep = checkStep; // hold: picked on the release frame, run by Barony one frame later
+	if ( dt == 538 )
 	{
 		Input::mouseButtons[SDL_BUTTON_RIGHT] = 0;
 		inputs.getUIInteraction(0)->itemMenuOpen = false;
@@ -1125,7 +1165,7 @@ static void runMenu(int dt)
 		}
 		return;
 	}
-	if ( dt > 518 || (nOpts >= 0 && k >= nOpts) ) { return; }
+	if ( dt > 538 || (nOpts >= 0 && k > nOpts) ) { return; }
 	if ( step == 0 )
 	{
 		// a fresh iron sword each entry (drop, break and use change or remove it)
@@ -1160,6 +1200,7 @@ static void runMenu(int dt)
 	}
 	else if ( step == 3 )
 	{
+		if ( !holdMode ) { Input::mouseButtons[SDL_BUTTON_RIGHT] = 0; } // click mode: a tap (the menu must stay open)
 		auto* ui = inputs.getUIInteraction(0);
 		if ( ui->itemMenuOpen && ui->itemMenuItem == uid ) { ++opened; }
 
@@ -1168,22 +1209,147 @@ static void runMenu(int dt)
 	{
 		// a full frame after the open: drawn over our grid, our tooltip out of its way
 		if ( viewState(0).menuOnTop && !viewState(0).tipShown ) { ++visible; }
-		if ( k == 1 ) { g_shot = "apx-d88-menu.png"; } // held: the menu is up
 		// held: onto entry k, read from Barony's menu as laid out at the cursor
-		char nm[32]; snprintf(nm, sizeof(nm), "interact option %d", k + 1);
+		const int entry = holdMode ? 1 : k;
+		char nm[32]; snprintf(nm, sizeof(nm), "interact option %d", entry + 1);
 		Field* fl = pl.inventoryUI.interactFrame ? pl.inventoryUI.interactFrame->findField(nm) : nullptr;
 		if ( fl ) { SDL_Rect a = fl->getAbsoluteSize(); setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2 + 2); }
+		if ( !holdMode ) { Input::mouseButtons[SDL_BUTTON_LEFT] = 1; } // click mode: left button down on the entry
 	}
-	else if ( step == 5 ) { Input::mouseButtons[SDL_BUTTON_RIGHT] = 0; } // release over the entry
-	else if ( step == 6 )
+	else if ( holdMode && step == 11 ) { g_shot = "apx-d88-menu.png"; } // the menu up for several frames, the cursor on an entry
+	else if ( step == releaseStep )
 	{
-		const int ran = lastMenuOptionForTest(0);
-		const bool ok = k < (int)opts.size() && ran == opts[k] && lastMenuItemForTest(0) == uid; // that entry, on that item
+		if ( holdMode ) { Input::mouseButtons[SDL_BUTTON_RIGHT] = 0; } // hold mode: release over the entry
+		else { Input::mouseButtons[SDL_BUTTON_LEFT] = 0; }
+	}
+	else if ( step == checkStep )
+	{
+		const int ran = lastMenuOptionForTest(0), entry = holdMode ? 1 : k;
+		const bool ok = entry < (int)opts.size() && ran == opts[entry] && lastMenuItemForTest(0) == uid; // that entry, on that item
 		if ( ok ) { ++activated; }
 		if ( !inputs.getUIInteraction(0)->itemMenuOpen ) { ++menuClosed; }
-		rows += std::to_string(k) + ":" + (k < (int)labels.size() ? labels[k] : std::string("?")) + "=" + (ok ? "ran" : "NOT(" + std::to_string(ran) + ")") + "|";
+		rows += std::string(holdMode ? "hold " : "click ") + std::to_string(entry) + ":" + (entry < (int)labels.size() ? labels[entry] : std::string("?")) + "=" + (ok ? "ran" : "NOT(" + std::to_string(ran) + ")") + "|";
 		++k;
+		cycStart = dt + 1;
+		(void)lastStep;
 	}
+}
+
+// D88 buttons gate: with the grid open, left click every click target with the real button state
+// (mousestatus[] and Input::mouseButtons[], as handleEvents sets them); each must do its job.
+// Targets: OPEN MAP, OPEN LOG, Skills List, Spells, each of our 8 category tabs, and OPEN MAP with an
+// item menu left open (Barony blocks clicks while a menu is up: that click must close it; the next
+// click must open the map).
+static void runButtons(int dt)
+{
+	auto& pl = *players[0];
+	enum { T_MAP, T_LOG, T_SKILLS, T_SPELLS, T_TAB0, T_MENU_DISMISS = T_TAB0 + 8, T_MAP_AFTER, T_COUNT };
+	static int okCount = 0;
+	static std::string rows;
+	const int i = (dt - 540) / 6, step = (dt - 540) % 6;
+	auto closeAll = [&]() {
+		if ( pl.minimap.mapWindow ) { openMapWindow(0); }
+		if ( pl.messageZone.logWindow ) { openLogWindow(0); }
+		if ( pl.skillSheet.bSkillSheetOpen ) { pl.skillSheet.closeSkillSheet(); }
+		if ( pl.inventoryUI.spellPanel.bOpen ) { pl.inventoryUI.spellPanel.closeSpellPanel(); }
+		if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY || pl.inventory_mode != INVENTORY_MODE_ITEM ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	};
+	auto target = [&](int t, SDL_Rect& a) -> bool {
+		Button* btn = nullptr;
+		if ( t == T_MAP || t == T_MAP_AFTER || t == T_MENU_DISMISS || t == T_LOG )
+		{
+			Frame* bf = pl.characterSheet.sheetFrame ? pl.characterSheet.sheetFrame->findFrame("log map buttons") : nullptr;
+			btn = bf ? bf->findButton(t == T_LOG ? "log button" : "map button") : nullptr;
+		}
+		else if ( t == T_SKILLS )
+		{
+			Frame* bf = pl.characterSheet.sheetFrame ? pl.characterSheet.sheetFrame->findFrame("skills button frame") : nullptr;
+			btn = bf ? bf->findButton("skills button") : nullptr;
+		}
+		else if ( t == T_SPELLS ) { btn = pl.hud.uiNavFrame ? pl.hud.uiNavFrame->findButton("magic button") : nullptr; }
+		else
+		{
+			Frame* g = pl.inventoryUI.frame ? pl.inventoryUI.frame->findFrame("apx list") : nullptr;
+			Frame* tabs = g ? g->findFrame("apx tabs") : nullptr;
+			char n[16]; snprintf(n, sizeof(n), "tab %d", t - T_TAB0);
+			Frame* tf = tabs ? tabs->findFrame(n) : nullptr;
+			if ( tf && !tf->isDisabled() ) { a = tf->getAbsoluteSize(); return true; }
+			return false;
+		}
+		if ( !btn || btn->isDisabled() ) { return false; }
+		a = btn->getAbsoluteSize();
+		return true;
+	};
+	auto done = [&](int t) -> bool {
+		switch ( t )
+		{
+			case T_MAP: case T_MAP_AFTER: return pl.minimap.mapWindow != nullptr;
+			case T_LOG: return pl.messageZone.logWindow != nullptr;
+			case T_SKILLS: return pl.skillSheet.bSkillSheetOpen;
+			case T_SPELLS: return pl.inventoryUI.spellPanel.bOpen || pl.inventory_mode == INVENTORY_MODE_SPELL;
+			case T_MENU_DISMISS: return !inputs.getUIInteraction(0)->itemMenuOpen;
+			default: return viewState(0).tab == t - T_TAB0;
+		}
+	};
+	static const char* names[] = { "map", "log", "skills", "spells", "tab0", "tab1", "tab2", "tab3", "tab4", "tab5", "tab6", "tab7", "map(menu open: dismiss)", "map(next click)" };
+	if ( dt == 540 + 6 * T_COUNT )
+	{
+		mousestatus[SDL_BUTTON_LEFT] = 0; Input::mouseButtons[SDL_BUTTON_LEFT] = 0;
+		closeAll();
+		setTab(0, 0);
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"d88buttons\",\"mode\":\"%s\",\"headless\":%d,\"targets\":%d,\"clicked_ok\":%d,\"rows\":\"%s\"}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, (int)T_COUNT, okCount, rows.c_str());
+			fclose(f);
+		}
+		return;
+	}
+	if ( i >= T_COUNT ) { return; }
+	if ( step == 0 )
+	{
+		if ( i != T_MAP_AFTER ) { closeAll(); }
+		if ( i >= T_TAB0 && i < T_TAB0 + 8 ) { setTab(0, i == T_TAB0 ? 1 : 0); } // a different tab first, so the click must change it
+		if ( i == T_MENU_DISMISS && stats[0]->inventory.first ) { openRowMenu(0, (Item*)stats[0]->inventory.first->element, true); } // setup: a menu left open (QA s2)
+	}
+	else if ( step == 1 )
+	{
+		SDL_Rect a{};
+		if ( target(i, a) ) { setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2); } // hovered a frame before the press
+		else { rows += std::string(names[i]) + "=NOT FOUND|"; }
+	}
+	else if ( step == 2 ) { mousestatus[SDL_BUTTON_LEFT] = 1; Input::mouseButtons[SDL_BUTTON_LEFT] = 1; } // press
+	else if ( step == 3 ) { mousestatus[SDL_BUTTON_LEFT] = 0; Input::mouseButtons[SDL_BUTTON_LEFT] = 0; } // release
+	else if ( step == 5 )
+	{
+		const bool ok = done(i);
+		okCount += ok ? 1 : 0;
+		rows += std::string(names[i]) + "=" + (ok ? "ok" : "NOTHING") + "|";
+	}
+}
+
+// BX1 (voxel lane): Make opens the voxel builder; finish it the way a player does. A valid model of the
+// session's slot (bx1::makeComponent always passes the builder's check) is placed voxel by voxel with the
+// session's own add(), layer by layer, then Build (builder::build, what the Build button calls).
+// Returns the bench message: the original one when no builder opened.
+static std::string finishVoxBuild(const std::string& benchMsg)
+{
+	if ( !apx::vox::builder::active(0) ) { return benchMsg; }
+	auto* ses = apx::vox::builder::session(0);
+	if ( !ses ) { return benchMsg + " (no session)"; }
+	ses->clear();
+	ses->mirror = false;
+	const auto model = apx::bx1::makeComponent(ses->slot, 7786, apx::bx1::Rgb{ 150, 150, 160 }, apx::bx1::Rgb{ 110, 70, 40 });
+	while ( ses->layer > 0 ) { ses->layerDown(); }
+	for ( int y = 0; y < model.sy && y < ses->model.sy; ++y )
+	{
+		for ( int x = 0; x < model.sx; ++x ) { for ( int z = 0; z < model.sz; ++z ) { if ( model.get(x, y, z) != 255 ) { ses->add(x, z); } } }
+		ses->layerUp();
+	}
+	std::string why;
+	Item* made = apx::vox::builder::build(0, why);
+	return made ? std::string("Built in the voxel builder: made a component.") : "Voxel build refused: " + why;
 }
 
 static void runD81(int dt)
@@ -1435,8 +1601,9 @@ static void runUiPhases()
 	else if ( dt >= 410 && dt < 440 ) { runLive86(dt); }
 	else if ( dt >= 440 && dt < 470 ) { runLiveF6(dt); }
 	else if ( dt >= 470 && dt < 480 ) { runD88(dt); }
-	else if ( dt >= 480 && dt < 520 ) { runMenu(dt); }
-	else if ( dt == 520 )
+	else if ( dt >= 480 && dt < 540 ) { runMenu(dt); }
+	else if ( dt >= 540 && dt < 630 ) { runButtons(dt); } // 14 targets x 6 frames
+	else if ( dt == 630 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -1448,8 +1615,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 590 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 630 )
+	else if ( dt == 700 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 740 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
