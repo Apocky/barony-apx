@@ -11,3 +11,8 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 06:33 -07:00 F2: rebased (801cf254), apx-gen 7057f3d9, gates PASS on db9ca6c8; merge-ready pending Apocky/parent OK.
 
+## 2026-10-19 22:34 -07:00 HOSTILITY (D93 Phase C3 `apx::hostility`)
+In flight: replacing `src/apx/wild_enmity.hpp` + `wild_hostility.inc` with `src/apx/hostility/hostility.hpp` + `hostility.cpp` and `data/apx/combat/hostility.json`; dropping melee hit-site blow-cap patches in `src/entity.cpp` / `src/apx_combat.hpp`; wiring `Entity::checkEnemy` and `Entity::checkFriend` (`src/entity.cpp:18902`) to `apx::hostility::hostile` with `APX_HOSTILITY_OLD=1` control; writing `tests/apx/test_hostility.cpp` and running in-engine gate on seeds 4242,777.
+Resume: branch `apx/fix-spawn-death` in `C:\Users\Apocky\source\repos\barony-apx\.claude\worktrees\agent-aa7f47a1dd78ef7ac`. Next: implement `hostility.json`, `hostility.hpp/.cpp`, unit test, and gate.
+
+
