@@ -14,6 +14,7 @@
 #include "../../engine/audio/sound.hpp"
 #include "../../prng.hpp"
 #include "../../interface/consolecommand.hpp"
+#include "../../apx_combat.hpp"
 #include "../proj/proj.hpp"
 #include "../move/move.hpp"
 #include "../qadriver.hpp"
@@ -246,6 +247,8 @@ namespace
 
 	struct Pending { int delay = 0; Uint32 ownerUid = 0; Picks picks; int row = -1; float strength = 1.f; Aim aim; int kind = 0; int count = 0; int every = 1; int echoLeft = 0; };
 	std::vector<Pending> g_pending;
+	std::string g_outcome = "emit";
+	float g_outStrength = 1.f;
 
 	using Clock = std::chrono::steady_clock;
 	double nowUs() { return std::chrono::duration<double, std::micro>(Clock::now().time_since_epoch()).count(); }
@@ -728,6 +731,53 @@ namespace
 		log("BACKFIRE: %s ran on the caster's cell, %d damage taken (row %d)", picksStr(p).c_str(), dealt, rowIdx >= 0 ? g_rows[rowIdx].id : 0);
 	}
 
+	// ---- wall blocks: a wall is real bodies in the way (04b section 7), standing for the stamp's life
+	void actApxWall(Entity* my)
+	{
+		if ( --my->skill[1] <= 0 ) { list_RemoveNode(my->mynode); return; }
+		my->z = -2.0 + std::min(0, 0);   // keep upright
+	}
+	void spawnWallBlocks(Entity* owner, const Stamp& s)
+	{
+		std::vector<std::pair<float, float>> pts;
+		const float c = std::cos(s.yaw), sn = std::sin(s.yaw);
+		switch ( s.shape )
+		{
+			case S_PLANE: for ( int i = -2; i <= 2; ++i ) { pts.push_back({ s.x - sn * i * 16.f, s.y + c * i * 16.f }); } break;
+			case S_LINE: for ( int i = 1; i <= 5; ++i ) { pts.push_back({ s.x + c * i * 16.f, s.y + sn * i * 16.f }); } break;
+			case S_CONE: for ( int i = -1; i <= 1; ++i ) { pts.push_back({ s.x + c * 48.f - sn * i * 20.f, s.y + sn * 48.f + c * i * 20.f }); } break;
+			case S_RING: case S_SPHERE:
+				for ( int i = 0; i < 8; ++i ) { const float a = i * 0.785398f; pts.push_back({ s.x + std::cos(a) * s.r * 0.8f, s.y + std::sin(a) * s.r * 0.8f }); }
+				break;
+			default: pts.push_back({ s.x, s.y }); break;
+		}
+		int n = 0;
+		for ( auto& p : pts )
+		{
+			const int tx = (int)p.first >> 4, ty = (int)p.second >> 4;
+			if ( p.first < 0 || p.second < 0 || tx >= (int)map.width || ty >= (int)map.height ) { continue; }
+			if ( map.tiles[OBSTACLELAYER + ty * MAPLAYERS + tx * MAPLAYERS * map.height] || !map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height] ) { continue; }
+			bool occupied = false;   // do not entomb a creature standing there
+			for ( node_t* nn = map.creatures->first; nn; nn = nn->next )
+			{
+				Entity* e = (Entity*)nn->element;
+				if ( e && std::fabs(e->x - p.first) < 12 && std::fabs(e->y - p.second) < 12 ) { occupied = true; break; }
+			}
+			if ( occupied ) { continue; }
+			Entity* b = newEntity(s.element == E_ICE ? 172 : (s.element == E_FIRE ? 168 : 245), 1, map.entities, nullptr);
+			if ( !b ) { continue; }
+			b->x = p.first; b->y = p.second; b->z = -2.0;
+			b->sizex = 7; b->sizey = 7;
+			b->yaw = s.yaw;
+			b->flags[PASSABLE] = false; b->flags[UPDATENEEDED] = true;
+			b->behavior = &actApxWall;
+			b->skill[1] = s.ticksLeft;
+			++n;
+		}
+		(void)owner;
+		log("wall: %d blocking bodies for %d ticks", n, s.ticksLeft);
+	}
+
 	// a stamp placed at (x, y) for an area verb; verb flags decide what it does to those inside
 	void emitArea(Entity* owner, const Picks& p, int rowIdx, float strength, const Aim& aim, int mana)
 	{
@@ -760,6 +810,7 @@ namespace
 		addStamp(s);
 		// the same sigil that telegraphed the cast stays as the mark of a standing effect
 		if ( p.verb == V_WALL || p.verb == V_PIT ) { groundSigil(nullptr, s.x, s.y, s.ticksLeft, (int)s.r); }
+		if ( p.verb == V_WALL ) { spawnWallBlocks(owner, s); }
 		log("area %s at (%.0f,%.0f) r=%.0f damage=%d ticks=%d", kVerbNames[p.verb], s.x, s.y, s.r, s.damage, s.ticksLeft);
 	}
 
@@ -818,6 +869,20 @@ namespace
 		{
 			props.targetUID = aim.targetUid; props.wallDir = aim.wallDir; pp = &props;
 		}
+		if ( !pp ) { pp = &props; }   // castSpell reads the props unconditionally for some spells (bastion roots/mushroom); Barony's own path always passed one for them
+		if ( player >= 0 )
+		{
+			if ( spell->ID == SPELL_MUSHROOM || spell->ID == SPELL_BASTION_MUSHROOM )
+			{
+				if ( spellInList(&players[player]->magic.spellList, getSpellFromID(SPELL_SPORES)) ) { props.optionalData = 1; }
+				if ( spellInList(&players[player]->magic.spellList, getSpellFromID(SPELL_SPORE_BOMB)) ) { props.optionalData = 2; }
+			}
+			else if ( spell->ID == SPELL_SHRUB || spell->ID == SPELL_BASTION_ROOTS )
+			{
+				if ( spellInList(&players[player]->magic.spellList, getSpellFromID(SPELL_THORNS)) ) { props.optionalData = 1; }
+				if ( spellInList(&players[player]->magic.spellList, getSpellFromID(SPELL_BLADEVINES)) ) { props.optionalData = 2; }
+			}
+		}
 		Entity* r = castSpell(caster->getUID(), spell, false, true, book, pp);
 		++g_c.legacyCalls;
 		log("legacy effect: castSpell(spell %d) -> %s", spell->ID, r ? "entity" : "no entity");
@@ -832,9 +897,11 @@ namespace
 		++g_c.released;
 		const Row* row = c.row >= 0 ? &g_rows[c.row] : nullptr;
 		// re-aim at release: the world moved during the cast time
+		g_outcome = "emit"; g_outStrength = 1.f;
 		Aim aim = solveAim(player, caster, c.spell, c.picks);
 		if ( c.spell && c.spell->rangefinder != RANGEFINDER_NONE && !aim.haveTarget )
 		{
+			g_outcome = "notarget";
 			++g_c.failedAim;
 			say(player, "The spell finds nothing to take hold of.");
 			log("release: no target at release (row %d), mana %d lost", row ? row->id : 0, c.mana);
@@ -842,10 +909,12 @@ namespace
 			return;
 		}
 		float strength = 1.f;
-		if ( c.grade == G_SOFT ) { strength = g_softStrength; ++g_c.softHalved; log("contradiction SOFT: strength halved (%s)", picksStr(c.picks).c_str()); }
+		g_outStrength = strength;
+		if ( c.grade == G_SOFT ) { strength = g_softStrength; g_outStrength = strength; ++g_c.softHalved; log("contradiction SOFT: strength halved (%s)", picksStr(c.picks).c_str()); }
 		if ( c.grade == G_HARD )
 		{
-			if ( c.roll < g_backfire ) { doBackfire(caster, c.picks, c.mana, strength, c.row); return; }
+			if ( c.roll < g_backfire ) { g_outcome = "backfire"; doBackfire(caster, c.picks, c.mana, strength, c.row); return; }
+			g_outcome = "fizzle";
 			++g_c.fizzled;
 			say(player, "The picks contradict one another; the spell comes apart.");
 			log("contradiction HARD: roll %.3f >= %.2f, fizzled (%s)", c.roll, g_backfire, picksStr(c.picks).c_str());
@@ -1050,6 +1119,13 @@ bool beginCast(int player, const SpellRef& ref)
 		++g_c.failedAim;
 		say(player, "There is nothing there for the spell to take hold of.");
 		log("cast refused: no target (row %d rangefinder %d)", rowIdx >= 0 ? g_rows[rowIdx].id : 0, c.aim.rf);
+		for ( node_t* nn = map.creatures->first; nn; nn = nn->next )
+		{
+			Entity* e = (Entity*)nn->element;
+			if ( !e || e == caster ) { continue; }
+			const double dd = std::hypot(e->x - caster->x, e->y - caster->y);
+			if ( dd < 100.0 ) { log("  near uid %u type %d dist %.1f enemy %d targetable %d state %d yawdiff %.2f", e->getUID(), e->getStats() ? (int)e->getStats()->type : -1, dd, (int)e->checkEnemy(caster), (int)e->monsterIsTargetable(true), (int)e->monsterState, std::atan2(e->y - caster->y, e->x - caster->x) - caster->yaw); }
+		}
 		return true;
 	}
 	if ( st->MP < c.mana && !(st->type == VAMPIRE) )
@@ -1065,7 +1141,7 @@ bool beginCast(int player, const SpellRef& ref)
 		++g_c.failedConc;
 		say(player, "You cannot concentrate.");
 		if ( players[player]->isLocalPlayer() ) { playSound(563, 64); }
-		log("cast refused: concentration %.1f%% under %.0f%% (%s)", ps.conc.pct, g_conc.failBelow, picksStr(c.picks).c_str());
+		log("cast refused: concentration %.2f%% under %.0f%% (%s)", ps.conc.pct, g_conc.failBelow, picksStr(c.picks).c_str());
 		return true;
 	}
 
@@ -1136,7 +1212,7 @@ void tick(int player)
 		{
 			release(player, c);
 			char b[200];
-			snprintf(b, sizeof b, "{\"ev\":\"release\",\"seq\":%d,\"tick\":%u,\"cast_ticks\":%d}", c.seq, (unsigned)::ticks, (int)(::ticks - c.startTick));
+			snprintf(b, sizeof b, "{\"ev\":\"release\",\"seq\":%d,\"tick\":%u,\"cast_ticks\":%d,\"outcome\":\"%s\",\"strength\":%.2f,\"grade\":%d,\"roll\":%.4f}", c.seq, (unsigned)::ticks, (int)(::ticks - c.startTick), g_outcome.c_str(), g_outStrength, (int)c.grade, c.roll);
 			jsonl(b);
 			spellcastAnimationUpdate(player, 1, 0);
 			c.phase = Phase::Release;
@@ -1246,6 +1322,19 @@ static ConsoleCommand ccmd_apxmagic_select("/apxmagic_select", "apx: select a va
 	players[0]->magic.equipSpell(sp);
 	printlog("[apx-magic] selected spell %d (%s)", sp->ID, sp->spell_internal_name);
 });
+static ConsoleCommand ccmd_apxmagic_step("/apxmagic_step", "apx: gate set-up: move player 0 <units> along its yaw if the way is clear", [](int argc, const char** argv) {
+	Entity* me = playerEntity(0);
+	if ( !me || argc < 2 ) { return; }
+	const double u = atof(argv[1]);
+	const real_t d = lineTrace(me, me->x, me->y, me->yaw, std::fabs(u) + 8, LINETRACE_IGNORE_ENTITIES, false);
+	if ( d >= std::fabs(u) + 8 ) { me->x += std::cos(me->yaw) * u; me->y += std::sin(me->yaw) * u; }
+});
+static ConsoleCommand ccmd_apxmagic_audit("/apxmagic_audit", "apx: print every engine spell id and internal name (row mapping audit)", [](int, const char**) {
+	for ( int i = 0; i < 400; ++i )
+	{
+		if ( spell_t* sp = getSpellFromID(i) ) { printlog("[apx-magic] audit id=%d engine_id=%d name=%s rf=%d", i, sp->ID, sp->spell_internal_name, (int)sp->rangefinder); }
+	}
+});
 static ConsoleCommand ccmd_apxmagic_pick("/apxmagic_pick", "apx: cast free picks: <verb> <shape> <element> <modifier> (names; the cast goes through the real pipeline)", [](int argc, const char** argv) {
 	if ( argc < 5 ) { printlog("[apx-magic] usage: /apxmagic_pick bolt point fire none"); return; }
 	SpellRef r; r.hasPicks = true;
@@ -1265,15 +1354,30 @@ static ConsoleCommand ccmd_apxmagic_prep("/apxmagic_prep", "apx: gate set-up: fu
 	Entity* me = playerEntity(0);
 	if ( !me || !stats[0] ) { return; }
 	stats[0]->HP = stats[0]->MAXHP = std::max(stats[0]->MAXHP, 400); stats[0]->MP = stats[0]->MAXMP = std::max(stats[0]->MAXMP, 400);
-	for ( int i = 0; i < NUMEFFECTS; ++i ) { if ( stats[0]->getEffectActive(i) ) { me->setEffect(i, false, 0, true); } }
+	if ( me->effectShapeshift != NOTHING || me->effectPolymorph != NOTHING )
+	{
+		castSpell(me->getUID(), getSpellFromID(SPELL_REVERT_FORM), false, true, false, nullptr);   // the proper way back from a form
+	}
+	me->flags[BURNING] = false;
+	apx::combat_glue::downed(0) = apx::combat::DownedState();   // a spell that took HP to 0 left the downed clock running
+	for ( int i = 0; i < NUMEFFECTS; ++i ) { if ( i != EFF_SHAPESHIFT && i != EFF_POLYMORPH && stats[0]->getEffectActive(i) ) { me->setEffect(i, false, 0, true); } }
+	stats[0]->HP = stats[0]->MAXHP = std::max(stats[0]->MAXHP, 400); stats[0]->MP = stats[0]->MAXMP = std::max(stats[0]->MAXMP, 400);   // again: reverting a form restores the old pools
 	setConcentration(0, 100.f);
 	g_p[0].cast = Cast();
+	stats[0]->HP = std::max(stats[0]->HP, 1);
 	g_stamps.clear(); g_pending.clear();
 	// kill every other creature so the dummy is the only target
 	for ( node_t* n = map.creatures->first; n; n = n->next )
 	{
 		Entity* e = (Entity*)n->element;
 		if ( e && e != me && e->behavior == &actMonster && e->getStats() ) { e->getStats()->HP = 0; e->setHP(0); }
+	}
+	// every prep starts from the same spot (the first one's): teleports and pushes of earlier casts must not change the next one's geometry
+	{
+		static bool anchored = false;
+		static double ax = 0, ay = 0;
+		if ( !anchored ) { anchored = true; ax = me->x; ay = me->y; }
+		me->x = ax; me->y = ay; me->vel_x = 0; me->vel_y = 0;
 	}
 	// the most open heading: 16 rays
 	double bestYaw = me->yaw, bestD = -1;
@@ -1288,8 +1392,8 @@ static ConsoleCommand ccmd_apxmagic_prep("/apxmagic_prep", "apx: gate set-up: fu
 	gateTarget = nullptr; gateTargetUid = 0;
 	if ( argc < 2 || std::strcmp(argv[1], "notarget") )
 	{
-		const double dist = std::min(64.0, std::max(24.0, bestD - 16.0));
-		Entity* t = summonMonster(RAT, (long)(me->x + std::cos(bestYaw) * dist), (long)(me->y + std::sin(bestYaw) * dist), true);
+		const double dist = std::min(28.0, std::max(20.0, bestD - 16.0));   // inside touch reach
+		Entity* t = summonMonster(DUMMYBOT, (long)(me->x + std::cos(bestYaw) * dist), (long)(me->y + std::sin(bestYaw) * dist), true);
 		if ( t && t->getStats() )
 		{
 			t->getStats()->HP = t->getStats()->MAXHP = 800;
@@ -1297,6 +1401,7 @@ static ConsoleCommand ccmd_apxmagic_prep("/apxmagic_prep", "apx: gate set-up: fu
 			gateTarget = t; gateTargetUid = t->getUID();
 		}
 	}
+	printlog("[apx-magic] prep pools: hp %d/%d mp %d/%d type %d shape %d poly %d", stats[0]->HP, stats[0]->MAXHP, stats[0]->MP, stats[0]->MAXMP, (int)stats[0]->type, (int)me->effectShapeshift, (int)me->effectPolymorph);
 	g_snapTag = "prep";
 	g_snap = snap(gateTarget);
 	printlog("[apx-magic] prep: player 0 at (%.0f,%.0f) yaw %.2f open %.0f units, dummy %s", me->x, me->y, bestYaw, bestD, gateTarget ? "placed" : "none");
@@ -1365,6 +1470,54 @@ static ConsoleCommand ccmd_apxmagic_shoot("/apxmagic_shoot", "apx: gate: fire on
 static ConsoleCommand ccmd_apxmagic_log("/apxmagic_log", "apx: print the last cast-log lines to the game log", [](int argc, const char** argv) {
 	const std::string t = castLogTail(argc >= 2 ? atoi(argv[1]) : 20);
 	printlog("[apx-magic] cast log (tail):\n%s", t.c_str());
+});
+static ConsoleCommand ccmd_apxmagic_dummy("/apxmagic_dummy", "apx: gate: a sturdy waiting creature <rat|skeleton|kobold|goblin> <tiles ahead> [sideways units]", [](int argc, const char** argv) {
+	Entity* me = playerEntity(0);
+	if ( !me || argc < 3 ) { return; }
+	Monster m = RAT;
+	if ( !std::strcmp(argv[1], "skeleton") ) { m = SKELETON; } else if ( !std::strcmp(argv[1], "kobold") ) { m = KOBOLD; } else if ( !std::strcmp(argv[1], "goblin") ) { m = GOBLIN; }
+	const double d = atof(argv[2]) * 16.0, side = argc >= 4 ? atof(argv[3]) : 0.0;
+	Entity* t = summonMonster(m, (long)(me->x + std::cos(me->yaw) * d - std::sin(me->yaw) * side), (long)(me->y + std::sin(me->yaw) * d + std::cos(me->yaw) * side), true);
+	if ( t && t->getStats() ) { t->getStats()->HP = t->getStats()->MAXHP = 800; t->monsterState = MONSTER_STATE_WAIT; if ( !gateTarget ) { gateTarget = t; gateTargetUid = t->getUID(); } }
+	printlog("[apx-magic] dummy %s at %.0f tiles: %s", argv[1], d / 16.0, t ? "placed" : "failed");
+});
+static ConsoleCommand ccmd_apxmagic_wallshot("/apxmagic_wallshot", "apx: gate: fire a projectile at the nearest wall at <deg> to its surface from an open tile beside it", [](int argc, const char** argv) {
+	Entity* me = playerEntity(0);
+	if ( !me ) { return; }
+	const double deg = argc >= 2 ? atof(argv[1]) : 10.0;
+	const int sx = (int)(me->x / 16), sy = (int)(me->y / 16);
+	auto solid = [](int tx, int ty) { return tx < 0 || ty < 0 || tx >= (int)map.width || ty >= (int)map.height || map.tiles[OBSTACLELAYER + ty * MAPLAYERS + tx * MAPLAYERS * map.height] != 0; };
+	auto open = [&](int tx, int ty) { return !solid(tx, ty) && map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height] && !swimmingtiles[map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height]]; };
+	for ( int r = 0; r < 30; ++r )
+	{
+		for ( int dy = -r; dy <= r; ++dy ) for ( int dx = -r; dx <= r; ++dx )
+		{
+			if ( std::max(std::abs(dx), std::abs(dy)) != r ) { continue; }
+			const int tx = sx + dx, ty = sy + dy;
+			if ( !open(tx, ty) ) { continue; }
+			// a wall to the east (normal along x), with open floor north and south to run along
+			const int wx[4] = { 1, -1, 0, 0 }, wy[4] = { 0, 0, 1, -1 };
+			for ( int k = 0; k < 4; ++k )
+			{
+				if ( !solid(tx + wx[k], ty + wy[k]) ) { continue; }
+				const int px = -wy[k] != 0 ? 0 : 0; (void)px;
+				// along-wall axis is perpendicular to the normal; need two open tiles of run
+				const int ax = wy[k] != 0 ? 1 : 0, ay = wx[k] != 0 ? 1 : 0;
+				if ( !open(tx - ax, ty - ay) || !open(tx - 2 * ax, ty - 2 * ay) ) { continue; }
+				// start at the far end of the run, 11 units off the wall, fly along the run tilted toward the wall by deg
+				const double nx = wx[k], ny = wy[k], tax = ax, tay = ay;
+				const double stx = tx * 16 + 8 - tax * 24 + nx * 3.0, sty = ty * 16 + 8 - tay * 24 + ny * 3.0;
+				const double ang = std::atan2(tay * 1.0 + ny * std::tan(deg * PI / 180.0), tax * 1.0 + nx * std::tan(deg * PI / 180.0));
+				proj::ProjDef d = g_projBase; d.sprite = 168; d.light = "orb_red"; d.element = E_FIRE; d.damage = 1; d.lifeTicks = 60; d.speed = 4.f;
+				const long long r0 = proj::counters().ricochets, w0 = proj::counters().wallStops;
+				(void)r0; (void)w0;
+				proj::spawn(d, nullptr, proj::Vec3((float)stx, (float)sty, -1.f), (float)ang);
+				printlog("[apx-magic] wallshot deg=%.1f from (%.0f,%.0f) heading %.2f rad, wall normal (%d,%d)", deg, stx, sty, ang, wx[k], wy[k]);
+				return;
+			}
+		}
+	}
+	printlog("[apx-magic] wallshot: no wall with a run beside it within 30 tiles");
 });
 static ConsoleCommand ccmd_apxmagic_target("/apxmagic_target", "apx: gate: put a sturdy dummy <tiles> ahead of player 0 along its yaw", [](int argc, const char** argv) {
 	Entity* me = playerEntity(0);
