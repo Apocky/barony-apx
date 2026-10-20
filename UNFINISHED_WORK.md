@@ -11,3 +11,6 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 06:33 -07:00 F2: rebased (801cf254), apx-gen 7057f3d9, gates PASS on db9ca6c8; merge-ready pending Apocky/parent OK.
 
+
+## 2026-10-19 23:10 -07:00 COMBAT lane C1 (branch apx/combat, worktree ..arony-apx-combat)
+In flight: D93 combat core built, selftest-all 7/7 PASS. Resume: build toolspxuild.ps1; next write toolspx\combat_qa.py (QA-driver real-input gate, APX_COMBAT_QA=<family>[:crowd]), run on normal start and -apxfloor=1, commit, push, ls-remote.

@@ -25,6 +25,7 @@
 #include "prng.hpp"
 #include "mod_tools.hpp"
 #include "apx/tiers.hpp"
+#include "apx/combat/core.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -972,7 +973,7 @@ void actArrow(Entity* my)
 					/*messagePlayer(0, "My damage: %d, AC: %d, Pierce: %d", my->arrowPower, AC(hitstats), my->arrowArmorPierce);
 					messagePlayer(0, "Resolved to %d damage.", damage);*/
 					Sint32 oldHP = hitstats->HP;
-					damage = apx::tierdmg::onCreatureHit(parent, hit.entity, damage, apx::tierdmg::ARROW); // apx D74: a creature's hit by its tier
+					damage = apx::combat::onLegacyHit(parent, hit.entity, damage, apx::combat::PATH_ARROW); // apx D93: the one damage entry (D74 tier stage)
 					hit.entity->modHP(-damage);
 
 					if ( hitstats )

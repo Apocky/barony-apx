@@ -212,7 +212,7 @@ namespace combat_glue
 	}
 
 	// The melee hit hook. damage is the engine's damage for this hit; returns the damage to apply.
-	inline int applyHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int damage, Zone z, WeaponClass w)
+	inline int applyHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int damage, Zone z, WeaponClass w, int poiseOverride = -1)
 	{
 		if ( !target || !tStats ) return damage;
 		Rec& r = rec(target, tStats);
@@ -224,7 +224,7 @@ namespace combat_glue
 		else if ( wasStaggered ) out = hitDamage(damage, Zone::Torso, true);
 		if ( zonesOn() && out > 0 ) r.zones.damage(z, out);
 		// apx D74: a hostile creature's poise hit on a player or follower by its tier (fodder a third; apx/tiers.hpp)
-		const int poiseIn = apx::tierdmg::poiseForHit(attacker, target, poiseHit(w));
+		const int poiseIn = apx::tierdmg::poiseForHit(attacker, target, poiseOverride >= 0 ? poiseOverride : poiseHit(w));
 		if ( poiseOn() && physicalPlayer(target) )
 		{
 			// apx D75: physical poise; the stance and a heavy swing in flight divide the blow's poise damage
@@ -287,6 +287,16 @@ namespace combat_glue
 		if ( !d.onLethal(coopPlayers() > 1 || forceCoop()) ) return amount;
 		printlog("[apx-f4c] downed player=%d hp=%d blow=%d coop=%d", e->skill[2], s->HP, amount, coopPlayers());
 		return 1 - s->HP; // hold at 1 HP
+	}
+
+	// D93: the self-test drives the one damage entry point (apx::combat::applyHit, dry: the test deals the damage itself)
+	inline int selfHit(Entity* attacker, Entity* target, int damage, Zone z, WeaponClass w)
+	{
+		apx::combat::Hit h;
+		h.attacker = attacker; h.target = target; h.damage = damage;
+		h.flags = apx::combat::HF_PRECOMPUTED | apx::combat::HF_DRY;
+		h.zoneHint = (int)z; h.poise = poiseHit(w);
+		return apx::combat::applyHit(h).damage;
 	}
 
 	inline void selftestStep(Entity* my, Stat* s);
@@ -417,7 +427,7 @@ namespace combat_glue
 				int hits = 0;
 				while ( hits < 60 && !ms->getEffectActive(EFF_PARALYZED) )
 				{
-					int d = applyHit(my, s, m, ms, 1, Zone::Torso, WeaponClass::Sword);
+					int d = selfHit(my, m, 1, Zone::Torso, WeaponClass::Sword);
 					m->modHP(-d);
 					++hits;
 				}
@@ -439,7 +449,7 @@ namespace combat_glue
 			Entity* m = T.mon[1];
 			Stat* ms = m ? m->getStats() : nullptr;
 			T.check(ms && ms->getEffectActive(EFF_PARALYZED), "regular_paralysed_mid_stagger", ms ? ms->getEffectActive(EFF_PARALYZED) : 0, 1);
-			if ( ms ) { int d = applyHit(my, s, m, ms, 10, Zone::Torso, WeaponClass::Sword); T.check(d == 15, "staggered_takes_1.5x", d, 15); }
+			if ( ms ) { int d = selfHit(my, m, 10, Zone::Torso, WeaponClass::Sword); T.check(d == 15, "staggered_takes_1.5x", d, 15); }
 			T.phase = 4;
 			return;
 		}
@@ -455,9 +465,9 @@ namespace combat_glue
 			Rec& r = rec(my, s);
 			s->HP = s->MAXHP;
 			real_t before = speedScale(0);
-			for ( int guard = 0; guard < 100 && r.zones.canRun(); ++guard ) { int d = applyHit(nullptr, nullptr, my, s, 4, Zone::Legs, WeaponClass::Unarmed); my->modHP(-d); s->HP = std::max(s->HP, 2); }
+			for ( int guard = 0; guard < 100 && r.zones.canRun(); ++guard ) { int d = selfHit(nullptr, my, 4, Zone::Legs, WeaponClass::Unarmed); my->modHP(-d); s->HP = std::max(s->HP, 2); }
 			T.check(speedScale(0) == kLegsDisabledSpeed && before == 1.0, "legs_disabled_speed_scale", speedScale(0), kLegsDisabledSpeed);
-			for ( int guard = 0; guard < 100 && r.zones.canAttack(); ++guard ) { int d = applyHit(nullptr, nullptr, my, s, 4, Zone::Arms, WeaponClass::Unarmed); my->modHP(-d); s->HP = std::max(s->HP, 2); }
+			for ( int guard = 0; guard < 100 && r.zones.canAttack(); ++guard ) { int d = selfHit(nullptr, my, 4, Zone::Arms, WeaponClass::Unarmed); my->modHP(-d); s->HP = std::max(s->HP, 2); }
 			T.check(!canAttack(my), "arms_disabled_no_attack", canAttack(my), 0);
 			T.check(r.zones.hp[(int)Zone::Legs] == 0 && my->getStats() != nullptr, "zone_disabled_not_removed", r.zones.hp[(int)Zone::Legs], 0);
 			r.zones.init(s->MAXHP);

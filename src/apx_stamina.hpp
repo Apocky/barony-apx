@@ -15,6 +15,7 @@
 #include "game.hpp"
 #include "net.hpp"
 #include "apx_moves.hpp"
+#include "apx/combat/core.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -525,6 +526,13 @@ namespace apx
 		}
 		if ( player != 0 ) return;
 		if ( selftestall::armed() && !selftestall::active(selftestall::MOVES) ) return; // D77: wait for the "moves" stage
+		if ( apx::combat::coreEnabled() && (selftestall::armed() || selftestMoves() || selftestFamilies()) )
+		{
+			// D93: the moves stage drives the combat core with latched input (every family: quick, directional and charged moves);
+			// the F4a/F4d forced-swing scripts below exercised Barony's removed path and run only as the APX_COMBAT_OLD=1 control
+			if ( apx::combat::selftestStep() != 0 && !selftestall::armed() ) { mainloop = 0; }
+			return;
+		}
 		Uint32& t = selftestClock();
 		++t;
 		if ( selftestFamilies() ) { famSelftestAdvance(t); return; }
@@ -595,8 +603,10 @@ namespace apx
 		updateCombat(player);
 		s.maxValue = maxStaminaFor(s);
 
-		// swing start: chop leaves 0 for a melee weapon
-		const bool chopping = (chop != 0) && melee;
+		// swing start: chop leaves 0 for a melee weapon. D93: for a player the combat core owns, the core spends the swing and
+		// holds prevChop / swingWhileBlock itself (apx/combat/core.cpp); this tick keeps the block drain, regen and net.
+		const bool coreOwned = apx::combat::ownsMelee(player);
+		const bool chopping = !coreOwned && (chop != 0) && melee;
 		if ( chopping && !s.prevChop )
 		{
 			const bool underBlock = s.lastDefending && blockSwingEnabled();
@@ -614,14 +624,15 @@ namespace apx
 			printlog("[apx-stamina] swing p=%d blocking=%d cost=%.2f spent=%.2f before=%.2f after=%.2f tick=%u",
 				player, underBlock ? 1 : 0, cost, actual, before, s.value, ticks);
 		}
-		if ( !chopping )
+		if ( !chopping && !coreOwned )
 		{
 			s.swingWhileBlock = false;
 			s.lastDefending = defending;
 			s.move = MOVE_NONE;
 			s.releases = 0;
 		}
-		s.prevChop = chopping;
+		if ( coreOwned ) { s.lastDefending = defending; }
+		else { s.prevChop = chopping; }
 
 		// block drain
 		if ( defending )

@@ -12,13 +12,13 @@ enum BaronyClass : int { CLS_SWORD, CLS_MACE, CLS_AXE, CLS_POLEARM, CLS_RANGED, 
 struct Move { Kind kind; float momentum; float area; };   // kg m/s, cm^2
 struct Response { float yield, fracture, k; };              // per kind
 struct Material { Response kind[NUM_KINDS]; };
-struct Hit { float hp; bool stagger; bool fracture; };
+struct ImpactHit { float hp; bool stagger; bool fracture; };
 
 // The reference move for a Barony class; false for magic (stays on the old table).
 bool classMove(int baronyClass, Move& out);
 
 // s = p / A against the material's response for the move's kind.
-Hit resolve(const Move& m, const Material& mat);
+ImpactHit resolve(const Move& m, const Material& mat);
 
 // Damage of this move on mat relative to flesh, clamped 0..3.
 float materialMultiplier(const Move& m, const Material& mat);
@@ -31,6 +31,8 @@ int materialIndex(const char* name);   // -1 if unknown
 // Multiplier for a Barony monster type and class, from the generated table (seed level x material).
 // Returns fallback for magic, unknown monsters or out-of-range input.
 float multiplierFor(int monsterType, int baronyClass, float fallback);
+// The same for a specific move (kind, momentum, area): the D93 core's impact rule (seed level x material response).
+float multiplierForMove(int monsterType, const Move& m, float fallback);
 int monsterMaterial(int monsterType);  // -1 if out of range
 
 // Engine switch (-apximpact) and a use counter, so a silent fallback to the old table is visible.
