@@ -7,6 +7,7 @@
 #pragma once
 
 #include "apx_stamina.hpp"
+#include "apx/move/move.hpp"
 #include <vector>
 
 namespace apx
@@ -47,8 +48,8 @@ namespace fam
 	inline void push(Entity* attacker, Entity* victim, double force)
 	{
 		const double t = atan2(victim->y - attacker->y, victim->x - attacker->x);
-		victim->vel_x += cos(t) * force;
-		victim->vel_y += sin(t) * force;
+		// apx D93 C2: a push is an apx::move impulse (force cap 7 in the move table); the force is the old velocity add x2 over 8 ticks
+		apx::move::impulse(victim, (float)(cos(t) * force * 2.0), (float)(sin(t) * force * 2.0), 8);
 		++counters().pushes;
 	}
 

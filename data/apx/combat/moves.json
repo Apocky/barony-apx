@@ -914,6 +914,40 @@
    "zone": "auto",
    "telegraph": "charged",
    "sound": 25
+  },
+  {
+   "id": 80,
+   "family": "unarmed",
+   "name": "kick",
+   "kind": "impact",
+   "windupMs": 100,
+   "activeMs": 60,
+   "recoverMs": 200,
+   "arcHalfDeg": 0,
+   "reach": 0.9,
+   "extraTargets": 0,
+   "falloff1": 1.0,
+   "falloff2": 1.0,
+   "damage": 0.25,
+   "staminaMult": 0.6,
+   "heavyPct": 0,
+   "effects": [
+    "push",
+    "knockdown_small"
+   ],
+   "armourIgnore": 0,
+   "force": 2.5,
+   "knockdownTicks": 30,
+   "radius": 0,
+   "dash": 0,
+   "sneakMult": 1.0,
+   "charged": false,
+   "momentum": 6,
+   "area": 8,
+   "poise": 8,
+   "zone": "legs",
+   "telegraph": "quick",
+   "sound": 27
   }
  ]
 }

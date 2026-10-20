@@ -30,6 +30,7 @@
 #include "../selftest_all.hpp"
 #include "../qadriver.hpp"
 #include "../in/in.hpp"
+#include "../move/move.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -57,6 +58,14 @@ namespace combat
 		constexpr int kMaxHoldTicks = 100;       // a charge held this long releases itself
 		constexpr float kBeamHalfWidth = 4.f;    // units: a line move's half width beyond the body radius
 		constexpr int kFizzleTicks = 12;
+		constexpr int kTimedBlockTicks = 10;     // 200 ms (BL 6 ticks; fork 10): a block this young is free
+		constexpr int kRiposteTicks = 13;        // 267 ms window after a timed block
+		constexpr int kChamberTicks = 7;         // 133 ms: a counter pressed this soon after the block lands at once
+		constexpr int kDodgeTicks = 8;           // 150 ms invulnerable (rounded to 20 ms ticks)
+		constexpr int kDodgeCooldown = 20;
+		constexpr double kDodgeCost = 15.0, kFeintCost = 10.0;
+		constexpr int kKickCooldown = 25, kFeintRecover = 8;
+		constexpr float kRiposteMult = 1.5f, kChamberMult = 2.0f;
 		constexpr int kMaxHitsPerTick = 64;      // hits resolved in one sim tick (one hit costs ~0.12 ms in Barony's own stat code); swept targets left over follow on the next ticks, 20 ms each
 
 		Counters gCount;
@@ -135,6 +144,15 @@ namespace combat
 			int heldTicks = 0;
 			bool released = false, dirLocked = false;
 			bool needRelease = false; // an attempt failed: wait for the button to come up
+			// C2 defence verbs (04b section 6): block, timed block, riposte, chamber, dodge, feint, kick
+			bool blocking = false;    // Block held (and a shield up)
+			int blockT = -1;          // ticks since the block went up (0 on its first tick); -1 = down
+			int riposteLeft = 0, chamberLeft = 0;  // ticks left of the riposte window (267 ms) and its first part, the chamber (133 ms)
+			int dodgeLeft = 0, dodgeCool = 0, kickLeft = 0, kickCool = 0, feintLeft = 0;
+			bool riposteSwing = false, chamberSwing = false;
+			int probeAt = -1, probeFire = -1, probeMode = 0;  // probeMode 1: relative to a dodge press
+			double dodgeX = 0, dodgeY = 0;
+			  // QA: a hit on the player this many ticks after the block went up (/apxcombat_probe)
 			float swDX = 0.f, swDY = 0.f;
 			int activeTicks = 0, recoverTicks = 0, quickTicks = 0;
 			int hitstop = 0;
@@ -165,7 +183,7 @@ namespace combat
 		void resetSwing(Fighter& f)
 		{
 			f.st = State::Idle; f.t = 0; f.heldTicks = 0; f.released = false; f.dirLocked = false; f.swDX = f.swDY = 0.f;
-			f.moveId = 0; f.charged = false; f.hitUids.clear(); f.hitCount = 0; f.objectChecked = false; f.hitstop = 0;
+			f.moveId = 0; f.charged = false; f.hitUids.clear(); f.hitCount = 0; f.objectChecked = false; f.hitstop = 0; f.riposteSwing = f.chamberSwing = false;
 			f.restValid = false;
 		}
 	} // namespace
@@ -243,7 +261,19 @@ namespace combat
 		if ( e->behavior == &actPlayer )
 		{
 			const int p = e->skill[2];
-			if ( p >= 0 && p < MAXPLAYERS && gF[p].st != State::Idle ) { return gF[p].st; }
+			if ( p >= 0 && p < MAXPLAYERS )
+			{
+				const Fighter& f = gF[p];
+				if ( f.st != State::Idle && f.st != State::Recovery ) { return f.st; }
+				if ( f.dodgeLeft > 0 ) { return State::Dodge; }
+				if ( f.kickLeft > 0 ) { return State::Kick; }
+				if ( f.feintLeft > 0 ) { return State::Feint; }
+				if ( f.st == State::Recovery ) { return f.st; }
+				if ( f.blocking && f.blockT >= 0 && f.blockT <= kTimedBlockTicks ) { return State::TimedBlock; }
+				if ( f.chamberLeft > 0 ) { return State::Chamber; }
+				if ( f.riposteLeft > 0 ) { return State::Riposte; }
+				if ( f.blocking ) { return State::Block; }
+			}
 		}
 		if ( apx::combat_glue::staggered(e) ) { return State::Stagger; }
 		Stat* s = e->getStats();
@@ -405,7 +435,7 @@ namespace combat
 			double d = damage;
 			if ( mv )
 			{
-				d *= mv->damage;
+				d *= mv->damage * h.dmgMult;
 				if ( h.flags & HF_EXTRA_TARGET ) { d *= (h.extraIndex <= 0 ? mv->falloff1 : mv->falloff2); }
 			}
 			sneakOut = false;
@@ -542,8 +572,42 @@ namespace combat
 		return r;
 	}
 
+	// C2: what the defender's state does to a creature's melee blow (dodge, timed block, block). Returns true when the blow is spent.
+	static bool defendHit(Entity* attacker, Entity* target, int& damage)
+	{
+		if ( !target || target->behavior != &actPlayer || damage <= 0 ) { return false; }
+		const int p = target->skill[2];
+		if ( p < 0 || p >= MAXPLAYERS || !gEnabled ) { return false; }
+		Fighter& f = gF[p];
+		if ( f.dodgeLeft > 0 )
+		{
+			++gCount.dodged;
+			row("{\"ev\":\"dodged\",\"tick\":%u,\"player\":%d,\"damage_in\":%d,\"dodge_left\":%d}", (unsigned)ticks, p, damage, f.dodgeLeft);
+			damage = 0;
+			return true;
+		}
+		if ( f.blocking && stats[p] && stats[p]->shield )
+		{
+			if ( f.blockT >= 0 && f.blockT <= kTimedBlockTicks )
+			{
+				++gCount.timedBlocks;
+				f.riposteLeft = kRiposteTicks; f.chamberLeft = kChamberTicks;
+				if ( attacker && attacker->getStats() ) { apx::fam::knockdown(attacker, 25); } // the attacker is staggered
+				row("{\"ev\":\"timed_block\",\"tick\":%u,\"player\":%d,\"since_press_ticks\":%d,\"since_press_ms\":%d,\"damage_in\":%d,\"stamina\":%.2f}", (unsigned)ticks, p, f.blockT, f.blockT * kTickMs, damage, apx::get(p).value);
+				damage = 0;
+				return true;
+			}
+			++gCount.blocks;
+			const double cost = damage / 10.0; // the surplus comes off stamina (G11 rule, D64)
+			apx::spend(p, cost, 1);
+			row("{\"ev\":\"block\",\"tick\":%u,\"player\":%d,\"since_press_ticks\":%d,\"damage_in\":%d,\"stamina_cost\":%.2f,\"stamina\":%.2f}", (unsigned)ticks, p, f.blockT, damage, cost, apx::get(p).value);
+		}
+		return false;
+	}
+
 	int onLegacyHit(Entity* attacker, Entity* target, int damage, int path)
 	{
+		if ( path == PATH_MELEE && gEnabled && defendHit(attacker, target, damage) ) { ++gCount.legacyHits; return 0; }
 		LegacyTimer legacyTimer;
 		++gCount.legacyHits;
 		if ( !gEnabled )
@@ -662,6 +726,7 @@ namespace combat
 				h.attacker = me; h.target = c.e; h.moveId = mv.id; h.dir = f.dir;
 				h.flags = (f.hitCount > 0 ? HF_EXTRA_TARGET : 0u) | (mv.charged ? HF_CHARGED : 0u);
 				h.extraIndex = f.hitCount > 0 ? f.hitCount - 1 : 0;
+				h.dmgMult = f.riposteSwing ? (f.chamberSwing ? kChamberMult : kRiposteMult) : 1.f;
 				if ( f.dir == DIR_LOW && !mv.charged ) { h.zoneHint = (int)combat::Zone::Legs; }
 				else if ( f.dir == DIR_OVERHEAD && !mv.charged ) { h.zoneHint = (int)combat::Zone::Head; }
 				Stat* es = c.e->getStats();
@@ -675,9 +740,10 @@ namespace combat
 				if ( f.hitstop == 0 ) { f.hitstop = msToTicks(kHitStopMs); ++gCount.hitStops; }
 				cameravars[p].shakey += 4;
 				row("{\"ev\":\"hit\",\"tick\":%u,\"swing\":%d,\"player\":%d,\"fam\":\"%s\",\"move\":%d,\"name\":\"%s\",\"dir\":\"%s\",\"charged\":%d,\"target\":%u,\"type\":%d,\"tname\":\"%s\","
-					"\"dist\":%.1f,\"order\":%d,\"dmg\":%d,\"hp\":%d,\"zone\":%d,\"mult\":%.3f,\"sneak\":%d,\"staggered\":%d,\"killed\":%d,\"hitstop\":%d}",
+					"\"dist\":%.1f,\"order\":%d,\"dmg\":%d,\"hp\":%d,\"zone\":%d,\"mult\":%.3f,\"sneak\":%d,\"staggered\":%d,\"killed\":%d,\"hitstop\":%d,\"poisoned\":%d,\"wstatus\":%d,\"prof\":%d,\"riposte\":%d,\"hp_after\":%d}",
 					(unsigned)ticks, f.swingId, p, familyName(mv.family), mv.id, mv.name, dirName(f.dir), mv.charged ? 1 : 0, c.e->getUID(), es ? (int)es->type : -1, tname.c_str(),
-					c.d, f.hitCount - 1, res.damage, hpBefore, res.zone, res.multiplier, res.sneak ? 1 : 0, res.staggered ? 1 : 0, res.killed ? 1 : 0, f.hitstop);
+					c.d, f.hitCount - 1, res.damage, hpBefore, res.zone, res.multiplier, res.sneak ? 1 : 0, res.staggered ? 1 : 0, res.killed ? 1 : 0, f.hitstop,
+					es ? (int)es->getEffectActive(EFF_POISONED) : -1, stats[p]->weapon ? (int)stats[p]->weapon->status : -1, stats[p]->getProficiency(stats[p]->weapon ? std::max(0, (int)getWeaponSkill(stats[p]->weapon)) : PRO_UNARMED), f.riposteSwing ? 1 : 0, es ? es->HP : -1);
 			}
 			return deferred;
 		}
@@ -724,7 +790,7 @@ namespace combat
 			me->skill[9] = 1;
 			if ( multiplayer == SERVER ) { serverUpdateEntitySkill(me, 9); serverUpdateEntitySkill(me, 10); }
 			playSoundEntity(me, mv.sound + local_rng.rand() % 5, 128);
-			if ( mv.effects & EF_DASH ) { me->vel_x += std::cos(me->yaw) * mv.dash; me->vel_y += std::sin(me->yaw) * mv.dash; } // apx::move::impulse when M1 lands
+			if ( mv.effects & EF_DASH ) { apx::move::impulse(me, (float)std::cos(me->yaw) * mv.dash * 2.5f, (float)std::sin(me->yaw) * mv.dash * 2.5f, 6); }
 			cameravars[p].shakey += 3;
 		}
 
@@ -752,6 +818,8 @@ namespace combat
 				if ( f.fam == FAM_NONE ) { return; }
 				f.st = State::Windup; f.t = 0; f.heldTicks = 0; f.released = false; f.dirLocked = false; f.swDX = f.swDY = 0.f; f.charged = false;
 				f.underBlock = apx::blockSwingEnabled() && ms->defending;
+				f.riposteSwing = f.riposteLeft > 0; f.chamberSwing = f.chamberLeft > 0;
+				if ( f.riposteSwing ) { f.riposteLeft = 0; f.chamberLeft = 0; row("{\"ev\":\"riposte_swing\",\"tick\":%u,\"player\":%d,\"chamber\":%d}", (unsigned)ticks, p, f.chamberSwing ? 1 : 0); }
 				f.staminaAtStart = sta.value;
 				f.swingId = ++gSwingSeq;
 				f.startTick = (unsigned)ticks;
@@ -776,8 +844,10 @@ namespace combat
 				const int quickMoveId = moveFor(f.fam, f.dir, false);
 				const MoveRow* qm = moveById(quickMoveId);
 				f.quickTicks = qm ? msToTicks(qm->windupMs) : 12;
+				if ( f.riposteSwing ) { f.quickTicks = f.chamberSwing ? 1 : std::max(2, f.quickTicks / 2); } // a riposte skips most of the draw; a chamber none
 				bool commit = false;
-				if ( f.released && f.dirLocked )
+				if ( f.riposteSwing && f.t >= f.quickTicks ) { commit = true; f.charged = false; }
+				else if ( f.released && f.dirLocked )
 				{
 					if ( f.charged && canCharge ) { commit = true; }
 					else if ( f.t >= f.quickTicks ) { commit = true; }
@@ -834,12 +904,136 @@ namespace combat
 				{
 					sta.swingWhileBlock = false;
 					sta.move = 0;
-					f.st = State::Idle; f.t = 0; f.restValid = false;
+					f.st = State::Idle; f.t = 0; f.restValid = false; f.riposteSwing = f.chamberSwing = false;
 					if ( !held ) { f.needRelease = false; }
 				}
 			}
 		}
 	} // namespace
+
+
+	// =========================================================================================================
+	// C2: block, timed block, riposte, chamber, dodge, feint, kick (04b section 6). Read from apx::in only.
+	// =========================================================================================================
+	bool blockOwned(int p)
+	{
+		if ( !gEnabled || p < 0 || p >= MAXPLAYERS || !players[p] || !players[p]->entity || !stats[p] ) { return false; }
+		if ( !players[p]->isLocalPlayer() || multiplayer == CLIENT ) { return false; }
+		Entity* me = players[p]->entity;
+		return me->effectShapeshift == NOTHING && me->effectPolymorph == NOTHING;
+	}
+	bool blockWanted(int p)
+	{
+		if ( p < 0 || p >= MAXPLAYERS ) { return false; }
+		const Fighter& f = gF[p];
+		return f.blocking && (f.st == State::Idle || f.underBlock) && f.dodgeLeft == 0;
+	}
+
+	namespace
+	{
+		void defenseTick(int p, Fighter& f, const in::TickRecord& rec, Entity* me)
+		{
+			Stat* ms = stats[p];
+			apx::Stamina_t& sta = apx::get(p);
+			if ( f.riposteLeft > 0 ) { --f.riposteLeft; }
+			if ( f.chamberLeft > 0 ) { --f.chamberLeft; }
+			if ( f.dodgeLeft > 0 && --f.dodgeLeft == 0 )
+			{
+				row("{\"ev\":\"dodge_end\",\"tick\":%u,\"player\":%d,\"moved\":%.2f}", (unsigned)ticks, p, std::sqrt((me->x - f.dodgeX) * (me->x - f.dodgeX) + (me->y - f.dodgeY) * (me->y - f.dodgeY)));
+			}
+			if ( f.dodgeCool > 0 ) { --f.dodgeCool; }
+			if ( f.kickLeft > 0 ) { --f.kickLeft; }
+			if ( f.kickCool > 0 ) { --f.kickCool; }
+			if ( f.feintLeft > 0 ) { --f.feintLeft; }
+			const bool bHeld = rec.isHeld(in::B_Block), bPress = rec.pressCount[in::B_Block] > 0;
+			bool feinted = false;
+			// feint: Block pressed during a wind-up cancels the swing for 10 stamina
+			if ( bPress && f.st == State::Windup && sta.value >= kFeintCost )
+			{
+				apx::spend(p, kFeintCost, 0);
+				++gCount.feints; feinted = true;
+				row("{\"ev\":\"feint\",\"tick\":%u,\"player\":%d,\"windup_ticks\":%d,\"cost\":%.1f,\"stamina\":%.2f}", (unsigned)ticks, p, f.t, kFeintCost, sta.value);
+				apx::get(p).swingWhileBlock = false;
+				resetSwing(f);
+				f.st = State::Recovery; f.t = 0; f.recoverTicks = kFeintRecover; f.feintLeft = kFeintRecover;
+				f.needRelease = rec.isHeld(in::B_Attack);
+			}
+			// block: a shield up while Block is held; the first 200 ms are the timed window
+			const bool shield = ms->shield && !itemTypeIsQuiver(ms->shield->type);
+			f.blocking = bHeld && shield && !feinted;
+			if ( f.blocking && blockWanted(p) ) { f.blockT = f.blockT < 0 ? 0 : f.blockT + 1; }
+			else { f.blockT = -1; }
+			if ( f.blockT == 0 && f.probeMode == 0 && f.probeAt >= 0 && f.probeFire < 0 ) { f.probeFire = (int)ticks + f.probeAt; }
+			if ( f.probeFire >= 0 && (int)ticks == f.probeFire )
+			{
+				Entity* att = nullptr;
+				for ( Uint32 uid : gDummies ) { Entity* e = uidToEntity(uid); if ( e && e->getStats() && e->getStats()->HP > 0 ) { att = e; break; } }
+				const int since = f.blockT;
+				const int dmg = 10;
+				const int before = ms->HP;
+				const int out = onLegacyHit(att, me, dmg, PATH_MELEE);
+				if ( out > 0 ) { me->modHP(-out); }
+				row("{\"ev\":\"probe\",\"tick\":%u,\"since_press_ticks\":%d,\"since_press_ms\":%d,\"damage_in\":%d,\"damage_out\":%d,\"hp_before\":%d,\"hp_after\":%d,\"free\":%d}", (unsigned)ticks, since, since * kTickMs, dmg, out, before, ms->HP, out == 0 ? 1 : 0);
+				f.probeAt = -1; f.probeFire = -1;
+			}
+			// dodge: 15 stamina, 150 ms invulnerable, an impulse through apx::move
+			if ( rec.pressCount[in::B_Dodge] > 0 && f.dodgeCool == 0 && f.dodgeLeft == 0 && f.st != State::Active && sta.value >= kDodgeCost )
+			{
+				apx::spend(p, kDodgeCost, 0);
+				++gCount.dodges;
+				const double yaw = me->yaw;
+				double dx = std::cos(yaw) * rec.moveY + std::cos(yaw + PI / 2) * rec.moveX, dy = std::sin(yaw) * rec.moveY + std::sin(yaw + PI / 2) * rec.moveX;
+				const double l = std::sqrt(dx * dx + dy * dy);
+				if ( l < 0.1 ) { dx = -std::cos(yaw); dy = -std::sin(yaw); } else { dx /= l; dy /= l; } // no direction held: a step back
+				const double x0 = me->x, y0 = me->y;
+				apx::move::impulse(me, (float)(dx * 3.0), (float)(dy * 3.0), kDodgeTicks);
+				f.dodgeLeft = kDodgeTicks; f.dodgeCool = kDodgeCooldown; f.dodgeX = x0; f.dodgeY = y0;
+				if ( f.probeMode == 1 && f.probeAt >= 0 ) { f.probeFire = (int)ticks + f.probeAt; }
+				if ( f.st == State::Windup ) { apx::get(p).swingWhileBlock = false; resetSwing(f); }
+				row("{\"ev\":\"dodge\",\"tick\":%u,\"player\":%d,\"cost\":%.1f,\"invulnerable_ms\":%d,\"dir\":[%.2f,%.2f],\"stamina\":%.2f,\"x\":%.2f,\"y\":%.2f}", (unsigned)ticks, p, kDodgeCost, kDodgeTicks * kTickMs, dx, dy, sta.value, x0, y0);
+			}
+			// kick: a cheap shove, no shield needed
+			if ( rec.pressCount[in::B_Kick] > 0 && f.kickCool == 0 && (f.st == State::Idle || f.st == State::Recovery) )
+			{
+				const MoveRow* kv = moveById(80);
+				const double cost = kv ? apx::kSwingCost * kv->staminaMult : 5.0;
+				if ( kv && sta.value >= cost )
+				{
+					apx::spend(p, cost, 0);
+					f.kickLeft = msToTicks(kv->activeMs + kv->recoverMs); f.kickCool = kKickCooldown; ++gCount.kicks;
+					Entity* best = nullptr; double bd = 1e9;
+					for ( node_t* node = map.creatures ? map.creatures->first : nullptr; node; node = node->next )
+					{
+						Entity* e = (Entity*)node->element;
+						if ( e == me || !isCreature(e) || !e->getStats() || e->getStats()->HP <= 0 ) { continue; }
+						const double dx = e->x - me->x, dy = e->y - me->y, d = std::sqrt(dx * dx + dy * dy);
+						if ( d > STRIKERANGE * kv->reach + std::max(e->sizex, e->sizey) || std::fabs(wrapPi(std::atan2(dy, dx) - me->yaw)) > 0.6 ) { continue; }
+						if ( (svFlags & SV_FLAG_FRIENDLYFIRE) == 0 && me->checkFriend(e) && me->friendlyFireProtection(e) ) { continue; }
+						if ( d < bd ) { bd = d; best = e; }
+					}
+					int dmg = -1;
+					if ( best )
+					{
+						Hit h; h.attacker = me; h.target = best; h.moveId = 80; h.zoneHint = (int)combat::Zone::Legs;
+						dmg = applyHit(h).damage;
+					}
+					row("{\"ev\":\"kick\",\"tick\":%u,\"player\":%d,\"cost\":%.2f,\"hit\":%d,\"dmg\":%d,\"stamina\":%.2f}", (unsigned)ticks, p, cost, best ? 1 : 0, dmg, sta.value);
+				}
+			}
+		}
+	} // namespace
+
+	static ConsoleCommand ccmd_apxcombat_probe("/apxcombat_probe", "apx: <ticks> -- on the next block press a creature hit lands that many ticks later; logs whether it was free (the timed-block gate)", [](int argc, const char** argv) {
+		if ( argc > 1 ) { gF[0].probeAt = std::max(0, std::atoi(argv[1])); gF[0].probeFire = -1; gF[0].probeMode = (argc > 2 && !strcmp(argv[2], "dodge")) ? 1 : 0; }
+	});
+	static ConsoleCommand ccmd_apxcombat_envenom("/apxcombat_envenom", "apx: envenom the wielded weapon for 10 minutes (the poison proc probe)", [](int, const char**) {
+		if ( !players[0] || !players[0]->entity || !stats[0] ) { return; }
+		players[0]->entity->setEffect(EFF_ENVENOM_WEAPON, true, 600 * TICKS_PER_SECOND, false);
+		row("{\"ev\":\"envenom\",\"active\":%d}", (int)stats[0]->getEffectActive(EFF_ENVENOM_WEAPON));
+	});
+	static ConsoleCommand ccmd_apxcombat_hp("/apxcombat_hp", "apx: <n> -- set the player HP and max HP (QA)", [](int argc, const char** argv) {
+		if ( argc > 1 && stats[0] ) { stats[0]->MAXHP = stats[0]->HP = std::atoi(argv[1]); }
+	});
 
 	void tickPlayer(int p)
 	{
@@ -852,6 +1046,7 @@ namespace combat
 		if ( !players[p]->entity || !stats[p] ) { resetSwing(f); return; }
 		Entity* me = players[p]->entity;
 		if ( gEnabled && players[p]->isLocalPlayer() ) { apx::tick(p, 0, false, stats[p]->defending); } // stamina: regen, block drain, net (was the HUD's)
+		if ( blockOwned(p) && stats[p]->HP > 0 && !players[p]->movement.isPlayerSwimming() && me->isMobile() ) { defenseTick(p, f, rec, me); } else { f.blocking = false; f.blockT = -1; f.dodgeLeft = 0; }
 		const bool own = ownsMelee(p) && stats[p]->HP > 0;
 		if ( !own )
 		{
@@ -1105,6 +1300,7 @@ namespace combat
 	{
 		if ( gSelfDone ) { return 1; }
 		if ( !players[0] || !players[0]->entity ) { return 0; }
+		Entity* me = players[0]->entity;
 		if ( gSelfT == 0 ) { gSelfHP = stats[0]->HP; gSelfMaxHP = stats[0]->MAXHP; }
 		++gSelfT;
 		const Uint32 t = gSelfT;
@@ -1128,15 +1324,17 @@ namespace combat
 		const int fam = block + 1;
 		apx::Stamina_t& sta = apx::get(0);
 		stats[0]->HP = stats[0]->MAXHP = std::max(stats[0]->MAXHP, 9999);
-		if ( o == 0 ) { clearDummies(); equipFamily(0, fam); }
+		static double homeX = 0, homeY = 0, homeYaw = 0;
+		if ( gSelfT == 1 ) { homeX = me->x; homeY = me->y; homeYaw = me->yaw; }
+		if ( o == 0 ) { clearDummies(); equipFamily(0, fam); me->x = homeX; me->y = homeY; me->yaw = homeYaw; me->vel_x = me->vel_y = 0; } // dashes and pushes are impulses now: every family starts from the same spot
 		if ( o == 20 ) { spawnTestCluster(0); }
 		// the swings: default, left, overhead, low (mouse motion in the window), charged (held 26 ticks)
 		struct S { Uint32 at; int dx, dy; int hold; };
-		static const S script[5] = { { 60, 0, 0, 3 }, { 170, -22, 0, 3 }, { 280, 0, -22, 3 }, { 390, 0, 22, 3 }, { 520, 0, 0, 26 } };
+		static const S script[5] = { { 60, 0, 0, 3 }, { 170, -9, 0, 3 }, { 280, 0, -9, 3 }, { 390, 0, 9, 3 }, { 520, 0, 0, 26 } };
 		for ( int k = 0; k < 5; ++k )
 		{
 			const S& s = script[k];
-			if ( o == s.at - 1 ) { sta.value = sta.maxValue; sta.lastSpendTick = 0; gLast = LastSwing(); }
+			if ( o == s.at - 1 ) { me->yaw = homeYaw; sta.value = sta.maxValue; sta.lastSpendTick = 0; gLast = LastSwing(); }
 			if ( o == s.at ) { fakeButton(true); }
 			if ( o == s.at + 1 && (s.dx || s.dy) ) { fakeMotion(s.dx, s.dy); }
 			if ( o == s.at + (Uint32)s.hold ) { fakeButton(false); }

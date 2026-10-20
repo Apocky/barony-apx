@@ -41,6 +41,7 @@ Step 'all' 'selftest-all (7 stages)' { pwsh -NoProfile -File tools\apx\selftest_
 Step 'parity' 'golden parity (vanilla floors)' { pwsh -NoProfile -File tools\apx\golden_parity.ps1 -Exe $exe -Tag verify } 'GOLDEN PARITY: 3 pass, 0 fail'
 Step 'combat' 'F4c poise/zones/downed' { python tools\apx\f4c_selftest.py --exe $exe } ''
 Step 'combat' 'D93 C1 combat core gate' { python tools\apx\combat_gate.py --exe $exe --no-shots } 'COMBAT C1 GATE: PASS'
+Step 'combat' 'D93 C2 defence verbs gate' { python tools\apx\combat_c2_gate.py --exe $exe } 'C2 GATE: PASS'
 Step 'gear' 'F6 save, visual, net gates' { python tools\apx\gate_f6.py --exe $exe --all } ''
 Step 'world' 'props probe (BP1)' { python tools\apx\props_probe.py --exe $exe } ''
 Step 'world' 'Hollow content probe (H1b)' { python tools\apx\bh1b_probe.py --exe $exe } ''
