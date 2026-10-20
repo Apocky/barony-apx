@@ -5,6 +5,7 @@
 #include "../player.hpp"
 #include "visshots.hpp"
 #include "vision.hpp"
+#include "../interface/interface.hpp"
 #include "vox/heldmodel.hpp"
 #include "vox/builder.hpp"
 #include "vox/looknet.hpp"
@@ -71,6 +72,23 @@ namespace vis
 	void armProbe() { g_probe = true; }
 	void armVoxShot() { g_voxShot = true; }
 	void armBuilderShot() { g_buildShot = true; }
+
+	// -apxfpsprobe (lag profile): on the test floor, frame times uncapped (/apxfps_begin uncap ... /apxfps_end, p50/p99)
+	// for 10 s of game time with the inventory closed, then 10 s with it open; "[apx-fps] phase ..." lines label the two
+	// "apxfps:" result lines; then quit. Windowed (the frame cost is the draw); never touches the mouse (noInputGrab).
+	static bool g_fpsProbe = false;
+	void armFpsProbe() { g_fpsProbe = true; }
+	static void fpsProbeTick(bool ready)
+	{
+		static int t = 0;
+		if ( !g_fpsProbe || !ready ) { return; }
+		++t;
+		const int a = 150, len = 500;
+		if ( t == a ) { printlog("[apx-fps] phase inventory_closed map %ux%u floor %d", map.width, map.height, currentlevel); consoleCommand("/apxfps_begin uncap"); }
+		if ( t == a + len ) { consoleCommand("/apxfps_end"); players[0]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+		if ( t == a + len + 50 ) { printlog("[apx-fps] phase inventory_open"); consoleCommand("/apxfps_begin uncap"); }
+		if ( t == a + 2 * len + 50 ) { consoleCommand("/apxfps_end"); printlog("[apx-fps] done"); g_fpsProbe = false; mainloop = 0; }
+	}
 
 	// APX_LOOK_TEST=host|client (BX1 LOOK packet test, headless host + client on this PC): the host, once a client is in
 	// the game, builds a blade in the voxel builder (which announces the look); the client quits once it has received and
@@ -208,6 +226,7 @@ namespace vis
 		voxShotTick(ready);
 		builderShotTick(ready);
 		lookTestTick();
+		fpsProbeTick(ready);
 		if ( !g_armed || g_phase >= 3 ) { return; }
 		if ( !ready ) { g_ticks = 0; return; }
 		++g_ticks;
