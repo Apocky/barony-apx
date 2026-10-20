@@ -369,7 +369,7 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 		if ( p.integrity < sp.lowIntegrityByte ) { g = g * sp.lowIntegrityFactorPct / 100; }
 		r.massOut += (int)g;
 		r.grams.push_back({ p.material, (int)g });
-		if ( !r.discharged ) { for ( int a = 0; a < p.nAffix; ++a ) { if ( rng.below(100) < sp.auraPerAffixPct ) { ++r.auraCrystals; } } }
+		if ( !r.discharged ) { for ( int a = 0; a < p.nAffix; ++a ) { if ( rng.below(100) < sp.auraPerAffixPct ) { ++r.auraCrystals; r.auraAffixes.push_back(p.affix[a]); } } }
 	}
 	if ( keepPart >= 0 && keepPart < it.nParts )
 	{
@@ -574,6 +574,32 @@ bool stripParts(const DB& db, ApxItemData& it, std::vector<ApxPart>& removed, bo
 	if ( removed.empty() ) { why = "a looted item strips only its optional quick slots; it has none: break it instead"; return false; }
 	t.power = (uint16_t)itemPower(db, t);
 	it = t;
+	return true;
+}
+
+} // namespace apxparts
+
+namespace apxparts {
+
+int affixSlots(const ApxPart& p) { return std::min(4, (int)p.rarity); }
+
+bool affixFitsSlot(const DB& db, int slot, uint16_t affix)
+{
+	for ( int f = -1; f < (int)db.families.size(); ++f )
+	{
+		const AffixPool* pl = db.pool(f, slot);
+		if ( pl && affix >= pl->firstId && affix < pl->firstId + pl->count ) { return true; }
+	}
+	return false;
+}
+
+bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why)
+{
+	if ( affix >= db.affixes.size() ) { why = "no such affix"; return false; }
+	if ( p.nAffix >= affixSlots(p) ) { why = "no free affix slot (a part has as many as its rarity)"; return false; }
+	for ( int a = 0; a < p.nAffix; ++a ) { if ( p.affix[a] == affix ) { why = "that affix is already on the part"; return false; } }
+	if ( !affixFitsSlot(db, p.slot, affix) ) { why = "that affix does not take on a " + (p.slot < db.slots.size() ? db.slots[p.slot].id : std::string("?")); return false; }
+	p.affix[p.nAffix++] = affix;
 	return true;
 }
 

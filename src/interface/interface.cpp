@@ -10915,11 +10915,9 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 		}
 	}
 
-	if ( didCraft && apxAura > 0 ) // apx F6: aura crystals (GEM_ROCK stand-in until BF7)
+	if ( didCraft && apxAura > 0 ) // apx F6 C6: aura crystals, each holding its affix (05b 5.9)
 	{
-		Item* aura = newItem(GEM_ROCK, DECREPIT, 0, apxAura, 0, true, nullptr);
-		itemPickup(player, aura);
-		free(aura); // as the scrap grants above: itemPickup copies (local) or sends (remote)
+		apxPartsGivePendingAura(player);
 	}
 	bool increaseSkill = false;
 	if ( stats[player] && didCraft )

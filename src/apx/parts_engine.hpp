@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, stripped = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -67,6 +67,13 @@ Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified
 // itemPickup goes back into the buyer's pouch by itself (apxPartsTick), or call apxPartsLedgerGive.
 Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true);
 Item* apxPartsMakeBundle(int material, int grams);
+// C6 aura crystals (05b 5.9): GEM_GLASS stand-in, appearance 0xA tag | affix id; same-affix crystals stack.
+bool apxPartsIsAura(const Item* item);
+int apxPartsAuraAffix(const Item* item);
+const char* apxPartsAuraName(const Item* item);
+Item* apxPartsMakeAura(int affix, int count, bool identified = true);       // loose (shop stock)
+void apxPartsGivePendingAura(int player);                                  // tinkering station: after it grants the scrap
+bool apxPartsInfuse(int player, Item* item, int part, uint32_t crystalUid, int station, std::string& why); // station 3 = crucible
 // Trade lane (D73/D85): material ids index materials.json; Give/Take move grams in/out of the pouch
 // (server side; logged); Take is false when the pouch is short. The D85 bundle is apxPartsIsBundle.
 int apxPartsMaterialIndex(const char* id);

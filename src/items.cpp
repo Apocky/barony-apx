@@ -1153,6 +1153,11 @@ Category itemCategory(const Item* const item)
 
 char* Item::getName() const
 {
+	if ( apxPartsIsAura(this) ) // apx F6 C6
+	{
+		snprintf(tempstr, sizeof(tempstr), "%s", apxPartsAuraName(this));
+		return tempstr;
+	}
 	if ( apxPartsIsComponent(this) ) // apx F6 D86
 	{
 		snprintf(tempstr, sizeof(tempstr), "%s", apxPartsComponentName(this));
