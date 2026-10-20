@@ -15,3 +15,6 @@ target_include_directories(poise_units_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/
 # BP1 props (APX_PROPS_UNITS_BREAK=1: the control, cage chances read as 0, must fail)
 add_executable(props_units_test ../props_units_test.cpp)
 target_include_directories(props_units_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../src)
+# BT1 trade (APX_TRADE_UNITS_BREAK=clamp|buyany|vanilla: the controls, each must fail)
+add_executable(trade_units_test ../trade_units_test.cpp)
+target_include_directories(trade_units_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../src)

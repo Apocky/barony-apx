@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/trade_glue.hpp"
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "game.hpp"
@@ -6029,10 +6030,10 @@ int Item::buyValue(const int player) const
 
 	if ( itemTypeIsQuiver(type) )
 	{
-		return std::max(value, this->getGoldValue()) * count;
+		return apx::tradeglue::buyValue(this, player, std::max(value, this->getGoldValue()) * count);
 	}
 
-	return std::max(value, this->getGoldValue());
+	return apx::tradeglue::buyValue(this, player, std::max(value, this->getGoldValue()));
 }
 
 /*-------------------------------------------------------------------------------
@@ -6082,10 +6083,10 @@ int Item::sellValue(const int player) const
 
 	if ( itemTypeIsQuiver(type) )
 	{
-		return std::min(value, this->getGoldValue()) * count;
+		return apx::tradeglue::sellValue(this, player, std::min(value, this->getGoldValue()) * count);
 	}
 
-	return std::min(value, this->getGoldValue());
+	return apx::tradeglue::sellValue(this, player, std::min(value, this->getGoldValue()));
 }
 
 /*-------------------------------------------------------------------------------

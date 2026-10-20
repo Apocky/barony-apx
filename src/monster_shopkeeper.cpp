@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/trade_glue.hpp"
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -351,7 +352,10 @@ void initShopkeeper(Entity* my, Stat* myStats)
 			}
 			bool doneFeather = false;
 			int doneHardwareHat = 0;
-			switch ( my->monsterStoreType )
+			// apx BT1 (D73): our trade stock replaces the vanilla finished-goods stock (APX_TRADE=0 restores it)
+			const bool apxTrade = apx::tradeglue::initShop(my, myStats, shoplevel);
+			if ( apxTrade ) { oldMonsterStoreType = my->monsterStoreType; }
+			switch ( apxTrade ? -1 : my->monsterStoreType )
 			{
 				case -1:
 					my->monsterStoreType = oldMonsterStoreType; // don't generate any items.
@@ -1101,7 +1105,7 @@ void initShopkeeper(Entity* my, Stat* myStats)
 
 			slotx = Player::ShopGUI_t::MAX_SHOP_X - 1;
 			sloty = Player::ShopGUI_t::MAX_SHOP_Y - 1;
-			auto generatedItems = generateShopkeeperConsumables(*my, *myStats, my->monsterStoreType);
+			auto generatedItems = apx::tradeglue::on() && my->monsterStoreType != 10 ? std::vector<Item*>() : generateShopkeeperConsumables(*my, *myStats, my->monsterStoreType);
 			for ( auto it = generatedItems.rbegin(); it != generatedItems.rend(); ++it )
 			{
 				if ( takenSlots.find(slotx + sloty * 100) != takenSlots.end() )
