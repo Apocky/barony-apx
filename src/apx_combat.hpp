@@ -22,6 +22,7 @@
 #include "monster.hpp"
 #include "apx_combat_units.hpp"
 #include "apx/tiers.hpp"
+#include "apx/hostility.hpp"
 #include "apx/poise_rules.hpp"
 #include "apx_stamina.hpp"
 #include "items.hpp"
@@ -241,6 +242,7 @@ namespace combat_glue
 	}
 	inline int onMeleeHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int damage)
 	{
+		apx::hostility::onHit(attacker, target, damage); // D93: provocation, gate counters
 		if ( !poiseOn() && !zonesOn() ) return damage;
 		return applyHit(attacker, atkStats, target, tStats, damage, strikeZone(attacker, target), weaponClassOf(atkStats));
 	}

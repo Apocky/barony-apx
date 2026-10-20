@@ -250,6 +250,7 @@ static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 
 #include "UnicodeDecoder.h"
 #include "apx/lua_layer.hpp"
+#include "apx/hostility.hpp" // apx D93
 static bool apxLuaTestMode = false;
 #include "apx_stamina.hpp"
 
@@ -1375,6 +1376,8 @@ void gameLogic(void)
 	{
 		fadealpha = std::max(0, fadealpha - 10);
 	}
+
+	apx::hostility::frame(); // apx D93: floor reset, calm start, gate
 
 	// handle safe packets
 	if ( !(ticks % 4) )

@@ -11,3 +11,6 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 06:33 -07:00 F2: rebased (801cf254), apx-gen 7057f3d9, gates PASS on db9ca6c8; merge-ready pending Apocky/parent OK.
 
+
+## 2026-10-19 hostility lane (apx/hostility)
+In flight: nothing after this commit. apx::hostility (src/apx/hostility.cpp, data/apx/combat/hostility.json), gate tools/apx/hostility_gate.py. Resume: python tools/apx/hostility_gate.py --exe build/vs2022/Release/barony.exe. Next: COMBAT lane routes applyHit through apx::hostility::onHit; decide post-calm hits on a standing player.
