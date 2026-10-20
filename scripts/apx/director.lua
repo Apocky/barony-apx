@@ -23,7 +23,7 @@ end
 
 local D = { identity = identity, decisions = 0, ticks = {}, us = {}, blind = false, fixed = false,
             tension = { value = 0, ewma = 0 }, hits = {}, banked = nil, last = {}, last_event = nil,
-            last_hostile_s = -1e9, force = nil, events_off = apx.is_test(), info = {}, totals = { ambush = 0, den = 0, patrol = 0, silence = 0 },
+            last_hostile_s = -1e9, force = nil, events_off = apx.is_test(), all_uids = {}, info = {}, totals = { ambush = 0, den = 0, patrol = 0, silence = 0 },
             declines = { event_unavailable = 0, budget_zero = 0, cooldown = 0, tension_gate = 0, repeat_blocked = 0,
                          silence_window = 0, event_blocked_no_tile = 0, spawn_refused = 0, no_eligible = 0, ambush_visible = 0 } }
 apx.shared.director = D
@@ -83,7 +83,7 @@ end
 -- A point is hidden when a wall blocks the view from every player to it AND to its four neighbours: apx.spawn may move the body
 -- one tile to the nearest free ground, so the margin keeps the check valid after the move.
 local function hidden_from_all(pos, x, y)
-  for _, d in ipairs({ { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+  for _, d in ipairs({ { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } }) do
     for _, p in ipairs(pos) do if apx.tile_los(p[1], p[2], x + d[1], y + d[2]) ~= false then return false end end
   end
   return true
@@ -145,6 +145,7 @@ local function do_ambush(core, rng, cost, depth, pos)
       if x then local p = nearest_player(pos, x, y); apx.set_target(u, p[3]) end
     end
   end)
+  for _, u in ipairs(spawned) do D.all_uids[#D.all_uids + 1] = u end
   return { kind = "ambush", spawned = #spawned, pack = pack, uids = spawned, dists = dists, visible = visible }
 end
 
@@ -173,6 +174,7 @@ local function do_den(core, rng, cost, depth, pos)
     local p = nearest_player(pos, c[2], c[3])
     if apx.set_target(c[1], p[3]) then woken[#woken + 1] = c[1]; spent = spent + 3 end
   end
+  for _, u in ipairs(woken) do D.all_uids[#D.all_uids + 1] = u end
   return { kind = "den", woken = #woken, eligible = #cands, uids = woken }
 end
 
@@ -184,7 +186,7 @@ local function do_patrol(core, rng, cost, depth, pos)
   local ok, c = false, nil
   -- the path search is capped (200 tries), so a patrol starts from the idle monsters NEAREST the party (but 15+ tiles away), nearest first
   table.sort(cands, function(a, b) return dist(a[2], a[3], p[1], p[2]) < dist(b[2], b[3], p[1], p[2]) end)
-  for i = 1, math.min(6, #cands) do
+  for i = 1, math.min(12, #cands) do
     c = cands[i]
     ok = apx.path_to(c[1], math.floor(p[1] + (rng:float() - 0.5) * 8), math.floor(p[2] + (rng:float() - 0.5) * 8))
     if ok then break end
@@ -200,9 +202,9 @@ local TRADES = { "smith", "alchemist", "scribe", "provisioner", "fence" }
 local function do_peddler(core, rng, cost, depth, pos)
   local centre = pos[1 + rng:int(#pos)]
   local u
-  for _ = 1, 12 do
+  for _ = 1, 24 do
     local ang = rng:float() * 2 * math.pi
-    local r = 14 + rng:float() * 8
+    local r = 14 + rng:float() * 10
     local cx, cy = centre[1] + math.cos(ang) * r, centre[2] + math.sin(ang) * r
     if D.no_los_check or hidden_from_all(pos, cx, cy) then
       u = apx.spawn_peddler(cx, cy)
@@ -227,7 +229,10 @@ apx.every(25, function()
   end
   if not x or not hp or hp <= 0 then finish("lost"); return end
   if apx.tick() - p.since > 50 * 180 then finish("gone"); return end
-  local hostile = #apx.monsters_near(x, y, 7)
+  local hostile = 0   -- wild monsters that count the peddler as an enemy (the peddler itself and other shopkeepers do not)
+  for _, u in ipairs(apx.monsters_near(x, y, 7)) do   -- awake ones only: sleepers nearby are not an attack
+    if u ~= p.uid and apx.monster_state(u) ~= 0 and apx.check_enemy(u, p.uid) then hostile = hostile + 1 end
+  end
   p.watch = { hostile = hostile, threatened = p.threatened, ticks = (p.watch and p.watch.ticks or 0) + 1 }
   if hostile > 0 then p.threatened = true; return end
   if not p.threatened then return end

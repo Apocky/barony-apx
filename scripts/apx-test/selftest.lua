@@ -13,22 +13,24 @@ apx.on("level_entered", function(ev)
   seen.level = true
   check("level_entered carries floor/seed/size", ev.floor ~= nil and ev.seed ~= nil and ev.width > 0)
 end)
-apx.after(50 * 120, function() if not started then apx.log("APX-LUA-TEST FAIL no player after 120 s"); apx.test_quit(1) end end)
 apx.on("monster_spawned", function(m) if m.source == "summon" and m.kind == "rat" then seen.spawned = m.uid end end)
 apx.on("damage", function(d) if d.uid == rat then seen.damage = d.amount end end)
 apx.on("death", function(d) if d.uid == rat then seen.death = true end end)
 
 local started = false
 local poll
+apx.after(50 * 120, function() if not started then apx.log("APX-LUA-TEST FAIL no player on a numbered floor after 120 s (run with -apxfloor=N)"); apx.test_quit(1) end end)
 poll = apx.every(10, function()
-  if started or not apx.player_uid(0) then return end   -- wait for a real game (the menu map has no player)
+  if started or not apx.player_uid(0) or apx.floor() < 1 then return end   -- wait for a real game on a numbered floor (the menu map and the start map come first)
   started = true; apx.cancel(poll)
   base = apx.monster_count()
   local px, py = 20, 20
   local pu = apx.player_uid(0)
   if pu then local x, y = apx.entity_pos(pu); if x then px, py = x + 2, y end end
   local why
-  rat, why = apx.spawn("rat", px, py)
+  for _, d in ipairs({ { 0, 0 }, { 0, 2 }, { 0, -2 }, { -2, 0 }, { 2, 2 }, { -2, -2 }, { 3, 0 }, { 0, 3 } }) do   -- the tile beside the player may be taken
+    rat, why = apx.spawn("rat", px + d[1], py + d[2]); if rat then px, py = px + d[1], py + d[2]; break end
+  end
   check("spawn returns a uid", rat ~= nil, tostring(why))
   check("the new rat exists with stats and monster_count >= 1", apx.get_stat(rat, "hp") ~= nil and apx.monster_count() >= 1, tostring(apx.monster_count()))
   check("monster_spawned event fired for the summon", seen.spawned == rat)
