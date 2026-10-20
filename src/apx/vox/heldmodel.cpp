@@ -6,6 +6,7 @@
 #include "../parts_engine.hpp"
 #include "bx1.hpp"
 #include "heldmodel.hpp"
+#include "looknet.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -85,6 +86,23 @@ namespace vox
 		return &(g_looks[look] = m);
 	}
 
+	void lookArrived(uint32_t look)
+	{
+		// composed keys end each part with "/<look>"; drop the ones that were built while this look was missing
+		const std::string tag = "/" + std::to_string(look);
+		for ( auto it = g_composed.begin(); it != g_composed.end(); )
+		{
+			const std::string& k = it->first;
+			bool has = false;
+			for ( size_t at = k.find(tag); at != std::string::npos && !has; at = k.find(tag, at + 1) )
+			{
+				const size_t end = at + tag.size();
+				has = end == k.size() || k[end] == ',';
+			}
+			if ( has ) { it = g_composed.erase(it); ++g_stats.recomposed; } else { ++it; }
+		}
+	}
+
 	int registerModel(const bx1::VoxModel& m)
 	{
 		if ( !g_base ) { g_base = nummodels; }
@@ -142,7 +160,8 @@ namespace vox
 			if ( p.look ) // a player-built model (the voxel builder) wins over the procedural one
 			{
 				if ( const bx1::VoxModel* built = findLook(p.look) ) { pieces.push_back({ *built, order }); ++g_stats.looksUsed; continue; }
-				++g_stats.looksMissing; // not on this machine (yet): fall back to the procedural model
+				++g_stats.looksMissing; // not on this machine (yet): ask the server (once per look), meanwhile the procedural model
+				looknet::request(p.look);
 			}
 			pieces.push_back({ bx1::makeComponent(s, (uint64_t)item->apx.rollKey * 1315423911ull + (uint64_t)i * 2654435761ull, base, accent), order });
 		}

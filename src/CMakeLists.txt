@@ -23,6 +23,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/acttorch.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actplayer.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/telemetry.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/diag.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/diag_upload.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/bx1.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/heldmodel.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/builder.cpp"
@@ -32,6 +34,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/qadriver.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/ui/ui.cpp" # apx D92: the one ImGui runtime + input gate
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/ui/inventory.cpp" # apx D92: the inventory window
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in.cpp" # apx D93 C0: apx::in, the one owner of play input
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in_glue.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/visshots.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics.cpp"
@@ -39,6 +43,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/bf3trial.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/flow.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tiers.cpp" # apx D74: creature tiers at run time, damage by tier
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/hostility.cpp" # apx D93: who fights whom
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/move/move.cpp" # apx M1: our own player movement
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_data.cpp" # apx F6: parts-based gear (pure)
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_roll.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_engine.cpp" # apx F6: Barony hooks

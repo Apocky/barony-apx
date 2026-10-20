@@ -27,6 +27,8 @@ namespace ui
 	void ensureContext();              // create the context, fonts, style, backends (idempotent)
 	bool contextReady();
 	bool processEvent(const SDL_Event& e); // the input gate: true = Barony must not see this event
+	bool wantsMouse(int player);       // apx::in's owner gate: pointer over our UI (or a UI drag), for the keyboard-and-mouse player
+	bool wantsKeyboard(int player);    // apx::in's owner gate: a UI text field is active
 	bool wantMouse();                  // our UI (dev menu or a window) owns the mouse this frame
 	bool ownsTextInput();              // a text field of ours turned SDL text input on (Barony must leave it on)
 	void frame();                      // once per main-loop pass: new ImGui frame, dev menu, our windows

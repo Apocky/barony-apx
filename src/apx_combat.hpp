@@ -22,6 +22,7 @@
 #include "monster.hpp"
 #include "apx_combat_units.hpp"
 #include "apx/tiers.hpp"
+#include "apx/hostility.hpp"
 #include "apx/poise_rules.hpp"
 #include "apx_stamina.hpp"
 #include "items.hpp"
@@ -241,6 +242,7 @@ namespace combat_glue
 	}
 	inline int onMeleeHit(Entity* attacker, Stat* atkStats, Entity* target, Stat* tStats, int damage)
 	{
+		apx::hostility::onHit(attacker, target, damage); // D93: provocation, gate counters
 		if ( !poiseOn() && !zonesOn() ) return damage;
 		return applyHit(attacker, atkStats, target, tStats, damage, strikeZone(attacker, target), weaponClassOf(atkStats));
 	}
@@ -264,6 +266,15 @@ namespace combat_glue
 		auto it = table().find(e->getUID());
 		return it == table().end() || it->second.zones.canAttack();
 	}
+
+	// apx::move: legs zone disabled = no sprint (F4c); downed = crawl state
+	inline bool legsDisabled(int playernum)
+	{
+		if ( !zonesOn() || !players[playernum] || !players[playernum]->entity ) return false;
+		auto it = table().find(players[playernum]->entity->getUID());
+		return it != table().end() && !it->second.zones.canRun();
+	}
+	inline bool isDowned(int playernum) { return downedOn() && downed(playernum).downed; }
 
 	inline real_t speedScale(int playernum)
 	{

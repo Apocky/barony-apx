@@ -28,6 +28,7 @@ namespace selftestall
 	// called as each stage begins, before the stage spawns anything (game.cpp: clear the floor's hostiles)
 	using StageBeginHook = void (*)(Stage s);
 	void setStageBeginHook(StageBeginHook fn);
+	bool sweeping();             // true while the hook runs as the periodic sweep (log only when something was cleared)
 	void setInline(Stage s, InlineStage fn);
 
 	// once per game tick; ready = player 0 alive on the target floor and not in the intro

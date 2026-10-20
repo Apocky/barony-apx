@@ -19,6 +19,7 @@
 #include "entity.hpp"
 #include "files.hpp"
 #include "apx/telemetry.hpp"
+#include "apx/diag.hpp"
 #include "apx/tactics.hpp"
 #include "apx/flow.hpp"
 static std::string apxOutDir;
@@ -51,6 +52,7 @@ static std::string apxOutDir;
 
 #include "apx/combat/impact.hpp" // apx F4b
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
+static std::string apxReplayFile; // apx D93 C0: -apxreplay=<file>
 static int apxFloor = 0; // apx: -apxfloor=<n>: test path, quickstart straight to floor n (no splash, no menu)
 static bool apxImpactTest = false; // apx F4b: -apximpacttest: log old vs new damage multipliers for every monster, then quit
 static Uint32 apxMapSeed = 0; // apx: -apxmapseed=<n>: map seed for that floor (as /setmapseed)
@@ -98,9 +100,11 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
+#include "apx/move/move.hpp"
 #include "apx/qadriver.hpp" // apx: -apxqa=<dir> interactive QA driver
 #include "apx/ui/ui.hpp" // apx D92: the ImGui runtime and input gate
 #include "apx/ui/inventory.hpp" // apx D92: the inventory window
+#include "apx/in/in_glue.hpp" // apx D93 C0: apx::in owns play input
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
 #include "apx/vox/builder.hpp"
@@ -156,7 +160,7 @@ static void apxSelftestClearHostiles(apx::selftestall::Stage s)
 		e->setHP(0);
 		++cleared;
 	}
-	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+	if ( !apx::selftestall::sweeping() || cleared > 0 ) { printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters%s (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared, apx::selftestall::sweeping() ? " (sweep: spawned since)" : ""); }
 }
 
 // voxel (BX1, C10): a steel sword with rolled parts is drawn from its parts' voxel models: the first-person and
@@ -251,6 +255,7 @@ static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 
 #include "UnicodeDecoder.h"
 #include "apx/lua_layer.hpp"
+#include "apx/hostility.hpp" // apx D93
 static bool apxLuaTestMode = false;
 #include "apx_stamina.hpp"
 
@@ -416,6 +421,7 @@ void make_minidump(EXCEPTION_POINTERS* e)
 
 LONG CALLBACK unhandled_handler(EXCEPTION_POINTERS* e)
 {
+	apxdiag::crash(e, "unhandled SEH exception"); // D90: symbolised stack + last events before the dump
 	make_minidump(e);
 	return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -1183,10 +1189,12 @@ void gameLogic(void)
         }
     }
 
+	apx::in::glue::gameTick(); // apx D93 C0: latch + compat tick step before the bindings sample the legacy state
 	for (auto& input : Input::inputs) {
 		input.update();
 		input.consumeBindingsSharedWithFaceHotbar();
 	}
+	apx::in::glue::afterInputUpdate(); // apx D93 C0: legacy-consumer probe
 
 	int auto_appraise_lowest_time[MAXPLAYERS];
 	Item* auto_appraise_target[MAXPLAYERS];
@@ -1376,6 +1384,9 @@ void gameLogic(void)
 		fadealpha = std::max(0, fadealpha - 10);
 	}
 
+	apx::hostility::frame(); // apx D93: floor reset, calm start, gate
+	apx::move::frame(); // apx M1: impulses on creatures, cost summary
+
 	// handle safe packets
 	if ( !(ticks % 4) )
 	{
@@ -1482,7 +1493,11 @@ void gameLogic(void)
 				entity->ticks++;
 				if ( entity->behavior != nullptr )
 				{
-					(*entity->behavior)(entity);
+					{
+						// D90: per-category entity timing, sampled on every 8th tick
+						apxdiag::Scope apxCat(entity->behavior == &actMonster ? apxdiag::S_AI_MONSTER : (entity->behavior == &actPlayer ? apxdiag::S_AI_PLAYER : apxdiag::S_ENT_OTHER), apxdiag::sampleTick);
+						(*entity->behavior)(entity);
+					}
 					if ( entitiesdeleted.first != nullptr )
 					{
 						entitydeletedself = false;
@@ -2443,6 +2458,7 @@ void gameLogic(void)
 		                loading_done = true;
 		                return result;
 		            });
+	                apxdiag::Scope apxLoadScope(apxdiag::S_LOAD);
 	                while (!loading_done)
 	                {
 		                doLoadingScreen();
@@ -2453,6 +2469,7 @@ void gameLogic(void)
                     createChunks();
 		            loading = false;
 	                int result = loading_task.get();
+	                apxdiag::eventf("level", "\"level\":%d,\"secret\":%d,\"seed\":%u,\"load_ms\":%.0f,\"gen_ms\":%.0f", (int)currentlevel, (int)secretlevel, (unsigned)mapseed, apxLoadMs, apxGenMs);
 	                apx::onFloorLoaded();
 	                apx::tactics::onLevelChange();
 
@@ -4532,10 +4549,12 @@ bool handleEvents(void)
 	}
 	mouseMotionEventsTimestamp.clear();
 
+	apx::in::glue::frameBegin(); // apx D93 C0: the owner gate, once per frame
 	apx::qa::pump(); // apx QA driver: its input events enter the same queue as real ones
 	while ( SDL_PollEvent(&event) )   // poll SDL events
 	{
 		if ( apx::bf3::swallowInput(event) ) { continue; } // apx BF3 trial: human input is dropped and counted
+		if ( demo_mode != DemoMode::PLAYING ) { apx::in::glue::observe(event); } // apx D93 C0: apx::in sees every device event first
 #ifdef USE_IMGUI
 		if ( apx::ui::processEvent(event) ) // apx D92: THE input gate -- ImGui first; true = Barony never sees this event
 		{
@@ -4703,8 +4722,11 @@ bool handleEvents(void)
                         case SDLK_PAUSE: lastkeypressed = SDLK_F15; break;
                     }
 #endif
-					keystatus[lastkeypressed] = true;
-					Input::keys[lastkeypressed] = true;
+					if ( apx::in::glue::vanillaWrites() ) // apx D93 C0: otherwise the compat feed writes these from apx::in's latched state
+					{
+						keystatus[lastkeypressed] = true;
+						Input::keys[lastkeypressed] = true;
+					}
 					Input::lastInputOfAnyKind = SDL_GetKeyName(lastkeypressed);
 				}
 				break;
@@ -4735,8 +4757,11 @@ bool handleEvents(void)
                         case SDLK_PAUSE: key = SDLK_F15; break;
                     }
 #endif
-					keystatus[key] = false;
-					Input::keys[key] = false;
+					if ( apx::in::glue::vanillaWrites() ) // apx D93 C0
+					{
+						keystatus[key] = false;
+						Input::keys[key] = false;
+					}
 				}
 				break;
 			case SDL_TEXTINPUT:
@@ -4821,8 +4846,11 @@ bool handleEvents(void)
                     lastkeypressed = 282 + event.button.button;
                 }
 #else
-                mousestatus[event.button.button] = 1; // set this mouse button to 1
-                Input::mouseButtons[event.button.button] = 1;
+                if ( apx::in::glue::vanillaWrites() ) // apx D93 C0
+                {
+                    mousestatus[event.button.button] = 1; // set this mouse button to 1
+                    Input::mouseButtons[event.button.button] = 1;
+                }
                 Input::lastInputOfAnyKind = std::string("Mouse") + std::to_string(event.button.button);
                 lastkeypressed = 282 + event.button.button;
 #endif
@@ -4831,8 +4859,11 @@ bool handleEvents(void)
 			    if (demo_mode == DemoMode::PLAYING) {
 			        break;
 			    }
-				mousestatus[event.button.button] = 0; // set this mouse button to 0
-				Input::mouseButtons[event.button.button] = 0;
+				if ( apx::in::glue::vanillaWrites() ) // apx D93 C0
+				{
+					mousestatus[event.button.button] = 0; // set this mouse button to 0
+					Input::mouseButtons[event.button.button] = 0;
+				}
 #ifdef APPLE
                 mousestatus[SDL_BUTTON_RIGHT] = 0;
                 Input::mouseButtons[SDL_BUTTON_RIGHT] = 0;
@@ -4850,15 +4881,15 @@ bool handleEvents(void)
 #endif // USE_IMGUI
 				if ( event.wheel.y > 0 )
 				{
-					mousestatus[SDL_BUTTON_WHEELUP] = 1;
-					Input::mouseButtons[Input::MOUSE_WHEEL_UP] = 1;
+					if ( apx::in::glue::vanillaWrites() ) { mousestatus[SDL_BUTTON_WHEELUP] = 1; } // apx D93 C0
+					if ( apx::in::glue::vanillaWrites() ) { Input::mouseButtons[Input::MOUSE_WHEEL_UP] = 1; }
 					Input::lastInputOfAnyKind = "MouseWheelUp";
 					lastkeypressed = 286;
 				}
 				else if ( event.wheel.y < 0 )
 				{
-					mousestatus[SDL_BUTTON_WHEELDOWN] = 1;
-					Input::mouseButtons[Input::MOUSE_WHEEL_DOWN] = 1;
+					if ( apx::in::glue::vanillaWrites() ) { mousestatus[SDL_BUTTON_WHEELDOWN] = 1; } // apx D93 C0
+					if ( apx::in::glue::vanillaWrites() ) { Input::mouseButtons[Input::MOUSE_WHEEL_DOWN] = 1; }
 					Input::lastInputOfAnyKind = "MouseWheelDown";
 					lastkeypressed = 287;
 				}
@@ -4895,8 +4926,11 @@ bool handleEvents(void)
 					factorY = (float)h1 / h2;
 					mousex = event.motion.x * factorX;
 					mousey = event.motion.y * factorY;
-					mousexrel += event.motion.xrel;
-					mouseyrel += event.motion.yrel;
+					if ( !apx::in::glue::swallowLook() ) // apx D93 C0: owner GAME: apx::in latches the motion and the compat feed sets mousexrel once per tick
+					{
+						mousexrel += event.motion.xrel;
+						mouseyrel += event.motion.yrel;
+					}
 				}
 
 				//{
@@ -5475,6 +5509,7 @@ bool handleEvents(void)
 		time1 = std::chrono::high_resolution_clock::now();
 #endif
 	}
+	apx::in::glue::frameEnd(); // apx D93 C0: compat feed from apx::in's latched state, per-second D90 row
 
 #ifdef DEBUG_EVENT_TIMERS
 	time2 = std::chrono::high_resolution_clock::now();
@@ -5523,7 +5558,8 @@ bool handleEvents(void)
 	{
 		if (!loading && initialized)
 		{
-			gameLogic();
+			apxdiag::sampleTick = ((ticks & 7) == 0);
+			{ APX_SCOPE(S_LOGIC); gameLogic(); }
 			++ticks;
 			if ( apx::enabled ) { apx::onTick(); }
 			if ( apx::bf3::on ) { apx::bf3::onGameTick(); }
@@ -7324,8 +7360,10 @@ static void doConsoleCommands() {
 #include <mach-o/dyld.h>
 #endif
 
+static bool apxLimiter() { APX_SCOPE(S_LIMITER); return frameRateLimit(fpsLimit, true, true); } // D90: the pacing sleep, timed on its own
 int main(int argc, char** argv)
 {
+	apxdiag::init(argc, argv); // D90: always-on local diagnostics, before anything else can fail
 #ifdef WINDOWS
 	SetUnhandledExceptionFilter(unhandled_handler);
 #ifdef _DEBUG
@@ -7516,6 +7554,10 @@ int main(int argc, char** argv)
 						datadir[datadirsz] = '\0';
 						datadirFromCommandLine = true;
 					}
+					else if ( !strncmp(argv[c], "-apxreplay=", 11) )
+					{
+						apxReplayFile = argv[c] + 11;
+					}
 					else if ( !strncmp(argv[c], "-apxfloor=", 10) )
 					{
 						apxFloor = std::max(0, atoi(argv[c] + 10));
@@ -7527,6 +7569,10 @@ int main(int argc, char** argv)
 					else if ( !strcmp(argv[c], "-apximpacttest") )
 					{
 						apxImpactTest = true;
+					}
+					else if ( !strcmp(argv[c], "-apxfpsprobe") )
+					{
+						apx::vis::armFpsProbe(); // apx: lag profile, inventory closed then open, then quit
 					}
 					else if ( !strcmp(argv[c], "-apxbuildershot") )
 					{
@@ -7615,6 +7661,7 @@ int main(int argc, char** argv)
 		// apx: automated launches (headless, test floor, quickstart, self-tests) must never move or grab the user's mouse
 		apx::noInputGrab = apx::headlessOn || apx::qa::armed() || apxFloor > 0 || strlen(classtoquickstart) > 0 || getenv("APX_SELFTEST") != nullptr || getenv("APX_F4C_SELFTEST") != nullptr;
 		if ( apx::noInputGrab ) { printlog("[apx] input: automated launch, the mouse is never warped or grabbed"); }
+		apx::in::glue::init(apxReplayFile.c_str()); // apx D93 C0
 		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
 
         // init sdl
@@ -7753,6 +7800,7 @@ int main(int argc, char** argv)
 		printlog("running main loop.\n");
 		while (mainloop)
 		{
+			apxdiag::frame();
 			Frame::numFindFrameCalls = 0;
 			// record the time at the start of this cycle
 			lastGameTickCount = SDL_GetPerformanceCounter();
@@ -7790,11 +7838,11 @@ int main(int argc, char** argv)
 				}
 				if ( multiplayer == CLIENT )
 				{
-					clientHandleMessages(fpsLimit * networkTickrate);
+					{ APX_SCOPE(S_NET); clientHandleMessages(fpsLimit * networkTickrate); }
 				}
 				else if ( multiplayer == SERVER )
 				{
-					serverHandleMessages(fpsLimit * networkTickrate);
+					{ APX_SCOPE(S_NET); serverHandleMessages(fpsLimit * networkTickrate); }
 				}
 			}
 			DebugStats.t21PostHandleMessages = std::chrono::high_resolution_clock::now();
@@ -7813,7 +7861,7 @@ int main(int argc, char** argv)
 			{
 				g_SteamLeaderboards->ProcessLeaderboardUpload();
 			}
-			SteamAPI_RunCallbacks();
+			{ APX_SCOPE(S_STEAM); SteamAPI_RunCallbacks(); }
 #endif
 #ifdef USE_PLAYFAB
 			PlayFab::PlayFabClientAPI::Update();
@@ -8306,7 +8354,7 @@ int main(int argc, char** argv)
 
 				if ( !MainMenu::isCutsceneActive() && fadealpha < 255 )
 				{
-					drawAllPlayerCameras();
+					{ APX_SCOPE(S_RENDER); drawAllPlayerCameras(); }
 				}
 
 				if ( TimerExperiments::bUseTimerInterpolation )
@@ -8341,9 +8389,9 @@ int main(int argc, char** argv)
 				}
 
 				DebugStats.t5MainDraw = std::chrono::high_resolution_clock::now();
-				framesProcResult = doFrames();
+				{ APX_SCOPE(S_UI); framesProcResult = doFrames(); }
 				DebugStats.t6Messages = std::chrono::high_resolution_clock::now();
-				ingameHud();
+				{ APX_SCOPE(S_UI); ingameHud(); }
 				Compendium_t::updateTooltip();
 
                 static ConsoleVariable<bool> showConsumeMouseInputs("/debug_consume_mouse", false);
@@ -8524,7 +8572,7 @@ int main(int argc, char** argv)
 #endif
 
 			// update screen
-			GO_SwapBuffers(screen);
+			{ APX_SCOPE(S_SWAP); GO_SwapBuffers(screen); }
 
 			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
 			if ( const char* f6Shot = apxPartsShotRequest() ) // apx F6 visual probe: the back buffer, as the Screenshot key
@@ -8558,18 +8606,18 @@ int main(int argc, char** argv)
 			}
 
 			// frame rate limiter (apx headless: none)
-			while ( !apx::headlessOn && frameRateLimit(fpsLimit, true, true) )
+			while ( !apx::headlessOn && apxLimiter() )
 			{
 				if ( !intro )
 				{
 					// handle network messages
 					if ( multiplayer == CLIENT )
 					{
-						clientHandleMessages(fpsLimit);
+						{ APX_SCOPE(S_NET); clientHandleMessages(fpsLimit); }
 					}
 					else if ( multiplayer == SERVER )
 					{
-						serverHandleMessages(fpsLimit);
+						{ APX_SCOPE(S_NET); serverHandleMessages(fpsLimit); }
 					}
 				}
 			}
@@ -8638,6 +8686,8 @@ int main(int argc, char** argv)
 		(void)MainMenu::settingsSave();
 
 		// deinit
+		apx::in::glue::shutdown();
+		apxdiag::shutdown();
 		apx::close();
 		apxLuaShutdown();
 		deinitGame();

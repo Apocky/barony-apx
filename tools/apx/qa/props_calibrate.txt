@@ -1,0 +1,13 @@
+# calibration: where are the props, how far does a look turn, what does the screen show
+wait 6000
+shot c0_start
+look 0 60
+wait 300
+shot c1_down
+look -150 0
+wait 300
+shot c2_left150
+look 300 0
+wait 300
+shot c3_right150
+quit

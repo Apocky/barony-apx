@@ -1,0 +1,75 @@
+{
+  "_doc": "apx::move table (D93, spec 04b section 5). Speeds are multipliers on Barony's stat-based base speed (DEX, encumbrance, effects, legs/downed scale; Player::PlayerMovement_t::getSpeedFactor). A steady walk covers units_per_second_per_factor world units per second per point of that base (6.75 = 0.135 units per 50 Hz tick, the speed vanilla Barony settles at on plain floor). 1 tile = 16 units. ASSUMED values are marked; measured fits go in C:/Apocrypha/diagnostics/move.",
+  "tick_rate": 50,
+  "units_per_second_per_factor": 6.75,
+  "max_speed_units_per_tick": 5.0,
+
+  "state_speed": {
+    "walk": 1.0,
+    "sprint": 1.5,
+    "sneak": 0.5,
+    "block": 0.5,
+    "swim_human": 0.75,
+    "swim_other": 0.625,
+    "swim_skeleton": 0.3125,
+    "levitate": 1.0,
+    "crawl": 1.0,
+    "_crawl_note": "downed crawl is 30 percent; it is applied inside the base by apx::combat_glue::speedScale (downed 0.3, legs disabled 0.5), so the state multiplier stays 1.0 to avoid a double scale"
+  },
+
+  "direction": {
+    "backpedal": 0.75,
+    "strafe": 0.85,
+    "_strafe_note": "ASSUMED; vanilla strafes at half the forward force. Diagonals are normalised, so no diagonal speed bonus."
+  },
+
+  "curves": {
+    "accel_seconds": 0.10,
+    "brake_seconds": 0.08,
+    "turn_seconds": 0.06,
+    "_curves_note": "seconds to reach the base speed from rest / to stop from it / to reverse; linear in speed, scaled by ground grip",
+    "knocked_control": 0.25
+  },
+
+  "grip": {
+    "normal": 1.0,
+    "slippery": 0.12,
+    "grease": 0.12,
+    "magic_grease": 0.2,
+    "cleats_floor": 0.6,
+    "slow_tile_speed": 0.25
+  },
+
+  "sprint": {
+    "boost": 1.5,
+    "stamina_per_second": 4.0,
+    "_sprint_note": "SprintMod hold Left Shift, 1.5x, drained 4 per s from stamina (src/apx_stamina.hpp). At 0 sprint stops and stays off until the key is released.",
+    "min_stamina_to_start": 1.0
+  },
+
+  "impulse": {
+    "cap_units_per_tick": 7.0,
+    "max_stack": 8,
+    "knocked_min_speed": 0.15,
+    "_impulse_note": "impulse(vx, vy, ticks): velocity vx,vy units per tick falling linearly to 0 over ticks; distance = |v| * (ticks + 1) / 2 on open floor"
+  },
+
+  "legacy": {
+    "decay_per_tick": 0.75,
+    "_legacy_note": "vanilla writers of vel_x/vel_y (knockback fields, dash, strafe, player push, wind) keep their vanilla 0.75 per tick decay"
+  },
+
+  "collision": {
+    "bisect_steps": 6,
+    "nudge_max_units": 3.0,
+    "nudge_step_units": 0.5
+  },
+
+  "look": {
+    "smooth_decay_per_tick": 0.5,
+    "smooth_clamp": 0.35,
+    "smooth_gain": 0.006,
+    "raw_gain": 0.01,
+    "_look_note": "mouse look as vanilla feel: unsmoothed turn = dx * raw_gain * sensitivity/128 radians (clamped), smoothed accumulates gain with half-life of one tick; invert via the reverse-mouse setting"
+  }
+}

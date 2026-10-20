@@ -46,7 +46,7 @@ def launch(exe, env_extra, tag, timeout_s):
 def checks(r):
     if not r:
         return [("row written", False, None)]
-    n = max(1, r["breaks"])
+    n = max(1, r["cages"])
     se = lambda p: 3 * math.sqrt(p * (1 - p) / n)  # noqa: E731
     sk, tr = r["skeletons"] / n, r["trinkets"] / n
     return [
@@ -55,7 +55,7 @@ def checks(r):
         ("sat with stamina regen", r["sits"] >= 1 and r["sit_ticks"] > 0, [r["sits"], r["sit_ticks"], r["stamina_after_sit"]]),
         ("table is a FIELD bench", r["benches"] == 1 and r["field_bench_near"] == 1, [r["benches"], r["field_bench_near"]]),
         ("podium read a history row", r["reads"] == 1 and r["read_id"].startswith("h"), [r["reads"], r["read_id"]]),
-        ("200 cages broke", r["cages"] == 200 and r["breaks"] == 200, [r["cages"], r["breaks"]]),
+        ("200 cages broke (plus the chair's wood break)", r["cages"] == 200 and r["breaks"] == 200 + (1 if r.get("wood_grams", 0) > 0 else 0), [r["cages"], r["breaks"]]),
         ("skeleton share 25 +- 3 SE", abs(sk - 0.25) <= se(0.25), round(sk * 100, 1)),
         ("trinket share 45 +- 3 SE", abs(tr - 0.45) <= se(0.45), round(tr * 100, 1)),
         ("spawned skeletons tagged fodder (D74)", r["skeletons"] > 0 and r["skeletons_fodder"] == r["skeletons"], [r["skeletons"], r["skeletons_fodder"]]),
@@ -67,6 +67,7 @@ def checks(r):
          [r.get("torch_found"), r.get("torch_kept"), r.get("torch_dark"), r.get("got_torch"), r.get("relit")]),
         ("repair one step through F6 (ledger grams), from the bench Repair tab row (TAB_REPAIR, ROW_REPAIR_STEP)", r.get("repair_row") == 1 and r.get("repair_ok") == 1 and r.get("status_after") == r.get("status_before", -9) + 1 and r.get("repair_grams", 0) > 0,
          [r.get("repair_ok"), r.get("status_before"), r.get("status_after"), r.get("repair_grams"), r.get("repair_why")]),
+        ("a broken chair pays 1200 g of oak into the pouch", r.get("wood_grams") == 1200, r.get("wood_grams")),
         ("repairGrams (no ledger check) equals the bench cost", r.get("grams_no_ledger") == r.get("repair_grams") and r.get("repair_grams", 0) > 0, [r.get("grams_no_ledger"), r.get("repair_grams")]),
         ("repairPaid: one more step, ledger untouched (merchant service)", r.get("paid_ok") == 1 and r.get("paid_status") == r.get("status_after", -9) + 1 and r.get("paid_ledger_delta") == 0,
          [r.get("paid_ok"), r.get("status_after"), r.get("paid_status"), r.get("paid_ledger_delta")]),

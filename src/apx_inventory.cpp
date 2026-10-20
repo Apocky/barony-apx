@@ -16,6 +16,13 @@
 #include "menu.hpp"
 #include "monster.hpp"
 #include "apx_bench_api.hpp"
+#include "ui/GameUI.hpp"
+#include "ui/Button.hpp"
+#include "apx/vox/builder.hpp"
+#include "apx/qadriver.hpp"
+#include <filesystem>
+#include <fstream>
+#include "apx/vox/bx1.hpp"
 #include "apx/headless.hpp"
 #include <cmath>
 #include "interface/interface.hpp"
@@ -23,6 +30,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <set>
+#include <map>
 #include <sstream>
 
 namespace apx_inv

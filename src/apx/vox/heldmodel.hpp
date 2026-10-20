@@ -25,7 +25,8 @@ namespace vox
 	// player-built models (the voxel builder): stored once per look hash as <outputdir>/apxlooks/<hash>.vox
 	uint32_t storeLook(const bx1::VoxModel& m);      // returns the look hash (0 on failure)
 	const bx1::VoxModel* findLook(uint32_t look);     // cached; loads from the store; nullptr when absent
-	struct Stats { int registered = 0, composed = 0, cacheHits = 0, partsSkipped = 0, looksUsed = 0, looksMissing = 0; };
+	void lookArrived(uint32_t look);                  // a look came over the network: redraw the weapons that lacked it
+	struct Stats { int registered = 0, composed = 0, cacheHits = 0, partsSkipped = 0, looksUsed = 0, looksMissing = 0, recomposed = 0; };
 	const Stats& stats();
 } // namespace vox
 } // namespace apx

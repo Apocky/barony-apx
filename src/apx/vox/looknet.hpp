@@ -19,7 +19,9 @@ namespace looknet
 	void announce(uint32_t look, const bx1::VoxModel& m); // after a build (no-op in single player)
 	void serverRecv();                                      // net.cpp server handler for 'LOOK'
 	void clientRecv();                                      // net.cpp client handler for 'LOOK'
-	struct Stats { int announced = 0, chunksSent = 0, received = 0, rejected = 0; };
+	void request(uint32_t look);                            // client: ask the server for a missing look (once per look)
+	void serverRecvRequest();                               // net.cpp server handler for 'LKRQ'
+	struct Stats { int announced = 0, chunksSent = 0, received = 0, rejected = 0, requested = 0, served = 0, unknown = 0; };
 	const Stats& stats();
 } // namespace looknet
 } // namespace vox

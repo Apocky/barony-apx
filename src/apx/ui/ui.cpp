@@ -169,6 +169,17 @@ namespace ui
 	bool contextReady() { return g_ready; }
 	bool ownsTextInput() { return g_textStarted; }
 
+	bool wantsMouse(int player)
+	{
+		if ( !g_ready || player != inputs.getPlayerIDAllowedKeyboard() ) { return false; }
+		return wantMouse();
+	}
+	bool wantsKeyboard(int player)
+	{
+		if ( !g_ready || player != inputs.getPlayerIDAllowedKeyboard() ) { return false; }
+		return g_textStarted || ImGui::GetIO().WantTextInput;
+	}
+
 	bool wantMouse()
 	{
 		if ( !g_ready ) { return false; }

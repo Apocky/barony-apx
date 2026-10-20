@@ -1,0 +1,9 @@
+wait 6000
+look 0 -80
+wait 500
+shot d0_table_aim
+wait 500
+look -60 0
+wait 500
+shot d1_left
+quit

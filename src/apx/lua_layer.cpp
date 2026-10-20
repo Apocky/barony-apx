@@ -18,6 +18,7 @@
 #include "../paths.hpp"
 #include "../shops.hpp"
 #include "trade_glue.hpp"
+#include "hostility.hpp"
 #include "parts_engine.hpp"
 #include "../items.hpp"
 #include "lua_layer.hpp"
@@ -224,8 +225,13 @@ int api_spawn(lua_State* L) {
 int api_set_target(lua_State* L) {
 	Entity* m = entityByUid(luaL_checkinteger(L, 1)); Entity* t = entityByUid(luaL_checkinteger(L, 2));
 	if ( multiplayer == CLIENT || !m || !t || m->behavior != &actMonster ) { lua_pushboolean(L, 0); return 1; }
+	apx::hostility::eventSet(m->getUID(), t->getUID(), "director set_target"); // D93: a director event sets hostility, logged
 	m->monsterAcquireAttackTarget(*t, MONSTER_STATE_PATH);
 	lua_pushboolean(L, 1); return 1;
+}
+int api_set_hostile(lua_State* L) { // apx.set_hostile(uidA, uidB, reason): a director event makes the pair foes (logged)
+	apx::hostility::eventSet((uint32_t)luaL_checkinteger(L, 1), (uint32_t)luaL_checkinteger(L, 2), luaL_optstring(L, 3, "director event"));
+	return 0;
 }
 // Send a monster walking to a tile (idle patrol): path generation by the engine's own pathfinder.
 int api_path_to(lua_State* L) {
@@ -552,7 +558,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "test_teleport", api_test_teleport }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "shop_buy", api_shop_buy }, { "pouch_grams", api_pouch_grams }, { "shop_probe_bundle", api_shop_probe_bundle }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "set_hostile", api_set_hostile }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "test_teleport", api_test_teleport }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "shop_buy", api_shop_buy }, { "pouch_grams", api_pouch_grams }, { "shop_probe_bundle", api_shop_probe_bundle }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };

@@ -1,0 +1,133 @@
+{
+ "version": 1,
+ "settings": {
+  "mouseSensitivity": 1.0,
+  "invertLookY": false,
+  "padDeadzone": 0.2,
+  "padLookCurve": 1.5,
+  "padLookScale": 24.0
+ },
+ "bindings": {
+  "Attack": [
+   "mouse:1",
+   "padaxis:righttrigger"
+  ],
+  "Block": [
+   "key:Q",
+   "padaxis:lefttrigger"
+  ],
+  "Dodge": [
+   "key:Space",
+   "padbtn:b"
+  ],
+  "Kick": [
+   "key:V",
+   "padbtn:rightstick"
+  ],
+  "Use": [
+   "mouse:3",
+   "key:E",
+   "padbtn:x"
+  ],
+  "Cast": [
+   "key:F",
+   "padbtn:rightshoulder"
+  ],
+  "Sneak": [
+   "key:Left Ctrl",
+   "key:C"
+  ],
+  "Sprint": [
+   "key:Left Shift",
+   "padbtn:leftstick"
+  ],
+  "Inventory": [
+   "key:I",
+   "padbtn:back"
+  ],
+  "Map": [
+   "key:M"
+  ],
+  "Menu": [
+   "key:Escape",
+   "padbtn:start"
+  ],
+  "HotbarNext": [
+   "wheel:down",
+   "padbtn:dpright"
+  ],
+  "HotbarPrev": [
+   "wheel:up",
+   "padbtn:dpleft"
+  ],
+  "Chat": [
+   "key:Return"
+  ],
+  "Console": [
+   "key:`"
+  ],
+  "UiAccept": [
+   "key:Return",
+   "padbtn:a"
+  ],
+  "UiBack": [
+   "key:Escape",
+   "padbtn:b"
+  ],
+  "UiNext": [
+   "key:Tab",
+   "padbtn:dpdown"
+  ],
+  "UiPrev": [
+   "padbtn:dpup"
+  ],
+  "MoveX": [
+   "key:D:1",
+   "key:A:-1",
+   "padaxis:leftx"
+  ],
+  "MoveY": [
+   "key:W:1",
+   "key:S:-1",
+   "padaxis:lefty:-1"
+  ],
+  "LookX": [
+   "mouse:x",
+   "padaxis:rightx"
+  ],
+  "LookY": [
+   "mouse:y",
+   "padaxis:righty"
+  ],
+  "Hotbar1": [
+   "key:1"
+  ],
+  "Hotbar2": [
+   "key:2"
+  ],
+  "Hotbar3": [
+   "key:3"
+  ],
+  "Hotbar4": [
+   "key:4"
+  ],
+  "Hotbar5": [
+   "key:5"
+  ],
+  "Hotbar6": [
+   "key:6"
+  ],
+  "Hotbar7": [
+   "key:7"
+  ],
+  "Hotbar8": [
+   "key:8"
+  ],
+  "Hotbar9": [
+   "key:9"
+  ],
+  "Hotbar10": [
+   "key:0"
+  ]
+ }
+}

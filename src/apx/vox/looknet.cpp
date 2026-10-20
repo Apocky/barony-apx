@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <set>
 #include <vector>
 
 namespace apx
@@ -24,6 +25,7 @@ namespace looknet
 		constexpr int kChunk = NET_PACKET_SIZE - kHead - 16;
 		struct Partial { int count = 0, got = 0; std::map<int, std::vector<uint8_t>> chunks; };
 		std::map<uint32_t, Partial> g_partial;
+		std::set<uint32_t> g_asked;                     // looks this client already requested
 		Stats g_stats;
 
 		void put16(uint8_t* p, int v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
@@ -78,16 +80,28 @@ namespace looknet
 			g_partial.erase(look);
 			bx1::VoxModel m; std::string err;
 			if ( !bx1::readBytes(all, m, err) || bx1::hash(m) != look ) { ++g_stats.rejected; printlog("[apx-vox] LOOK %08x rejected (%s)", look, err.empty() ? "hash mismatch" : err.c_str()); return {}; }
-			if ( storeLook(m) == look ) { registerModel(m); ++g_stats.received; printlog("[apx-vox] LOOK %08x received (%zu bytes)", look, all.size()); }
+			if ( storeLook(m) == look ) { registerModel(m); lookArrived(look); ++g_stats.received; printlog("[apx-vox] LOOK %08x received (%zu bytes)", look, all.size()); }
 			return all;
 		}
 	} // namespace
 
 	const Stats& stats() { return g_stats; }
 
+	namespace
+	{
+		// which client sent the current packet: match the address (-1: unknown)
+		int senderPlayer()
+		{
+			for ( int c = 1; c < MAXPLAYERS; ++c ) { if ( !client_disconnected[c] && net_clients[c - 1].host == net_packet->address.host && net_clients[c - 1].port == net_packet->address.port ) { return c; } }
+			return -1;
+		}
+	} // namespace
+
 	void announce(uint32_t look, const bx1::VoxModel& m)
 	{
 		if ( multiplayer == SINGLE || !look ) { return; }
+		static const bool skip = std::getenv("APX_LOOK_NOANNOUNCE") && std::getenv("APX_LOOK_NOANNOUNCE")[0] == '1'; // test: the clients miss it (as a later joiner does)
+		if ( skip ) { printlog("[apx-vox] LOOK %08x not announced (APX_LOOK_NOANNOUNCE)", look); return; }
 		const std::vector<uint8_t> bytes = bx1::toBytes(m);
 		if ( multiplayer == CLIENT ) { sendTo(look, bytes, -1); }   // to the server, which relays
 		else { relayToClients(look, bytes, -1); }                    // the host: to every client
@@ -99,11 +113,36 @@ namespace looknet
 	{
 		const uint8_t* d = net_packet->data;
 		const int len = net_packet->len;
-		// which client sent it: match the address
-		int from = -1;
-		for ( int c = 1; c < MAXPLAYERS; ++c ) { if ( !client_disconnected[c] && net_clients[c - 1].host == net_packet->address.host && net_clients[c - 1].port == net_packet->address.port ) { from = c; break; } }
+		const int from = senderPlayer();
 		const std::vector<uint8_t> all = receive(d, len);
 		if ( !all.empty() ) { relayToClients(get32(d + 4), all, from); }
+	}
+
+	void request(uint32_t look)
+	{
+		if ( multiplayer != CLIENT || !look || g_asked.count(look) ) { return; }
+		static const bool off = std::getenv("APX_LOOK_NOREQ") && std::getenv("APX_LOOK_NOREQ")[0] == '1'; // control: no request, the part stays procedural
+		if ( off ) { return; }
+		g_asked.insert(look);
+		memcpy(net_packet->data, "LKRQ", 4);
+		put32(net_packet->data + 4, look);
+		net_packet->len = 8;
+		net_packet->address.host = net_server.host; net_packet->address.port = net_server.port;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+		++g_stats.requested;
+		printlog("[apx-vox] LKRQ %08x requested", look);
+	}
+
+	void serverRecvRequest()
+	{
+		if ( net_packet->len < 8 ) { return; }
+		const uint32_t look = get32(net_packet->data + 4);
+		const int from = senderPlayer();
+		const bx1::VoxModel* m = findLook(look);
+		if ( from < 1 || !m ) { ++g_stats.unknown; printlog("[apx-vox] LKRQ %08x from %d: %s", look, from, m ? "unknown sender" : "look not here"); return; }
+		sendTo(look, bx1::toBytes(*m), from - 1);
+		++g_stats.served;
+		printlog("[apx-vox] LKRQ %08x served to player %d", look, from);
 	}
 
 	void clientRecv() { receive(net_packet->data, net_packet->len); }

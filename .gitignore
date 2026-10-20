@@ -90,3 +90,4 @@ build-tests/
 
 # apx release packages (tools/apx/package.ps1)
 /dist/
+__pycache__/

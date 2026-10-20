@@ -151,6 +151,17 @@ the stages features -> impact -> tierdmg -> inventory -> moves -> f4c (src/apx/s
 | f4c | all 19 poise/zone/downed checks pass (runs last: it downs player 0) | `APX_POISE=0`, `APX_ZONES=0`, `APX_DOWNED=0` |
 
 Headless skips the inventory UI phases (they need a visible window); windowed runs them.
+### FPS gate (lag regressions)
+
+```
+pwsh -NoProfile -File tools\apx\fps_gate.ps1 -Candidate <exe> -Base <apx-main exe> [-Repeat 2]
+```
+
+Runs both builds back to back through `tools\apx\fps_probe.ps1` (exclusive, windowed 1280x720, never touches the
+mouse): `-apxfpsprobe` records uncapped frame times for 10 s with the inventory closed, then 10 s open, on the start
+map and on floor 1 (seed 1234567). FAIL when the candidate's median fps p50 falls below 85 percent of the base's, or
+its p99 below 80 percent, in any (floor, phase). Same-session comparison: the machine's load varies a lot between
+runs (0.1.2's own inventory-open p50 measured 84-131 on one day), so absolute numbers are recorded, not gated.
 ## Test farm: -apxheadless and farm.py
 
 `-apxheadless` (or `APX_HEADLESS=1`) runs the game with a hidden window (never focused, so no key
@@ -244,3 +255,25 @@ Card: Apockalypsis handovers/tasks/BF6-parts-gear-card.md. Plan and stop rules: 
   salvage for the BU1 bench (src/apx/parts_bench.cpp registers with src/apx_bench_api.hpp when present); palette
   tint on the held weapon (materials.json "tint", Entity::lightBonus; APX_PARTS_VIS=0 off). Not yet: crafting
   (next slice), shop sync (shops sell materials per D73), part models (BF6-5, D79 voxel tool).
+
+## D93 C0: apx::in, the one owner of play input (`src/apx/in/`)
+
+`apx::in` is the first reader of every SDL input event (`apx::in::glue::observe`, top of the event loop in
+game.cpp) and hands the sim one `TickRecord` per tick (`take(player)`: held bits, per-action press/release counts
+with event times, summed move/look/swing). Actions and bindings are data: `data/apx/input/actions.json`,
+`bindings.json` (Sprint = Left Shift); a user file `bindings.user.json` in the config folder replaces an action's
+defaults. The owner gate (once per frame) gives each device to GAME, VANILLA (a vanilla window or text field) or
+APXUI (`apx::ui::wantsMouse/wantsKeyboard`, our ImGui windows); an owner switch delivers releases.
+The compat feed (TEMPORARY) writes Barony's `keystatus`/`mousestatus`/`Input::keys`/`Input::mouseButtons`/
+`mousexrel` from the latched state, so a tap is visible to the old code for one sim tick and the legacy mouse
+look is applied exactly once per tick. `APX_INPUT_OLD=1` is the CONTROL: the old raw path (loses short presses).
+Knobs: `APX_INPUT_LOG=1` (per-tick JSONL, file `APX_INPUT_LOG_FILE`, default `input-log.jsonl`), `-apxreplay=<file>`
+(drive play from a log; closes when it ends), `APX_INPUT_DIR` (data dir). D90 event `input` once a second
+(`lost` must be 0).
+
+```
+pwsh -NoProfile -File tools\apx\tests\run_in_units.ps1                      # offline units + control (seconds)
+python tools\apx\input_gate.py --exe <exe> all                              # matrix + ui + replay -> C:\Apocrypha\diagnostics\input\run-*
+```
+QA driver: `act <action> <ms>` / `act <action> press|release` (through apx::in's queue; raw SDL events under
+`APX_INPUT_OLD=1`), `sdlact <action> <ms>` (SDL path), `mark <label>` (counters to `<qa>/marks.jsonl`).

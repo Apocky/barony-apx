@@ -10,6 +10,7 @@ See LICENSE for details.
 -------------------------------------------------------------------------------*/
 
 #include "apx/trade_glue.hpp"
+#include "apx/diag.hpp"
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "apx/tactics.hpp"
@@ -46,6 +47,7 @@ See LICENSE for details.
 #include "apx_combat.hpp"
 #include "apx/combat/impact.hpp" // [apx-hit] impact_uses
 #include "apx/tiers.hpp"
+#include "apx/hostility.hpp" // apx D93: who fights whom
 
 /*-------------------------------------------------------------------------------
 
@@ -3211,7 +3213,9 @@ void Entity::setHP(int amount)
 	{
 		return;
 	}
+	const int apxDiagHpBefore = healthDiff;
 	entitystats->HP = std::min(std::max(0, amount), entitystats->MAXHP);
+	if ( this->behavior == &actPlayer && entitystats->HP <= 0 && apxDiagHpBefore > 0 ) { apxdiag::eventf("death", "\"player\":%d,\"hp_before\":%d", (int)this->skill[2], apxDiagHpBefore); }
 	healthDiff -= entitystats->HP;
 	strncpy(entitystats->obituary, Language::get(1500), 127);
 
@@ -19069,6 +19073,14 @@ bool Entity::checkEnemy(Entity* your)
 		}
 	}
 
+	// apx::hostility (D93): creature vs creature is decided by data/apx/combat/hostility.json, provocation, followers, events and the
+	// calm start; Barony's swornenemies table is not consulted for it. Pairs with a player fall through. APX_HOSTILITY_OLD=1: vanilla.
+	if ( behavior == &actMonster && (your->behavior == &actMonster || your->behavior == &actPlayer) )
+	{
+		bool apxHandled = false;
+		const bool apxRes = apx::hostility::hook(this, your, &apxHandled);
+		if ( apxHandled ) { return apxRes; }
+	}
 	// if you have a leader, check whether we are enemies instead
 	Entity* yourLeader = NULL;
 	if ( yourStats->leader_uid )
