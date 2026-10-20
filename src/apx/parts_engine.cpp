@@ -80,9 +80,28 @@ bool apxPartsEnabled()
 	return on == 1 && !db().families.empty();
 }
 
+void apxPartsBioFloor() // 05b s3 biography: every part of every equipped item carried onto a new floor
+{
+	for ( int p = 0; p < MAXPLAYERS; ++p )
+	{
+		if ( !stats[p] || client_disconnected[p] ) { continue; }
+		Item* worn[] = { stats[p]->weapon, stats[p]->shield, stats[p]->helmet, stats[p]->breastplate, stats[p]->gloves, stats[p]->shoes, stats[p]->cloak, stats[p]->mask };
+		for ( Item* it : worn ) { if ( it ) { for ( int k = 0; k < it->apx.nParts; ++k ) { if ( it->apx.parts[k].floors < 255 ) { ++it->apx.parts[k].floors; } } } }
+	}
+}
+
+void apxPartsOnKill(int player) // 05b s3 biography: a kill by a player counts on every part of the wielded weapon
+{
+	if ( player < 0 || player >= MAXPLAYERS || !stats[player] || !stats[player]->weapon || !apxPartsEnabled() ) { return; }
+	Item* w = stats[player]->weapon;
+	for ( int k = 0; k < w->apx.nParts; ++k ) { if ( w->apx.parts[k].kills < 65535 ) { ++w->apx.parts[k].kills; } }
+	++apxPartsCounters.bio_kills;
+}
+
 void apxPartsLevelStart()
 {
 	floorIndex = 0;
+	if ( apxPartsEnabled() ) { apxPartsBioFloor(); }
 	::apx::vglue::floorChanged(); // BV1: the variant spawn index restarts with the floor
 	apxPartsBenchRegister();
 	floorParts.clear();
@@ -507,6 +526,7 @@ bool keepAsMaterialCtl() { const char* v = getenv("APX_BREAK_KEEP_MATERIAL"); re
 namespace {
 constexpr Uint32 AURA_TAG = 0xAu << 28;
 std::vector<uint16_t> pendingAura[MAXPLAYERS]; // the station path: SalvageValue runs before the station decides to grant
+std::vector<uint8_t> pendingAuraMag[MAXPLAYERS];
 }
 bool apxPartsIsAura(const Item* item) { return item && item->type == GEM_GLASS && (item->appearance & 0xF0000000u) == AURA_TAG; }
 int apxPartsAuraAffix(const Item* item) { return apxPartsIsAura(item) ? (int)(item->appearance & 0xFFFF) : -1; }
@@ -515,20 +535,24 @@ const char* apxPartsAuraName(const Item* item)
 	static char buf[96];
 	const int a = apxPartsAuraAffix(item);
 	const char* w = a >= 0 && a < (int)db().affixes.size() ? db().affixes[(size_t)a].label.c_str() : "?";
+	const int m = apxPartsAuraMag(item);
 	if ( item && !item->identified ) { snprintf(buf, sizeof(buf), "aura crystal"); }
+	else if ( m > 0 ) { snprintf(buf, sizeof(buf), "aura crystal (%s, %d)", w, m); }
 	else { snprintf(buf, sizeof(buf), "aura crystal (%s)", w); }
 	return buf;
 }
-Item* apxPartsMakeAura(int affix, int count, bool identified)
+int apxPartsAuraMag(const Item* item) { return apxPartsIsAura(item) ? (int)((item->appearance >> 16) & 0xFF) : 0; }
+Item* apxPartsMakeAura(int affix, int count, bool identified, int mag)
 {
 	if ( affix < 0 || affix >= (int)db().affixes.size() || count <= 0 ) { return nullptr; }
-	return newItem(GEM_GLASS, SERVICABLE, 0, (Sint16)count, AURA_TAG | (Uint32)affix, identified, nullptr);
+	return newItem(GEM_GLASS, SERVICABLE, 0, (Sint16)count, AURA_TAG | ((Uint32)(mag & 0xFF) << 16) | (Uint32)affix, identified, nullptr);
 }
-void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified)
+void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified, const std::vector<uint8_t>* mags)
 {
-	for ( uint16_t a : affixes )
+	for ( size_t i = 0; i < affixes.size(); ++i )
 	{
-		Item* c = apxPartsMakeAura(a, 1, identified);
+		const uint16_t a = affixes[i];
+		Item* c = apxPartsMakeAura(a, 1, identified, mags && i < mags->size() ? (*mags)[i] : 0); // the crystal keeps the magnitude it held
 		if ( !c ) { continue; }
 		itemPickup(player, c);
 		free(c);
@@ -540,8 +564,10 @@ void apxPartsGivePendingAura(int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return; }
 	std::vector<uint16_t> v;
+	std::vector<uint8_t> m;
 	v.swap(pendingAura[player]);
-	apxPartsGiveAura(player, v, true);
+	m.swap(pendingAuraMag[player]);
+	apxPartsGiveAura(player, v, true, &m);
 }
 
 bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why) // the same rules, nothing changes
@@ -566,7 +592,7 @@ bool apxPartsInfuse(int player, Item* item, int part, Uint32 crystalUid, int sta
 	for ( node_t* n = stats[player]->inventory.first; n; n = n->next ) { Item* it = (Item*)n->element; if ( it && it->uid == crystalUid && apxPartsIsAura(it) ) { crystal = it; } }
 	if ( !crystal ) { why = "the aura crystal is not in the inventory"; ++apxPartsCounters.infuse_refused; return false; }
 	ApxPart p = item->apx.parts[part];
-	if ( !apxparts::infuse(db(), p, (uint16_t)apxPartsAuraAffix(crystal), why) ) { ++apxPartsCounters.infuse_refused; return false; }
+	if ( !apxparts::infuse(db(), p, (uint16_t)apxPartsAuraAffix(crystal), why, (uint8_t)apxPartsAuraMag(crystal)) ) { ++apxPartsCounters.infuse_refused; return false; }
 	ApxItemData t = item->apx;
 	t.parts[part] = p;
 	apxparts::refreshDerived(db(), t);
@@ -1011,7 +1037,7 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	};
 	give(TOOL_METAL_SCRAP, metal);
 	give(TOOL_MAGIC_SCRAP, magic);
-	apxPartsGiveAura(player, r.auraAffixes, item->identified); // C6: each crystal holds its affix
+	apxPartsGiveAura(player, r.auraAffixes, item->identified, &r.auraMags); // C6: each crystal holds its affix and magnitude
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
 	printlog("apxparts: salvage-keep player %d type %d parts %d keep %d crafted %d -> components %d metal %d magic %d aura %d (mass %d -> %d g; ledger %lld g)\n", player, (int)item->type,
@@ -1739,7 +1765,7 @@ bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, 
 	if ( magic ) { *magic = gu; }
 	if ( auraCrystals ) { *auraCrystals = r.auraCrystals; }
 	giveComponents(player, r, item->identified, item->beatitude); // D86: a crafted item's parts come back as component items
-	if ( player >= 0 && player < MAXPLAYERS ) { pendingAura[player] = r.auraAffixes; }
+	if ( player >= 0 && player < MAXPLAYERS ) { pendingAura[player] = r.auraAffixes; pendingAuraMag[player] = r.auraMags; }
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
 	printlog("apxparts: salvage type %d parts %d mass %d g -> %d g (looted %d, discharged %d) metal %d magic %d aura %d ledger %lld g\n",

@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class Item;
 class Entity;
@@ -10,7 +11,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, bio_kills = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -78,7 +79,11 @@ bool apxPartsPouchTakeScrap(int player, int cls, int units);
 bool apxPartsIsAura(const Item* item);
 int apxPartsAuraAffix(const Item* item);
 const char* apxPartsAuraName(const Item* item);
-Item* apxPartsMakeAura(int affix, int count, bool identified = true);       // loose (shop stock)
+Item* apxPartsMakeAura(int affix, int count, bool identified = true, int mag = 0); // loose (shop stock); mag in appearance bits 16-23
+int apxPartsAuraMag(const Item* item);
+void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified, const std::vector<uint8_t>* mags = nullptr);
+void apxPartsOnKill(int player);                                           // Entity::awardXP: a player's kill (biography)
+void apxPartsBioFloor();                                                   // level start: equipped parts carried a floor
 void apxPartsGivePendingAura(int player);                                  // tinkering station: after it grants the scrap
 bool apxPartsInfuse(int player, Item* item, int part, uint32_t crystalUid, int station, std::string& why); // station 3 = crucible
 bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why); // dry run of the same rules

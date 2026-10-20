@@ -136,10 +136,10 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 			if ( gear && p.material == db.fleshMaterial ) { ++c.forbidden; }
 			p.quality = (uint8_t)quality;
 			p.rarity = (uint8_t)rollRarity(r, quality);
-			p.integrity = (uint8_t)(40 + r.below(216));
+			p.integrity = (uint8_t)(40 + r.below(216)); p.foundDepth = (uint8_t)depth; // 05b s3 biography
 			p.maker = 0;
 			const AffixPool* pool = db.pool(tf.family, slots[k]);
-			p.nAffix = pool ? (uint8_t)std::min<int>(p.rarity, std::min(4, pool->count)) : 0;
+			p.nAffix = pool ? (uint8_t)std::min<int>(p.rarity, std::min(APX_MAX_AFFIX, pool->count)) : 0;
 			// 05b section 4 fill order (G19:66): a prefix, then a suffix, then any; each pick weighted by the
 			// affix's rarity weight among the unused entries of the wanted position (any position when none is left)
 			bool used[64] = { false };
@@ -149,12 +149,15 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 				auto ok = [&](int j, bool posOnly) {
 					if ( used[j] ) { return false; }
 					const size_t id = (size_t)(pool->firstId + j);
+					ApxPart sofar = p; sofar.nAffix = (uint8_t)a;
+					if ( affixConflicts(db, sofar, (uint16_t)id) ) { return false; }
 					return !posOnly || want < 0 || (id < db.affixes.size() && db.affixes[id].position == want);
 				};
 				bool posOnly = false;
 				for ( int j = 0; j < pool->count && j < 64 && !posOnly; ++j ) { posOnly = want >= 0 && ok(j, true); }
 				int sum = 0;
 				for ( int j = 0; j < pool->count && j < 64; ++j ) { if ( ok(j, posOnly) ) { const size_t id = (size_t)(pool->firstId + j); sum += id < db.affixes.size() ? db.affixes[id].weight : 1; } }
+				if ( sum <= 0 ) { p.nAffix = (uint8_t)a; ++c.affix_starved; break; } // every entry used or in conflict: fewer affixes, counted (never a forced pick)
 				int x = r.below(sum), pick = 0;
 				for ( int j = 0; j < pool->count && j < 64; ++j )
 				{
@@ -165,6 +168,7 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 				}
 				used[pick] = true;
 				p.affix[a] = (uint16_t)(pool->firstId + pick);
+				p.mag[a] = (uint8_t)rollMagnitude(db, p.affix[a], p.rarity, r.next());
 			}
 			if ( p.rarity > out.parts[best].rarity ) { best = (int)k; }
 		}
@@ -199,23 +203,42 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 	}
 }
 
-// ---------------------------------------------------------------- save string v1
+// ---------------------------------------------------------------- save string (v1 base; v2 = extension tokens)
+// A part is "P<slot>.<material>.<quality>.<rarity>.<integrity>.<maker>.<nAffix>.<a0>-<a1>-<a2>-<a3>" then, in
+// this order and only when set, ":l<look hex8>" (BX1), ":x<a4>" (the 5th, Unique affix), ":m<m0>.<m1>.<m2>.<m3>.<m4>"
+// (affix magnitudes), ":b<kills>.<floors>.<found depth>" (biography), then ";". A string with no extension
+// token anywhere is "v1;..." and byte-identical to the format before them; any token makes it "v2;...".
+namespace {
+bool partHasExt(const ApxPart& p)
+{
+	bool m = false;
+	for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { m = m || p.mag[a] != 0; }
+	return p.look || p.nAffix > 4 || p.affix[4] || m || p.kills || p.floors || p.foundDepth;
+}
+}
+
 std::string toString(const ApxItemData& it)
 {
 	if ( it.nParts == 0 ) { return ""; }
-	char buf[96];
+	char buf[128];
 	std::string s;
-	bool looks = false;
-	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { looks = looks || it.parts[k].look != 0; }
-	snprintf(buf, sizeof(buf), "%s;f=%u;k=%u;p=%u;n=%u;fl=%u;", looks ? "v2" : "v1", it.form, it.rollKey, it.power, it.nParts, it.flags);
+	bool ext = false;
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { ext = ext || partHasExt(it.parts[k]); }
+	snprintf(buf, sizeof(buf), "%s;f=%u;k=%u;p=%u;n=%u;fl=%u;", ext ? "v2" : "v1", it.form, it.rollKey, it.power, it.nParts, it.flags);
 	s = buf;
 	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k )
 	{
 		const ApxPart& p = it.parts[k];
-		snprintf(buf, sizeof(buf), "P%u.%u.%u.%u.%u.%u.%u.%u-%u-%u-%u;", p.slot, p.material, p.quality, p.rarity, p.integrity, p.maker,
+		snprintf(buf, sizeof(buf), "P%u.%u.%u.%u.%u.%u.%u.%u-%u-%u-%u", p.slot, p.material, p.quality, p.rarity, p.integrity, p.maker,
 			p.nAffix, p.affix[0], p.affix[1], p.affix[2], p.affix[3]);
 		s += buf;
-		if ( p.look ) { s.back() = ':'; snprintf(buf, sizeof(buf), "l%08x;", p.look); s += buf; } // BX1 look, append-only: absent = 0 (strings without looks are byte-identical to v1)
+		if ( p.look ) { snprintf(buf, sizeof(buf), ":l%08x", p.look); s += buf; }
+		if ( p.nAffix > 4 || p.affix[4] ) { snprintf(buf, sizeof(buf), ":x%u", p.affix[4]); s += buf; }
+		bool m = false;
+		for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { m = m || p.mag[a] != 0; }
+		if ( m ) { snprintf(buf, sizeof(buf), ":m%u.%u.%u.%u.%u", p.mag[0], p.mag[1], p.mag[2], p.mag[3], p.mag[4]); s += buf; }
+		if ( p.kills || p.floors || p.foundDepth ) { snprintf(buf, sizeof(buf), ":b%u.%u.%u", p.kills, p.floors, p.foundDepth); s += buf; }
+		s += ";";
 	}
 	char sum[24];
 	snprintf(sum, sizeof(sum), "c=%08x;", (uint32_t)(fnv1a64(s.data(), s.size()) & 0xffffffffu));
@@ -246,7 +269,7 @@ bool fromString(const std::string& s, ApxItemData& out)
 	const char* c = body.c_str();
 	unsigned long long v[8];
 	const bool v2 = lit(c, "v2;f=");
-	if ( !v2 && !lit(c, "v1;f=") || !readU(c, 0xffffffffULL, v[0]) || !lit(c, ";k=") || !readU(c, 0xffffffffULL, v[1]) || !lit(c, ";p=") || !readU(c, 65535, v[2])
+	if ( (!v2 && !lit(c, "v1;f=")) || !readU(c, 0xffffffffULL, v[0]) || !lit(c, ";k=") || !readU(c, 0xffffffffULL, v[1]) || !lit(c, ";p=") || !readU(c, 65535, v[2])
 		|| !lit(c, ";n=") || !readU(c, APX_MAX_PARTS, v[3]) || !lit(c, ";fl=") || !readU(c, 255, v[4]) || !lit(c, ";") ) { return false; }
 	it.form = (uint32_t)v[0]; it.rollKey = (uint32_t)v[1]; it.power = (uint16_t)v[2]; it.nParts = (uint8_t)v[3]; it.flags = (uint8_t)v[4];
 	for ( int k = 0; k < it.nParts; ++k )
@@ -254,23 +277,31 @@ bool fromString(const std::string& s, ApxItemData& out)
 		ApxPart& p = it.parts[k];
 		unsigned long long f[11];
 		if ( !lit(c, "P") ) { return false; }
-		for ( int j = 0; j < 7; ++j ) { if ( !readU(c, 255, f[j]) || !lit(c, j < 6 ? "." : ".") ) { return false; } }
-		for ( int j = 0; j < 4; ++j )
-		{
-			if ( !readU(c, 65535, f[7 + j]) ) { return false; }
-			if ( j == 3 && v2 && lit(c, ":l") ) // BX1 look: exactly 8 lower-case hex digits, never 0
-			{
-				uint32_t v = 0;
-				for ( int h = 0; h < 8; ++h, ++c ) { const char ch = *c; if ( ch >= '0' && ch <= '9' ) { v = v << 4 | (uint32_t)(ch - '0'); } else if ( ch >= 'a' && ch <= 'f' ) { v = v << 4 | (uint32_t)(ch - 'a' + 10); } else { return false; } }
-				if ( v == 0 ) { return false; }
-				p.look = v;
-			}
-			if ( !lit(c, j < 3 ? "-" : ";") ) { return false; }
-		}
+		for ( int j = 0; j < 7; ++j ) { if ( !readU(c, 255, f[j]) || !lit(c, ".") ) { return false; } }
+		for ( int j = 0; j < 4; ++j ) { if ( !readU(c, 65535, f[7 + j]) || (j < 3 && !lit(c, "-")) ) { return false; } }
 		p.slot = (uint8_t)f[0]; p.material = (uint8_t)f[1]; p.quality = (uint8_t)f[2]; p.rarity = (uint8_t)f[3];
 		p.integrity = (uint8_t)f[4]; p.maker = (uint8_t)f[5]; p.nAffix = (uint8_t)f[6];
-		if ( p.nAffix > 4 ) { return false; }
 		for ( int j = 0; j < 4; ++j ) { p.affix[j] = (uint16_t)f[7 + j]; }
+		if ( v2 && lit(c, ":l") ) // BX1 look: exactly 8 lower-case hex digits, never 0
+		{
+			uint32_t lv = 0;
+			for ( int h = 0; h < 8; ++h, ++c ) { const char ch = *c; if ( ch >= '0' && ch <= '9' ) { lv = lv << 4 | (uint32_t)(ch - '0'); } else if ( ch >= 'a' && ch <= 'f' ) { lv = lv << 4 | (uint32_t)(ch - 'a' + 10); } else { return false; } }
+			if ( lv == 0 ) { return false; }
+			p.look = lv;
+		}
+		if ( v2 && lit(c, ":x") ) { unsigned long long x; if ( !readU(c, 65535, x) ) { return false; } p.affix[4] = (uint16_t)x; }
+		if ( v2 && lit(c, ":m") )
+		{
+			for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { unsigned long long m; if ( !readU(c, 255, m) || (a < APX_MAX_AFFIX - 1 && !lit(c, ".")) ) { return false; } p.mag[a] = (uint8_t)m; }
+		}
+		if ( v2 && lit(c, ":b") )
+		{
+			unsigned long long b0, b1, b2;
+			if ( !readU(c, 65535, b0) || !lit(c, ".") || !readU(c, 255, b1) || !lit(c, ".") || !readU(c, 255, b2) ) { return false; }
+			p.kills = (uint16_t)b0; p.floors = (uint8_t)b1; p.foundDepth = (uint8_t)b2;
+		}
+		if ( !lit(c, ";") ) { return false; }
+		if ( p.nAffix > APX_MAX_AFFIX ) { return false; }
 	}
 	if ( *c != '\0' ) { return false; }
 	out = it;
@@ -278,11 +309,14 @@ bool fromString(const std::string& s, ApxItemData& out)
 }
 
 // ---------------------------------------------------------------- packet blob
+// v3 (written): 32-byte rows = slot material quality rarity integrity nAffix, affix[5] u16 LE, mag[5], maker,
+// pad, look u32 LE, kills u16 LE, floors, foundDepth, pad2. Read: v1 (16-byte rows: 4 affixes, maker, pad),
+// v2 (v1 + look), v3.
 int pack(const ApxItemData& it, uint8_t* o)
 {
 	const int n = std::min<int>(it.nParts, APX_MAX_PARTS);
 	int i = 0;
-	o[i++] = 2; // blob version (2: 20-byte rows with look)
+	o[i++] = 3;
 	for ( int k = 0; k < 4; ++k ) { o[i++] = (uint8_t)(it.form >> (8 * k)); }
 	for ( int k = 0; k < 4; ++k ) { o[i++] = (uint8_t)(it.rollKey >> (8 * k)); }
 	o[i++] = (uint8_t)it.power; o[i++] = (uint8_t)(it.power >> 8);
@@ -292,9 +326,12 @@ int pack(const ApxItemData& it, uint8_t* o)
 	{
 		const ApxPart& p = it.parts[k];
 		o[i++] = p.slot; o[i++] = p.material; o[i++] = p.quality; o[i++] = p.rarity; o[i++] = p.integrity; o[i++] = p.nAffix;
-		for ( int a = 0; a < 4; ++a ) { o[i++] = (uint8_t)p.affix[a]; o[i++] = (uint8_t)(p.affix[a] >> 8); }
+		for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { o[i++] = (uint8_t)p.affix[a]; o[i++] = (uint8_t)(p.affix[a] >> 8); }
+		for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { o[i++] = p.mag[a]; }
 		o[i++] = p.maker; o[i++] = p.pad;
 		for ( int b = 0; b < 4; ++b ) { o[i++] = (uint8_t)(p.look >> (8 * b)); }
+		o[i++] = (uint8_t)p.kills; o[i++] = (uint8_t)(p.kills >> 8);
+		o[i++] = p.floors; o[i++] = p.foundDepth; o[i++] = p.pad2;
 	}
 	return i;
 }
@@ -302,9 +339,10 @@ int pack(const ApxItemData& it, uint8_t* o)
 bool unpack(const uint8_t* in, int len, ApxItemData& out)
 {
 	constexpr int HEAD = 1 + 8 + 2 + 1 + 1; // version, form, rollKey, power, nParts, flags
-	if ( !in || len < HEAD || len > PACK_MAX || (in[0] != 1 && in[0] != 2) ) { return false; }
+	if ( !in || len < HEAD || len > PACK_MAX || in[0] < 1 || in[0] > 3 ) { return false; }
+	const int ver = in[0];
 	const int n = in[11];
-	const int row = in[0] == 1 ? PACK_ROW_V1 : PACK_ROW;
+	const int row = ver == 1 ? PACK_ROW_V1 : ver == 2 ? PACK_ROW_V2 : PACK_ROW;
 	if ( n > APX_MAX_PARTS || len != HEAD + row * n ) { return false; }
 	ApxItemData it{};
 	int i = 1;
@@ -317,10 +355,13 @@ bool unpack(const uint8_t* in, int len, ApxItemData& out)
 	{
 		ApxPart& p = it.parts[k];
 		p.slot = in[i++]; p.material = in[i++]; p.quality = in[i++]; p.rarity = in[i++]; p.integrity = in[i++]; p.nAffix = in[i++];
-		for ( int a = 0; a < 4; ++a ) { p.affix[a] = (uint16_t)(in[i] | (in[i + 1] << 8)); i += 2; }
+		const int na = ver == 3 ? APX_MAX_AFFIX : 4;
+		for ( int a = 0; a < na; ++a ) { p.affix[a] = (uint16_t)(in[i] | (in[i + 1] << 8)); i += 2; }
+		if ( ver == 3 ) { for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { p.mag[a] = in[i++]; } }
 		p.maker = in[i++]; p.pad = in[i++];
-		if ( row == PACK_ROW ) { for ( int b = 0; b < 4; ++b ) { p.look |= (uint32_t)in[i++] << (8 * b); } }
-		if ( p.nAffix > 4 ) { return false; }
+		if ( ver >= 2 ) { for ( int b = 0; b < 4; ++b ) { p.look |= (uint32_t)in[i++] << (8 * b); } }
+		if ( ver == 3 ) { p.kills = (uint16_t)(in[i] | (in[i + 1] << 8)); i += 2; p.floors = in[i++]; p.foundDepth = in[i++]; p.pad2 = in[i++]; }
+		if ( p.nAffix > (ver == 3 ? APX_MAX_AFFIX : 4) ) { return false; }
 	}
 	out = it;
 	return true;
@@ -369,12 +410,12 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 		if ( p.integrity < sp.lowIntegrityByte ) { g = g * sp.lowIntegrityFactorPct / 100; }
 		r.massOut += (int)g;
 		r.grams.push_back({ p.material, (int)g });
-		if ( !r.discharged ) { for ( int a = 0; a < p.nAffix; ++a ) { if ( rng.below(100) < sp.auraPerAffixPct ) { ++r.auraCrystals; r.auraAffixes.push_back(p.affix[a]); } } }
+		if ( !r.discharged ) { for ( int a = 0; a < p.nAffix; ++a ) { if ( rng.below(100) < sp.auraPerAffixPct ) { ++r.auraCrystals; r.auraAffixes.push_back(p.affix[a]); r.auraMags.push_back(p.mag[a]); } } }
 	}
 	if ( keepPart >= 0 && keepPart < it.nParts )
 	{
 		ApxPart p = it.parts[keepPart];
-		if ( r.discharged ) { p.nAffix = 0; memset(p.affix, 0, sizeof(p.affix)); }
+		if ( r.discharged ) { p.nAffix = 0; memset(p.affix, 0, sizeof(p.affix)); memset(p.mag, 0, sizeof(p.mag)); }
 		r.components.push_back(componentOf(db, p, it.rollKey + (uint32_t)keepPart, it.flags));
 	}
 	return r;
@@ -400,7 +441,7 @@ std::string componentName(const DB& db, const ApxPart& p, bool known)
 	if ( p.rarity >= 3 && known ) { ApxItemData t{}; t.nParts = 1; t.parts[0] = p; return properName(db, t); } // Epic and up: a proper name (D87)
 	std::string pre, suf;
 	int nPre = 0, nSuf = 0;
-	for ( int a = 0; a < p.nAffix && a < 4 && known; ++a )
+	for ( int a = 0; a < p.nAffix && a < APX_MAX_AFFIX && known; ++a )
 	{
 		if ( p.affix[a] >= db.affixes.size() ) { continue; }
 		const AffixInfo& ai = db.affixes[p.affix[a]];
@@ -532,7 +573,7 @@ std::string assemblyName(const DB& db, const ApxItemData& it, const std::string&
 	const ApxPart& b = it.parts[bestPart(it)];
 	if ( b.rarity >= 3 ) { return properName(db, it); }
 	std::string pre, suf;
-	for ( int a = 0; a < b.nAffix && a < 4; ++a )
+	for ( int a = 0; a < b.nAffix && a < APX_MAX_AFFIX; ++a )
 	{
 		if ( b.affix[a] >= db.affixes.size() ) { continue; }
 		const AffixInfo& ai = db.affixes[b.affix[a]];
@@ -581,7 +622,28 @@ bool stripParts(const DB& db, ApxItemData& it, std::vector<ApxPart>& removed, bo
 
 namespace apxparts {
 
-int affixSlots(const ApxPart& p) { return std::min(4, (int)p.rarity); }
+int affixSlots(const ApxPart& p) { return std::min(APX_MAX_AFFIX, (int)p.rarity); } // Unique 5 (05b s3)
+
+bool affixConflicts(const DB& db, const ApxPart& p, uint16_t affix)
+{
+	if ( affix >= db.affixes.size() ) { return false; }
+	for ( int a = 0; a < p.nAffix && a < APX_MAX_AFFIX; ++a )
+	{
+		const uint16_t o = p.affix[a];
+		for ( int c : db.affixes[affix].conflicts ) { if ( c == o ) { return true; } }
+		if ( o < db.affixes.size() ) { for ( int c : db.affixes[o].conflicts ) { if ( c == affix ) { return true; } } }
+	}
+	return false;
+}
+
+int rollMagnitude(const DB& db, uint16_t affix, int rarity, uint64_t r)
+{
+	if ( affix >= db.affixes.size() ) { return 0; }
+	const AffixInfo& ai = db.affixes[affix];
+	const int t = std::max(1, std::min(5, rarity));
+	const int lo = ai.magLo[t], hi = std::max(lo, ai.magHi[t]);
+	return std::min(255, lo + (int)(r % (uint64_t)(hi - lo + 1)));
+}
 
 bool affixFitsSlot(const DB& db, int slot, uint16_t affix)
 {
@@ -593,12 +655,14 @@ bool affixFitsSlot(const DB& db, int slot, uint16_t affix)
 	return false;
 }
 
-bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why)
+bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why, uint8_t mag)
 {
 	if ( affix >= db.affixes.size() ) { why = "no such affix"; return false; }
 	if ( p.nAffix >= affixSlots(p) ) { why = "no free affix slot (a part has as many as its rarity)"; return false; }
 	for ( int a = 0; a < p.nAffix; ++a ) { if ( p.affix[a] == affix ) { why = "that affix is already on the part"; return false; } }
+	if ( affixConflicts(db, p, affix ) ) { why = "that affix conflicts with one already on the part"; return false; }
 	if ( !affixFitsSlot(db, p.slot, affix) ) { why = "that affix does not take on a " + (p.slot < db.slots.size() ? db.slots[p.slot].id : std::string("?")); return false; }
+	p.mag[p.nAffix] = mag ? mag : (uint8_t)std::min(255, db.affixes[affix].magLo[std::max(1, std::min(5, (int)p.rarity))]);
 	p.affix[p.nAffix++] = affix;
 	return true;
 }
