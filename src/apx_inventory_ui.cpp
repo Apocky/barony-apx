@@ -103,7 +103,7 @@ static apx_logic::Row logicRow(const Item& it, int player, int priceMode)
 	r.kinds = kindsOf(it);
 	r.icon = getItemSpritePath(player, const_cast<Item&>(it));
 	apx_bench::PartRow comp;
-	if ( apx_bench::provider().componentOf(&it, comp) ) { r.rarity = std::max(0, std::min(4, comp.rarity)); }
+	if ( apx_bench::provider().componentOf(&it, comp) ) { r.rarity = std::max(0, std::min(5, comp.rarity)); }
 	return r;
 }
 
@@ -444,8 +444,8 @@ bool listHandleMove(int player)
 static Uint32 rarityColor(int r)
 {
 	static const Uint32 c[] = { makeColor(235, 235, 235, 255), makeColor(110, 220, 110, 255), makeColor(110, 160, 255, 255),
-		makeColor(200, 120, 255, 255), makeColor(255, 160, 60, 255) };
-	return r >= 0 && r <= 4 ? c[r] : c[0];
+		makeColor(200, 120, 255, 255), makeColor(255, 160, 60, 255), makeColor(255, 215, 80, 255) }; // 5 Unique: gold
+	return r >= 0 && r <= 5 ? c[r] : c[0];
 }
 
 static Field* label(Frame* parent, const char* name, int len, int hj)

@@ -112,6 +112,8 @@ int main(int argc, char** argv)
 		CHECK(compareDelta(row(9, TOOLS, "x", 1), nullptr).empty());
 	}
 
+	CHECK(std::string(rarityName(5)) == "unique" && std::string(rarityName(6)).empty());
+
 	// control: one deliberately wrong expectation must fail the run
 	if ( control ) { CHECK(stationOfModel(1617) == ANVIL); }
 

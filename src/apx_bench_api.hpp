@@ -13,7 +13,7 @@ class Item;
 
 namespace apx_bench
 {
-	struct PartRow  { int slot = 0; std::string slotName, material; int quality = 0, rarity = 0; int32_t massUnits = 0; float integrity = 1.f;
+	struct PartRow  { int slot = 0; std::string slotName, material; int quality = 0, rarity = 0; /* 0 common .. 4 legendary, 5 unique */ int32_t massUnits = 0; float integrity = 1.f;
 		std::string name; std::vector<std::string> affixes; };   // D86: a component has a name, rarity 0 common .. 4 legendary, affixes
 	struct FormRow  { uint32_t form = 0; std::string name, family; int successes = 0; };        // known >= 1, mastered at 5
 	struct SlotNeed { int slot = 0; std::string name; bool required = true; int qgate = 0; std::vector<uint32_t> candidateUids; };
