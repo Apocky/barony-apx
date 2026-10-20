@@ -1,5 +1,8 @@
 # CONTROL (APX_VANILLA_INVENTORY=1): Barony's own inventory window must come back, ours must not open
-wait 15000
+wait 12000
+console /enablecheats
+console /killmonsters
+wait 500
 key Tab
 wait 1000
 shot k01-vanilla-open

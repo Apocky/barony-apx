@@ -177,7 +177,7 @@ namespace ui
 	bool wantsKeyboard(int player)
 	{
 		if ( !g_ready || player != inputs.getPlayerIDAllowedKeyboard() ) { return false; }
-		return g_textStarted || ImGui::GetIO().WantTextInput;
+		return g_textStarted || ImGui::GetIO().WantTextInput || inv::popupOpen();
 	}
 
 	bool wantMouse()

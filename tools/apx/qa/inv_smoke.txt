@@ -1,5 +1,8 @@
 # D92 smoke: open the window with Tab, screenshot, dump ids, close
-wait 15000
+wait 12000
+console /enablecheats
+console /killmonsters
+wait 500
 shot 00-closed
 key Tab
 wait 1000

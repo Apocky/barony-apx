@@ -18,6 +18,7 @@ namespace inv
 {
 	bool replacesVanilla(int player);   // the plain inventory is open: our window, not Barony's
 	bool anyOpen();
+	bool popupOpen();                   // our quick menu or drop confirm is open (Escape and keys belong to it)
 	bool mouseOwned();                  // the keyboard-and-mouse player has our window open
 	bool wantsKey(const SDL_Event& e);  // a key our window uses this frame (Barony must not see it)
 	void draw();                        // inside the ImGui frame, every local player

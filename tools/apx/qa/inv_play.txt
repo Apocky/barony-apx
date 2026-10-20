@@ -1,5 +1,8 @@
 # D92 P0/P1 real-play QA: every click is a real SDL event at a stable id's rect (ui <id>)
-wait 15000
+wait 12000
+console /enablecheats
+console /killmonsters
+wait 500
 # CONTROL: with the window closed a left click must start an attack (proves the attack counter works)
 click 640 360
 wait 900

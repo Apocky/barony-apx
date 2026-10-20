@@ -22,6 +22,7 @@
 #include <cctype>
 #include <cstdio>
 #include <set>
+#include <unordered_map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -172,7 +173,10 @@ namespace
 		const Uint64 t0 = SDL_GetPerformanceCounter();
 		auto& disp = players[p]->inventoryUI.itemTooltipDisplay;
 		disp.reset(); // force a full rebuild for this item
+		// in shootmode Barony builds only the title-only tooltip: the full lines need the menu state
+		const bool wasShoot = players[p]->shootmode; players[p]->shootmode = false;
 		players[p]->hud.updateFrameTooltip(it, 0, 0, Player::PANEL_JUSTIFY_LEFT, H.parent);
+		players[p]->shootmode = wasShoot;
 		disp.reset(); // and Barony's own tooltip rebuilds next time it shows (chest/shop windows)
 		++g_harvestCalls;
 		g_harvestMs = 1000.0 * (double)(SDL_GetPerformanceCounter() - t0) / (double)SDL_GetPerformanceFrequency();
@@ -193,7 +197,39 @@ namespace
 		if ( desc ) { if ( Field* f = desc->findField("inventory mouse tooltip description") ) { if ( !f->isDisabled() ) { L.description = splitLines(f->getText()); } } }
 		if ( const char* w = txt(vals, "inventory mouse tooltip weight value") ) { L.weight = w; }
 		if ( const char* v = txt(vals, "inventory mouse tooltip gold value") ) { L.value = v; }
-		L.ok = true;
+		L.ok = !L.header.empty() && L.header != "Nothing"; // "Nothing" = Barony's placeholder, the tooltip was not built
+		return L;
+	}
+
+	// Barony renders each item's tooltip text on first sight (6-22 ms cold, 0.1 ms warm). The lines are
+	// cached by item state + the stats that shape them, and warmed one item per frame while the window is
+	// CLOSED, so opening it and selecting items costs only cache hits.
+	std::unordered_map<unsigned long long, Lines> g_lineCache;
+	unsigned g_cacheHits = 0, g_cacheMisses = 0, g_warmed = 0, g_warmFail = 0;
+	unsigned long long mixH(unsigned long long h, unsigned long long v) { h ^= v + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2); return h; }
+	unsigned long long lineKey(int p, const Item* it)
+	{
+		unsigned long long h = 0xcbf29ce484222325ULL;
+		h = mixH(h, it->uid); h = mixH(h, (unsigned)it->type); h = mixH(h, (unsigned)it->count); h = mixH(h, (unsigned)it->status);
+		h = mixH(h, (unsigned)(it->beatitude + 1000)); h = mixH(h, it->identified ? 1 : 2); h = mixH(h, it->appearance);
+		if ( Stat* st = stats[p] )
+		{
+			h = mixH(h, (unsigned)st->STR); h = mixH(h, (unsigned)st->DEX); h = mixH(h, (unsigned)st->CON); h = mixH(h, (unsigned)st->INT);
+			h = mixH(h, (unsigned)st->PER); h = mixH(h, (unsigned)st->CHR); h = mixH(h, (unsigned)st->LVL);
+			for ( int i = 0; i < NUMPROFICIENCIES; ++i ) { h = mixH(h, (unsigned)st->getProficiency(i)); }
+		}
+		return h;
+	}
+	Lines harvestCached(int p, Item* it)
+	{
+		if ( !it ) { return Lines(); }
+		const unsigned long long k = lineKey(p, it);
+		auto f = g_lineCache.find(k);
+		if ( f != g_lineCache.end() ) { ++g_cacheHits; return f->second; }
+		++g_cacheMisses;
+		Lines L = harvest(p, it);
+		if ( g_lineCache.size() > 600 ) { g_lineCache.clear(); }
+		if ( L.ok ) { g_lineCache[k] = L; }
 		return L;
 	}
 
@@ -602,7 +638,7 @@ namespace
 		{
 			Item* w = worn(p, SLOTS[S.bonusNext++].slot);
 			if ( !w ) { continue; }
-			Lines L = harvest(p, w);
+			Lines L = harvestCached(p, w);
 			for ( auto& l : L.icons ) { S.bonuses.push_back(l); }
 			break;
 		}
@@ -747,7 +783,7 @@ namespace
 		}
 		// rebuild Barony's lines only when the item (or its state) changes
 		const unsigned long long ds = mix(mix(mix(it->uid, (unsigned)it->count), (unsigned)it->status), (unsigned)(it->beatitude + 100) + (it->identified ? 1000 : 0));
-		if ( S.detUid != it->uid || S.detSig != ds ) { S.detUid = it->uid; S.detSig = ds; S.det = harvest(p, it); }
+		if ( S.detUid != it->uid || S.detSig != ds ) { S.detUid = it->uid; S.detSig = ds; S.det = harvestCached(p, it); }
 		ImGui::PushFont(fontHead());
 		ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(rarityCol(c->rarity)));
 		ImGui::TextWrapped("%s", c->name.c_str());
@@ -1170,6 +1206,8 @@ namespace
 		return false;
 	}
 
+	bool popupOpen() { return g_popupWasOpen || g_popupOpen; }
+
 	bool mouseOwned()
 	{
 		for ( int p = 0; p < MAXPLAYERS; ++p ) { if ( g_st[p].open && inputs.bPlayerUsingKeyboardControl(p) ) { return true; } }
@@ -1207,6 +1245,24 @@ namespace
 		ui->selectedItem = nullptr;
 	}
 
+	// one cold item per frame while the window is closed (the cost lands on a play frame, never on the window)
+	void warmTick(int p)
+	{
+		Stat* st = stats[p];
+		static Uint32 retryAt = 0;
+		if ( !st || !players[p] || !players[p]->entity || intro || !gameUIFrame[p] || ticks < retryAt ) { return; }
+		for ( node_t* n = st->inventory.first; n; n = n->next )
+		{
+			Item* it = static_cast<Item*>(n->element);
+			if ( !it || it->type < 0 || it->type >= NUMITEMS || itemCategory(it) == SPELL_CAT ) { continue; }
+			if ( g_lineCache.count(lineKey(p, it)) ) { continue; }
+			const unsigned m0 = g_cacheMisses;
+			Lines L = harvestCached(p, it); itemIcon(p, *it, nullptr, nullptr);
+			if ( g_cacheMisses != m0 && !L.ok ) { retryAt = ticks + 100; ++g_warmFail; } else { ++g_warmed; }
+			return;
+		}
+	}
+
 	void draw()
 	{
 		g_popupWasOpen = g_popupOpen;
@@ -1221,7 +1277,7 @@ namespace
 				logEvent(p, want ? "ui_open" : "ui_close", "");
 				if ( want ) { S.lastHP = stats[p] ? stats[p]->HP : -1; S.sig = ~0ULL; S.zone = Z_BAG; hideVanilla(p); }
 			}
-			if ( S.open ) { drawWindow(p); }
+			if ( S.open ) { drawWindow(p); } else { warmTick(p); }
 		}
 	}
 
@@ -1242,6 +1298,11 @@ namespace
 			o << "ui_inv p" << p << " open 1 items " << S.cells.size() << " shown " << S.shown.size() << " cat " << CAT_IDS[S.cat]
 				<< " sort " << SORT_NAMES[S.sort] << " sel " << S.sel << " sel_name \"" << (c ? c->name : "") << "\" zone " << S.zone
 				<< " actions " << S.actions << " last " << S.lastAction << " result \"" << S.lastResult << "\"\n";
+			// measured: no vanilla item frame is live while ours is open (disabled frames are never drawn and take no input)
+			const Player& pl = *players[p];
+			auto live = [](const Frame* f) { return f && !f->isDisabled() ? 1 : 0; };
+			o << "vanilla p" << p << " inventory_frame_live " << live(pl.inventoryUI.frame) << " sheet_live " << live(pl.characterSheet.sheetFrame)
+				<< " tooltip_live " << live(pl.inventoryUI.tooltipContainerFrame) << " context_menu_live " << live(pl.inventoryUI.interactFrame) << "\n";
 		}
 		return o.str();
 	}
@@ -1250,7 +1311,7 @@ namespace
 	{
 		std::ostringstream o;
 		o << status();
-		o << "rebuilds " << g_rebuilds << " harvests " << g_harvestCalls << "\n";
+		o << "rebuilds " << g_rebuilds << " harvests " << g_harvestCalls << " cache_hits " << g_cacheHits << " cache_misses " << g_cacheMisses << " warmed " << g_warmed << " warm_fail " << g_warmFail << "\n";
 		for ( int p = 0; p < MAXPLAYERS; ++p )
 		{
 			const State& S = g_st[p];
