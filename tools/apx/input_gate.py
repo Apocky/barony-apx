@@ -127,6 +127,7 @@ def run_matrix(exe, run, path, mode, lengths, caps, rows, sdl_lengths=(5, 33)):
     L = Launch(exe, run, path, mode, tag="matrix")
     try:
         print(f"[gate] {path}/{mode}: in game after {L.wait_ingame():.1f} s", flush=True)
+        L.send("console /enablecheats", "wait 300", "console /god", "wait 500")   # the floor map has lava: a dead avatar takes no input
         plan = [(cname, cap, length, "act") for cname, cap in caps.items() for length in lengths]
         if mode == "new":   # the same presses as raw SDL events: the path from SDL into apx::in
             plan += [(cname, cap, length, "sdlact") for cname, cap in caps.items() if cname != "60" for length in sdl_lengths]
@@ -157,6 +158,7 @@ def run_matrix(exe, run, path, mode, lengths, caps, rows, sdl_lengths=(5, 33)):
                 row["lost_taken"] = (2 * n - row["taken_attack"] - row["taken_sprint"]) if mode == "new" else None
                 row["lost_legacy"] = 2 * n - row["legacy_attack"] - row["legacy_lshift"]
                 row["in_lost_counter"] = b["lost"]
+                row["ingame_end"] = b["ingame"]
                 rows.append(row)
                 with open(run / "rows.jsonl", "a", encoding="ascii") as f:
                     f.write(json.dumps(row) + "\n")
@@ -274,7 +276,7 @@ def verdict(rows):
     for r in rows:
         if r["gate"] == "matrix":
             if r["mode"] == "new":
-                good = r["lost_taken"] == 0 and r["lost_legacy"] == 0 and r["in_lost_counter"] == 0
+                good = r["lost_taken"] == 0 and r["lost_legacy"] == 0 and r["in_lost_counter"] == 0 and r["ingame_end"] == 1
                 ok &= good
                 lines.append(f"{'PASS' if good else 'FAIL'} new  {r['path']:5} cap={r['cap']:8} len={r['len_ms']:3} lost_taken={r['lost_taken']} lost_legacy={r['lost_legacy']} counter_lost={r['in_lost_counter']}")
     ctrl = [r for r in rows if r["gate"] == "matrix" and r["mode"] == "old" and r["len_ms"] <= 33]
