@@ -30,6 +30,7 @@ namespace tiers
 	void untag(Entity* e);
 	// the generator's band rank for the floor it builds (apx-gen floors), used by tierOf on that floor
 	void recordBand(int level, const char* mapName, const std::vector<int> band[3]);
+	std::vector<int> fodderTypes(); // this floor's fodder monster types (the band, generator's or sampled); BP1-2 wandering group
 } // namespace tiers
 
 namespace tierdmg

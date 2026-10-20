@@ -51,7 +51,14 @@ namespace apx_bench
 		std::string (*displayName)(const Item* item) = nullptr;   // generated component / assembly name; "" = Barony's own
 		bool (*assemblePreview)(int player, uint32_t form, int station, const std::vector<std::pair<int, uint32_t>>& slotUid, int& power, int& cap, std::string& why) = nullptr;
 		std::vector<RepairOption> (*repairOptions)(int player, const Item* item, int station) = nullptr;
-		bool (*repair)(int player, Item* item, int partIndex, std::string& why) = nullptr;
+		bool (*repairPart)(int player, Item* item, int partIndex, std::string& why) = nullptr;   // 05b s5.8b per component (F6 later); empty repairOptions = use repair below
+		// BP1-2: Repair at a FIELD bench or an ANVIL: the cost in grams (-1 = cannot, why says), then repair
+		int  (*repairCost)(int player, const Item* item, std::string& why, std::string& material) = nullptr;
+		bool (*repair)(int player, Item* item, std::string& why) = nullptr;
+		// the same checks and one-step rule, the ledger untouched: a merchant service charges gold first (trade lane)
+		bool (*repairPaid)(int player, Item* item, std::string& why) = nullptr;
+		// grams for one condition step with NO ledger check (a merchant's price); -1 + why when it cannot be repaired
+		int  (*repairGrams)(const Item* item, std::string& why, std::string& material) = nullptr;
 	};
 	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub

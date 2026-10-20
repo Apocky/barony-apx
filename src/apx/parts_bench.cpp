@@ -90,6 +90,10 @@ void apxPartsBenchRegister()
 	p.salvage = &benchSalvage;
 	p.breakItem = &benchBreak;
 	p.pouchGrams = &apxPartsLedgerGrams; // D85: the one carry-weight rule (actplayer.cpp, U1) reads the real ledger
+	p.repairCost = &apxPartsRepairCost;
+	p.repair = &apxPartsRepair;
+	p.repairPaid = &apxPartsRepairPaid;
+	p.repairGrams = &apxPartsRepairGrams;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }

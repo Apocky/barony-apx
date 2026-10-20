@@ -56,9 +56,13 @@ static bool stubMake(int, int, std::string& why) { why = "components arrive with
 static std::string stubDisplayName(const Item*) { return ""; }
 static bool stubAssemblePreview(int, uint32_t, int, const std::vector<std::pair<int, uint32_t>>&, int& power, int& cap, std::string& why) { power = 0; cap = 0; why = "assembly arrives with F6"; return false; }
 static std::vector<RepairOption> stubRepairOptions(int, const Item*, int) { return {}; }
-static bool stubRepair(int, Item*, int, std::string& why) { why = "repair arrives with F6"; return false; }
+static bool stubRepairPart(int, Item*, int, std::string& why) { why = "per-component repair arrives with F6"; return false; }
 static long long stubPouchGrams(int) { return 0; }
 
+static int stubRepairCost(int, const Item*, std::string& why, std::string&) { why = "no repair before F6"; return -1; }
+static bool stubRepair(int, Item*, std::string& why) { why = "no repair before F6"; return false; }
+static bool stubRepairPaid(int, Item*, std::string& why) { why = "no repair before F6"; return false; }
+static int stubRepairGrams(const Item*, std::string& why, std::string&) { why = "no repair before F6"; return -1; }
 static Provider makeStub()
 {
 	Provider p;
@@ -67,7 +71,8 @@ static Provider makeStub()
 	p.craft = stubCraft; p.salvagePreview = stubPreview; p.salvage = stubSalvage; p.breakItem = stubBreak;
 	p.pouch = stubPouch; p.pouchGrams = stubPouchGrams; p.drawBundle = nullptr;
 	p.componentOf = stubComponentOf; p.swapSlots = stubSwapSlots; p.swapPart = stubSwap; p.makeOptions = stubMakeOptions; p.make = stubMake;
-	p.displayName = stubDisplayName; p.assemblePreview = stubAssemblePreview; p.repairOptions = stubRepairOptions; p.repair = stubRepair;
+	p.displayName = stubDisplayName; p.assemblePreview = stubAssemblePreview; p.repairOptions = stubRepairOptions; p.repairPart = stubRepairPart;
+	p.repairCost = stubRepairCost; p.repair = stubRepair; p.repairPaid = stubRepairPaid; p.repairGrams = stubRepairGrams;
 	return p;
 }
 static Provider g_stub = makeStub();
@@ -83,6 +88,11 @@ void setProvider(const Provider& p)
 	if ( !g_active.formbook ) { g_active.formbook = g_stub.formbook; }
 	if ( !g_active.formInputCap ) { g_active.formInputCap = g_stub.formInputCap; }
 	if ( !g_active.craftSlots ) { g_active.craftSlots = g_stub.craftSlots; }
+	if ( !g_active.repairCost ) { g_active.repairCost = g_stub.repairCost; }
+	if ( !g_active.repair ) { g_active.repair = g_stub.repair; }
+	if ( !g_active.repairPart ) { g_active.repairPart = g_stub.repairPart; }
+	if ( !g_active.repairPaid ) { g_active.repairPaid = g_stub.repairPaid; }
+	if ( !g_active.repairGrams ) { g_active.repairGrams = g_stub.repairGrams; }
 	if ( !g_active.craft ) { g_active.craft = g_stub.craft; }
 	if ( !g_active.salvagePreview ) { g_active.salvagePreview = g_stub.salvagePreview; }
 	if ( !g_active.salvage ) { g_active.salvage = g_stub.salvage; }
@@ -98,7 +108,6 @@ void setProvider(const Provider& p)
 	if ( !g_active.displayName ) { g_active.displayName = g_stub.displayName; }
 	if ( !g_active.assemblePreview ) { g_active.assemblePreview = g_stub.assemblePreview; }
 	if ( !g_active.repairOptions ) { g_active.repairOptions = g_stub.repairOptions; }
-	if ( !g_active.repair ) { g_active.repair = g_stub.repair; }
 	printlog("[apx] bench provider: %s", g_active.name);
 }
 long long pouchUnits(int player)
@@ -233,7 +242,17 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
 		e.push_back(header(std::string(selectedOwn->getName()) + ": repair"));
 		auto opts = pv.repairOptions(player, selectedOwn, station);
-		if ( opts.empty() ) { e.push_back(line("Nothing to repair.")); }
+		if ( opts.empty() )
+		{
+			// BP1-2 (props lane): one condition step of the whole item at a FIELD bench or an ANVIL, paid from the pouch
+			if ( station == apx_logic::FIELD || station == apx_logic::ANVIL )
+			{
+				std::string why, mat;
+				int g = pv.repairCost(player, selectedOwn, why, mat);
+				e.push_back(line(g >= 0 ? ">> Repair one step: " + std::to_string(g) + " g of " + mat : "   Cannot repair: " + why, 0, 0, g >= 0 ? 13 : 0));
+			}
+			else { e.push_back(line("Repair here: a field bench or an anvil.")); }
+		}
 		for ( auto& o : opts )
 		{
 			int pct = (int)(o.integrity * 100.f + 0.5f);
@@ -344,10 +363,17 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 		msg = ok ? "Made a component." : "Cannot make: " + why;
 		return ok;
 	}
+	if ( tab == 3 && row.row.kind == 13 && selectedOwn )
+	{
+		std::string why, name = selectedOwn->getName();
+		bool ok = pv.repair(player, selectedOwn, why);
+		msg = ok ? "Repaired the " + name + "." : "Cannot repair: " + why;
+		return ok;
+	}
 	if ( tab == 3 && row.row.kind == 12 && selectedOwn )
 	{
 		std::string why;
-		bool ok = pv.repair(player, selectedOwn, (int)row.row.uid - 1, why);
+		bool ok = pv.repairPart(player, selectedOwn, (int)row.row.uid - 1, why);
 		msg = ok ? "Repaired." : "Cannot repair: " + why;
 		return ok;
 	}

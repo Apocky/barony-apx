@@ -102,6 +102,14 @@ namespace tiers
 		apx::tierrules::bandTiers(counts, t);
 		setBand(currentlevel, map.name, t, false);
 	}
+	std::vector<int> fodderTypes()
+	{
+		syncFloor();
+		ensureBand();
+		std::vector<int> out;
+		if ( band.valid ) for ( int t = 0; t < NUMMONSTERS; ++t ) if ( band.tierOfType[t] == 0 ) out.push_back(t);
+		return out;
+	}
 
 	Tier tierOf(Entity* e, Source* why)
 	{

@@ -82,6 +82,12 @@ uint64_t apxPartsFormbookHash(int player);
 // keepPart = part index (0..nParts-1) or -1. Scrap and aura crystals go to the player; the item keeps
 // only the kept part, or is consumed when keepPart is -1.
 bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why);
+// BP1-2 repair (field bench, anvil): one status step, paid from the player's salvage ledger in grams
+// of the main part's material (props_rules repairCostGrams); -1 = cannot (why says)
+int apxPartsRepairCost(int player, const Item* item, std::string& why, std::string& material);
+bool apxPartsRepair(int player, Item* item, std::string& why);
+bool apxPartsRepairPaid(int player, Item* item, std::string& why);
+int apxPartsRepairGrams(const Item* item, std::string& why, std::string& material); // no ledger check (merchant price) // merchant: same rule, no ledger debit (gold charged by the shop)
 const char* apxPartsFamilyName(uint32_t form);
 int apxPartsPartMassGrams(const Item* item, int part);
 const char* apxPartsMaterialName(int material);

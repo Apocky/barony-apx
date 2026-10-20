@@ -645,7 +645,7 @@ static void runComponents(int dt)
 		t.name = "self-test components";
 		t.componentOf = tComponentOf; t.parts = tParts; t.swapSlots = tSwapSlots; t.swapPart = tSwap; t.makeOptions = tMakeOptions; t.make = tMake;
 		t.displayName = tDisplayName; t.formbook = tFormbook; t.craftSlots = tCraftSlots; t.assemblePreview = tAssemblePreview; t.craft = tCraft;
-		t.repairOptions = tRepairOptions; t.repair = tRepair;
+		t.repairOptions = tRepairOptions; t.repairPart = tRepair;
 		apx_bench::setProvider(t);
 		emptyInventory(0);
 		Item* sword = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
@@ -746,7 +746,9 @@ static void runLive86(int dt)
 	static Uint32 swordUid = 0, compUid = 0, bundleUid = 0;
 	static long long g0 = -1, g1 = -1, g2 = -1, g3 = -1;
 	static int comps0 = -1, comps1 = -1, compRowRarity = -9, compParts = -1, rows0 = 0, rows1 = 0, rows2 = 0, rows3 = 0, keep = -2, bundleMat = -1, salvaged = 0, picked = 0;
-	static std::string compName, why;
+	static std::string compName, why, repairRow, repairMsg;
+	static Uint32 helmUid = 0;
+	static int helmBefore = -1, helmAfter = -1, station = -1, ironMat = -1, ironBefore = -1, ironAfter = -1;
 	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
 	auto rowsOk = []() { return checkRows(rows(0), carriedMass(0)).empty() ? 1 : 0; };
 	if ( dt == 410 )
@@ -822,15 +824,47 @@ static void runLive86(int dt)
 	}
 	else if ( dt == 430 )
 	{
+		// props' whole-item repair through the Repair tab at an anvil: a worn iron helm, one condition step
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+		bench = spawnProp(1621, nullptr, pl.entity->x + 16, pl.entity->y); // divine_anvil model = ANVIL
+		Item* helm = newItem(IRON_HELM, WORN, 0, 1, 0, true, &stats[0]->inventory);
+		apxPartsBind(helm, 1, 3);
+		helmUid = helm->uid; helmBefore = (int)helm->status;
+		// seed the pouch with iron the way F6's self-tests do (logged by F6), so one repair step is affordable
+		for ( int m = 0; m < 64; ++m ) { const char* n = apxPartsMaterialName(m); if ( n && std::string(n) == "iron" ) { ironMat = m; break; } }
+		if ( ironMat >= 0 ) { apxPartsLedgerCredit(0, ironMat, 2000); ironBefore = apxPartsLedgerMaterialGrams(0, ironMat); }
+		setBenchTab(0, 3); // Repair
+	}
+	else if ( dt == 432 )
+	{
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.uid == helmUid ) { setFocus(0, 0, (int)i); } }
+	}
+	else if ( dt == 435 )
+	{
+		auto e = benchRowsForTest(0);
+		for ( auto& x : e ) { if ( !x.header && x.row.name.find("epair") != std::string::npos ) { repairRow = x.row.name; } }
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 13 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
+		repairMsg = viewState(0).lastBenchMsg;
+	}
+	else if ( dt == 438 )
+	{
+		Item* helm = uidToItem(helmUid);
+		helmAfter = helm ? (int)helm->status : -1;
+		ironAfter = ironMat >= 0 ? apxPartsLedgerMaterialGrams(0, ironMat) : -1;
+		station = viewState(0).station;
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
 		{
 			fprintf(f, "{\"test\":\"live86\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"keep\":%d,\"salvaged\":%d,\"components\":[%d,%d],\"component\":{\"name\":\"%s\",\"parts\":%d,\"row_rarity\":%d},"
 				"\"pouch_g\":[%lld,%lld,%lld,%lld],\"bundle\":{\"material\":%d,\"drawn\":%d,\"picked\":%d,\"why\":\"%s\"},\"rows_sum_ok\":[%d,%d,%d,%d],"
-				"\"pouch_grew\":%d,\"bundle_debited\":%d,\"pickup_restored\":%d,\"make\":\"not in F6 engine yet\",\"swap\":\"not in F6 engine yet\"}\n",
+				"\"pouch_grew\":%d,\"bundle_debited\":%d,\"pickup_restored\":%d,\"make\":\"not in F6 engine yet\",\"swap\":\"not in F6 engine yet\","
+				"\"repair\":{\"station\":%d,\"row\":\"%s\",\"msg\":\"%s\",\"status\":[%d,%d],\"one_step\":%d,\"iron_g\":[%d,%d],\"paid_from_pouch\":%d}}\n",
 				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, keep, salvaged, comps0, comps1, compName.c_str(), compParts, compRowRarity,
 				g0, g1, g2, g3, bundleMat, bundleUid ? 1 : 0, picked, why.c_str(), rows0, rows1, rows2, rows3,
-				g1 > g0 ? 1 : 0, bundleUid && g2 == g1 - 10 ? 1 : 0, bundleUid && picked && g3 == g1 ? 1 : 0);
+				g1 > g0 ? 1 : 0, bundleUid && g2 == g1 - 10 ? 1 : 0, bundleUid && picked && g3 == g1 ? 1 : 0,
+				station, repairRow.c_str(), repairMsg.c_str(), helmBefore, helmAfter, helmAfter == helmBefore + 1 ? 1 : 0,
+				ironBefore, ironAfter, ironMat >= 0 && ironAfter < ironBefore ? 1 : 0);
 			fclose(f);
 		}
 		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
@@ -1084,8 +1118,8 @@ static void runUiPhases()
 	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
 	else if ( dt >= 370 && dt < 380 ) { runPouch(dt); }
 	else if ( dt >= 380 && dt < 410 ) { runComponents(dt); }
-	else if ( dt >= 410 && dt < 432 ) { runLive86(dt); }
-	else if ( dt == 440 )
+	else if ( dt >= 410 && dt < 440 ) { runLive86(dt); }
+	else if ( dt == 450 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -1097,8 +1131,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 510 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 550 )
+	else if ( dt == 520 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 560 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )

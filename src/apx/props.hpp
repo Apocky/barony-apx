@@ -20,6 +20,16 @@
 #include "../mod_tools.hpp"
 #include "../apx_stamina.hpp"
 #include "props_rules.hpp"
+#include "parts_engine.hpp"
+#include "../apx_bench_api.hpp"
+#include "../apx_inv_logic.hpp"
+namespace apx_inv // the bench screen's rows and actions (apx_bench.cpp); the probe drives them as the UI does
+{
+	std::vector<apx_logic::Entry> benchEntries(int player, int tab, int station, Item* selectedOwn, uint32_t selectedForm, std::string& head);
+	bool benchActivate(int player, int tab, int station, Item* selectedOwn, const apx_logic::Entry& row, uint32_t& selectedForm, std::string& msg);
+}
+#include "../collision.hpp"
+#include <unordered_set>
 #include "tiers.hpp"
 #include "rapidjson/document.h"
 #include <cmath>
@@ -63,10 +73,23 @@ namespace props
 		}
 		return nullptr;
 	}
-	inline const char* labelFor(Entity* e)
+	inline std::vector<Uint32>& restSpawned() { static std::vector<Uint32> v; return v; }
+	inline std::unordered_set<Uint32>& flipped() { static std::unordered_set<Uint32> s; return s; }
+	inline std::unordered_set<Uint32>& darkTorches() { static std::unordered_set<Uint32> s; return s; }
+	inline bool torchDark(Entity* e) { return e && enabled() && darkTorches().count(e->getUID()); }
+	inline bool hostileInSight(Entity* me);
+	// the world prompt for player pn (D81): the prop's verb; a table offers Flip while a hostile is in sight
+	inline const char* labelFor(Entity* e, int pn)
 	{
+		if ( e && e->behavior == &actTorch && enabled() ) return torchDark(e) ? "Relight the sconce" : nullptr;
 		const PropRow* p = rowFor(e, true);
-		return p && !p->label.empty() ? p->label.c_str() : nullptr;
+		if ( !p || p->label.empty() ) return nullptr;
+		if ( p->verb == "bench" && players[pn] && players[pn]->entity )
+		{
+			if ( flipped().count(e->getUID()) ) return "Flipped table (cover)";
+			if ( tableFlips(hostileInSight(players[pn]->entity), false) ) return "Flip for cover";
+		}
+		return p->label.c_str();
 	}
 
 	struct PlayerState
@@ -79,7 +102,7 @@ namespace props
 		int encounterPm = 0, encounterMax = 0, hunger = 0;
 	};
 	inline PlayerState& ps(int pn) { static PlayerState s[MAXPLAYERS]; return s[std::max(0, std::min(MAXPLAYERS - 1, pn))]; }
-	struct Counters { int rests = 0, restsDone = 0, restsBroken = 0, healed = 0, sits = 0, sitTicks = 0, benches = 0, reads = 0, breaks = 0, skeletons = 0, skeletonsFodder = 0, trinkets = 0, scrap = 0, nothing = 0, yields = 0, encounters = 0; };
+	struct Counters { int rests = 0, restsDone = 0, restsBroken = 0, healed = 0, sits = 0, sitTicks = 0, benches = 0, reads = 0, breaks = 0, skeletons = 0, skeletonsFodder = 0, trinkets = 0, scrap = 0, nothing = 0, yields = 0, encounters = 0, flips = 0, torchesTaken = 0, torchesRelit = 0, encounterKinds = 0; };
 	inline Counters& C() { static Counters c; return c; }
 	inline int& fieldBenchUntil(int pn) { static int t[MAXPLAYERS] = {}; return t[std::max(0, std::min(MAXPLAYERS - 1, pn))]; }
 
@@ -143,6 +166,20 @@ namespace props
 			messagePlayer(pn, MESSAGE_INTERACTION, "You sit down and catch your breath.");
 			return true;
 		}
+		if ( p->verb == "bench" && tableFlips(hostileInSight(me), flipped().count(e->getUID()) > 0) )
+		{
+			// BP1-2: on its side it blocks sight lines (LINETRACE_IGNORE_ENTITIES honours BLOCKSIGHT) and bodies
+			flipped().insert(e->getUID());
+			e->roll = PI / 2;
+			e->flags[BLOCKSIGHT] = true;
+			e->flags[PASSABLE] = false;
+			e->furnitureHealth += 10;
+			C().flips++;
+			messagePlayer(pn, MESSAGE_INTERACTION, "You heave the table over for cover.");
+			printlog("[apx-props] flip table uid=%u player=%d", e->getUID(), pn);
+			return true;
+		}
+		if ( p->verb == "bench" && flipped().count(e->getUID()) ) { messagePlayer(pn, MESSAGE_INTERACTION, "The table is on its side."); return true; }
 		if ( p->verb == "bench" )
 		{
 			fieldBenchUntil(pn) = (int)::ticks + 50 * 60; // the U1 bench shows FIELD while near this table
@@ -216,6 +253,7 @@ namespace props
 
 	inline bool hostileInSight(Entity* me)
 	{
+		if ( !me ) return false;
 		for ( node_t* n = map.creatures ? map.creatures->first : nullptr; n; n = n->next )
 		{
 			Entity* e = (Entity*)n->element;
@@ -224,6 +262,31 @@ namespace props
 			if ( s && s->HP > 0 && std::hypot(e->x - me->x, e->y - me->y) < 6 * 16.0 ) return true;
 		}
 		return false;
+	}
+
+	// BP1-2 wall torches: taking one leaves a dark sconce (vanilla removed it); a torch in hand relights it
+	inline bool torchTaken(Entity* e)   // called where vanilla removed the torch; true = keep the sconce
+	{
+		if ( !e || !enabled() ) return false;
+		darkTorches().insert(e->getUID());
+		e->removeLightField();
+		C().torchesTaken++;
+		printlog("[apx-props] torch taken uid=%u", e->getUID());
+		return true;
+	}
+	inline bool torchUse(Entity* e, int pn) // true = handled (a dark sconce)
+	{
+		if ( !torchDark(e) || !stats[pn] ) return false;
+		Item* t = stats[pn]->shield;
+		if ( !t || t->type != TOOL_TORCH ) { messagePlayer(pn, MESSAGE_INTERACTION, "An empty sconce. Hold a torch to relight it."); return true; }
+		stats[pn]->shield = nullptr;
+		consumeItem(t, pn);
+		darkTorches().erase(e->getUID());
+		e->skill[0] = 0; // TORCH_LIGHTING: the next tick adds the light again
+		C().torchesRelit++;
+		messagePlayer(pn, MESSAGE_INTERACTION, "You set your torch in the sconce.");
+		printlog("[apx-props] torch relit uid=%u player=%d", e->getUID(), pn);
+		return true;
 	}
 
 	inline void probeStep(Entity* me);
@@ -249,7 +312,12 @@ namespace props
 				if ( (int)(local_rng.rand() % 1000) < s.encounterPm ) // the director's wandering group (D72: 1-3 fodder)
 				{
 					int n = 1 + local_rng.rand() % std::max(1, s.encounterMax);
-					for ( int i = 0; i < n; ++i ) spawnFodder(currentlevel <= 2 ? "RAT" : "SKELETON", me);
+					std::vector<int> kinds = apx::tiers::fodderTypes(); // the floor's fodder band (D72/D75)
+					for ( int i = 0; i < n; ++i )
+					{
+						int k = kinds.empty() ? (int)RAT : kinds[local_rng.rand() % kinds.size()];
+						if ( Entity* m = summonMonster((Monster)k, (long)me->x, (long)me->y, false) ) { apx::tiers::tag(m, apx::combat::Tier::Fodder); C().encounterKinds++; restSpawned().push_back(m->getUID()); }
+					}
 					C().encounters++;
 					messagePlayer(pn, MESSAGE_INTERACTION, "Something found you while you slept.");
 				}
@@ -272,7 +340,7 @@ namespace props
 	}
 
 	// ---------------------------------------------------------------- the headless check (card BP1-1)
-	struct Probe { int phase = 0; Uint32 t0 = 0; Entity* bed = nullptr; Entity* chair = nullptr; Entity* table = nullptr; Entity* podium = nullptr; int hp0 = 0; int cages = 0; std::string labels; };
+	struct Probe { int phase = 0; Uint32 t0 = 0; Entity* bed = nullptr; Entity* chair = nullptr; Entity* table = nullptr; Entity* podium = nullptr; Entity* table2 = nullptr; int hp0 = 0; int cages = 0; std::string labels; int encKindsFodder = 0, encKinds = 0, fodderBand = 0; std::string flipLabel; int losBefore = -1, losAfter = -1; int torchFound = 0, torchKept = 0, torchDarkAfterTake = 0, gotTorch = 0, relit = 0; int gramsNoLedger = -2, paidOk = 0, paidStatus = -1, paidLedgerDelta = -1, repairRow = 0, repairOk = 0, statusBefore = -1, statusAfter = -1, repairGrams = -1; std::string repairWhy; };
 	inline Probe& PR() { static Probe p; return p; }
 	inline Entity* makeFurniture(int type, Entity* near, int dx)
 	{
@@ -302,8 +370,9 @@ namespace props
 			P.bed = makeFurniture(FURNITURE_BED, me, 0);
 			P.chair = makeFurniture(FURNITURE_CHAIR, me, 0);
 			P.table = makeFurniture(FURNITURE_TABLE, me, 8);
+			P.table2 = makeFurniture(FURNITURE_TABLE, me, 40);
 			P.podium = makeFurniture(FURNITURE_PODIUM, me, -8);
-			for ( Entity* e : { P.bed, P.chair, P.table, P.podium } ) { const char* l = labelFor(e); P.labels += std::string(l ? l : "Inspect") + "|"; }
+			for ( Entity* e : { P.bed, P.chair, P.table, P.podium } ) { const char* l = labelFor(e, 0); P.labels += std::string(l ? l : "Inspect") + "|"; }
 			// remove nearby hostiles so a rest is not broken by the floor's own creatures
 			for ( node_t* n = map.creatures ? map.creatures->first : nullptr; n; n = n->next )
 				if ( Entity* e = (Entity*)n->element ) if ( e->behavior == &actMonster ) e->setHP(0);
@@ -315,6 +384,7 @@ namespace props
 		if ( P.phase == 11 )
 		{
 			use(P.bed, 0);
+			ps(0).encounterPm = 1000; // the probe forces the wandering group to test its kinds
 			P.phase = 2;
 			return;
 		}
@@ -327,8 +397,82 @@ namespace props
 		}
 		if ( P.phase == 3 && ::ticks - P.t0 >= 100 )
 		{
+			// the wandering group came from the floor's fodder band, tagged fodder; then clear it
+			auto band = apx::tiers::fodderTypes();
+			P.fodderBand = (int)band.size();
+			for ( Uint32 u : restSpawned() ) // only what the rest itself spawned
+				if ( Entity* m = uidToEntity(u) ) if ( m->getStats() )
+				{
+					++P.encKinds;
+					if ( std::find(band.begin(), band.end(), (int)m->getStats()->type) != band.end() && apx::tiers::tierOf(m) == apx::combat::Tier::Fodder ) ++P.encKindsFodder;
+				}
+			for ( node_t* n = map.creatures ? map.creatures->first : nullptr; n; n = n->next )
+				if ( Entity* m = (Entity*)n->element ) if ( m->behavior == &actMonster && m->getStats() && m->getStats()->HP > 0 ) m->setHP(0);
+			P.phase = 4; P.t0 = ::ticks;
+			return;
+		}
+		if ( P.phase == 4 && ::ticks - P.t0 >= 5 )
+		{
 			use(P.table, 0);
 			use(P.podium, 0);
+			// flip: a rat in sight makes the second table offer Flip; sight line measured before and after
+			Entity* rat = summonMonster(RAT, (long)me->x - 48, (long)me->y, false);
+			const char* fl = labelFor(P.table2, 0);
+			P.flipLabel = fl ? fl : "";
+			real_t ang = atan2(P.table2->y - me->y, P.table2->x - me->x);
+			lineTrace(me, me->x, me->y, ang, 64, LINETRACE_IGNORE_ENTITIES, false);
+			P.losBefore = hit.entity == P.table2;
+			use(P.table2, 0);
+			lineTrace(me, me->x, me->y, ang, 64, LINETRACE_IGNORE_ENTITIES, false);
+			P.losAfter = hit.entity == P.table2;
+			if ( rat ) rat->setHP(0);
+			// torch: take (the sconce stays dark), then relight it with the torch in hand
+			Entity* torch = nullptr;
+			for ( node_t* n = map.entities->first; n && !torch; n = n->next ) if ( Entity* e = (Entity*)n->element ) if ( e->behavior == &actTorch ) torch = e;
+			if ( torch )
+			{
+				P.torchFound = 1;
+				Uint32 tu = torch->getUID();
+				selectedEntity[0] = torch; inrange[0] = true; torch->ticks = std::max<Uint32>(torch->ticks, 5); actTorch(torch); selectedEntity[0] = nullptr;
+				P.torchKept = uidToEntity(tu) != nullptr;
+				P.torchDarkAfterTake = torchDark(torch);
+				for ( node_t* n = st->inventory.first; n; n = n->next ) if ( Item* it = (Item*)n->element ) if ( it->type == TOOL_TORCH ) { P.gotTorch = 1; st->shield = it; break; }
+				if ( P.torchKept ) // vanilla (APX_PROPS=0) removed the torch entity: nothing to relight
+				{
+					selectedEntity[0] = torch; inrange[0] = true; actTorch(torch); selectedEntity[0] = nullptr;
+					P.relit = !torchDark(torch);
+				}
+			}
+			// repair through the bench provider (F6): salvage swords into the ledger, then mend a worn one
+			if ( apxPartsEnabled() )
+			{
+				Item* sw = newItem(IRON_SWORD, WORN, 0, 1, 0, true, nullptr);
+				apxPartsBind(sw, 0);
+				P.statusBefore = (int)sw->status;
+				std::string why, mat;
+				for ( int k = 0; k < 20 && apx_bench::provider().repairCost(0, sw, why, mat) < 0 && sw->apx.nParts; ++k )
+				{
+					Item* s2 = newItem(IRON_SWORD, WORN, 0, 1, (Uint32)k + 1, true, &st->inventory); // salvage consumes it from the pack
+					apxPartsBind(s2, 0);
+					std::string w2;
+					apxPartsSalvageItem(0, s2, -1, w2);
+				}
+				P.repairGrams = apx_bench::provider().repairCost(0, sw, why, mat);
+				// through the bench screen: the Salvage tab (U1f index 3) at a FIELD bench lists the Repair row
+				std::string head, msg;
+				uint32_t form = 0;
+				auto rows = apx_inv::benchEntries(0, 3, apx_logic::FIELD, sw, form, head);
+				for ( auto& row : rows )
+					if ( !row.header && row.row.kind == 9 ) { P.repairRow = 1; P.repairOk = apx_inv::benchActivate(0, 3, apx_logic::FIELD, sw, row, form, msg); P.repairWhy = msg; break; }
+				P.statusAfter = (int)sw->status;
+				{ std::string w4, m4; Item probeCopy = *sw; probeCopy.status = (Status)P.statusBefore; P.gramsNoLedger = apx_bench::provider().repairGrams(&probeCopy, w4, m4); }
+				long long l0 = apxPartsLedgerGrams(0);
+				std::string w3;
+				P.paidOk = apx_bench::provider().repairPaid(0, sw, w3);
+				P.paidStatus = (int)sw->status;
+				P.paidLedgerDelta = (int)(apxPartsLedgerGrams(0) - l0);
+				free(sw);
+			}
 			// 200 bone cages through the real destroy path
 			int idx = EditorEntityData_t::getColliderIndexFromName("hanging_cage_skel");
 			for ( int i = 0; i < 200; ++i )
@@ -345,13 +489,17 @@ namespace props
 				list_RemoveNode(c->mynode);
 			}
 			auto& c = C();
-			char row[1400];
+			char row[2600];
 			snprintf(row, sizeof row,
 				"{\"probe\":\"props\",\"enabled\":%d,\"labels\":\"%s\",\"rests\":%d,\"rests_done\":%d,\"rests_broken\":%d,\"healed\":%d,\"hp0\":%d,\"hp1\":%d,"
 				"\"sits\":%d,\"sit_ticks\":%d,\"stamina_after_sit\":%.1f,\"benches\":%d,\"field_bench_near\":%d,\"reads\":%d,\"read_id\":\"%s\",\"cages\":%d,\"breaks\":%d,"
-				"\"skeletons\":%d,\"skeletons_fodder\":%d,\"trinkets\":%d,\"nothing\":%d,\"encounters\":%d}",
+				"\"skeletons\":%d,\"skeletons_fodder\":%d,\"trinkets\":%d,\"nothing\":%d,\"encounters\":%d,\"enc_creatures\":%d,\"enc_fodder_band\":%d,\"fodder_band_kinds\":%d,"
+				"\"flip_label\":\"%s\",\"flips\":%d,\"los_before\":%d,\"los_after\":%d,\"torch_found\":%d,\"torch_kept\":%d,\"torch_dark\":%d,\"got_torch\":%d,\"relit\":%d,"
+				"\"grams_no_ledger\":%d,\"paid_ok\":%d,\"paid_status\":%d,\"paid_ledger_delta\":%d,\"repair_row\":%d,\"repair_ok\":%d,\"repair_grams\":%d,\"status_before\":%d,\"status_after\":%d,\"repair_why\":\"%s\"}",
 				(int)enabled(), P.labels.c_str(), c.rests, c.restsDone, c.restsBroken, c.healed, P.hp0, st->HP, c.sits, c.sitTicks, (double)apx::get(0).value,
-				c.benches, (int)nearFieldBench(0), c.reads, lastReadId().c_str(), P.cages, c.breaks, c.skeletons, c.skeletonsFodder, c.trinkets, c.nothing, c.encounters);
+				c.benches, (int)nearFieldBench(0), c.reads, lastReadId().c_str(), P.cages, c.breaks, c.skeletons, c.skeletonsFodder, c.trinkets, c.nothing, c.encounters,
+				P.encKinds, P.encKindsFodder, P.fodderBand, P.flipLabel.c_str(), c.flips, P.losBefore, P.losAfter, P.torchFound, P.torchKept, P.torchDarkAfterTake, P.gotTorch, P.relit,
+				P.gramsNoLedger, P.paidOk, P.paidStatus, P.paidLedgerDelta, P.repairRow, P.repairOk, P.repairGrams, P.statusBefore, P.statusAfter, P.repairWhy.c_str());
 			printlog("[apx-props] %s", row);
 			if ( const char* o = std::getenv("APX_PROPS_OUT") ) if ( FILE* f = std::fopen(o, "ab") ) { std::fprintf(f, "%s\n", row); std::fclose(f); }
 			std::exit(0);
