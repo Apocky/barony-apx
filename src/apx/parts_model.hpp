@@ -104,8 +104,14 @@ struct SalvageResult
 	int auraCrystals = 0, affixesIn = 0;
 	bool discharged = false, looted = false, crafted = false;
 	std::vector<ApxItemData> components;    // the component items handed over (D86)
+	int loosePart = -1;                     // quick salvage (keepPart -1, looted): the part that dropped loose, or -1
 };
-SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_t seed, bool symmetric = false);
+// 05b section 5 step 5, QUICK SALVAGE (no choice): the highest-rarity part (lowest index on a tie) drops
+// loose as a component with the chance by its rarity: Common 0, Uncommon 10, Rare 25, Epic 50,
+// Legendary and Unique 100 percent. ASSUMED: one roll, for that one part.
+constexpr int LOOSE_PCT[6] = { 0, 10, 25, 50, 100, 100 };
+// keepAsMaterial = the LS44 control (APX_BREAK_KEEP_MATERIAL=1): the chosen part is melted like the rest.
+SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_t seed, bool symmetric = false, bool keepAsMaterial = false);
 int partMassGrams(const DB& db, const ApxPart& p);
 // One part as a component item's data (D86).
 ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);

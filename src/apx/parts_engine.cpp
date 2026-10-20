@@ -454,6 +454,38 @@ void apxPartsTick()
 // ---------------------------------------------------------------- D86 components
 namespace {
 constexpr Uint32 COMPONENT_TAG = 0xCu << 28;
+bool keepAsMaterialCtl() { const char* v = getenv("APX_BREAK_KEEP_MATERIAL"); return v && *v == '1'; } // LS44 control: must fail
+}
+
+// trade lane (D73/D85): the pouch as a store of grams
+int apxPartsMaterialIndex(const char* id) { return id ? db().material(id) : -1; }
+bool apxPartsLedgerGive(int player, int material, int grams)
+{
+	if ( player < 0 || player >= MAXPLAYERS || material < 0 || material >= MAX_MATS || material >= (int)db().materials.size() || grams <= 0 ) { return false; }
+	ledger[player][material] += (uint32_t)grams;
+	printlog("apxparts: pouch give player %d %s %d g pouch %lld g\n", player, apxPartsMaterialName(material), grams, apxPartsLedgerGrams(player));
+	return true;
+}
+bool apxPartsLedgerTake(int player, int material, int grams)
+{
+	if ( player < 0 || player >= MAXPLAYERS || material < 0 || material >= MAX_MATS || grams <= 0 || (int)ledger[player][material] < grams ) { return false; }
+	ledger[player][material] -= (uint32_t)grams;
+	printlog("apxparts: pouch take player %d %s %d g pouch %lld g\n", player, apxPartsMaterialName(material), grams, apxPartsLedgerGrams(player));
+	return true;
+}
+int apxPartsMaterialCount() { return (int)db().materials.size(); }
+int apxPartsAffixCount(const Item* item, int part) { return item && part >= 0 && part < item->apx.nParts ? item->apx.parts[part].nAffix : 0; }
+const char* apxPartsAffixWord(const Item* item, int part, int a)
+{
+	if ( !item || part < 0 || part >= item->apx.nParts || a < 0 || a >= item->apx.parts[part].nAffix ) { return ""; }
+	const uint16_t id = item->apx.parts[part].affix[a];
+	return id < db().affixes.size() ? db().affixes[id].label.c_str() : "?";
+}
+const char* apxPartsPartName(const Item* item, int part)
+{
+	static std::string buf;
+	buf = item && part >= 0 && part < item->apx.nParts ? apxparts::componentName(db(), item->apx.parts[part]) : std::string();
+	return buf.c_str();
 }
 
 bool apxPartsIsComponent(const Item* item) { return item && item->type == GEM_GLASS && apxparts::isComponent(item->apx); }
@@ -528,7 +560,7 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	memcpy(key + 8, &item->apx.rollKey, 4);
 	const uint64_t seed = apxparts::fnv1a64("salvage", 7, apxparts::fnv1a64(key, sizeof(key)));
 	const bool symmetric = getenv("APX_SALVAGE_SYMMETRIC") && *getenv("APX_SALVAGE_SYMMETRIC") == '1';
-	const apxparts::SalvageResult r = apxparts::salvage(d, item->apx, keepPart, seed, symmetric);
+	const apxparts::SalvageResult r = apxparts::salvage(d, item->apx, keepPart, seed, symmetric, keepAsMaterialCtl());
 	int metal = 0, magic = 0;
 	settle(player, r, metal, magic);
 	auto give = [&](ItemType t, int count) {
@@ -746,14 +778,14 @@ void apxPartsProbeTick()
 			auto countInv = [&]() { int n = 0; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { ++n; } return n; };
 			auto items = rollProbeItems(20, &stats[0]->inventory);
 			const int invBefore = countInv();
-			int station = 0, bench = 0, keptOne = 0, expectComps = 0;
+			int station = 0, bench = 0, keptOne = 0, expectComps = 0, stationLoose = 0;
 			auto countComps = [&]() { int n = 0; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { n += apxPartsIsComponent((const Item*)nd->element); } return n; };
 			const int comps0 = countComps();
 			const long long given0 = apxPartsCounters.components_given;
 			for ( size_t k = 0; k < items.size(); ++k )
 			{
 				Item* it = items[k];
-				if ( k < 10 ) { expectComps += (it->apx.flags & apxparts::FLAG_CRAFTED) ? it->apx.nParts : 0; station += GenericGUI[0].tinkeringSalvageItem(it, false, 0) ? 1 : 0; }
+				if ( k < 10 ) { const long long gs = apxPartsCounters.components_given; station += GenericGUI[0].tinkeringSalvageItem(it, false, 0) ? 1 : 0; const int got = (int)(apxPartsCounters.components_given - gs); expectComps += got; stationLoose += got; } // quick salvage: crafted = every part, looted = maybe one loose part
 				else
 				{
 					std::string why;
@@ -816,13 +848,13 @@ void apxPartsProbeTick()
 					if ( apxPartsIsComponent(c) ) { compsKept += k < compsBefore.size() && !memcmp(&compsBefore[k], &c->apx, sizeof(ApxItemData)); ++k; }
 				}
 			}
-			const bool compsOk = !on || (compsGained == expectComps && compsGiven == expectComps && expectComps >= 10 && craftedParts >= 2 && craftedComps == craftedParts
+			const bool compsOk = !on || (compsGained == expectComps && compsGiven == expectComps && expectComps >= 10 + stationLoose && craftedParts >= 2 && craftedComps == craftedParts
 				&& compsKept == (int)compsBefore.size() && !compsBefore.empty() && compName[0]);
 			const int invAfter = countInv(); // 20 items consumed (+1 crafted); components are new items; scrap/gem stacks may appear
 			const bool invOk = invAfter >= invBefore - 21 + expectComps + craftedComps;
 			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 21 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0 && invOk && weightOk && pouchOk && compsOk);
-			snprintf(buf, sizeof(buf), "{\"probe\":\"components\",\"expected\":%d,\"gained\":%d,\"given\":%lld,\"crafted_parts\":%d,\"crafted_components\":%d,\"kept_after_load\":%d,\"before_load\":%d,\"name\":\"%s\",\"pass\":%s}",
-				expectComps, compsGained, compsGiven, craftedParts, craftedComps, compsKept, (int)compsBefore.size(), compName, compsOk ? "true" : "false");
+			snprintf(buf, sizeof(buf), "{\"probe\":\"components\",\"station_loose\":%d,\"expected\":%d,\"gained\":%d,\"given\":%lld,\"crafted_parts\":%d,\"crafted_components\":%d,\"kept_after_load\":%d,\"before_load\":%d,\"name\":\"%s\",\"pass\":%s}",
+				stationLoose, expectComps, compsGained, compsGiven, craftedParts, craftedComps, compsKept, (int)compsBefore.size(), compName, compsOk ? "true" : "false");
 			probeRow(buf);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"salvage\",\"parts_on\":%d,\"station_ok\":%d,\"bench_ok\":%d,\"bench_kept_one_part\":%d,\"parts_salvaged\":%lld,"
 				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pouch_units\":%d,\"carry_weight\":%d,\"item_weight\":%d,\"weight_ok\":%d,\"pouch_before\":%lld,\"pouch_after\":%lld,\"pouch_saved\":%d,\"pass\":%s}",
@@ -990,7 +1022,7 @@ bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, 
 	memcpy(key + 8, &item->apx.rollKey, 4);
 	const uint64_t seed = apxparts::fnv1a64("salvage", 7, apxparts::fnv1a64(key, sizeof(key)));
 	const bool symmetric = getenv("APX_SALVAGE_SYMMETRIC") && *getenv("APX_SALVAGE_SYMMETRIC") == '1';
-	const apxparts::SalvageResult r = apxparts::salvage(d, item->apx, -1, seed, symmetric);
+	const apxparts::SalvageResult r = apxparts::salvage(d, item->apx, -1, seed, symmetric, keepAsMaterialCtl());
 	int mu = 0, gu = 0;
 	settle(player, r, mu, gu);
 	if ( metal ) { *metal = mu; }

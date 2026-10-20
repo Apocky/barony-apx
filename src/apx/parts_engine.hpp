@@ -62,6 +62,16 @@ int apxPartsComponentGrams(const Item* item);
 int apxPartsComponentValue(const Item* item);
 struct ApxItemData;
 Item* apxPartsGiveComponent(int player, const ApxItemData& data); // into the player's inventory (itemPickup)
+// Trade lane (D73/D85): material ids index materials.json; Give/Take move grams in/out of the pouch
+// (server side; logged); Take is false when the pouch is short. The D85 bundle is apxPartsIsBundle.
+int apxPartsMaterialIndex(const char* id);
+bool apxPartsLedgerGive(int player, int material, int grams);
+bool apxPartsLedgerTake(int player, int material, int grams);
+int apxPartsMaterialCount();
+// bench rows (U1 provider): one part's component name and its affix words
+const char* apxPartsPartName(const Item* item, int part);
+int apxPartsAffixCount(const Item* item, int part);
+const char* apxPartsAffixWord(const Item* item, int part, int a);
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);

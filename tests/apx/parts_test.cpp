@@ -1,3 +1,4 @@
+#include <algorithm>
 // F6 offline gates (card BF6-1, -3, -4, -6; tier T1, no Barony launch). One JSON line per gate;
 // exit 0 = every gate passed. Usage: parts_test <data/apx dir> <tests/apx/itemtypes.txt>
 #include "../../src/apx/parts_model.hpp"
@@ -266,6 +267,89 @@ int main(int argc, char** argv)
 		const bool ok = found && name.size() > mat.size() && (name.find(" of ") != std::string::npos || name.find(' ') < name.size()) && isComponent(comp)
 			&& back.components.empty() && back.grams.size() == 1 && back.massOut == partMassGrams(db, comp.parts[0]) * db.salvage.craftedPct / 100 * (comp.parts[0].integrity < db.salvage.lowIntegrityByte ? db.salvage.lowIntegrityFactorPct : 100) / 100;
 		gate("D86_component_name", ok, join({ "\"name\":\"" + name + "\"", kv("affix_defaults", db.affixDefaults), kv("back_to_material_g", back.massOut) }));
+	}
+	{
+		// LS44 quick salvage (05b 5.5): the top-rarity part drops loose at LOOSE_PCT[rarity]
+		long long n[6] = {}, loose[6] = {};
+		Counters c; ApxItemData it;
+		for ( uint32_t i = 0; i < 200000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 11, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			it.flags = (uint8_t)((it.flags & 0x3f) | FLAG_LOOTED);
+			int top = 0;
+			for ( int k = 0; k < it.nParts; ++k ) { top = std::max<int>(top, it.parts[k].rarity); }
+			const SalvageResult r = salvage(db, it, -1, rollKey(11, 3, 9, i));
+			++n[std::min(5, top)];
+			loose[std::min(5, top)] += r.components.size() == 1 && r.loosePart >= 0 && r.components[0].parts[0].rarity == top;
+		}
+		bool ok = true;
+		std::string rows;
+		for ( int k = 0; k < 6; ++k )
+		{
+			const double pct = n[k] ? 100.0 * loose[k] / n[k] : -1;
+			const double se = n[k] ? 100.0 * std::sqrt(LOOSE_PCT[k] / 100.0 * (1 - LOOSE_PCT[k] / 100.0) / n[k]) : 0; // 3 standard errors, at least 0.5 points
+			if ( n[k] >= 500 && std::fabs(pct - LOOSE_PCT[k]) > std::max(0.5, 3 * se) ) { ok = false; }
+			rows += (k ? "," : "") + std::to_string((int)(pct * 10) / 10.0).substr(0, 5);
+		}
+		gate("LS44_quick_salvage_loose", ok && n[0] + n[1] > 1000, "\"loose_pct_by_rarity\":[" + rows + "],\"n\":[" + std::to_string(n[0]) + "," + std::to_string(n[1]) + "," + std::to_string(n[2]) + "," + std::to_string(n[3]) + "," + std::to_string(n[4]) + "," + std::to_string(n[5]) + "],\"want\":[0,10,25,50,100,100]");
+		// LS44 control: APX_BREAK_KEEP_MATERIAL=1 melts the chosen part, so break-keep must fail
+		long long keepOk = 0, tried = 0;
+		for ( uint32_t i = 0; i < 2000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 11, 20, 0, i, it, c);
+			if ( it.nParts < 2 ) { continue; }
+			it.flags = (uint8_t)((it.flags & 0x3f) | FLAG_LOOTED);
+			++tried;
+			keepOk += salvage(db, it, 0, 9, false, true).components.size() == 1;
+		}
+		gate("LS44_ctrl_keep_as_material", tried > 0 && keepOk == 0, kv("chosen_part_kept", (int)keepOk) + "," + kv("tried", (int)tried) + ",\"note\":\"the control must lose the chosen component\"");
+	}
+	{
+		// C-name over 1,000 rolled components + fill order and weights (a test copy of the table: alternate
+		// prefix/suffix, entry 0 of each pool weight 97, the rest 1)
+		DB t = db;
+		for ( auto& pl : t.pools ) { for ( int j = 0; j < pl.count; ++j ) { AffixInfo& a = t.affixes[(size_t)(pl.firstId + j)]; a.position = j % 2 ? AFFIX_SUFFIX : AFFIX_PREFIX; a.weight = j == 0 ? 97 : 1; a.label = j % 2 ? "of W" + std::to_string(j) : "P" + std::to_string(j); } }
+		Counters c; ApxItemData it;
+		int names = 0, bad = 0, commonOk = 0, commons = 0, order = 0, orderN = 0; long long first0 = 0, firstN = 0;
+		std::string example;
+		for ( uint32_t i = 0; names < 1000 || firstN < 20000; ++i )
+		{
+			roll(t, *gearForms[i % gearForms.size()], 13, 1 + i % 40, 0, i, it, c);
+			for ( int k = 0; k < it.nParts; ++k )
+			{
+				const ApxPart& q = it.parts[k];
+				const std::string nm = componentName(t, q);
+				if ( names < 1000 )
+				{
+					++names;
+					bool b = nm.empty() || nm.find("  ") != std::string::npos || nm.front() == ' ' || nm.back() == ' ';
+					std::string prev, w;
+					for ( size_t z = 0; z <= nm.size(); ++z ) { if ( z == nm.size() || nm[z] == ' ' ) { if ( !w.empty() && w == prev && w != "of" ) { b = true; } prev = w; w.clear(); } else { w += nm[z]; } }
+					bad += b;
+					if ( q.nAffix == 0 ) { ++commons; commonOk += nm.find(" of ") == std::string::npos && std::count(nm.begin(), nm.end(), ' ') <= 3; }
+					if ( q.nAffix >= 2 && example.empty() ) { example = nm; }
+				}
+				if ( q.nAffix >= 2 )
+				{
+					++orderN;
+					order += t.affixes[q.affix[0]].position == AFFIX_PREFIX && t.affixes[q.affix[1]].position == AFFIX_SUFFIX;
+				}
+				if ( q.nAffix >= 1 )
+				{
+					const AffixPool* pl = nullptr;
+					for ( auto& x : t.pools ) { if ( q.affix[0] >= x.firstId && q.affix[0] < x.firstId + x.count ) { pl = &x; } }
+					if ( pl ) { int prefixes = 0, wsum = 0; for ( int j = 0; j < pl->count; j += 2 ) { ++prefixes; wsum += j == 0 ? 97 : 1; } (void)prefixes;
+						++firstN; first0 += q.affix[0] == pl->firstId; }
+				}
+			}
+		}
+		// entry 0 is a prefix with weight 97 among the pool's prefixes (the rest weight 1): expected share 97 / (97 + prefixes - 1)
+		double expect = 0; { const AffixPool& pl = t.pools[0]; int pre = (pl.count + 1) / 2; expect = 97.0 / (97 + pre - 1); }
+		const double share = firstN ? (double)first0 / firstN : 0;
+		gate("C_name", bad == 0 && commons > 0 && commonOk == commons, kv("names", names) + "," + kv("bad", bad) + "," + kv("commons_plain", commonOk) + "/" + std::to_string(commons) + ",\"example\":\"" + example + "\"");
+		gate("C2_fill_order_prefix_then_suffix", orderN > 1000 && order == orderN, kv("components", orderN) + "," + kv("ordered", order));
+		gate("C2_weight", firstN > 0 && std::fabs(share - expect) < 0.03, "\"first_pick_share\":" + std::to_string(share) + ",\"approx_expected\":" + std::to_string(expect) + ",\"note\":\"pools differ in size; tolerance 0.03\"");
 	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;
