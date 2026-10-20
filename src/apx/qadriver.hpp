@@ -6,6 +6,7 @@
 // Commands (one per line; # starts a comment):
 //   key <name> [ms]          press and release a key (SDL scancode name, e.g. I, Escape, Return, W, Space)
 //   hold <name> <ms>         hold a key for ms milliseconds (walk with W, etc.)
+//   kdown <name> / kup <name>  press / release a key without waiting: hold W and Left Shift together (names may contain spaces)
 //   move <x> <y>             move the game's mouse pointer to window pixel (x, y)
 //   click <x> <y> [right]    move there, press and release the left (or right) button
 //   drag <x0> <y0> <x1> <y1> left-button drag
@@ -13,6 +14,11 @@
 //   up <x> <y> [right]       move there and release it
 //   look <dx> <dy>           relative mouse motion (turn the view)
 //   wheel <n>                mouse wheel ticks (+ up, - down)
+//   act <action> <ms>        press the named action (data/apx/input/actions.json) for ms via apx::in's queue (raw SDL events
+//                            when apx::in is off: APX_INPUT_OLD=1); both events are timed in real time, so a press shorter
+//                            than a frame lands in one event batch, as a short real press does
+//   act <action> press|release  only the down or only the up event
+//   sdlact <action> <ms>     the same press as raw SDL events (tests the SDL path into apx::in)
 //   wait <ms>                pause the script
 //   waitlevel <n> [ms]       pause until floor n is loaded and player 0 stands on it (default timeout 90 s); logs reached or TIMED OUT
 //   shot <name>              screenshot to <dir>/<name>.png (the game's own back-buffer capture)

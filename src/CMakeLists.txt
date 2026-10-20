@@ -33,6 +33,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/looknet.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/selftest_all.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/qadriver.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in.cpp" # apx D93 C0: apx::in, the one owner of play input
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in_glue.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/visshots.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics.cpp"
@@ -40,6 +42,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/bf3trial.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/flow.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tiers.cpp" # apx D74: creature tiers at run time, damage by tier
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/hostility.cpp" # apx D93: who fights whom
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/move/move.cpp" # apx M1: our own player movement
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_data.cpp" # apx F6: parts-based gear (pure)
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_roll.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/parts_engine.cpp" # apx F6: Barony hooks
@@ -57,7 +61,6 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/entity.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/impact.cpp" # apx F4b
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/core.cpp" # apx D93 C1: the combat core
-	"${CMAKE_CURRENT_SOURCE_DIR}/apx/in/in_stub.cpp" # apx D93: apx::in stub until apx/input lands
 	"${CMAKE_CURRENT_SOURCE_DIR}/messages.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actflame.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actcampfire.cpp"

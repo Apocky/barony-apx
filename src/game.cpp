@@ -54,6 +54,7 @@ static std::string apxOutDir;
 
 #include "apx/combat/impact.hpp" // apx F4b
 static std::string apxLoadModPath; // apx: -apxloadmod=<folder>
+static std::string apxReplayFile; // apx D93 C0: -apxreplay=<file>
 static int apxFloor = 0; // apx: -apxfloor=<n>: test path, quickstart straight to floor n (no splash, no menu)
 static bool apxImpactTest = false; // apx F4b: -apximpacttest: log old vs new damage multipliers for every monster, then quit
 static Uint32 apxMapSeed = 0; // apx: -apxmapseed=<n>: map seed for that floor (as /setmapseed)
@@ -101,7 +102,9 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
+#include "apx/move/move.hpp"
 #include "apx/qadriver.hpp" // apx: -apxqa=<dir> interactive QA driver
+#include "apx/in/in_glue.hpp" // apx D93 C0: apx::in owns play input
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
 #include "apx/vox/builder.hpp"
@@ -157,7 +160,7 @@ static void apxSelftestClearHostiles(apx::selftestall::Stage s)
 		e->setHP(0);
 		++cleared;
 	}
-	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+	if ( !apx::selftestall::sweeping() || cleared > 0 ) { printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters%s (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared, apx::selftestall::sweeping() ? " (sweep: spawned since)" : ""); }
 }
 
 // voxel (BX1, C10): a steel sword with rolled parts is drawn from its parts' voxel models: the first-person and
@@ -256,6 +259,7 @@ static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 
 #include "UnicodeDecoder.h"
 #include "apx/lua_layer.hpp"
+#include "apx/hostility.hpp" // apx D93
 static bool apxLuaTestMode = false;
 #include "apx_stamina.hpp"
 
@@ -1189,10 +1193,12 @@ void gameLogic(void)
         }
     }
 
+	apx::in::glue::gameTick(); // apx D93 C0: latch + compat tick step before the bindings sample the legacy state
 	for (auto& input : Input::inputs) {
 		input.update();
 		input.consumeBindingsSharedWithFaceHotbar();
 	}
+	apx::in::glue::afterInputUpdate(); // apx D93 C0: legacy-consumer probe
 
 	int auto_appraise_lowest_time[MAXPLAYERS];
 	Item* auto_appraise_target[MAXPLAYERS];
@@ -1381,6 +1387,9 @@ void gameLogic(void)
 	{
 		fadealpha = std::max(0, fadealpha - 10);
 	}
+
+	apx::hostility::frame(); // apx D93: floor reset, calm start, gate
+	apx::move::frame(); // apx M1: impulses on creatures, cost summary
 
 	// handle safe packets
 	if ( !(ticks % 4) )
@@ -4544,11 +4553,12 @@ bool handleEvents(void)
 	}
 	mouseMotionEventsTimestamp.clear();
 
+	apx::in::glue::frameBegin(); // apx D93 C0: the owner gate, once per frame
 	apx::qa::pump(); // apx QA driver: its input events enter the same queue as real ones
 	while ( SDL_PollEvent(&event) )   // poll SDL events
 	{
 		if ( apx::bf3::swallowInput(event) ) { continue; } // apx BF3 trial: human input is dropped and counted
-		apx::in::onEvent(event); // apx D93: apx::in latches presses and motion from every event, whatever consumes it next
+		if ( demo_mode != DemoMode::PLAYING ) { apx::in::glue::observe(event); } // apx D93 C0: apx::in sees every device event first
 #ifdef USE_IMGUI
 		if ( ImGui_t::isInit )
 		{
@@ -4725,8 +4735,11 @@ bool handleEvents(void)
                         case SDLK_PAUSE: lastkeypressed = SDLK_F15; break;
                     }
 #endif
-					keystatus[lastkeypressed] = true;
-					Input::keys[lastkeypressed] = true;
+					if ( apx::in::glue::vanillaWrites() ) // apx D93 C0: otherwise the compat feed writes these from apx::in's latched state
+					{
+						keystatus[lastkeypressed] = true;
+						Input::keys[lastkeypressed] = true;
+					}
 					Input::lastInputOfAnyKind = SDL_GetKeyName(lastkeypressed);
 				}
 				break;
@@ -4757,8 +4770,11 @@ bool handleEvents(void)
                         case SDLK_PAUSE: key = SDLK_F15; break;
                     }
 #endif
-					keystatus[key] = false;
-					Input::keys[key] = false;
+					if ( apx::in::glue::vanillaWrites() ) // apx D93 C0
+					{
+						keystatus[key] = false;
+						Input::keys[key] = false;
+					}
 				}
 				break;
 			case SDL_TEXTINPUT:
@@ -4843,8 +4859,11 @@ bool handleEvents(void)
                     lastkeypressed = 282 + event.button.button;
                 }
 #else
-                mousestatus[event.button.button] = 1; // set this mouse button to 1
-                Input::mouseButtons[event.button.button] = 1;
+                if ( apx::in::glue::vanillaWrites() ) // apx D93 C0
+                {
+                    mousestatus[event.button.button] = 1; // set this mouse button to 1
+                    Input::mouseButtons[event.button.button] = 1;
+                }
                 Input::lastInputOfAnyKind = std::string("Mouse") + std::to_string(event.button.button);
                 lastkeypressed = 282 + event.button.button;
 #endif
@@ -4853,8 +4872,11 @@ bool handleEvents(void)
 			    if (demo_mode == DemoMode::PLAYING) {
 			        break;
 			    }
-				mousestatus[event.button.button] = 0; // set this mouse button to 0
-				Input::mouseButtons[event.button.button] = 0;
+				if ( apx::in::glue::vanillaWrites() ) // apx D93 C0
+				{
+					mousestatus[event.button.button] = 0; // set this mouse button to 0
+					Input::mouseButtons[event.button.button] = 0;
+				}
 #ifdef APPLE
                 mousestatus[SDL_BUTTON_RIGHT] = 0;
                 Input::mouseButtons[SDL_BUTTON_RIGHT] = 0;
@@ -4872,15 +4894,15 @@ bool handleEvents(void)
 #endif // USE_IMGUI
 				if ( event.wheel.y > 0 )
 				{
-					mousestatus[SDL_BUTTON_WHEELUP] = 1;
-					Input::mouseButtons[Input::MOUSE_WHEEL_UP] = 1;
+					if ( apx::in::glue::vanillaWrites() ) { mousestatus[SDL_BUTTON_WHEELUP] = 1; } // apx D93 C0
+					if ( apx::in::glue::vanillaWrites() ) { Input::mouseButtons[Input::MOUSE_WHEEL_UP] = 1; }
 					Input::lastInputOfAnyKind = "MouseWheelUp";
 					lastkeypressed = 286;
 				}
 				else if ( event.wheel.y < 0 )
 				{
-					mousestatus[SDL_BUTTON_WHEELDOWN] = 1;
-					Input::mouseButtons[Input::MOUSE_WHEEL_DOWN] = 1;
+					if ( apx::in::glue::vanillaWrites() ) { mousestatus[SDL_BUTTON_WHEELDOWN] = 1; } // apx D93 C0
+					if ( apx::in::glue::vanillaWrites() ) { Input::mouseButtons[Input::MOUSE_WHEEL_DOWN] = 1; }
 					Input::lastInputOfAnyKind = "MouseWheelDown";
 					lastkeypressed = 287;
 				}
@@ -4917,8 +4939,11 @@ bool handleEvents(void)
 					factorY = (float)h1 / h2;
 					mousex = event.motion.x * factorX;
 					mousey = event.motion.y * factorY;
-					mousexrel += event.motion.xrel;
-					mouseyrel += event.motion.yrel;
+					if ( !apx::in::glue::swallowLook() ) // apx D93 C0: owner GAME: apx::in latches the motion and the compat feed sets mousexrel once per tick
+					{
+						mousexrel += event.motion.xrel;
+						mouseyrel += event.motion.yrel;
+					}
 				}
 
 				//{
@@ -5497,6 +5522,7 @@ bool handleEvents(void)
 		time1 = std::chrono::high_resolution_clock::now();
 #endif
 	}
+	apx::in::glue::frameEnd(); // apx D93 C0: compat feed from apx::in's latched state, per-second D90 row
 
 #ifdef DEBUG_EVENT_TIMERS
 	time2 = std::chrono::high_resolution_clock::now();
@@ -7522,6 +7548,10 @@ int main(int argc, char** argv)
 						datadir[datadirsz] = '\0';
 						datadirFromCommandLine = true;
 					}
+					else if ( !strncmp(argv[c], "-apxreplay=", 11) )
+					{
+						apxReplayFile = argv[c] + 11;
+					}
 					else if ( !strncmp(argv[c], "-apxfloor=", 10) )
 					{
 						apxFloor = std::max(0, atoi(argv[c] + 10));
@@ -7625,6 +7655,7 @@ int main(int argc, char** argv)
 		// apx: automated launches (headless, test floor, quickstart, self-tests) must never move or grab the user's mouse
 		apx::noInputGrab = apx::headlessOn || apx::qa::armed() || apxFloor > 0 || strlen(classtoquickstart) > 0 || getenv("APX_SELFTEST") != nullptr || getenv("APX_F4C_SELFTEST") != nullptr;
 		if ( apx::noInputGrab ) { printlog("[apx] input: automated launch, the mouse is never warped or grabbed"); }
+		apx::in::glue::init(apxReplayFile.c_str()); // apx D93 C0
 		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
 
         // init sdl
@@ -8649,6 +8680,7 @@ int main(int argc, char** argv)
 		(void)MainMenu::settingsSave();
 
 		// deinit
+		apx::in::glue::shutdown();
 		apxdiag::shutdown();
 		apx::close();
 		apxLuaShutdown();

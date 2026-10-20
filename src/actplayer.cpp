@@ -41,6 +41,7 @@
 #include "apx_combat.hpp"
 #include "apx/props.hpp"
 #include "apx/hollow_probe.hpp"
+#include "apx/move/move.hpp" // apx M1: our own player movement (D93)
 
 bool settings_smoothmouse = false;
 bool usecamerasmoothing = false;
@@ -3838,6 +3839,14 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 	{
 		// do nothing, override rotations.
 	}
+	else if ( shootmode && !gamePaused && apx::move::lookActive() )
+	{
+		// apx M1: the mouse-look turn from our own function (same feel; sensitivity, smoothing and the confused flip from the table)
+		float rx = (float)PLAYER_ROTX;
+		apx::move::lookX(rx, (float)mousex_relative, (float)mouse_speed, smoothmouse, stats[PLAYER_NUM]->getEffectActive(EFF_CONFUSED) > 0,
+			my->isMobile(), !disablemouserotationlimit, (float)refreshRateDelta);
+		PLAYER_ROTX = rx;
+	}
 	else if ( shootmode && !gamePaused )
 	{
 		if ( !stats[PLAYER_NUM]->getEffectActive(EFF_CONFUSED) )
@@ -3940,7 +3949,14 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 			my->pitch += (Input::inputs[playernum].analog("Look Up") - Input::inputs[playernum].analog("Look Down")) * .05 * refreshRateDelta;
 		}
 	}
-	if ( shootmode && !gamePaused )
+	if ( shootmode && !gamePaused && apx::move::lookActive() )
+	{
+		float ry = (float)PLAYER_ROTY;
+		apx::move::lookY(ry, (float)mousey_relative, (float)mouse_speed, smoothmouse, reversemouse, stats[PLAYER_NUM]->getEffectActive(EFF_CONFUSED) > 0,
+			my->isMobile(), (float)refreshRateDelta);
+		PLAYER_ROTY = ry;
+	}
+	else if ( shootmode && !gamePaused )
 	{
 		if ( !stats[PLAYER_NUM]->getEffectActive(EFF_CONFUSED) )
 		{
@@ -4501,6 +4517,10 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 	if ( !players[player.playernum]->entity )
 	{
 		return;
+	}
+	if ( apx::move::active() )
+	{
+		return; // apx M1: apx::move::step runs once per 50 Hz tick from actPlayer; Barony's per-frame force/drag integration is the CONTROL (APX_MOVE_OLD=1)
 	}
 
 	Entity* my = players[player.playernum]->entity;
@@ -11469,6 +11489,10 @@ void actPlayer(Entity* my)
 			}
 		}
 
+		if ( apx::move::active() )
+		{
+			apx::move::step(PLAYER_NUM); // apx M1: integrate this tick (data/apx/move/move.json)
+		}
 		if ( !usecamerasmoothing )
 		{
 			players[PLAYER_NUM]->movement.handlePlayerMovement(false);
@@ -11498,7 +11522,7 @@ void actPlayer(Entity* my)
 		if ( noclip == false )
 		{
 			// perform collision detection
-			dist = clipMove(&my->x, &my->y, PLAYER_VELX, PLAYER_VELY, my);
+			dist = apx::move::active() ? apx::move::collide(my, PLAYER_VELX, PLAYER_VELY) : clipMove(&my->x, &my->y, PLAYER_VELX, PLAYER_VELY, my); // apx M1
 
 			if ( multiplayer != CLIENT && !intro )
 			{
@@ -11624,8 +11648,8 @@ void actPlayer(Entity* my)
 					}
 				}
 
-				if ( hit.entity->behavior == &actDoorFrame &&
-					hit.entity->flags[INVISIBLE] )
+				if ( !apx::move::active() && hit.entity->behavior == &actDoorFrame &&
+					hit.entity->flags[INVISIBLE] ) // apx M1: the corner nudge in apx::move::collide replaces this steering
 				{
 					// code that almost fixes door frame collision
 					bool doSlide = true;
@@ -11694,6 +11718,7 @@ void actPlayer(Entity* my)
 			dist = sqrt(PLAYER_VELX * PLAYER_VELX + PLAYER_VELY * PLAYER_VELY);
 		}
 
+		apx::move::logTick(PLAYER_NUM); // apx M1: the gate's JSONL row (APX_MOVE_LOG), any mode
 		if ( dist >= 0.01 )
 		{
 			players[PLAYER_NUM]->compendiumProgress.playerDistAccum += dist;

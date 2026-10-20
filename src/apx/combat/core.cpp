@@ -714,7 +714,7 @@ namespace combat
 			Entity* me = players[p]->entity;
 			Stat* ms = stats[p];
 			apx::Stamina_t& sta = apx::get(p);
-			const bool held = rec.isHeld(in::A_ATTACK);
+			const bool held = rec.isHeld(in::B_Attack);
 			if ( f.hitstop > 0 && f.st == State::Active )
 			{
 				// 40 ms hit stop: the swing's clock and the pose hold; swept targets still waiting for their hit (per-tick budget) land meanwhile
@@ -726,7 +726,7 @@ namespace combat
 			if ( f.st == State::Idle )
 			{
 				if ( f.needRelease ) { if ( !held ) { f.needRelease = false; } return; }
-				const bool press = rec.pressCount[in::A_ATTACK] > 0;
+				const bool press = rec.pressCount[in::B_Attack] > 0;
 				if ( !(press || held) ) { return; }
 				if ( !apx::canSwing(p) ) { f.needRelease = true; ++gCount.fizzled; row("{\"ev\":\"fizzle\",\"tick\":%u,\"player\":%d,\"stamina\":%.2f}", (unsigned)ticks, p, sta.value); return; }
 				f.fam = famOf(ms);
@@ -743,7 +743,7 @@ namespace combat
 			{
 				++f.t;
 				if ( held ) { ++f.heldTicks; }
-				if ( rec.releaseCount[in::A_ATTACK] > 0 || !held ) { f.released = true; }
+				if ( rec.releaseCount[in::B_Attack] > 0 || !held ) { f.released = true; }
 				const int dirTicks = msToTicks(kDirectionWindowMs);
 				if ( !f.dirLocked )
 				{
@@ -845,7 +845,7 @@ namespace combat
 		{
 			if ( f.st == State::Windup || f.st == State::Active ) { row("{\"ev\":\"cancel\",\"tick\":%u,\"player\":%d,\"state\":\"%s\",\"mobile\":%d,\"can_attack\":%d,\"skill9\":%d,\"paralyzed\":%d,\"hp\":%d}", (unsigned)ticks, p, stateName(f.st), (int)me->isMobile(), (int)apx::combat_glue::canAttack(me), (int)me->skill[9], (int)stats[p]->getEffectActive(EFF_PARALYZED), (int)stats[p]->HP); }
 			if ( f.st != State::Idle ) { sta.swingWhileBlock = false; resetSwing(f); }
-			f.needRelease = rec.isHeld(in::A_ATTACK);
+			f.needRelease = rec.isHeld(in::B_Attack);
 			sta.prevChop = false;
 			return;
 		}
@@ -1064,16 +1064,13 @@ namespace combat
 	{
 		void fakeButton(bool down)
 		{
-			SDL_Event e; SDL_zero(e);
-			e.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
-			e.button.button = SDL_BUTTON_LEFT; e.button.state = down ? SDL_PRESSED : SDL_RELEASED; e.button.clicks = 1;
-			in::onEvent(e);
+			in::Raw e; e.type = down ? in::R_MouseDown : in::R_MouseUp; e.code = 1; e.tsMs = SDL_GetTicks();
+			in::event(e);
 		}
 		void fakeMotion(int dx, int dy)
 		{
-			SDL_Event e; SDL_zero(e);
-			e.type = SDL_MOUSEMOTION; e.motion.xrel = dx; e.motion.yrel = dy;
-			in::onEvent(e);
+			in::Raw e; e.type = in::R_MouseMove; e.dx = (float)dx; e.dy = (float)dy; e.tsMs = SDL_GetTicks();
+			in::event(e);
 		}
 		struct SelfResult { int fam, moveId, dir; bool charged; int hits; double cost, table; bool ok; };
 		std::vector<SelfResult> gSelfResults;

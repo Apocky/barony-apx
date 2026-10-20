@@ -1,0 +1,203 @@
+{
+ "version": 1,
+ "_doc": "apx::hostility (src/apx/hostility.cpp): the ONLY source of who fights whom for creature target choice (spec 04b s3 and s6). A pair listed here is hostile (symmetric); every other pair is NEUTRAL (skeleton vs rat). Also hostile: a creature hit by another regards the hitter as a foe for provocation_seconds; followers fight what their leader fights; director events (apx.set_hostile / apx.set_target) set pairs, logged. Calm start: no creature targets anyone until the player has control plus calm_seconds. Barony swornenemies is not consulted. Env APX_HOSTILITY_OLD=1 = vanilla (the control).",
+ "provocation_seconds": 30,
+ "calm_seconds": 10,
+ "shop_radius_tiles": 2,
+ "monster_vs_nonmonster": {
+  "class": "living",
+  "reason": "monsters fight non-monsters (the living)",
+  "nonmonsters": [
+   "HUMAN"
+  ],
+  "exempt_monsters": [
+   "HUMAN",
+   "SHOPKEEPER",
+   "GNOME",
+   "DRYAD",
+   "MYCONID",
+   "AUTOMATON",
+   "SALAMANDER",
+   "GYROBOT",
+   "SENTRYBOT",
+   "SPELLBOT",
+   "DUMMYBOT"
+  ]
+ },
+ "pairs": [
+  {
+   "a": "SKELETON",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "the undead hate the living"
+  },
+  {
+   "a": "GHOUL",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "ghouls feed on the living"
+  },
+  {
+   "a": "VAMPIRE",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "vampires feed on human blood"
+  },
+  {
+   "a": "SHADOW",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "shadows hunt the living"
+  },
+  {
+   "a": "LICH",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "the undead hate the living"
+  },
+  {
+   "a": "LICH_ICE",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "the undead hate the living"
+  },
+  {
+   "a": "LICH_FIRE",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "the undead hate the living"
+  },
+  {
+   "a": "GOBLIN",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "goblin raiders prey on human travellers"
+  },
+  {
+   "a": "TROLL",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "trolls eat people"
+  },
+  {
+   "a": "BUGBEAR",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "bugbears raid human settlements"
+  },
+  {
+   "a": "DEMON",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "demons hunt mortals"
+  },
+  {
+   "a": "CREATURE_IMP",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "imps torment mortals"
+  },
+  {
+   "a": "SUCCUBUS",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "succubi prey on mortals"
+  },
+  {
+   "a": "INCUBUS",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "incubi prey on mortals"
+  },
+  {
+   "a": "MINOTAUR",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "the minotaur devours those in its maze"
+  },
+  {
+   "a": "SPIDER",
+   "b": "HUMAN",
+   "class": "living",
+   "reason": "giant spiders take people as prey"
+  },
+  {
+   "a": "GOBLIN",
+   "b": "GNOME",
+   "class": "enemy",
+   "reason": "goblins and gnomes are old blood enemies over the mines"
+  },
+  {
+   "a": "TROLL",
+   "b": "GNOME",
+   "class": "enemy",
+   "reason": "trolls raid gnome burrows"
+  },
+  {
+   "a": "GOATMAN",
+   "b": "GNOME",
+   "class": "enemy",
+   "reason": "goatmen raid gnome burrows"
+  },
+  {
+   "a": "GOBLIN",
+   "b": "KOBOLD",
+   "class": "enemy",
+   "reason": "goblins and kobolds fight over the same tunnels"
+  },
+  {
+   "a": "DRYAD",
+   "b": "GOATMAN",
+   "class": "enemy",
+   "reason": "goatmen burn the dryads' groves"
+  },
+  {
+   "a": "MYCONID",
+   "b": "SLIME",
+   "class": "enemy",
+   "reason": "slimes dissolve myconid colonies"
+  },
+  {
+   "a": "SPIDER",
+   "b": "RAT",
+   "class": "prey",
+   "reason": "spiders prey on rats"
+  },
+  {
+   "a": "SPIDER",
+   "b": "BAT_SMALL",
+   "class": "prey",
+   "reason": "spiders web and eat bats"
+  },
+  {
+   "a": "SPIDER",
+   "b": "INSECTOID",
+   "class": "prey",
+   "reason": "giant spiders prey on insectoids"
+  },
+  {
+   "a": "SCORPION",
+   "b": "SCARAB",
+   "class": "prey",
+   "reason": "scorpions hunt scarabs"
+  },
+  {
+   "a": "BAT_SMALL",
+   "b": "MOTH_SMALL",
+   "class": "prey",
+   "reason": "bats eat moths"
+  },
+  {
+   "a": "COCKATRICE",
+   "b": "RAT",
+   "class": "prey",
+   "reason": "cockatrices hunt rats"
+  },
+  {
+   "a": "TROLL",
+   "b": "RAT",
+   "class": "prey",
+   "reason": "trolls snatch rats to eat"
+  }
+ ]
+}
