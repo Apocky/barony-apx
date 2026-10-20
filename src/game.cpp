@@ -2038,6 +2038,7 @@ void gameLogic(void)
 					int totalFloorMonsters = 0;
 					int totalFloorEnemies[MAXPLAYERS];
 					Item tmpItem;
+					memset(&tmpItem, 0, sizeof(tmpItem)); // apx F6: Item::apx must start zeroed (sellValue reads it; garbage nParts crashed C9)
 					for ( int i = 0; i < MAXPLAYERS; ++i )
 					{
 						totalFloorItemValue[i] = 0;

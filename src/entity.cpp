@@ -8393,6 +8393,7 @@ Sint32 Entity::getAttack(Entity* my, Stat* myStats, bool isPlayer, int chargeMod
 		attack *= 1.0 - mult;
 	}
 
+	attack = apxPartsAttackMod(myStats, attack); // apx F6 C9: the weapon's makers (tendency D, gimmicks)
 	return attack;
 }
 
@@ -9102,6 +9103,7 @@ Sint32 statGetDEX(Stat* entitystats, Entity* my)
 			DEX += 3;
 		}
 	}
+	DEX += apxPartsStatBonus(entitystats, 0); // apx F6 C9: Silverbough
 	return DEX;
 }
 
@@ -9287,6 +9289,7 @@ Sint32 statGetCON(Stat* entitystats, Entity* my)
 		}
 	}
 
+	CON += apxPartsStatBonus(entitystats, 1); // apx F6 C9: Dunwold
 	return CON;
 }
 
@@ -12816,6 +12819,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 					}
 
 					int myAttack = std::max(0, (Entity::getAttack(this, myStats, behavior == &actPlayer, charge) * damagePreMultiplier) + getBonusAttackOnTarget(*hitstats));
+						myAttack += apxPartsAttackOnTarget(this, myStats, hitstats, myAttack); // apx F6 C9: maker effects on this target
 					if ( player >= 0 )
 					{
 						myAttack = apx::adjustDamage(player, myAttack, pose); // apx: vertical slash weight, slash falloff
@@ -17119,6 +17123,7 @@ int AC(Stat* stat)
 		armor *= 2;
 	}
 
+	armor += apxPartsArmorBonus(stat); // apx F6 C9: armor makers (tendency A, gimmicks)
 	return armor;
 }
 
@@ -25815,6 +25820,7 @@ Item* Entity::getBestShieldIHave() const
 
 bool Entity::degradeArmor(Stat& hitstats, Item& armor, int armornum)
 {
+	if ( apxPartsNoWear(&armor) ) { return false; } // apx F6 C9: Hephaesteum
 	if ( hitstats.type == SHADOW || hitstats.type == LICH || hitstats.type == LICH_FIRE || hitstats.type == LICH_ICE )
 	{
 		return false; //Shadows' armor and shields don't break.

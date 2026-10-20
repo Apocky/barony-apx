@@ -91,17 +91,22 @@ int pickMaterial(const DB& db, const TypeForm& tf, Role role, int depth, SplitMi
 int itemPower(const DB& db, const ApxItemData& it)
 {
 	int ip = 0;
+	const int im = db.makers.empty() ? 0 : itemMaker(db, it);
+	const int gs = db.slot("Graft");
 	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k )
 	{
 		const ApxPart& p = it.parts[k];
 		const int role = p.slot < db.slots.size() ? db.slots[p.slot].role : ROLE_OTHER;
 		const int tier = p.material < db.materials.size() ? db.materials[p.material].tier : 1;
-		ip += ROLE_WEIGHT[role] * tier * (10 + 3 * p.rarity + p.quality);
+		const int v = ROLE_WEIGHT[role] * tier * (10 + 3 * p.rarity + p.quality);
+		const bool foreign = im && p.maker && p.maker != im && p.slot != gs; // C9: a foreign component works at 75 percent
+		ip += foreign ? v * db.foreignPct / 100 : v;
 	}
 	return ip;
 }
 
-void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int source, uint32_t index, ApxItemData& out, Counters& c, bool capOn)
+namespace { int makerFamily = -1; }
+void rollParts(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int source, uint32_t index, ApxItemData& out, Counters& c, bool capOn)
 {
 	++c.rolls;
 	TypeForm tf = tfIn;
@@ -124,6 +129,7 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 		SplitMix r(key ^ (0xA24BAED4963EE407ULL * (uint64_t)(attempt + 1)));
 		memset(&out, 0, sizeof(out));
 		out.form = (uint32_t)tf.family;
+	makerFamily = tf.family;
 		out.rollKey = (uint32_t)key;
 		out.nParts = (uint8_t)slots.size();
 		int best = 0;
@@ -203,6 +209,25 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 	}
 }
 
+void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int source, uint32_t index, ApxItemData& out, Counters& c, bool capOn)
+{
+	makerFamily = -1;
+	rollParts(db, tfIn, realm, depth, source, index, out, c, capOn);
+	// 05b 5.1 step 7 (C9): one active maker that stamps this family makes every part; its own stream, so no
+	// other draw moves. Families no active maker stamps get maker 0. The IP cap is re-checked with makers on.
+	std::vector<int> cand;
+	for ( size_t m = 0; m < db.makers.size(); ++m )
+	{
+		if ( !db.makers[m].active ) { continue; }
+		for ( int f : db.makers[m].families ) { if ( f == makerFamily ) { cand.push_back((int)m + 1); break; } }
+	}
+	if ( cand.empty() || out.nParts == 0 ) { return; }
+	SplitMix mr(out.rollKey ^ 0x4D414B4552ULL);
+	const uint8_t mk = (uint8_t)cand[(size_t)mr.below((int)cand.size())];
+	for ( int k = 0; k < out.nParts; ++k ) { out.parts[k].maker = mk; }
+	out.power = (uint16_t)std::min(itemPower(db, out), 65535);
+}
+
 // ---------------------------------------------------------------- save string (v1 base; v2 = extension tokens)
 // A part is "P<slot>.<material>.<quality>.<rarity>.<integrity>.<maker>.<nAffix>.<a0>-<a1>-<a2>-<a3>" then, in
 // this order and only when set, ":l<look hex8>" (BX1), ":x<a4>" (the 5th, Unique affix), ":m<m0>.<m1>.<m2>.<m3>.<m4>"
@@ -272,7 +297,7 @@ bool fromString(const std::string& s, ApxItemData& out)
 	if ( (!v2 && !lit(c, "v1;f=")) || !readU(c, 0xffffffffULL, v[0]) || !lit(c, ";k=") || !readU(c, 0xffffffffULL, v[1]) || !lit(c, ";p=") || !readU(c, 65535, v[2])
 		|| !lit(c, ";n=") || !readU(c, APX_MAX_PARTS, v[3]) || !lit(c, ";fl=") || !readU(c, 255, v[4]) || !lit(c, ";") ) { return false; }
 	it.form = (uint32_t)v[0]; it.rollKey = (uint32_t)v[1]; it.power = (uint16_t)v[2]; it.nParts = (uint8_t)v[3]; it.flags = (uint8_t)v[4];
-	for ( int k = 0; k < it.nParts; ++k )
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k )
 	{
 		ApxPart& p = it.parts[k];
 		unsigned long long f[11];
@@ -383,10 +408,10 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 	const bool comp = isComponent(it);
 	r.crafted = (it.flags & FLAG_CRAFTED) && !comp;
 	r.looted = (it.flags & FLAG_LOOTED) && !(it.flags & FLAG_CRAFTED) && !comp;
-	for ( int k = 0; k < it.nParts; ++k ) { r.affixesIn += it.parts[k].nAffix; }
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { r.affixesIn += it.parts[k].nAffix; }
 	if ( r.crafted ) // D86: every part comes back as a component item
 	{
-		for ( int k = 0; k < it.nParts; ++k ) { r.components.push_back(componentOf(db, it.parts[k], it.rollKey + (uint32_t)k, it.flags)); }
+		for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { r.components.push_back(componentOf(db, it.parts[k], it.rollKey + (uint32_t)k, it.flags)); }
 		return r;
 	}
 	if ( comp ) { keepPart = -1; } // a component salvages to its material
@@ -396,11 +421,11 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 	if ( r.looted && keepPart < 0 && !keepAsMaterial && it.nParts > 0 ) // quick salvage: maybe one loose part
 	{
 		int best = 0;
-		for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
+		for ( int k = 1; k < it.nParts && k < APX_MAX_PARTS; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
 		const int rar = std::min<int>(5, it.parts[best].rarity);
 		if ( rng.below(100) < LOOSE_PCT[rar] ) { keepPart = best; r.loosePart = best; }
 	}
-	for ( int k = 0; k < it.nParts; ++k )
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k )
 	{
 		const ApxPart& p = it.parts[k];
 		if ( k == keepPart ) { continue; }
@@ -495,6 +520,13 @@ bool assemble(const DB& db, int family, const std::vector<ApxPart>& parts, uint3
 	for ( int req : f.required ) { for ( auto& p : parts ) { if ( p.slot == req ) { a.parts[a.nParts++] = p; } } }
 	for ( auto& p : parts ) { bool req = false; for ( int r : f.required ) { req = req || p.slot == r; } if ( !req ) { a.parts[a.nParts++] = p; } }
 	refreshDerived(db, a); // sockets, element, power from the components (C7)
+	if ( !db.makers.empty() ) // C9: foreign components allowed by the assembly's rarity (Common 0, Uncommon 1, Rare 2, Epic+ 3)
+	{
+		int best = 0;
+		for ( int k = 0; k < a.nParts && k < APX_MAX_PARTS; ++k ) { best = std::max<int>(best, a.parts[k].rarity); }
+		const int foreign = foreignParts(db, a), allow = db.foreignAllowance[std::min(5, best)];
+		if ( foreign > allow ) { why = std::to_string(foreign) + " foreign components; a " + std::string(best >= 3 ? "Epic" : best == 2 ? "Rare" : best == 1 ? "Uncommon" : "Common") + " assembly takes " + std::to_string(allow); return false; }
+	}
 	if ( a.power > ipCapValue ) { why = "Item Power " + std::to_string(a.power) + " over this depth's cap " + std::to_string(ipCapValue); return false; }
 	out = a;
 	return true;
@@ -550,7 +582,7 @@ namespace {
 int bestPart(const ApxItemData& it)
 {
 	int b = 0;
-	for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[b].rarity ) { b = k; } }
+	for ( int k = 1; k < it.nParts && k < APX_MAX_PARTS; ++k ) { if ( it.parts[k].rarity > it.parts[b].rarity ) { b = k; } }
 	return b;
 }
 }
@@ -561,7 +593,7 @@ std::string properName(const DB& db, const ApxItemData& it)
 	static const char* const FIRST[] = { "Ember", "Frost", "Grave", "Storm", "Ash", "Iron", "Moon", "Blood", "Thorn", "Gloom", "Star", "Wyrm", "Hollow", "Bright", "Raven", "Salt" };
 	static const char* const SECOND[] = { "Tongue", "Fang", "Song", "Ward", "Bite", "Whisper", "Brand", "Heart", "Crown", "Wake", "Thirst", "Mark", "Veil", "Root", "Edge", "Call" };
 	uint64_t h = fnv1a64(&it.rollKey, sizeof(it.rollKey), fnv1a64("propername", 10));
-	for ( int k = 0; k < it.nParts; ++k ) { h = fnv1a64(&it.parts[k], sizeof(ApxPart), h); }
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { h = fnv1a64(&it.parts[k], sizeof(ApxPart), h); }
 	std::string n = std::string(OWNER[h % 16]) + "'s " + FIRST[(h >> 8) % 16] + "-" + SECOND[(h >> 16) % 16];
 	(void)db;
 	return n;
@@ -595,14 +627,14 @@ bool stripParts(const DB& db, ApxItemData& it, std::vector<ApxPart>& removed, bo
 	const bool looted = (it.flags & FLAG_LOOTED) && !(it.flags & FLAG_CRAFTED);
 	if ( !looted )
 	{
-		for ( int k = 0; k < it.nParts; ++k ) { removed.push_back(it.parts[k]); }
+		for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { removed.push_back(it.parts[k]); }
 		consumed = true;
 		return true;
 	}
 	const Family* f = it.form < db.families.size() ? &db.families[it.form] : nullptr;
 	ApxItemData t = it;
 	t.nParts = 0;
-	for ( int k = 0; k < it.nParts; ++k )
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k )
 	{
 		const ApxPart& p = it.parts[k];
 		bool required = false;
@@ -675,7 +707,7 @@ void refreshDerived(const DB& db, ApxItemData& it)
 {
 	if ( it.nParts == 0 ) { return; }
 	int best = 0;
-	for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
+	for ( int k = 1; k < it.nParts && k < APX_MAX_PARTS; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
 	const int sockets = isComponent(it) ? 0 : std::min(4, (int)it.parts[best].rarity);
 	const int element = it.parts[best].material < db.materials.size() ? (db.materials[it.parts[best].material].element & 7) : 0;
 	it.flags = (uint8_t)((it.flags & (FLAG_CRAFTED | FLAG_LOOTED)) | sockets | (element << 3));
@@ -688,7 +720,7 @@ bool extractGraft(const DB& db, const ApxItemData& it, ApxPart& g, std::string& 
 {
 	if ( it.nParts == 0 || isComponent(it) ) { why = "extract a graft from an assembly"; return false; }
 	int best = 0, q = 0;
-	for ( int k = 0; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } q += it.parts[k].quality; }
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } q += it.parts[k].quality; }
 	if ( it.parts[best].rarity < 2 ) { why = "only a Rare or better item yields a graft"; return false; }
 	const int gs = graftSlot(db);
 	if ( gs < 0 ) { why = "no Graft slot in forms.json"; return false; }
@@ -701,6 +733,70 @@ bool extractGraft(const DB& db, const ApxItemData& it, ApxPart& g, std::string& 
 	g.maker = it.parts[0].maker;
 	g.nAffix = 0; // a graft carries a maker's gimmick, not affixes (invariant 7: affixes only by roll or infuse)
 	return true;
+}
+
+} // namespace apxparts
+
+namespace apxparts {
+
+int itemMaker(const DB& db, const ApxItemData& it)
+{
+	if ( it.nParts == 0 ) { return 0; }
+	if ( it.nParts == 1 ) { return it.parts[0].maker; }
+	const int gs = db.slot("Graft");
+	int cnt[256] = {};
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { if ( it.parts[k].slot != gs && it.parts[k].maker ) { ++cnt[it.parts[k].maker]; } }
+	int best = 0;
+	for ( int m = 1; m < 256; ++m ) { if ( cnt[m] >= 2 && cnt[m] > cnt[best] ) { best = m; } }
+	return best;
+}
+
+int foreignParts(const DB& db, const ApxItemData& it)
+{
+	const int im = itemMaker(db, it), gs = db.slot("Graft");
+	int n = 0;
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) { const ApxPart& p = it.parts[k]; n += p.slot != gs && p.maker && p.maker != im; }
+	return n;
+}
+
+namespace {
+void addGimmick(MakerMods& m, const MakerGimmick& g, bool weapon, int pct)
+{
+	if ( (g.on == "weapon" && !weapon) || (g.on == "armor" && weapon) ) { return; }
+	const int v = g.value * pct / 100;
+	if ( g.kind == "dmg_pct" ) { m.dmgPct += v; }
+	else if ( g.kind == "ac_flat" ) { m.acFlat += v; }
+	else if ( g.kind == "dex" ) { m.dex += v; }
+	else if ( g.kind == "con" ) { m.con += v; }
+	else if ( g.kind == "mp_on_kill" ) { m.mpOnKill += v; }
+	else if ( g.kind == "undead_pct" ) { m.undeadPct += v; }
+	else if ( g.kind == "low_hp_dmg_pct" ) { m.lowHpDmgPct += v; }
+	else if ( g.kind == "low_hp_ac" ) { m.lowHpAc += v; }
+	else if ( g.kind == "dmg_pct_mp" ) { m.dmgPctMp += v; }
+	else if ( g.kind == "no_wear" ) { m.noWear = m.noWear || v > 0; }
+}
+}
+
+MakerMods makerMods(const DB& db, const ApxItemData& it, bool weapon)
+{
+	MakerMods m;
+	if ( it.nParts == 0 || db.makers.empty() ) { return m; }
+	const int im = itemMaker(db, it);
+	if ( im > 0 && im <= (int)db.makers.size() )
+	{
+		const Maker& mk = db.makers[(size_t)im - 1];
+		if ( weapon ) { m.dmgPct += mk.dmgPct; } else { m.acFlat += mk.acFlat; }
+		m.weightPct += mk.weightPct; m.valuePct += mk.valuePct;
+		for ( auto& g : mk.gimmick ) { addGimmick(m, g, weapon, 100); }
+	}
+	const int gs = db.slot("Graft");
+	for ( int k = 0; k < it.nParts && k < APX_MAX_PARTS; ++k ) // a graft carries its maker's gimmick onto another maker's item at 75 percent
+	{
+		const ApxPart& p = it.parts[k];
+		if ( p.slot != gs || !p.maker || p.maker == im || p.maker > db.makers.size() ) { continue; }
+		for ( auto& g : db.makers[p.maker - 1u].gimmick ) { addGimmick(m, g, weapon, db.foreignPct); }
+	}
+	return m;
 }
 
 } // namespace apxparts
