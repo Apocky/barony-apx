@@ -7399,6 +7399,14 @@ void Player::HUD_t::finalizeFrameTooltip(Item* item, const int x, const int y, i
 				snprintf(fieldName, sizeof(imgName), "txt %d", order);
 				auto img = frameTooltipPrompt->findImage(imgName);
 				auto txt = frameTooltipPrompt->findField(fieldName);
+				if ( !img || !txt )
+				{
+					// apx: an option whose binding has no prompt glyph (order 5: unbound) has no slot in the
+					// prompt frame (glyphs 1-4); it used to write through a null image (crash, D88)
+					static int apxSkipped = 0;
+					if ( apxSkipped++ == 0 ) { printlog("[apx-tip] tooltip prompt option %d has no glyph slot %d (binding '%s'): skipped", (int)option, order, getContextMenuOptionBindingName(player, option).c_str()); }
+					continue;
+				}
 				img->disabled = false;
 				img->color = 0xFFFFFFFF;
 				if ( players[player]->inventoryUI.useItemDropdownOnGamepad == Player::Inventory_t::GAMEPAD_DROPDOWN_COMPACT )

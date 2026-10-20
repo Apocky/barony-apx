@@ -45,6 +45,17 @@ namespace apx_logic
 		static const char* w[] = { "Broken", "Decrepit", "Worn", "Fine", "Excellent" };
 		return status >= 0 && status <= 4 ? w[status] : "";
 	}
+	inline const char* tabTiny(int t) // the grid's tab strip (8 tabs in 210 px)
+	{
+		static const char* n[] = { "All", "Wpn", "Arm", "Tool", "Use", "Mat", "Book", "$" };
+		return t >= 0 && t <= KIND_MAX ? n[t] : "?";
+	}
+	inline std::vector<Entry> withoutHeaders(const std::vector<Entry>& e)
+	{
+		std::vector<Entry> out;
+		for ( auto& x : e ) { if ( !x.header ) { out.push_back(x); } }
+		return out;
+	}
 	inline const char* tabShort(int t)
 	{
 		static const char* n[] = { "All", "Weap", "Armr", "Tools", "Cons", "Mats", "Books", "Gold" };
