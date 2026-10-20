@@ -7516,6 +7516,10 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strcmp(argv[c], "-apxfpsprobe") )
+					{
+						apx::vis::armFpsProbe(); // apx: lag profile, inventory closed then open, then quit
+					}
 					else if ( !strcmp(argv[c], "-apxbuildershot") )
 					{
 						apx::vis::armBuilderShot(); // apx BX1: builder panel screenshots, then quit

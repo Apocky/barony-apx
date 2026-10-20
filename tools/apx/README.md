@@ -151,6 +151,17 @@ the stages features -> impact -> tierdmg -> inventory -> moves -> f4c (src/apx/s
 | f4c | all 19 poise/zone/downed checks pass (runs last: it downs player 0) | `APX_POISE=0`, `APX_ZONES=0`, `APX_DOWNED=0` |
 
 Headless skips the inventory UI phases (they need a visible window); windowed runs them.
+### FPS gate (lag regressions)
+
+```
+pwsh -NoProfile -File tools\apx\fps_gate.ps1 -Candidate <exe> -Base <apx-main exe> [-Repeat 2]
+```
+
+Runs both builds back to back through `tools\apx\fps_probe.ps1` (exclusive, windowed 1280x720, never touches the
+mouse): `-apxfpsprobe` records uncapped frame times for 10 s with the inventory closed, then 10 s open, on the start
+map and on floor 1 (seed 1234567). FAIL when the candidate's median fps p50 falls below 85 percent of the base's, or
+its p99 below 80 percent, in any (floor, phase). Same-session comparison: the machine's load varies a lot between
+runs (0.1.2's own inventory-open p50 measured 84-131 on one day), so absolute numbers are recorded, not gated.
 ## Test farm: -apxheadless and farm.py
 
 `-apxheadless` (or `APX_HEADLESS=1`) runs the game with a hidden window (never focused, so no key
