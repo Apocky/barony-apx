@@ -10,6 +10,7 @@ See LICENSE for details.
 -------------------------------------------------------------------------------*/
 
 #include "apx/trade_glue.hpp"
+#include "apx/diag.hpp"
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "apx/tactics.hpp"
@@ -3212,7 +3213,9 @@ void Entity::setHP(int amount)
 		return;
 	}
 	const bool wasDead = entitystats->HP <= 0;
+	const int apxDiagHpBefore = healthDiff;
 	entitystats->HP = std::min(std::max(0, amount), entitystats->MAXHP);
+	if ( this->behavior == &actPlayer && entitystats->HP <= 0 && apxDiagHpBefore > 0 ) { apxdiag::eventf("death", "\"player\":%d,\"hp_before\":%d", (int)this->skill[2], apxDiagHpBefore); }
 	healthDiff -= entitystats->HP;
 	if ( wasDead && entitystats->HP <= 0 && !apx::spawnfix::legacy() )
 	{

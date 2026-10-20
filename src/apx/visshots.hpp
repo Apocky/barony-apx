@@ -13,6 +13,7 @@ namespace vis
 	void arm();
 	void armProbe();
 	void armVoxShot();            // -apxvoxshot (BX1): the held sword drawn from its parts, one screenshot, then quit
+	void armFpsProbe();           // -apxfpsprobe: frame times with the inventory closed then open, then quit
 	void armBuilderShot();        // -apxbuildershot (BX1): the voxel builder panel, two screenshots, Build, then quit              // -apxlightprobe: per-tile monster-visible light, then quit
 	bool armed();
 	void tick(bool ready);        // once per game tick

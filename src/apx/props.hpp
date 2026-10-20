@@ -64,7 +64,10 @@ namespace props
 		{
 			if ( p.behavior == "furniture" && e->behavior == &actFurniture )
 			{
-				if ( (forUse && p.furnitureType == e->furnitureType) || (!forUse && p.furnitureType == -1) ) return &p;
+				// use: the row of this furniture type with a use verb; destroy: its "destroyed" row (-1 = any type)
+				const bool destroyRow = p.verb == "destroyed";
+				if ( forUse && !destroyRow && p.furnitureType == e->furnitureType ) return &p;
+				if ( !forUse && destroyRow && (p.furnitureType == e->furnitureType || p.furnitureType == -1) ) return &p;
 			}
 			else if ( p.behavior == "collider" && e->behavior == &actColliderDecoration && !forUse )
 			{
@@ -73,6 +76,7 @@ namespace props
 		}
 		return nullptr;
 	}
+	inline bool hasUseVerb(Entity* e) { return rowFor(e, true) != nullptr; }
 	inline std::vector<Uint32>& restSpawned() { static std::vector<Uint32> v; return v; }
 	inline std::unordered_set<Uint32>& flipped() { static std::unordered_set<Uint32> s; return s; }
 	inline std::unordered_set<Uint32>& darkTorches() { static std::unordered_set<Uint32> s; return s; }
@@ -81,6 +85,8 @@ namespace props
 	// the world prompt for player pn (D81): the prop's verb; a table offers Flip while a hostile is in sight
 	inline const char* labelFor(Entity* e, int pn)
 	{
+		static std::unordered_set<Uint32> seen;
+		if ( std::getenv("APX_PROPS_QA") && e && seen.insert(e->getUID()).second ) printlog("[apx-props] qa prompt asked for uid=%u", e->getUID());
 		if ( e && e->behavior == &actTorch && enabled() ) return torchDark(e) ? "Relight the sconce" : nullptr;
 		const PropRow* p = rowFor(e, true);
 		if ( !p || p->label.empty() ) return nullptr;
@@ -102,7 +108,7 @@ namespace props
 		int encounterPm = 0, encounterMax = 0, hunger = 0;
 	};
 	inline PlayerState& ps(int pn) { static PlayerState s[MAXPLAYERS]; return s[std::max(0, std::min(MAXPLAYERS - 1, pn))]; }
-	struct Counters { int rests = 0, restsDone = 0, restsBroken = 0, healed = 0, sits = 0, sitTicks = 0, benches = 0, reads = 0, breaks = 0, skeletons = 0, skeletonsFodder = 0, trinkets = 0, scrap = 0, nothing = 0, yields = 0, encounters = 0, flips = 0, torchesTaken = 0, torchesRelit = 0, encounterKinds = 0; };
+	struct Counters { int rests = 0, restsDone = 0, restsBroken = 0, healed = 0, sits = 0, sitTicks = 0, benches = 0, reads = 0, breaks = 0, skeletons = 0, skeletonsFodder = 0, trinkets = 0, scrap = 0, nothing = 0, yields = 0, encounters = 0, yieldGrams = 0, flips = 0, torchesTaken = 0, torchesRelit = 0, encounterKinds = 0; };
 	inline Counters& C() { static Counters c; return c; }
 	inline int& fieldBenchUntil(int pn) { static int t[MAXPLAYERS] = {}; return t[std::max(0, std::min(MAXPLAYERS - 1, pn))]; }
 
@@ -164,6 +170,7 @@ namespace props
 			s.seat = e; s.seatX = me->x; s.seatY = me->y;
 			C().sits++;
 			messagePlayer(pn, MESSAGE_INTERACTION, "You sit down and catch your breath.");
+			printlog("[apx-props] sit player=%d", pn);
 			return true;
 		}
 		if ( p->verb == "bench" && tableFlips(hostileInSight(me), flipped().count(e->getUID()) > 0) )
@@ -226,7 +233,27 @@ namespace props
 				(it == (int)TOOL_METAL_SCRAP ? C().scrap : C().trinkets)++;
 			}
 		}
-		if ( !o.yield.empty() ) { C().yields++; printlog("[apx-props] yield %s (given when F6 lands)", o.yield.c_str()); }
+		if ( !o.yield.empty() )
+		{
+			// "pouch:<material>:<grams>" into the F6 pouch of the nearest player within 4 tiles (who broke it)
+			char mat[40] = {};
+			int grams = 0;
+			if ( sscanf(o.yield.c_str(), "pouch:%39[^:]:%d", mat, &grams) == 2 )
+			{
+				int best = -1;
+				double bd = 4 * 16.0;
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+					if ( players[i] && players[i]->entity ) { double d = std::hypot(players[i]->entity->x - e->x, players[i]->entity->y - e->y); if ( d <= bd ) { bd = d; best = i; } }
+				if ( best >= 0 && apxPartsLedgerGive(best, mat, grams) )
+				{
+					C().yields++;
+					C().yieldGrams += grams;
+					messagePlayer(best, MESSAGE_INVENTORY, "You salvage %d g of %s.", grams, mat);
+					printlog("[apx-props] yield %d g %s -> pouch of player %d", grams, mat, best);
+				}
+				else printlog("[apx-props] yield %s: no player in reach or unknown material", o.yield.c_str());
+			}
+		}
 	}
 	inline void onColliderBreak(Entity* e)
 	{
@@ -335,12 +362,50 @@ namespace props
 				sta.value = std::min(sta.maxValue, sta.value + apx::kRegenPerSecond * 2.0 / 50.0); // x3 with the base regen
 			}
 		}
+		// QA setup (APX_PROPS_QA=1): a bed, a chair, a table and a bone cage are placed in a row in front of
+		// player 0 on floor start, nothing else is done: a tester walks up and uses them with real input
+		static const char* qa = std::getenv("APX_PROPS_QA");
+		static int qaDone = -1;
+		if ( qa && qa[0] && qa[0] != '0' && pn == 0 && qaDone != currentlevel && ::ticks > 60 )
+		{
+			qaDone = currentlevel;
+			// an arc 24 units away: chair at -50 deg, table straight ahead, bed at +50 deg (relative to the view),
+			// the bone cage behind; the tester turns to each without walking into furniture
+			auto at = [&](real_t deg, int type) {
+				real_t a = me->yaw + deg * PI / 180.0, fx = std::cos(a), fy = std::sin(a);
+				Entity* f = newEntity(0, 1, map.entities, nullptr);
+				// as maps.cpp builds them (table 271 5x4 focalz -3, chair 272 2x2 -5, bed 627 5x4); z 8 = on the floor
+				f->behavior = &actFurniture; f->furnitureType = type; f->flags[BURNABLE] = true; f->z = 8;
+				f->sprite = type == FURNITURE_TABLE ? 271 : type == FURNITURE_CHAIR ? 272 : 627;
+				f->focalz = type == FURNITURE_CHAIR ? -5 : -3;
+				f->sizex = type == FURNITURE_CHAIR ? 2 : 5; f->sizey = type == FURNITURE_CHAIR ? 2 : 4;
+				const real_t r = type == FURNITURE_CHAIR ? 14 : 18; // inside Barony's 24-unit tooltip reach (player.cpp tooltipInRange)
+				f->x = me->x + fx * r; f->y = me->y + fy * r;
+				if ( type == FURNITURE_BED ) f->z = 4;
+				printlog("[apx-props] qa placed furniture type %d at %.0f,%.0f", type, f->x, f->y);
+			};
+			// APX_PROPS_QA=chair|table|bed|cage: that one prop straight ahead (a tester aims ahead and uses it);
+			// APX_PROPS_QA=1: chair, table, bed in an arc and the cage behind
+			const std::string w = qa;
+			if ( w == "chair" ) at(0, FURNITURE_CHAIR);
+			else if ( w == "table" ) at(0, FURNITURE_TABLE);
+			else if ( w == "bed" ) at(0, FURNITURE_BED);
+			else if ( w != "cage" ) { at(-50, FURNITURE_CHAIR); at(0, FURNITURE_TABLE); at(50, FURNITURE_BED); }
+			if ( w == "cage" || w == "1" )
+			{
+				int idx = EditorEntityData_t::getColliderIndexFromName("hanging_cage_skel");
+				real_t d = w == "cage" ? 32 : -20;
+				Entity* c = Entity::createBreakableCollider(idx, me->x + std::cos(me->yaw) * d, me->y + std::sin(me->yaw) * d, nullptr);
+				if ( c ) printlog("[apx-props] qa placed bone cage at %.0f,%.0f", c->x, c->y);
+				else printlog("[apx-props] qa could not place a bone cage");
+			}
+		}
 		static const char* probe = std::getenv("APX_PROPS_PROBE");
 		if ( probe && probe[0] == '1' && pn == 0 ) probeStep(me);
 	}
 
 	// ---------------------------------------------------------------- the headless check (card BP1-1)
-	struct Probe { int phase = 0; Uint32 t0 = 0; Entity* bed = nullptr; Entity* chair = nullptr; Entity* table = nullptr; Entity* podium = nullptr; Entity* table2 = nullptr; int hp0 = 0; int cages = 0; std::string labels; int encKindsFodder = 0, encKinds = 0, fodderBand = 0; std::string flipLabel; int losBefore = -1, losAfter = -1; int torchFound = 0, torchKept = 0, torchDarkAfterTake = 0, gotTorch = 0, relit = 0; int gramsNoLedger = -2, paidOk = 0, paidStatus = -1, paidLedgerDelta = -1, repairRow = 0, repairOk = 0, statusBefore = -1, statusAfter = -1, repairGrams = -1; std::string repairWhy; };
+	struct Probe { int phase = 0; Uint32 t0 = 0; Entity* bed = nullptr; Entity* chair = nullptr; Entity* table = nullptr; Entity* podium = nullptr; Entity* table2 = nullptr; int hp0 = 0; int cages = 0; std::string labels; int encKindsFodder = 0, encKinds = 0, fodderBand = 0; std::string flipLabel; int losBefore = -1, losAfter = -1; int torchFound = 0, torchKept = 0, torchDarkAfterTake = 0, gotTorch = 0, relit = 0; int woodGrams = -1, gramsNoLedger = -2, paidOk = 0, paidStatus = -1, paidLedgerDelta = -1, repairRow = 0, repairOk = 0, statusBefore = -1, statusAfter = -1, repairGrams = -1; std::string repairWhy; };
 	inline Probe& PR() { static Probe p; return p; }
 	inline Entity* makeFurniture(int type, Entity* near, int dx)
 	{
@@ -479,6 +544,15 @@ namespace props
 				P.paidLedgerDelta = (int)(apxPartsLedgerGrams(0) - l0);
 				free(sw);
 			}
+			// a broken chair pays its wood into the pouch (the real furniture death path in actFurniture)
+			{
+				Entity* ch = makeFurniture(FURNITURE_CHAIR, me, 8);
+				ch->actFurniture(); // init
+				long long g0 = apxPartsLedgerGrams(0);
+				ch->furnitureHealth = 0;
+				ch->actFurniture(); // dies: gibs, then apx::props::onDestroyed
+				P.woodGrams = (int)(apxPartsLedgerGrams(0) - g0);
+			}
 			// 200 bone cages through the real destroy path
 			int idx = EditorEntityData_t::getColliderIndexFromName("hanging_cage_skel");
 			for ( int i = 0; i < 200; ++i )
@@ -501,11 +575,11 @@ namespace props
 				"\"sits\":%d,\"sit_ticks\":%d,\"stamina_after_sit\":%.1f,\"benches\":%d,\"field_bench_near\":%d,\"reads\":%d,\"read_id\":\"%s\",\"cages\":%d,\"breaks\":%d,"
 				"\"skeletons\":%d,\"skeletons_fodder\":%d,\"trinkets\":%d,\"nothing\":%d,\"encounters\":%d,\"enc_creatures\":%d,\"enc_fodder_band\":%d,\"fodder_band_kinds\":%d,"
 				"\"flip_label\":\"%s\",\"flips\":%d,\"los_before\":%d,\"los_after\":%d,\"torch_found\":%d,\"torch_kept\":%d,\"torch_dark\":%d,\"got_torch\":%d,\"relit\":%d,"
-				"\"grams_no_ledger\":%d,\"paid_ok\":%d,\"paid_status\":%d,\"paid_ledger_delta\":%d,\"repair_row\":%d,\"repair_ok\":%d,\"repair_grams\":%d,\"status_before\":%d,\"status_after\":%d,\"repair_why\":\"%s\"}",
+				"\"wood_grams\":%d,\"grams_no_ledger\":%d,\"paid_ok\":%d,\"paid_status\":%d,\"paid_ledger_delta\":%d,\"repair_row\":%d,\"repair_ok\":%d,\"repair_grams\":%d,\"status_before\":%d,\"status_after\":%d,\"repair_why\":\"%s\"}",
 				(int)enabled(), P.labels.c_str(), c.rests, c.restsDone, c.restsBroken, c.healed, P.hp0, st->HP, c.sits, c.sitTicks, (double)apx::get(0).value,
 				c.benches, (int)nearFieldBench(0), c.reads, lastReadId().c_str(), P.cages, c.breaks, c.skeletons, c.skeletonsFodder, c.trinkets, c.nothing, c.encounters,
 				P.encKinds, P.encKindsFodder, P.fodderBand, P.flipLabel.c_str(), c.flips, P.losBefore, P.losAfter, P.torchFound, P.torchKept, P.torchDarkAfterTake, P.gotTorch, P.relit,
-				P.gramsNoLedger, P.paidOk, P.paidStatus, P.paidLedgerDelta, P.repairRow, P.repairOk, P.repairGrams, P.statusBefore, P.statusAfter, P.repairWhy.c_str());
+				P.woodGrams, P.gramsNoLedger, P.paidOk, P.paidStatus, P.paidLedgerDelta, P.repairRow, P.repairOk, P.repairGrams, P.statusBefore, P.statusAfter, P.repairWhy.c_str());
 			printlog("[apx-props] %s", row);
 			if ( const char* o = std::getenv("APX_PROPS_OUT") ) if ( FILE* f = std::fopen(o, "ab") ) { std::fprintf(f, "%s\n", row); std::fclose(f); }
 			std::exit(0);

@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/diag.hpp"
 #include "hash.hpp"
 #include "entity.hpp"
 #include "prng.hpp"
@@ -618,6 +619,7 @@ void printlog(const char* str, ...)
 	vsnprintf( newstr, 1023, str, argptr );
 	va_end( argptr );
 
+	apxdiag::logLine(newstr); // D90: classify/count errors and warnings, keep the last lines for a crash report
 	// timestamp the message
 	char buffer[32];
     getTimeFormatted(getTime(), buffer, sizeof(buffer));

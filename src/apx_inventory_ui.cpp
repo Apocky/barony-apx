@@ -50,6 +50,30 @@ static uint32_t g_benchForm[MAXPLAYERS] = {};
 std::vector<Entry> benchEntries(int player, int tab, int station, Item* selectedOwn, uint32_t selectedForm, std::string& head);
 bool benchActivate(int player, int tab, int station, Item* selectedOwn, const Entry& row, uint32_t& selectedForm, std::string& msg);
 constexpr int ROW_H = 20, HEAD_H = 34, MAX_ROWS = 40, PANEL_W = 220, TIP_W = 320;
+constexpr int CELL = 40, MAX_CELLS = 120;
+static int g_cols[MAXPLAYERS][3] = {};   // columns of the own (0) and other (1) grids, for up/down moves
+// Lag fix (2026-10-19): the list and grid updates looked up every row/cell by name each frame with findFrame, which
+// searches the whole panel subtree recursively: MAX_CELLS (120) x the tree per frame, the 0.1.4 inventory-open
+// slowdown (start map fps p50 131 -> 76). Now the panel's direct children are indexed once per update by the number in
+// their name ("apx cell 7" -> [7]); APX_UI_FINDFRAME=1 keeps the old per-cell findFrame (the control).
+static bool legacyFindFrame()
+{
+	static const bool on = getenv("APX_UI_FINDFRAME") && getenv("APX_UI_FINDFRAME")[0] == '1';
+	return on;
+}
+static void indexChildren(Frame* parent, const char* prefix, std::vector<Frame*>& out, int count)
+{
+	out.assign((size_t)count, nullptr);
+	const size_t pl = strlen(prefix);
+	for ( Frame* c : parent->getFrames() )
+	{
+		const char* n = c ? c->getName() : nullptr;
+		if ( !n || strncmp(n, prefix, pl) ) { continue; }
+		const int i = atoi(n + pl);
+		if ( i >= 0 && i < count ) { out[(size_t)i] = c; }
+	}
+}
+
 static const char* FONT = "fonts/pixel_maz_multiline.ttf#16#2";
 
 const ListState& listState(int player) { return g_list[std::max(0, std::min(MAXPLAYERS - 1, player))]; }
@@ -271,23 +295,109 @@ void setFocus(int player, int focus, int row)
 	}
 }
 
-bool openRowMenu(int player, Item* item)
+static int g_menuOpens[MAXPLAYERS] = {};
+static bool g_menuFromMouse[MAXPLAYERS] = {};
+static int g_menuRmbHeld[MAXPLAYERS] = {};   // frames the opening right press was held; -1 once released
+bool openRowMenu(int player, Item* item, bool atMouse)
 {
 	if ( !item ) { return false; }
 	auto* ui = inputs.getUIInteraction(player);
 	auto& pl = *players[player];
-	const SDL_Rect& r = g_ownRect[player];
-	const auto& st = g_list[player];
 	ui->itemMenuOpen = true;
 	ui->itemMenuFromHotbar = false;
 	ui->itemMenuItem = item->uid;
 	ui->itemMenuSelected = 0;
-	ui->toggleclick = true; // click-and-release mode: stays open until the next click
-	int x = pl.camera_virtualx1() + r.x + r.w + 8;
-	int y = pl.camera_virtualy1() + r.y + HEAD_H + (st.selected - st.scroll) * ROW_H;
+	// D88: Barony runs an entry when the right button is up and toggleclick is false. The menu opens with
+	// toggleclick = true (it stays open after a right-click tap); menuMouseUpdate() then clears it for the
+	// entry the player picks: a left click on it, or a held right press released over it. Before, nothing
+	// on the inventory path ever cleared it, so no entry could be chosen with the mouse (Apocky's bug).
+	ui->toggleclick = true;
+	g_menuFromMouse[player] = atMouse;
+	g_menuRmbHeld[player] = 0;
+	int x = 0, y = 0;
+	if ( atMouse )
+	{
+		// where Barony's own slots open it: at the cursor, the cursor halfway into the first entry
+		x = (int)((inputs.getMouse(player, Inputs::X) / (float)xres) * (float)Frame::virtualScreenX) + 8;
+		y = (int)((inputs.getMouse(player, Inputs::Y) / (float)yres) * (float)Frame::virtualScreenY);
+		if ( pl.inventoryUI.interactFrame )
+		{
+			if ( auto top = pl.inventoryUI.interactFrame->findImage("interact top background") ) { y -= top->pos.h + 10 + 2; }
+		}
+	}
+	else
+	{
+		// gamepad and keyboard: beside the selected cell
+		SDL_Rect cell = g_ownRect[player];
+		cell.w = CELL; cell.h = CELL;
+		if ( Frame* inv = pl.inventoryUI.frame )
+		{
+			if ( Frame* g = inv->findFrame("apx list") )
+			{
+				const auto& st = g_list[player];
+				char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", st.selected - st.scroll * std::max(1, g_cols[player][0]));
+				if ( Frame* c = g->findFrame(nm) ) { if ( !c->isDisabled() ) { cell = c->getAbsoluteSize(); } }
+			}
+		}
+		x = cell.x + cell.w + 4;
+		y = cell.y;
+	}
 	ui->itemMenuX = x + (x & 1);
 	ui->itemMenuY = std::max(y + (y & 1), pl.camera_virtualy1());
 	pl.GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+	++g_menuOpens[player];
+	return true;
+}
+int menuOpensForTest(int player) { return g_menuOpens[player]; }
+
+// an item menu opened from the grid with the mouse: pick an entry with a left click (or a held right press
+// released over it); a left click off the entries closes it. APX_MENU_OLD=1 is the control (never picks).
+static int g_menuPicks[MAXPLAYERS] = {};
+static void menuMouseUpdate(int player)
+{
+	auto* ui = inputs.getUIInteraction(player);
+	if ( !ui->itemMenuOpen || !g_menuFromMouse[player] ) { g_menuFromMouse[player] = ui->itemMenuOpen && g_menuFromMouse[player]; return; }
+	static const bool oldMenu = getenv("APX_MENU_OLD") && getenv("APX_MENU_OLD")[0] == '1';
+	auto& in = Input::inputs[player];
+	bool pick = false;
+	if ( g_menuRmbHeld[player] >= 0 )
+	{
+		if ( in.binary("MenuRightClick") ) { ++g_menuRmbHeld[player]; }
+		else
+		{
+			// released: a held press (drag onto an entry) picks it; a tap leaves the menu open for a click
+			pick = g_menuRmbHeld[player] >= 12 && ui->itemMenuSelected >= 0;
+			g_menuRmbHeld[player] = -1;
+		}
+	}
+	if ( !oldMenu && in.binaryToggle("MenuLeftClick") )
+	{
+		in.consumeBinaryToggle("MenuLeftClick");
+		if ( ui->itemMenuSelected >= 0 ) { pick = true; }
+		else if ( !oldMenu ) { ui->itemMenuOpen = false; ui->itemMenuItem = 0; g_menuFromMouse[player] = false; } // clicked off the menu: close (Barony's click blocker goes with it)
+	}
+	if ( pick && !oldMenu )
+	{
+		ui->toggleclick = false; // Barony runs the entry under the cursor on its next update (button up)
+		++g_menuPicks[player];
+	}
+}
+int menuPicksForTest(int player) { return g_menuPicks[player]; }
+static int g_lastMenuOption[MAXPLAYERS] = { -1, -1, -1, -1 };
+static Uint32 g_lastMenuItem[MAXPLAYERS] = {};
+void noteMenuOption(int player, int prompt, Uint32 uid) { if ( player >= 0 && player < MAXPLAYERS ) { g_lastMenuOption[player] = prompt; g_lastMenuItem[player] = uid; } }
+Uint32 lastMenuItemForTest(int player) { return g_lastMenuItem[player]; }
+int lastMenuOptionForTest(int player) { return g_lastMenuOption[player]; }
+void resetMenuOptionForTest(int player) { g_lastMenuOption[player] = -1; }
+bool cellRectForTest(int player, int index, SDL_Rect& out)
+{
+	Frame* inv = players[player]->inventoryUI.frame;
+	Frame* g = inv ? inv->findFrame("apx list") : nullptr;
+	if ( !g ) { return false; }
+	char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", index - g_list[player].scroll * std::max(1, g_cols[player][0]));
+	Frame* c = g->findFrame(nm);
+	if ( !c || c->isDisabled() ) { return false; }
+	out = c->getAbsoluteSize();
 	return true;
 }
 
@@ -406,7 +516,7 @@ bool activateSelected(int player)
 	if ( sel < 0 || sel >= (int)own.size() || own[sel].header || own[sel].row.uid == 0 ) { return false; }
 	Item* it = uidToItem(own[sel].row.uid);
 	if ( vs.other != OTHER_NONE ) { return giveOwn(player, it); }
-	return openRowMenu(player, it);
+	return openRowMenu(player, it, false);
 }
 
 void setBenchTab(int player, int tab)
@@ -664,11 +774,13 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 	static const Uint32 cond[] = { makeColor(230, 70, 60, 255), makeColor(240, 140, 60, 255), makeColor(240, 210, 90, 255),
 		makeColor(225, 225, 225, 255), makeColor(255, 255, 255, 255) };
 	int drawn = 0;
+	static std::vector<Frame*> rowsByIndex;
+	if ( !legacyFindFrame() ) { indexChildren(list, "apx row ", rowsByIndex, MAX_ROWS); }
 	for ( int i = 0; i < MAX_ROWS; ++i )
 	{
 		char nm[32];
 		snprintf(nm, sizeof(nm), "apx row %d", i);
-		Frame* row = list->findFrame(nm);
+		Frame* row = legacyFindFrame() ? list->findFrame(nm) : rowsByIndex[(size_t)i];
 		Field* f = row ? row->findField("text") : nullptr;
 		Field* mf = row ? row->findField("mass") : nullptr;
 		if ( !row || !f || !mf ) { continue; }
@@ -729,8 +841,6 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 // bar, the sort column), category tabs, then cells of CELL px with a rarity-coloured border, the icon,
 // the count and an equipped mark. Opaque, so nothing of the vanilla grid shows behind it, and sized
 // to the vanilla slot area, so it never covers the paperdoll, stats, hotbar or message log.
-constexpr int CELL = 40, MAX_CELLS = 120;
-static int g_cols[MAXPLAYERS][3] = {};   // columns of the own (0) and other (1) grids, for up/down moves
 
 static Frame* makeGrid(Frame* parent, const char* name, int player)
 {
@@ -851,10 +961,12 @@ static int drawGrid(int player, Frame* g, const SDL_Rect& r, const std::vector<E
 		if ( sel / cols >= scroll + rowsVis ) { scroll = sel / cols - rowsVis + 1; }
 	}
 	int drawn = 0;
+	static std::vector<Frame*> cellsByIndex;
+	if ( !legacyFindFrame() ) { indexChildren(g, "apx cell ", cellsByIndex, MAX_CELLS); }
 	for ( int i = 0; i < MAX_CELLS; ++i )
 	{
 		char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", i);
-		Frame* c = g->findFrame(nm);
+		Frame* c = legacyFindFrame() ? g->findFrame(nm) : cellsByIndex[(size_t)i];
 		if ( !c ) { continue; }
 		int idx = scroll * cols + i;
 		if ( i >= cols * rowsVis || idx >= n ) { c->setDisabled(true); continue; }
@@ -891,6 +1003,27 @@ static int drawGrid(int player, Frame* g, const SDL_Rect& r, const std::vector<E
 
 // the selection moves by cells; up/down by a row of the grid that has focus
 static int gridCols(int player, int focus) { return std::max(1, g_cols[player][focus == 1 ? 1 : 0]); }
+// the entry index of the grid cell under the cursor (cells as last drawn), -1 = none
+static int cellUnderMouse(int player, Frame* g, int focusId)
+{
+	if ( !g || g->isDisabled() ) { return -1; }
+	const int n = focusId == 1 ? (int)g_other[player].size() : (int)g_own[player].size();
+	const int scroll = focusId == 1 ? g_otherScroll[player] : g_list[player].scroll;
+	std::vector<Frame*> cellsByIndex;
+	if ( !legacyFindFrame() ) { indexChildren(g, "apx cell ", cellsByIndex, MAX_CELLS); } // fps: one pass over the children
+	for ( int i = 0; i < MAX_CELLS; ++i )
+	{
+		char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", i);
+		Frame* c = legacyFindFrame() ? g->findFrame(nm) : cellsByIndex[(size_t)i];
+		if ( !c || c->isDisabled() ) { continue; }
+		if ( c->capturesMouseInRealtimeCoords() )
+		{
+			const int idx = scroll * gridCols(player, focusId) + i;
+			return idx < n ? idx : -1;
+		}
+	}
+	return -1;
+}
 static void moveHorizontal(int player, int d)
 {
 	auto& vs = g_view[player];
@@ -1206,6 +1339,7 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 			g_keyHeld[player][k] = down;
 		}
 	}
+	menuMouseUpdate(player);
 	if ( list->capturesMouseInRealtimeCoords() || (other && !other->isDisabled() && other->capturesMouseInRealtimeCoords()) )
 	{
 		for ( int dir = -1; dir <= 1; dir += 2 )
@@ -1220,11 +1354,16 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 		if ( in.binaryToggle("MenuRightClick") && inputs.getVirtualMouse(player)->draw_cursor )
 		{
 			in.consumeBinaryToggle("MenuRightClick");
+			// the cell under the cursor now (hover selection is only updated when the grid draws, later this
+			// frame: a move and a click in one frame used to open the menu on the previously hovered item)
+			const int ownHit = cellUnderMouse(player, list, 0), otherHit = other && !other->isDisabled() ? cellUnderMouse(player, other, 1) : -1;
+			if ( otherHit >= 0 ) { setFocus(player, 1, otherHit); }
+			else if ( ownHit >= 0 ) { setFocus(player, 0, ownHit); }
 			if ( vs.focus == 1 ) { takeOther(player); }
 			else
 			{
 				const auto& own = g_own[player];
-				if ( st.selected >= 0 && st.selected < (int)own.size() && !own[st.selected].header ) { openRowMenu(player, uidToItem(own[st.selected].row.uid)); }
+				if ( st.selected >= 0 && st.selected < (int)own.size() && !own[st.selected].header ) { openRowMenu(player, uidToItem(own[st.selected].row.uid), true); }
 			}
 		}
 	}
@@ -1310,7 +1449,30 @@ void listUpdate(int player, Frame* inventoryFrame, Frame* invSlots, Frame* backp
 	int tipX = view != OTHER_NONE ? rr.x + rr.w + 4 : vs.benchShown ? rr.x + std::min(330, inventoryFrame->getSize().w - sheetW - rr.x - 4) + 4 : r.x + r.w + 4;
 	if ( tipX + TIP_W > inventoryFrame->getSize().w - sheetW ) { tipX = std::max(0, inventoryFrame->getSize().w - sheetW - TIP_W - 4); }
 	// the tooltip ends above the message log (it sits in the lower part of the view)
-	vs.tipShown = drawTip(player, tip, tipItem, tipX, std::min(r.y, 44), logTop) > 0;
+	// Barony's item menu: on top of our grid and panels (they were created after it, so they drew over it
+	// and hid its entries), and our tooltip hidden while it is open, as Barony hides its own
+	const bool menuOpen = inputs.getUIInteraction(player)->itemMenuOpen;
+	vs.menuOnTop = false;
+	if ( menuOpen && pl.inventoryUI.interactFrame )
+	{
+		// the menu frame is a sibling of the inventory (both under the HUD frame), not inside it: raise
+		// the menu's branch above the inventory's branch under their common parent
+		std::vector<Frame*> invChain;
+		for ( Frame* a = inventoryFrame; a; a = a->getParent() ) { invChain.push_back(a); }
+		Frame* m = pl.inventoryUI.interactFrame;
+		while ( m && m->getParent() && std::find(invChain.begin(), invChain.end(), m->getParent()) == invChain.end() ) { m = m->getParent(); }
+		Frame* common = m ? m->getParent() : nullptr;
+		if ( common )
+		{
+			m->bringToTop();
+			auto& fs = common->getFrames();
+			auto invBranch = std::find(invChain.begin(), invChain.end(), common);
+			Frame* invChild = invBranch != invChain.begin() ? *(invBranch - 1) : nullptr; // the inventory's child of common
+			auto im = std::find(fs.begin(), fs.end(), m), ii = std::find(fs.begin(), fs.end(), invChild);
+			vs.menuOnTop = im != fs.end() && (ii == fs.end() || im > ii) && !pl.inventoryUI.interactFrame->isDisabled(); // ordered above us and drawn
+		}
+	}
+	vs.tipShown = drawTip(player, tip, menuOpen ? nullptr : tipItem, tipX, std::min(r.y, 44), logTop) > 0;
 	if ( vs.tipShown ) { shotIfView("tip"); }
 }
 } // namespace apx_inv

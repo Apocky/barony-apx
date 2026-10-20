@@ -219,9 +219,12 @@ void Entity::actFurniture()
 	if ( !furnitureInit )
 	{
 		auto& rng = entity_rng ? *entity_rng : local_rng;
-		if ( furnitureType == FURNITURE_BUNKBED )
+		if ( furnitureType == FURNITURE_BUNKBED || apx::props::hasUseVerb(this) )
 		{
+			// apx BP1: furniture with a prop verb gets a world tooltip, so aiming at it shows the verb and
+			// Barony's own Use reaches it (vanilla gave one to bunk beds only)
 			this->createWorldUITooltip();
+			if ( std::getenv("APX_PROPS_QA") ) printlog("[apx-props] qa tooltip created furniture uid=%u type=%d at %.0f,%.0f", getUID(), furnitureType, x, y);
 		}
 		furnitureInit = 1;
 		if ( furnitureType == FURNITURE_TABLE || furnitureType == FURNITURE_BUNKBED || furnitureType == FURNITURE_BED || furnitureType == FURNITURE_PODIUM )
