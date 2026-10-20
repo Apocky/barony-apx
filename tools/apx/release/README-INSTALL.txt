@@ -15,8 +15,7 @@ UPDATING: you never need a second copy. Each time you start the game it checks f
 offers to update your existing install in place. Running a newer Setup.exe does the same. Your saves stay.
 To uninstall: Windows Settings > Apps > Apocky's Labyrinth (your saves are kept).
 
-Your Steam Barony and its saves are not changed. This game keeps its own saves and logs in the
-folder you extracted. To uninstall, delete that folder.
+Your Steam Barony and its saves are not changed. This game keeps its own saves and logs in its install folder.
 
 Playing together: everyone needs the same release version.
 If Windows SmartScreen warns about an unknown publisher: "More info", then "Run anyway"
