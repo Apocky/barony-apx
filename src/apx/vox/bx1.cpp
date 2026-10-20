@@ -177,7 +177,7 @@ namespace bx1
 		{
 			const SlotRule& R = slotRule(Slot::Grip);
 			v.resize(R.sx, R.sy, R.sz);
-			const double rad = 1.0 + r.unit() * 0.7;
+			const double rad = 1.6 + r.unit() * 0.3;             // 1.6+ covers the 12-cell ring of the 4x4 volume (radius 1.5 is still 2x2 on the half-voxel grid; thinner grips vanish when resampled)
 			const int band = r.range(0, 3);
 			cylinder(v, 2, 2, 0, R.sz - 1, rad, ACC, ACCD, band);
 			const int flare = r.range(0, 2);                  // 0 none, 1 flared ends, 2 a ring in the middle
