@@ -100,8 +100,8 @@ std::vector<Row> rows(int player)
 Sint32 carriedMass(int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { return 0; }
-	// D85: the material pouch counts against carry mass (vanilla grid: no pouch)
-	return players[player]->movement.getCharacterWeight() + (vanillaGrid() ? 0 : (Sint32)apx_bench::pouchUnits(player));
+	// includes the D85 material pouch: getCharacterWeight adds it (actplayer.cpp), so movement sees it too
+	return players[player]->movement.getCharacterWeight();
 }
 
 Sint32 massLimit(int player)
