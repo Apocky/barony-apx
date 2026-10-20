@@ -46,6 +46,7 @@ namespace vglue
 	struct Counters { int applied = 0, clientApplied = 0, deaths = 0, itemDrops = 0, matCredits = 0, matLost = 0, itemFail = 0, compPending = 0; };
 	inline Counters& counters() { static Counters c; return c; }
 
+	inline std::unordered_map<Uint32, int>& pendingForce() { static std::unordered_map<Uint32, int> m; return m; } // selftest: uid -> node, consumed at the monster's init
 	struct Applied { int node; double dmg; bool look; };
 	inline std::unordered_map<Uint32, Applied>& applied() { static std::unordered_map<Uint32, Applied> m; return m; }
 
@@ -109,7 +110,9 @@ namespace vglue
 		const char* base = baseIdFor(st->type);
 		if ( !base || applied().count(my->getUID()) ) { return; }
 		int idx = -1;
-		if ( forced() >= 0 && V::rootOf(forced()) == V::find(base) ) { idx = forced(); }
+		auto pf = pendingForce().find(my->getUID());
+		if ( pf != pendingForce().end() ) { idx = pf->second; pendingForce().erase(pf); }
+		else if ( forced() >= 0 && V::rootOf(forced()) == V::find(base) ) { idx = forced(); }
 		else { idx = V::roll(floorSeed(), spawnCounter(), base, currentlevel + 1, flat()); }
 		++spawnCounter();
 		if ( idx < 0 || V::node(idx).level == 0 ) { return; } // the base itself: vanilla, untouched
@@ -196,6 +199,7 @@ namespace vglue
 		if ( !selftest() || !players[0] || !players[0]->entity ) { return; }
 		static Uint32 t = 0;
 		static bool started = false;
+		if ( intro ) { t = 0; started = false; return; } // menus and the lobby run an intro level: the script starts when the real game does
 		++t;
 		Entity* me = players[0]->entity;
 		const int N = V::nodeCount();
@@ -203,6 +207,7 @@ namespace vglue
 		if ( t == 5 ) { stats[0]->HP = stats[0]->MAXHP = 99999; started = true; printlog("[apx-variant] selftest start nodes=%d kills_per_node=%d", N, perNode); }
 		if ( !started ) { return; }
 		static std::vector<Uint32> live;
+		static bool reported = false;
 		const Uint32 step = 24; // ticks per batch
 		const Uint32 t0 = 20;
 		if ( t >= t0 && (t - t0) % step == 0 )
@@ -219,18 +224,17 @@ namespace vglue
 				const int root = V::rootOf(node);
 				const char* base = V::node(root).id;
 				const int type = std::strcmp(base, "rat") == 0 ? RAT : SKELETON;
-				forceNode() = node;
 				for ( int i = 0; i < batch; ++i )
 				{
 					const real_t a = (i / static_cast<real_t>(batch)) * 2 * PI;
 					Entity* m = summonMonster(static_cast<Monster>(type), me->x + cos(a) * 48.0, me->y + sin(a) * 48.0, true);
-					if ( m ) { live.push_back(m->getUID()); }
+					if ( m ) { live.push_back(m->getUID()); pendingForce()[m->getUID()] = node; }
 				}
-				forceNode() = -1;
 				(void)n;
 			}
-			else if ( node == N )
+			else if ( node == N && !reported )
 			{
+				reported = true;
 				Counters& c = counters();
 				printlog("[apx-variant] selftest_done applied=%d deaths=%d itemDrops=%d matCredits=%d matLost=%d itemFail=%d compPending=%d", c.applied, c.deaths, c.itemDrops, c.matCredits, c.matLost, c.itemFail, c.compPending);
 			}
