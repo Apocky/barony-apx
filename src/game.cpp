@@ -98,6 +98,7 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
+#include "apx/qadriver.hpp" // apx: -apxqa=<dir> interactive QA driver
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
 #include "apx/vox/builder.hpp"
@@ -4529,6 +4530,7 @@ bool handleEvents(void)
 	}
 	mouseMotionEventsTimestamp.clear();
 
+	apx::qa::pump(); // apx QA driver: its input events enter the same queue as real ones
 	while ( SDL_PollEvent(&event) )   // poll SDL events
 	{
 		if ( apx::bf3::swallowInput(event) ) { continue; } // apx BF3 trial: human input is dropped and counted
@@ -7530,6 +7532,10 @@ int main(int argc, char** argv)
 					{
 						apx::vis::arm(); // apx BVIS1: far and near screenshots on the test floor, then quit
 					}
+					else if ( !strncmp(argv[c], "-apxqa=", 7) )
+					{
+						apx::qa::arm(argv[c] + 7); // apx: interactive QA driver
+					}
 					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
 					{
 						if ( !strcmp(argv[c] + 13, "all") ) // apx D77: every in-game self-test in one process
@@ -7595,7 +7601,7 @@ int main(int argc, char** argv)
 		printlog("Output path is %s", outputdir);
 		apx::headlessInit(apxHeadlessFlag);
 		// apx: automated launches (headless, test floor, quickstart, self-tests) must never move or grab the user's mouse
-		apx::noInputGrab = apx::headlessOn || apxFloor > 0 || strlen(classtoquickstart) > 0 || getenv("APX_SELFTEST") != nullptr || getenv("APX_F4C_SELFTEST") != nullptr;
+		apx::noInputGrab = apx::headlessOn || apx::qa::armed() || apxFloor > 0 || strlen(classtoquickstart) > 0 || getenv("APX_SELFTEST") != nullptr || getenv("APX_F4C_SELFTEST") != nullptr;
 		if ( apx::noInputGrab ) { printlog("[apx] input: automated launch, the mouse is never warped or grabbed"); }
 		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
 
@@ -8517,6 +8523,7 @@ int main(int argc, char** argv)
 			}
 			const char* apxShot = apx_inv::takeShotRequest(); // U1 self-test, else BVIS1 vision shots
 			if ( !apxShot ) { apxShot = apx::vis::takeShot(); }
+			if ( !apxShot ) { apxShot = apx::qa::takeShot(); } // apx QA driver
 			if ( apxShot )
 			{
 				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }

@@ -1,0 +1,23 @@
+# BP1 props with real input: aim (look), Use (right click, Barony's Use), screenshots
+wait 6000
+look 0 -80
+wait 400
+shot u0_table_aim
+click 640 360 right
+wait 600
+shot u1_table_used
+look -30 0
+wait 400
+shot u2_chair_aim
+click 640 360 right
+wait 600
+shot u3_chair_used
+look 60 0
+wait 400
+shot u4_bed_aim
+click 640 360 right
+wait 1500
+shot u5_bed_resting
+wait 10000
+shot u6_bed_rested
+quit

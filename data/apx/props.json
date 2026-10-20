@@ -1,21 +1,216 @@
 {
  "version": 1,
  "props": [
-  {"id": "bed", "match": {"behavior": "furniture", "type": 2}, "verb": "rest", "label": "Rest",
-   "params": {"ticks": 500, "heal_every": 25, "hunger": 30, "encounter_pm": 100, "encounter_max": 3}, "outcomes": []},
-  {"id": "bunkbed", "match": {"behavior": "furniture", "type": 3}, "verb": "rest", "label": "Rest",
-   "params": {"ticks": 500, "heal_every": 25, "hunger": 30, "encounter_pm": 100, "encounter_max": 3}, "outcomes": []},
-  {"id": "chair", "match": {"behavior": "furniture", "type": 1}, "verb": "sit", "label": "Sit", "params": {"regen_mult": 3}, "outcomes": []},
-  {"id": "table", "match": {"behavior": "furniture", "type": 0}, "verb": "bench", "label": "Field bench: salvage, repair", "params": {}, "outcomes": []},
-  {"id": "podium", "match": {"behavior": "furniture", "type": 4}, "verb": "read", "label": "Read", "params": {}, "outcomes": []},
-  {"id": "cage_bones", "match": {"behavior": "collider", "type": "hanging_cage_skel"}, "verb": "break", "label": "", "params": {},
+  {
+   "id": "bed",
+   "match": {
+    "behavior": "furniture",
+    "type": 2
+   },
+   "verb": "rest",
+   "label": "Rest",
+   "params": {
+    "ticks": 500,
+    "heal_every": 25,
+    "hunger": 30,
+    "encounter_pm": 100,
+    "encounter_max": 3
+   },
+   "outcomes": []
+  },
+  {
+   "id": "bunkbed",
+   "match": {
+    "behavior": "furniture",
+    "type": 3
+   },
+   "verb": "rest",
+   "label": "Rest",
+   "params": {
+    "ticks": 500,
+    "heal_every": 25,
+    "hunger": 30,
+    "encounter_pm": 100,
+    "encounter_max": 3
+   },
+   "outcomes": []
+  },
+  {
+   "id": "chair",
+   "match": {
+    "behavior": "furniture",
+    "type": 1
+   },
+   "verb": "sit",
+   "label": "Sit",
+   "params": {
+    "regen_mult": 3
+   },
+   "outcomes": []
+  },
+  {
+   "id": "table",
+   "match": {
+    "behavior": "furniture",
+    "type": 0
+   },
+   "verb": "bench",
+   "label": "Field bench: salvage, repair",
+   "params": {},
+   "outcomes": []
+  },
+  {
+   "id": "podium",
+   "match": {
+    "behavior": "furniture",
+    "type": 4
+   },
+   "verb": "read",
+   "label": "Read",
+   "params": {},
+   "outcomes": []
+  },
+  {
+   "id": "cage_bones",
+   "match": {
+    "behavior": "collider",
+    "type": "hanging_cage_skel"
+   },
+   "verb": "break",
+   "label": "",
+   "params": {},
    "outcomes": [
-    {"pm": 250, "spawn": {"kind": "SKELETON", "tier": "fodder", "n": 1}, "items": [], "yield": ""},
-    {"pm": 450, "spawn": null, "items": ["GEM_ROCK", "GEM_GLASS", "RING_ADORNMENT"], "yield": ""}
-   ]},
-  {"id": "cage_empty", "match": {"behavior": "collider", "type": "hanging_cage_empty"}, "verb": "break", "label": "", "params": {},
-   "outcomes": [{"pm": 400, "spawn": null, "items": ["TOOL_METAL_SCRAP"], "yield": ""}]},
-  {"id": "furniture_wood", "match": {"behavior": "furniture", "type": -1}, "verb": "destroyed", "label": "", "params": {},
-   "outcomes": [{"pm": 1000, "spawn": null, "items": [], "yield": "stub:F6:wood"}]}
+    {
+     "pm": 250,
+     "spawn": {
+      "kind": "SKELETON",
+      "tier": "fodder",
+      "n": 1
+     },
+     "items": [],
+     "yield": ""
+    },
+    {
+     "pm": 450,
+     "spawn": null,
+     "items": [
+      "GEM_ROCK",
+      "GEM_GLASS",
+      "RING_ADORNMENT"
+     ],
+     "yield": ""
+    }
+   ]
+  },
+  {
+   "id": "cage_empty",
+   "match": {
+    "behavior": "collider",
+    "type": "hanging_cage_empty"
+   },
+   "verb": "break",
+   "label": "",
+   "params": {},
+   "outcomes": [
+    {
+     "pm": 400,
+     "spawn": null,
+     "items": [
+      "TOOL_METAL_SCRAP"
+     ],
+     "yield": ""
+    }
+   ]
+  },
+  {
+   "id": "wood_table",
+   "match": {
+    "behavior": "furniture",
+    "type": 0
+   },
+   "verb": "destroyed",
+   "label": "",
+   "params": {},
+   "outcomes": [
+    {
+     "pm": 1000,
+     "spawn": null,
+     "items": [],
+     "yield": "pouch:oak:3000"
+    }
+   ]
+  },
+  {
+   "id": "wood_chair",
+   "match": {
+    "behavior": "furniture",
+    "type": 1
+   },
+   "verb": "destroyed",
+   "label": "",
+   "params": {},
+   "outcomes": [
+    {
+     "pm": 1000,
+     "spawn": null,
+     "items": [],
+     "yield": "pouch:oak:1200"
+    }
+   ]
+  },
+  {
+   "id": "wood_bed",
+   "match": {
+    "behavior": "furniture",
+    "type": 2
+   },
+   "verb": "destroyed",
+   "label": "",
+   "params": {},
+   "outcomes": [
+    {
+     "pm": 1000,
+     "spawn": null,
+     "items": [],
+     "yield": "pouch:oak:4000"
+    }
+   ]
+  },
+  {
+   "id": "wood_bunkbed",
+   "match": {
+    "behavior": "furniture",
+    "type": 3
+   },
+   "verb": "destroyed",
+   "label": "",
+   "params": {},
+   "outcomes": [
+    {
+     "pm": 1000,
+     "spawn": null,
+     "items": [],
+     "yield": "pouch:oak:5000"
+    }
+   ]
+  },
+  {
+   "id": "wood_podium",
+   "match": {
+    "behavior": "furniture",
+    "type": 4
+   },
+   "verb": "destroyed",
+   "label": "",
+   "params": {},
+   "outcomes": [
+    {
+     "pm": 1000,
+     "spawn": null,
+     "items": [],
+     "yield": "pouch:oak:2000"
+    }
+   ]
+  }
  ]
 }
