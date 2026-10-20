@@ -86,7 +86,12 @@ namespace tactics
 		double R = 0, ringR = 0, base = 0;
 		int n = 0, k = 0, validN = 0, ringValidN = 0;
 		std::vector<char> valid, ringValid;
+		std::vector<double> ang;   // D80: each reach slot's angle (a slot a wall blocks is nudged to where a body fits)
 	};
+	inline double slotAng(const TargetSlots& ts, int i)
+	{
+		return (i >= 0 && i < (int)ts.ang.size()) ? ts.ang[i] : ts.base + i * 2 * PI / std::max(1, ts.n);
+	}
 	extern std::unordered_map<Uint32, TargetSlots> T;    // by target uid
 
 	struct Timer

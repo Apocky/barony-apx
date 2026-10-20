@@ -321,7 +321,9 @@ namespace tactics
 			}
 			if ( hypot(my->x - s.progressX, my->y - s.progressY) > 8 || ticks - s.workingTick < (Uint32)(2 * DECIDE) ) { s.progressX = my->x; s.progressY = my->y; s.progressTick = ticks; } // bashing a breakable in the way is progress
 			else if ( ticks - s.progressTick > 75 ) { flankFail(s, C.flank_fail_progress); return; }
-			if ( ticks - s.flankStart > (s.loopFlank ? 40 : 10) * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
+			// a loop walk takes longer: with APX_LOOP_FLANK every flank may take 40 s (d80b-s2: the pack's flanker timed out
+			// at 10 s 13 tiles into a 19-tile loop route)
+			if ( ticks - s.flankStart > ((s.loopFlank || K.loopflank) ? 40 : 10) * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
 			return;
 		}
 		if ( s.flank != 0 && s.flankTarget == tuid ) { return; } // one try per target
