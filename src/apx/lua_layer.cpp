@@ -70,6 +70,7 @@ struct Layer {
 	fs::file_time_type stamp{};
 	// counters, written to the log at shutdown and on request (rule: every decline is visible)
 	bool hadMonsters = false;
+	int exitCode = 0;   // test mode: the code given to apx.test_quit, returned as the process exit code
 	int nSpawnRefused = 0;
 	int nErrors = 0, nDisabled = 0, nDropped = 0, nEvents = 0, nLoaded = 0, nScriptFail = 0;
 };
@@ -254,6 +255,13 @@ int api_spawn_peddler(lua_State* L) {
 	if ( !e ) { lua_pushnil(L); lua_pushstring(L, "no room or client"); return 2; }
 	lua_pushinteger(L, e->getUID()); return 1;
 }
+int api_test_teleport(lua_State* L) {   // test mode only: puts an entity on a tile (the rescue gate needs the party beside the peddler)
+	if ( !G.test ) { return luaL_error(L, "test_teleport is only available with -apx-luatest"); }
+	Entity* e = entityByUid(luaL_checkinteger(L, 1)); lua_Number x = luaL_checknumber(L, 2), y = luaL_checknumber(L, 3);
+	if ( !e || x < 1 || y < 1 || x >= (lua_Number)map.width - 1 || y >= (lua_Number)map.height - 1 ) { lua_pushboolean(L, 0); return 1; }
+	e->x = x * 16.0; e->y = y * 16.0;
+	lua_pushboolean(L, 1); return 1;
+}
 int api_spawn_haven(lua_State* L) {   // test and director use: a shopkeeper flagged as the floor's haven merchant (as the apx-gen bridge does)
 	lua_Number x = luaL_checknumber(L, 1), y = luaL_checknumber(L, 2);
 	if ( multiplayer == CLIENT || x < 1 || y < 1 || x >= (lua_Number)map.width - 1 || y >= (lua_Number)map.height - 1 ) { lua_pushnil(L); return 1; }
@@ -393,7 +401,7 @@ int api_monsters_near(lua_State* L) {
 	lua_newtable(L); int i = 0;
 	if ( map.creatures ) {
 		for ( node_t* nd = map.creatures->first; nd; nd = nd->next ) {
-			Entity* e = (Entity*)nd->element; if ( !e || e->behavior != &actMonster ) { continue; }
+			Entity* e = (Entity*)nd->element; if ( !e || e->behavior != &actMonster || !e->getStats() || e->getStats()->HP <= 0 ) { continue; }   // a dying body is not a threat
 			double dx = e->x / 16.0 - x, dy = e->y / 16.0 - y;
 			if ( dx * dx + dy * dy <= r * r ) { lua_pushinteger(L, e->getUID()); lua_rawseti(L, -2, ++i); }
 		}
@@ -493,7 +501,8 @@ int api_monster_count(lua_State* L) {
 int api_is_test(lua_State* L) { lua_pushboolean(L, G.test); return 1; }
 int api_test_quit(lua_State* L) {
 	if ( !G.test ) { return luaL_error(L, "test_quit is only available with -apx-luatest"); }
-	logf("test_quit(%d) after %d errors caught, %d events", (int)luaL_optinteger(L, 1, 0), G.nErrors, G.nEvents);
+	G.exitCode = (int)luaL_optinteger(L, 1, 0);
+	logf("test_quit(%d) after %d errors caught, %d events", G.exitCode, G.nErrors, G.nEvents);
 	flushRows();
 	mainloop = 0;
 	return 0;
@@ -511,7 +520,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "test_teleport", api_test_teleport }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };
@@ -674,6 +683,7 @@ void apxLuaShutdown() {
 		G.nEvents, G.nErrors, G.nDisabled, G.nDropped, G.nLoaded, G.nScriptFail, G.used);
 	flushRows();
 	closeState(); G.on = false;
+	if ( G.test && G.exitCode != 0 ) { fflush(nullptr); exit(G.exitCode); }   // a failed self-test must not look like a pass to the launcher
 }
 
 void apxLuaReload() {

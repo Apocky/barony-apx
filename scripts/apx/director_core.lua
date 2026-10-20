@@ -54,8 +54,8 @@ function C.build_pack(budget, rng, depth, costs)
 end
 
 -- ---- event choice ---------------------------------------------------------------------------
-C.EVENTS = { "ambush", "den", "patrol" }                              -- implemented
-C.STUBS = { "collapse", "flood", "rival", "peddler" }                 -- decline visibly (D73: peddler after a hard fight)
+C.EVENTS = { "ambush", "den", "patrol", "peddler" }                  -- implemented (peddler: D73 relief event after a hard fight)
+C.STUBS = { "collapse", "flood", "rival" }                            -- decline visibly
 C.BASE_W = { ambush = 1.0, den = 0.8, patrol = 1.0, collapse = 0.4, flood = 0.3, rival = 0.3, peddler = 0.6 }
 C.COOLDOWN_S = { ambush = 90, den = 120, patrol = 60, collapse = 180, flood = 240, rival = 300, peddler = 400 }
 C.COST_SHARE = { ambush = 0.5, den = 0.35, patrol = 0.25, collapse = 0, flood = 0, rival = 0, peddler = 0 }

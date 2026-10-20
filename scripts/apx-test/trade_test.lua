@@ -44,14 +44,15 @@ end
 
 local started, poll = false, nil
 poll = apx.every(10, function()
-  if started or not apx.player_uid(0) then return end
+  if started or not apx.player_uid(0) or apx.floor() < 1 then return end   -- the start map comes first; the shops go on the test floor
   started = true; apx.cancel(poll)
   local px, py = apx.entity_pos(apx.player_uid(0))
   local on = apx.trade_state().on
-  local gen = apx.spawn("shopkeeper", px + 5, py)
+  local gen, why1 = apx.spawn("shopkeeper", px + 5, py)
   local hav = apx.spawn_haven(px - 5, py)
-  local ped = apx.spawn_peddler(px, py + 5)
-  check("shopkeepers spawned", gen ~= nil and hav ~= nil and ped ~= nil)
+  local ped, why3 = apx.spawn_peddler(px, py + 5)
+  check("shopkeepers spawned", gen ~= nil and hav ~= nil and ped ~= nil, tostring(why1) .. " " .. tostring(why3))
+  if not (gen and hav and ped) then finish(); return end
   apx.after(10, function()
     if not on then   -- CONTROL (APX_TRADE=0): vanilla stock must trip the stock check
       check("CONTROL APX_TRADE=0 reports the layer off", apx.trade_state().on == false)
@@ -59,7 +60,7 @@ poll = apx.every(10, function()
       finish(); return
     end
     local st = apx.trade_state()
-    check("three shops initialised by BT1", st.shops == 3, tostring(st.shops))
+    check("our three shops were initialised by BT1", st.shops >= 3, tostring(st.shops))
     check("rows not yet realizable (pouch/services) are counted, not dropped", st.rows_pending_pouch + st.rows_pending_service > 0,
       st.rows_pending_pouch .. "+" .. st.rows_pending_service)
     local gi = check_shop(gen, "general store")
@@ -82,7 +83,10 @@ poll = apx.every(10, function()
       check("CONTROL: a full purse does not refuse", refused2 == false)
     end
     -- peddlers can be attacked; ordinary shopkeepers cannot
-    local sk = apx.spawn("skeleton", px + 8, py + 8)
+    local sk
+    for _, d in ipairs({ { 8, 8 }, { -8, 8 }, { 8, -8 }, { -8, -8 }, { 3, 3 }, { 0, 10 }, { 10, 0 } }) do
+      sk = apx.spawn("skeleton", px + d[1], py + d[2]); if sk then break end
+    end
     check("a wild monster counts the peddler as an enemy", sk ~= nil and apx.check_enemy(sk, ped) == true)
     check("CONTROL: a wild monster does not attack the general store keeper", sk ~= nil and apx.check_enemy(sk, gen) == false)
     check("no script errors", apx.stats().errors == 0, tostring(apx.stats().errors))

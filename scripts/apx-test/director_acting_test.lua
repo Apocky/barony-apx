@@ -27,10 +27,17 @@ poll = apx.every(10, function()
     local pu = apx.player_uid(0)
     -- PHASE A: ambush
     local before = apx.monster_count()
-    D.events_off = false; D.force = "ambush"
-    after_decisions(1, function()
-      D.events_off = true
-      local r = D.info.ambush
+    local attempts = 0
+    local function try_ambush(k)   -- a hidden point can be rare in open ground: a declined ambush is counted and retried (up to 4 times)
+      D.events_off = false; D.force = "ambush"
+      after_decisions(1, function()
+        D.events_off = true
+        local r = D.info.ambush
+        if (r == nil or r.spawned < 1) and attempts < 4 then attempts = attempts + 1; try_ambush(k); return end
+        k(r)
+      end)
+    end
+    try_ambush(function(r)
       if not decisive(check("ambush executed", r ~= nil and r.spawned >= 1, r and ("spawned " .. r.spawned) or "no result")) then return end
       local alive = 0
       for _, u in ipairs(r.uids) do if apx.get_stat(u, "hp") then alive = alive + 1 end end
@@ -90,7 +97,50 @@ poll = apx.every(10, function()
                   check("CONTROL: LOS check off at 3..5 tiles spawns in sight (the gate has teeth)", c ~= nil and c.visible > 0,
                     string.format("spawned %d, visible %d", c and c.spawned or -1, c and c.visible or -1))
                   D.no_los_check = false; D.ambush_radius = nil
-                  finish()
+                  -- PHASE P: peddler (BT1, D73). Forced event: out of sight, attackable, a rescue earns a reward, a lost peddler does not.
+                  apx.set_stat(pu, "hp", apx.get_stat(pu, "maxhp"))
+                  D.events_off = false; D.force = "peddler"
+                  after_decisions(1, function()
+                    D.events_off = true
+                    local r = D.info.peddler
+                    if not decisive(check("peddler event spawned a peddler", r ~= nil and r.spawned == 1 and r.uid ~= nil, r and tostring(r.spawned) or "no result")) then return end
+                    local x, y = apx.entity_pos(r.uid)
+                    apx.set_stat(r.uid, "maxhp", 800); apx.set_stat(r.uid, "hp", 800)   -- the test controls when the peddler dies (a real skeleton kills it in about a second)
+                    local seen = false
+                    for i = 0, 3 do local u2 = apx.player_uid(i); if u2 and apx.line_of_sight(u2, r.uid) then seen = true end end
+                    check("peddler spawned out of the party's sight", not seen)
+                    check("peddler counted by the trade layer", apx.trade_state().peddlers >= 1)
+                    local sk
+                    for _, d in ipairs({ { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 }, { 2, 0 }, { 0, 2 } }) do sk = apx.spawn("skeleton", x + d[1], y + d[2]); if sk then break end end
+                    check("threat placed beside the peddler", sk ~= nil)
+                    check("the threat counts the peddler as an enemy", sk ~= nil and apx.check_enemy(sk, r.uid) == true)
+                    apx.after(60, function()
+                      apx.test_teleport(apx.player_uid(0), x + 3, y + 3)   -- the rescue needs a player within 12 tiles
+                      apx.hurt(sk, 9999)
+                      apx.after(120, function()
+                        check("a rescued peddler earns a reward", D.reward ~= nil and D.peddler.outcome == "rescued",
+                          D.reward and (D.reward.kind .. ":" .. D.reward.trade) or (tostring(D.peddler and D.peddler.outcome) .. " watch=" ..
+                          (D.peddler and D.peddler.watch and string.format("hostile %d threatened %s near %s checks %d", D.peddler.watch.hostile, tostring(D.peddler.watch.threatened), tostring(D.peddler.watch.near), D.peddler.watch.ticks) or "none")))
+                        D.reward = nil
+                        D.peddler_floor = nil; D.events_off = false; D.force = "peddler"
+                        after_decisions(1, function()
+                          D.events_off = true
+                          local r2 = D.info.peddler
+                          if r2 and r2.uid then
+                            local x2, y2 = apx.entity_pos(r2.uid)
+                            apx.spawn("skeleton", x2 + 1, y2 + 1)
+                            apx.after(30, function()
+                              apx.hurt(r2.uid, 9999)
+                              apx.after(100, function()
+                                check("CONTROL: a peddler killed before the rescue earns no reward", D.reward == nil and D.peddler.outcome ~= "rescued", tostring(D.peddler and D.peddler.outcome))
+                                finish()
+                              end)
+                            end)
+                          else check("CONTROL peddler spawned", false); finish() end
+                        end)
+                      end)
+                    end)
+                  end)
                 end)
               end)
             end)
