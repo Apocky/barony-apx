@@ -682,7 +682,7 @@ static void runComponents(int dt)
 		makeRows = (int)e.size();
 		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 8 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
 		makeMsg = viewState(0).lastBenchMsg;
-		setBenchTab(0, 3); // Repair
+		setBenchTab(0, apx_logic::TAB_REPAIR); // Repair
 	}
 	else if ( dt == 393 )
 	{
@@ -833,7 +833,7 @@ static void runLive86(int dt)
 		// seed the pouch with iron the way F6's self-tests do (logged by F6), so one repair step is affordable
 		for ( int m = 0; m < 64; ++m ) { const char* n = apxPartsMaterialName(m); if ( n && std::string(n) == "iron" ) { ironMat = m; break; } }
 		if ( ironMat >= 0 ) { apxPartsLedgerCredit(0, ironMat, 2000); ironBefore = apxPartsLedgerMaterialGrams(0, ironMat); }
-		setBenchTab(0, 3); // Repair
+		setBenchTab(0, apx_logic::TAB_REPAIR); // Repair
 	}
 	else if ( dt == 432 )
 	{
@@ -865,6 +865,159 @@ static void runLive86(int dt)
 				g1 > g0 ? 1 : 0, bundleUid && g2 == g1 - 10 ? 1 : 0, bundleUid && picked && g3 == g1 ? 1 : 0,
 				station, repairRow.c_str(), repairMsg.c_str(), helmBefore, helmAfter, helmAfter == helmBefore + 1 ? 1 : 0,
 				ironBefore, ironAfter, ironMat >= 0 && ironAfter < ironBefore ? 1 : 0);
+			fclose(f);
+		}
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+	}
+}
+
+// Live 05b chain through the bench screens on F6's provider (apx/f6 6a9eb662): Break teaches Blades
+// -> Salvage keeping part 0 -> a component item -> Make a component from the pouch -> Assemble a
+// Blades item from components -> Swap a part on it -> Draw out a bundle -> pick it up. Run once.
+static int countWhere(bool comps)
+{
+	int n = 0;
+	for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { Item* it = (Item*)nd->element; if ( apxPartsIsComponent(it) == comps && itemCategory(it) != SPELL_CAT ) { ++n; } }
+	return n;
+}
+static int firstRow(int kind)
+{
+	auto e = benchRowsForTest(0);
+	for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == kind ) { return (int)i; } }
+	return -1;
+}
+static std::string pressRow(int kind)
+{
+	int r = firstRow(kind);
+	if ( r < 0 ) { return "(no row)"; }
+	setFocus(0, 2, r);
+	activateSelected(0);
+	return viewState(0).lastBenchMsg;
+}
+static void runLiveF6(int dt)
+{
+	auto& pl = *players[0];
+	static Entity* bench = nullptr;
+	static Uint32 salvUid = 0, newItemUid = 0;
+	static int comps0 = -1, compsSalv = -1, compsMake = -1, compsAsm = -1, items0 = -1, itemsAsm = -1, compRarity = -9, swapRows = -1, ironMat = -1;
+	static long long pouch0 = -1, pouchMake = -1, pouchDraw = -1, pouchPick = -1;
+	static std::string mBreak, mSalv, mMake, mAsm, mSwap, mDraw, compName, asmName, makeName;
+	static int makeOptions = -1;
+	static std::string mSpare;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	auto selectUid = [](Uint32 uid) { auto e = ownRowsForTest(0); for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.uid == uid ) { setFocus(0, 0, (int)i); } } };
+	if ( dt == 440 )
+	{
+		emptyInventory(0);
+		Item* a = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); apxPartsBind(a, 1, 3);
+		Item* b = newItem(STEEL_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); apxPartsBind(b, 1, 3);
+		salvUid = a->uid;
+		for ( int m = 0; m < 64; ++m ) { const char* n = apxPartsMaterialName(m); if ( n && std::string(n) == "iron" ) { ironMat = m; break; } }
+		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
+		std::string w; Item* bb = b;
+		mBreak = apx_bench::provider().breakItem(0, bb, w) ? "broke: Blades learned" : "break refused: " + w;
+	}
+	else if ( dt == 442 ) { comps0 = countWhere(true); selectUid(salvUid); setBenchTab(0, apx_logic::TAB_SALVAGE); }
+	else if ( dt == 444 ) { pressRow(apx_logic::ROW_SALVAGE_PART); }                    // choose the keep (part 0)
+	else if ( dt == 446 ) { mSalv = pressRow(apx_logic::ROW_BREAK); }                    // Break, keeping it
+	else if ( dt == 448 )
+	{
+		compsSalv = countWhere(true);
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next )
+		{
+			Item* it = (Item*)nd->element; apx_bench::PartRow pr;
+			if ( apx_bench::provider().componentOf(it, pr) ) { compRarity = pr.rarity; compName = pr.name.empty() ? std::string(it->getName()) : pr.name; }
+		}
+		// seed the pouch AFTER the salvage (F6's salvage pays whole scrap units out of the ledger: it drained
+		// an earlier seed into 16 metal scrap; reported to F6 as a D85 question)
+		if ( ironMat >= 0 ) { apxPartsLedgerCredit(0, ironMat, 5000); }
+		pouch0 = apx_bench::provider().pouchGrams(0);
+		setBenchTab(0, apx_logic::TAB_MAKE);
+	}
+	else if ( dt == 450 )
+	{
+		auto e = benchRowsForTest(0);
+		int pick = -1;
+		for ( size_t i = 0; i < e.size(); ++i )
+		{
+			if ( e[i].header || e[i].row.kind != apx_logic::ROW_MAKE || e[i].row.name.rfind(">> ", 0) != 0 ) { continue; }
+			std::string n = e[i].row.name;
+			for ( auto& c : n ) { c = (char)tolower(c); }
+			if ( pick < 0 || n.find("grip") != std::string::npos ) { pick = (int)i; if ( n.find("grip") != std::string::npos ) { break; } }
+		}
+		makeOptions = 0;
+		for ( auto& x : e ) { if ( !x.header && x.row.kind == apx_logic::ROW_MAKE ) { ++makeOptions; } }
+		if ( pick >= 0 ) { makeName = e[pick].row.name; setFocus(0, 2, pick); activateSelected(0); mMake = viewState(0).lastBenchMsg; } else { mMake = "(no affordable option)"; }
+	}
+	else if ( dt == 452 ) { compsMake = countWhere(true); pouchMake = apx_bench::provider().pouchGrams(0); items0 = countWhere(false); setBenchTab(0, apx_logic::TAB_ASSEMBLE); }
+	else if ( dt == 454 ) { pressRow(apx_logic::ROW_FORM); }                              // the Blades Form
+	else if ( dt == 456 )
+	{
+		// one candidate per slot (the view lists them under each slot header)
+		auto e = benchRowsForTest(0);
+		std::set<int> done;
+		for ( size_t i = 0; i < e.size(); ++i )
+		{
+			if ( !e[i].header && e[i].row.kind == apx_logic::ROW_ASM_PICK && !done.count(e[i].row.slot) ) { done.insert(e[i].row.slot); setFocus(0, 2, (int)i); activateSelected(0); }
+		}
+	}
+	else if ( dt == 458 ) { mAsm = pressRow(apx_logic::ROW_ASSEMBLE); }
+	else if ( dt == 460 )
+	{
+		compsAsm = countWhere(true); itemsAsm = countWhere(false);
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next )
+		{
+			Item* it = (Item*)nd->element;
+			if ( !apxPartsIsComponent(it) && it->apx.nParts > 0 ) { newItemUid = it->uid; std::string n = apx_bench::provider().displayName(it); asmName = n.empty() ? std::string(it->getName()) : n; }
+		}
+		setBenchTab(0, apx_logic::TAB_MAKE); // a spare Blade, so the assembled item has something to swap in
+	}
+	else if ( dt == 461 )
+	{
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i )
+		{
+			std::string n = e[i].row.name;
+			for ( auto& c : n ) { c = (char)tolower(c); }
+			if ( !e[i].header && e[i].row.kind == apx_logic::ROW_MAKE && n.rfind(">> ", 0) == 0 && n.find("blade") != std::string::npos ) { setFocus(0, 2, (int)i); activateSelected(0); mSpare = viewState(0).lastBenchMsg; break; }
+		}
+		selectUid(newItemUid);
+		setBenchTab(0, apx_logic::TAB_SWAP);
+	}
+	else if ( dt == 463 )
+	{
+		auto e = benchRowsForTest(0); swapRows = 0;
+		for ( auto& x : e ) { if ( !x.header && x.row.kind == apx_logic::ROW_SWAP ) { ++swapRows; } }
+		mSwap = swapRows ? pressRow(apx_logic::ROW_SWAP) : "(no swappable slot with a fitting component)";
+		setBenchTab(0, apx_logic::TAB_MATERIALS);
+	}
+	else if ( dt == 465 ) { mDraw = pressRow(apx_logic::ROW_DRAW_BUNDLE); pouchDraw = apx_bench::provider().pouchGrams(0); }
+	else if ( dt == 467 )
+	{
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next )
+		{
+			Item* bnd = (Item*)nd->element;
+			if ( !apxPartsIsBundle(bnd) ) { continue; }
+			Item* copy = newItem(bnd->type, bnd->status, bnd->beatitude, bnd->count, bnd->appearance, bnd->identified, nullptr);
+			copy->apx = bnd->apx;
+			list_RemoveNode(bnd->node);
+			Item* got = itemPickup(0, copy);
+			if ( got && got != copy ) { free(copy); }
+			break;
+		}
+	}
+	else if ( dt == 469 )
+	{
+		pouchPick = apx_bench::provider().pouchGrams(0);
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"liveF6\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"break\":\"%s\",\"salvage\":{\"msg\":\"%s\",\"components\":[%d,%d],\"name\":\"%s\",\"rarity\":%d},"
+				"\"make\":{\"options\":%d,\"chosen\":\"%s\",\"msg\":\"%s\",\"components\":%d,\"pouch_g\":[%lld,%lld]},\"assemble\":{\"msg\":\"%s\",\"components\":%d,\"items\":[%d,%d],\"name\":\"%s\"},"
+				"\"swap\":{\"spare\":\"%s\",\"rows\":%d,\"msg\":\"%s\"},\"bundle\":{\"msg\":\"%s\",\"pouch_g\":[%lld,%lld,%lld]},\"rows_sum_ok\":%d}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, mBreak.c_str(), mSalv.c_str(), comps0, compsSalv, compName.c_str(), compRarity,
+				makeOptions, makeName.c_str(), mMake.c_str(), compsMake, pouch0, pouchMake, mAsm.c_str(), compsAsm, items0, itemsAsm, asmName.c_str(), mSpare.c_str(), swapRows, mSwap.c_str(), mDraw.c_str(),
+				pouchMake, pouchDraw, pouchPick, checkRows(rows(0), carriedMass(0)).empty() ? 1 : 0);
 			fclose(f);
 		}
 		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
@@ -1119,7 +1272,8 @@ static void runUiPhases()
 	else if ( dt >= 370 && dt < 380 ) { runPouch(dt); }
 	else if ( dt >= 380 && dt < 410 ) { runComponents(dt); }
 	else if ( dt >= 410 && dt < 440 ) { runLive86(dt); }
-	else if ( dt == 450 )
+	else if ( dt >= 440 && dt < 470 ) { runLiveF6(dt); }
+	else if ( dt == 480 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -1131,8 +1285,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 520 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 560 )
+	else if ( dt == 550 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 590 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
