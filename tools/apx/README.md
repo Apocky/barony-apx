@@ -255,3 +255,25 @@ Card: Apockalypsis handovers/tasks/BF6-parts-gear-card.md. Plan and stop rules: 
   salvage for the BU1 bench (src/apx/parts_bench.cpp registers with src/apx_bench_api.hpp when present); palette
   tint on the held weapon (materials.json "tint", Entity::lightBonus; APX_PARTS_VIS=0 off). Not yet: crafting
   (next slice), shop sync (shops sell materials per D73), part models (BF6-5, D79 voxel tool).
+
+## D93 C0: apx::in, the one owner of play input (`src/apx/in/`)
+
+`apx::in` is the first reader of every SDL input event (`apx::in::glue::observe`, top of the event loop in
+game.cpp) and hands the sim one `TickRecord` per tick (`take(player)`: held bits, per-action press/release counts
+with event times, summed move/look/swing). Actions and bindings are data: `data/apx/input/actions.json`,
+`bindings.json` (Sprint = Left Shift); a user file `bindings.user.json` in the config folder replaces an action's
+defaults. The owner gate (once per frame) gives each device to GAME, VANILLA (a vanilla window or text field) or
+APXUI (`apx::ui::wantsMouse/wantsKeyboard`, our ImGui windows); an owner switch delivers releases.
+The compat feed (TEMPORARY) writes Barony's `keystatus`/`mousestatus`/`Input::keys`/`Input::mouseButtons`/
+`mousexrel` from the latched state, so a tap is visible to the old code for one sim tick and the legacy mouse
+look is applied exactly once per tick. `APX_INPUT_OLD=1` is the CONTROL: the old raw path (loses short presses).
+Knobs: `APX_INPUT_LOG=1` (per-tick JSONL, file `APX_INPUT_LOG_FILE`, default `input-log.jsonl`), `-apxreplay=<file>`
+(drive play from a log; closes when it ends), `APX_INPUT_DIR` (data dir). D90 event `input` once a second
+(`lost` must be 0).
+
+```
+pwsh -NoProfile -File tools\apx\tests\run_in_units.ps1                      # offline units + control (seconds)
+python tools\apx\input_gate.py --exe <exe> all                              # matrix + ui + replay -> C:\Apocrypha\diagnostics\input\run-*
+```
+QA driver: `act <action> <ms>` / `act <action> press|release` (through apx::in's queue; raw SDL events under
+`APX_INPUT_OLD=1`), `sdlact <action> <ms>` (SDL path), `mark <label>` (counters to `<qa>/marks.jsonl`).

@@ -11,6 +11,7 @@ and maps them to checks:
   floor_hash     generation or RNG changes: tools/apx/headless_gate.py (floor hash, 10 seeds, windowed = headless)
   host_client    net code changes: tools/apx/gate_f2.py mp (host and client in a LAN lobby agree)
   save_load      save format changes: tools/apx/u1_selftest.ps1 (save/load round trip, windowed UI)
+  input_gate     play input (src/apx/in, qadriver, data/apx/input): tools/apx/tests/run_in_units.ps1 + tools/apx/input_gate.py all
 
 Docs-only and tools-only changes need no game launch. The rules are data (RULES below); the offline test
 tools/apx/test_select_test.py checks them. APX_TEST_SELECT_BREAK=1 drops the generation rule (the control:
@@ -41,6 +42,9 @@ RULES = [
     ("save_load", "save format", [
         "src/scores.cpp", "src/scores.hpp", "src/apx_inventory.*", "src/items.hpp", "src/stat.hpp",
     ]),
+    ("input_gate", "play input (apx::in, D93)", [
+        "src/apx/in/*", "src/apx/qadriver.*", "data/apx/input/*", "tools/apx/input_gate.py", "src/apx/ui/*",
+    ]),
 ]
 
 GAME_CODE = ["src/*", "CMakeLists.txt", "cmake/*", "lang/*", "tools/apx/build.ps1", "tools/apx/fetch-deps.ps1"]
@@ -52,8 +56,9 @@ COMMANDS = {
     "floor_hash": r"python tools\apx\headless_gate.py --exe <exe>",
     "host_client": r"python tools\apx\gate_f2.py mp --exe <exe>",
     "save_load": r"pwsh -NoProfile -File tools\apx\u1_selftest.ps1 -Exe <exe>",
+    "input_gate": r"pwsh -NoProfile -File tools\apx\tests\run_in_units.ps1 ; python tools\apx\input_gate.py --exe <exe> all",
 }
-ORDER = ["selftest_all", "golden_parity", "floor_hash", "host_client", "save_load"]
+ORDER = ["selftest_all", "golden_parity", "floor_hash", "host_client", "save_load", "input_gate"]
 
 
 def _match(path, patterns):

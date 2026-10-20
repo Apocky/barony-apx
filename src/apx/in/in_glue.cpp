@@ -126,7 +126,7 @@ namespace in
 			env.scancodeFromName = envScancode; env.symFromScancode = envSym; env.playerPos = envPos;
 			const std::string dir = dataDir();
 			std::string err;
-			if ( !apx::in::init(dir.c_str(), "", env, &err) )
+			if ( !apx::in::init(dir.c_str(), ".", env, &err) /* user overrides: ./bindings.user.json (Barony keeps its config in the working folder) */ )
 			{
 				printlog("[apx-in] ERROR: input data failed to load from %s: %s. apx::in is OFF, the old input path runs (this is a downgrade).", dir.c_str(), err.c_str());
 				apxdiag::event("input_error", ("\"msg\":\"" + apxdiag::jsonEscape(err.c_str()) + "\"").c_str());

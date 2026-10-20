@@ -43,7 +43,7 @@ class Launch:
         self.qa.mkdir(parents=True)
         (self.qa / "cmd.txt").write_text("", encoding="ascii")
         env = dict(os.environ, BARONY_DATADIR=DATADIR, APX_HOLLOW_DIR=str(ROOT / "data/apx/hollow"),
-                   APX_INPUT_DIR=str(ROOT / "data/apx/input"))
+                   APX_INPUT_DIR=str(ROOT / "data/apx/input"), APX_NOVSYNC="1")
         if mode == "old":
             env["APX_INPUT_OLD"] = "1"
         env.update(extra_env or {})
@@ -123,26 +123,32 @@ def presses_for(length):
     return 8 if length >= 500 else 16
 
 
-def run_matrix(exe, run, path, mode, lengths, caps, rows):
+def run_matrix(exe, run, path, mode, lengths, caps, rows, sdl_lengths=(5, 33)):
     L = Launch(exe, run, path, mode, tag="matrix")
     try:
         print(f"[gate] {path}/{mode}: in game after {L.wait_ingame():.1f} s", flush=True)
-        for cname, cap in caps.items():
-            L.send(f"console /fps {cap}", "wait 1500")
-            for length in lengths:
+        plan = [(cname, cap, length, "act") for cname, cap in caps.items() for length in lengths]
+        if mode == "new":   # the same presses as raw SDL events: the path from SDL into apx::in
+            plan += [(cname, cap, length, "sdlact") for cname, cap in caps.items() if cname != "60" for length in sdl_lengths]
+        last_cap = None
+        for cname, cap, length, verb in plan:
+            if cap != last_cap:
+                L.send(f"console /fps {cap}", "wait 1500")
+                last_cap = cap
+            if True:
                 n = presses_for(length)
                 gap = 110 if length < 120 else 150
-                lab = f"{path}_{mode}_{cname}_{length}"
+                lab = f"{path}_{mode}_{cname}_{length}_{verb}"
                 cmds = [f"mark {lab}_a"]
                 for i in range(n):
-                    cmds += [f"act Attack {length}", f"wait {gap + (i * 7) % 23}", f"act Sprint {length}", f"wait {gap + (i * 11) % 29}"]
+                    cmds += [f"{verb} Attack {length}", f"wait {gap + (i * 7) % 23}", f"{verb} Sprint {length}", f"wait {gap + (i * 11) % 29}"]
                 cmds += ["wait 400", f"mark {lab}_b"]
                 L.send(*cmds)
                 a = L.wait_mark(f"{lab}_a", 60)
                 b = L.wait_mark(f"{lab}_b", 120)
                 fr, ms = b["frames"] - a["frames"], b["wall_ms"] - a["wall_ms"]
                 row = {
-                    "gate": "matrix", "path": path, "mode": mode, "cap": cname, "len_ms": length, "injected_each": n,
+                    "gate": "matrix", "path": path, "mode": mode, "via": "sdl" if verb == "sdlact" else "apx::in", "cap": cname, "len_ms": length, "injected_each": n,
                     "frames": fr, "wall_ms": ms, "fps_measured": round(fr * 1000.0 / ms, 1) if ms else 0,
                     "ticks": b["tick"] - a["tick"],
                 }
@@ -154,7 +160,7 @@ def run_matrix(exe, run, path, mode, lengths, caps, rows):
                 rows.append(row)
                 with open(run / "rows.jsonl", "a", encoding="ascii") as f:
                     f.write(json.dumps(row) + "\n")
-                print(f"  cap={cname:8} len={length:3} fps={row['fps_measured']:6} ticks={row['ticks']:4} inj={2*n} "
+                print(f"  via={row['via']:7} cap={cname:8} len={length:3} fps={row['fps_measured']:6} ticks={row['ticks']:4} inj={2*n} "
                       f"taken={row['taken_attack']}+{row['taken_sprint']} legacy={row['legacy_attack']}+{row['legacy_lshift']} "
                       f"lost_taken={row['lost_taken']} lost_legacy={row['lost_legacy']}", flush=True)
     finally:

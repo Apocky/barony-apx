@@ -226,6 +226,19 @@ int main(int argc, char** argv)
 	CHECK(replayDone(), "replay consumed every row");
 	remove(f1.c_str());
 
+	// ---- 14. user bindings replace an action's defaults
+	{
+		FILE* f = fopen("bindings.user.json", "wb");
+		fputs(R"({"version":1,"bindings":{"Sprint":["key:C"],"Bogus":["key:Q"]}})", f); fclose(f);
+		Env e; e.keyboardPlayer = kbp; e.padPlayer = padp; e.inGame = inGame; e.vanillaMouse = vMouse; e.vanillaKeyboard = vKey;
+		e.apxuiMouse = aMouse; e.apxuiKeyboard = aKey; e.scancodeFromName = scan; e.symFromScancode = symOf;
+		std::string err; CHECK(init(dir.c_str(), ".", e, &err), "init with user bindings %s", err.c_str());
+		CHECK(err.find("Bogus") != std::string::npos, "an unknown action in the user file is reported: '%s'", err.c_str());
+		beginFrame(1); event(key(true, "Left Shift")); r = takeNow(0); CHECK(r.pressCount[B_Sprint] == 0, "Left Shift is no longer Sprint");
+		event(key(true, "C")); r = takeNow(0); CHECK(r.pressCount[B_Sprint] == 1, "C is Sprint now");
+		remove("bindings.user.json");
+	}
+
 	printf("test_in: %d checks, %d failed\n", g_n, g_fail);
 	return g_fail ? 1 : 0;
 }
