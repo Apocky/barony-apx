@@ -99,6 +99,7 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
 #include "apx/selftest_all.hpp"
+#include "apx/vox/heldmodel.hpp"
 #include "apx/tiers.hpp"
 #include "apx_combat.hpp"
 #include "apx_stamina.hpp"
@@ -150,6 +151,30 @@ static void apxSelftestClearHostiles(apx::selftestall::Stage s)
 		++cleared;
 	}
 	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+}
+
+// voxel (BX1, C10): a steel sword with rolled parts is drawn from its parts' voxel models: the first-person and
+// held models are runtime models (above the base count), different from the vanilla ones, cached on the second
+// ask; the base count (what models.cache saves) is unchanged. APX_VOX_HELD=0 gives the vanilla models: FAIL.
+static bool apxSelftestVoxel(std::string& fields)
+{
+	const unsigned base = apx::vox::baseModelCount();
+	Item* sword = newItem(STEEL_SWORD, SERVICABLE, 0, 1, 0, true, nullptr);
+	if ( !sword ) { fields = "\"error\":\"no item\""; return false; }
+	apxPartsBind(sword, 0, 5);
+	const int vanFp = itemModelFirstperson(sword), vanTp = itemModel(sword);
+	const int fp = apx::vox::heldModel(sword, true, vanFp), tp = apx::vox::heldModel(sword, false, vanTp);
+	const int fp2 = apx::vox::heldModel(sword, true, vanFp);
+	const int parts = sword->apx.nParts;
+	const auto& st = apx::vox::stats();
+	char buf[320];
+	snprintf(buf, sizeof buf, "\"parts\":%d,\"vanilla_fp\":%d,\"fp\":%d,\"vanilla_tp\":%d,\"tp\":%d,\"cached\":%d,\"base\":%u,\"nummodels\":%u,"
+		"\"registered\":%d,\"skipped_parts\":%d,\"fp_dims\":[%d,%d,%d],\"knob\":%d", parts, vanFp, fp, vanTp, tp, fp2 == fp ? 1 : 0, base, nummodels,
+		st.registered, st.partsSkipped, fp >= 0 ? models[fp]->sizex : 0, fp >= 0 ? models[fp]->sizey : 0, fp >= 0 ? models[fp]->sizez : 0, apx::vox::heldEnabled() ? 1 : 0);
+	fields = buf;
+	free(sword);
+	return parts > 0 && fp != vanFp && tp != vanTp && (unsigned)fp >= base && (unsigned)tp >= base && fp2 == fp
+		&& apx::vox::baseModelCount() == base && models[fp]->sizez == models[vanFp]->sizez;
 }
 
 // tierdmg (D74): a hostile rat, tagged fodder the way the director tags its creatures, hits player 0 for 20 with
@@ -7455,6 +7480,10 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strcmp(argv[c], "-apxvoxshot") )
+					{
+						apx::vis::armVoxShot(); // apx BX1: held sword from parts, one screenshot, then quit
+					}
 					else if ( !strcmp(argv[c], "-apxlightprobe") )
 					{
 						apx::vis::armProbe(); // apx BVIS1: per-tile light monsters see, then quit
@@ -7472,6 +7501,7 @@ int main(int argc, char** argv)
 							apx::selftestall::setInline(apx::selftestall::IMPACT, apxSelftestImpact);
 							apx::selftestall::setInline(apx::selftestall::TIERDMG, apxSelftestTierDamage);
 							apx::selftestall::setStageBeginHook(apxSelftestClearHostiles);
+							apx::selftestall::setInline(apx::selftestall::VOXEL, apxSelftestVoxel);
 						}
 						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
 					}

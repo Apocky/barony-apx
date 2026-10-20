@@ -5,6 +5,9 @@
 #include "../player.hpp"
 #include "visshots.hpp"
 #include "vision.hpp"
+#include "vox/heldmodel.hpp"
+#include "parts_engine.hpp"
+#include "../items.hpp"
 #include <cstdio>
 #include <cstdlib>
 
@@ -19,6 +22,8 @@ namespace vis
 	{
 		bool g_armed = false;
 		bool g_probe = false;          // -apxlightprobe
+		bool g_voxShot = false;        // -apxvoxshot (BX1)
+		int g_voxTicks = 0;
 		int g_probeTicks = 0;
 		int g_ticks = 0;
 		int g_phase = 0;               // 0 settle, 1 far view, 2 near view, 3 done
@@ -57,6 +62,34 @@ namespace vis
 	void arm() { g_armed = true; }
 	bool armed() { return g_armed; }
 	void armProbe() { g_probe = true; }
+	void armVoxShot() { g_voxShot = true; }
+
+	// -apxvoxshot (BX1, C10): equip a steel sword with rolled parts, face the longest open line, shoot the first-person
+	// view ("vox-held.png"), log the sprite, quit. APX_VOX_HELD=0 gives the same shot with the tinted vanilla sword.
+	static void voxShotTick(bool ready)
+	{
+		if ( !g_voxShot || !ready ) { return; }
+		Entity* me = players[0]->entity;
+		++g_voxTicks;
+		if ( g_voxTicks == 60 )
+		{
+			Item* sword = newItem(STEEL_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+			apxPartsBind(sword, 0, 5);
+			equipItem(sword, &stats[0]->weapon, 0, false);
+			real_t best = -1, yaw = 0;
+			for ( int k = 0; k < 72; ++k ) { const real_t y = k * 2 * PI / 72, d = ray(me->x, me->y, y); if ( d > best ) { best = d; yaw = y; } }
+			me->yaw = yaw; me->pitch = 0;
+			printlog("[apx-vox] voxshot: sword parts %d, rollKey %u", sword ? (int)sword->apx.nParts : -1, sword ? sword->apx.rollKey : 0u);
+		}
+		if ( g_voxTicks == 160 ) { g_shot = "vox-held.png"; }
+		if ( g_voxTicks == 166 )
+		{
+			const Entity* hud = players[0]->hud.weapon;
+			printlog("[apx-vox] voxshot done: hud weapon sprite %d, base models %u, nummodels %u", hud ? (int)hud->sprite : -1, apx::vox::baseModelCount(), nummodels);
+			g_voxShot = false;
+			mainloop = 0;
+		}
+	}
 
 	// -apxlightprobe: the light monsters see (entityLightAt) on every open tile of the test floor, written as one
 	// JSON row of per-tile values, then quit. Two launches (APX_VIS_FALLOFF=0 vs on) give the change in how far
@@ -97,6 +130,7 @@ namespace vis
 	void tick(bool ready)
 	{
 		probeTick(ready);
+		voxShotTick(ready);
 		if ( !g_armed || g_phase >= 3 ) { return; }
 		if ( !ready ) { g_ticks = 0; return; }
 		++g_ticks;

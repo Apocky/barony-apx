@@ -24,6 +24,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/acttorch.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actplayer.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/telemetry.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/bx1.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/heldmodel.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/selftest_all.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/visshots.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vision.cpp"

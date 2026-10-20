@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "apx/parts_engine.hpp"
+#include "apx/vox/heldmodel.hpp"
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -682,6 +683,10 @@ void actHudWeapon(Entity* my)
 			}
 			my->sprite = itemModelFirstperson(stats[HUDWEAPON_PLAYERNUM]->weapon);
 			apxPartsApplyTint(my, stats[HUDWEAPON_PLAYERNUM]->weapon); // apx F6 palette tint
+			{ // apx BX1 (C10): the weapon drawn from its parts' voxel models, instead of the tint
+				const int apxHeld = apx::vox::heldModel(stats[HUDWEAPON_PLAYERNUM]->weapon, true, my->sprite);
+				if ( apxHeld != (int)my->sprite ) { my->sprite = apxHeld; my->lightBonus = vec4(0.f, 0.f, 0.f, 0.f); }
+			}
 
 			if ( bowIsBeingDrawn && !(stats[HUDWEAPON_PLAYERNUM]->weapon && stats[HUDWEAPON_PLAYERNUM]->weapon->type == HEAVY_CROSSBOW) )
 			{

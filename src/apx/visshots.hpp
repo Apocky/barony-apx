@@ -11,7 +11,8 @@ namespace apx
 namespace vis
 {
 	void arm();
-	void armProbe();              // -apxlightprobe: per-tile monster-visible light, then quit
+	void armProbe();
+	void armVoxShot();            // -apxvoxshot (BX1): the held sword drawn from its parts, one screenshot, then quit              // -apxlightprobe: per-tile monster-visible light, then quit
 	bool armed();
 	void tick(bool ready);        // once per game tick
 	const char* takeShot();       // a file name when a frame is wanted now, else nullptr

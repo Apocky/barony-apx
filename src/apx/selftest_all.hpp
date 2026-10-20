@@ -12,7 +12,7 @@ namespace apx
 {
 namespace selftestall
 {
-	enum Stage : int { FEATURES = 0, IMPACT, TIERDMG, INVENTORY, MOVES, F4C, NUM_STAGES };
+	enum Stage : int { FEATURES = 0, IMPACT, TIERDMG, VOXEL, INVENTORY, MOVES, F4C, NUM_STAGES };
 
 	void arm();                  // -apxselftest=all
 	bool armed();
