@@ -10,6 +10,8 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx_inventory.hpp"
+#include "apx_bench_api.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
@@ -4315,6 +4317,7 @@ int Player::PlayerMovement_t::getCharacterWeight()
 		}
 	}
 	weight += stats[player.playernum]->getGoldWeight();
+	if ( !apx_inv::vanillaGrid() ) { weight += (int)apx_bench::pouchUnits(player.playernum); } // apx D85: the material pouch is carried (U1 owns the rule; 100 g = 1 unit)
 	return weight;
 }
 
