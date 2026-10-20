@@ -39,6 +39,11 @@ try {
     $run = Join-Path $RunRoot "$Tag-$stamp"
     New-Item -ItemType Directory -Path $run | Out-Null
     Copy-Item $Script (Join-Path $run 'cmd.txt')
+    if ($Size -ne '1280x720') {   # the game's config.json wins over -size=: seed it from toolspx\qa\config_base.json with the resolution
+        $w, $h = $Size -split 'x'
+        New-Item -ItemType Directory -Force (Join-Path $run 'config') | Out-Null
+        (Get-Content (Join-Path $PSScriptRoot 'qa\config_base.json') -Raw) -replace '"resolution_x": \d+', "`"resolution_x`": $w" -replace '"resolution_y": \d+', "`"resolution_y`": $h" | Set-Content (Join-Path $run 'config\config.json')
+    }
     $env:BARONY_DATADIR = 'C:\Program Files (x86)\Steam\steamapps\common\Barony'
     foreach ($kv in $Env) { $k, $v = $kv -split '=', 2; Set-Item -Path "Env:$k" -Value $v }
     "slot $lock run $run $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')"

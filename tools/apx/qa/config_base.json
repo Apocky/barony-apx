@@ -1,0 +1,2639 @@
+{
+    "version": 25,
+    "mods": [],
+    "crossplay_enabled": false,
+    "fast_restart": false,
+    "add_items_to_hotbar_enabled": true,
+    "inventory_sorting": {
+        "version": 0,
+        "hotbarWeapons": false,
+        "hotbarArmor": false,
+        "hotbarAmulets": false,
+        "hotbarBooks": false,
+        "hotbarTools": true,
+        "hotbarThrown": true,
+        "hotbarGems": false,
+        "hotbarPotions": false,
+        "hotbarScrolls": false,
+        "hotbarStaves": false,
+        "hotbarFood": false,
+        "hotbarSpells": true,
+        "sortWeapons": 6,
+        "sortArmor": 4,
+        "sortAmulets": 3,
+        "sortBooks": 2,
+        "sortTools": 1,
+        "sortThrown": 5,
+        "sortGems": -2,
+        "sortPotions": -6,
+        "sortScrolls": -4,
+        "sortStaves": -3,
+        "sortFood": -5,
+        "sortEquipped": 0
+    },
+    "last_characters": {
+        "version": 0,
+        "players": [
+            {
+                "class": -1,
+                "sex": -1,
+                "race": -1,
+                "appearance": -1,
+                "name": ""
+            },
+            {
+                "class": -1,
+                "sex": -1,
+                "race": -1,
+                "appearance": -1,
+                "name": ""
+            },
+            {
+                "class": -1,
+                "sex": -1,
+                "race": -1,
+                "appearance": -1,
+                "name": ""
+            },
+            {
+                "class": -1,
+                "sex": -1,
+                "race": -1,
+                "appearance": -1,
+                "name": ""
+            },
+            {
+                "class": -1,
+                "sex": -1,
+                "race": -1,
+                "appearance": -1,
+                "name": ""
+            },
+            {
+                "class": -1,
+                "sex": -1,
+                "race": -1,
+                "appearance": -1,
+                "name": ""
+            }
+        ]
+    },
+    "use_on_release_enabled": true,
+    "minimap": {
+        "version": 0,
+        "map_scale": 100,
+        "icon_scale": 100,
+        "foreground_opacity": 50,
+        "background_opacity": 0
+    },
+    "ui_filter": false,
+    "ui_scale": 100.0,
+    "item_tooltip_height": 100.0,
+    "shootmode_crosshair": 0,
+    "shootmode_crosshair_opacity": 50,
+    "show_messages_enabled": true,
+    "message_filters": {
+        "version": 0,
+        "combat": true,
+        "status": true,
+        "inventory": true,
+        "equipment": true,
+        "world": true,
+        "chat": true,
+        "progression": true,
+        "interaction": true,
+        "inspection": true,
+        "hint": true,
+        "obituary": true
+    },
+    "show_player_nametags_enabled": true,
+    "show_hud_enabled": true,
+    "show_ip_address_enabled": true,
+    "content_control_enabled": false,
+    "colorblind_mode_enabled": false,
+    "arachnophobia_filter_enabled": false,
+    "shaking_enabled": true,
+    "bobbing_enabled": true,
+    "light_flicker_enabled": true,
+    "hold_to_activate_enabled": true,
+    "holiday_themes_enabled": true,
+    "video": {
+        "version": 1,
+        "window_mode": 0,
+        "display_id": 0,
+        "hz": 0,
+        "resolution_x": 1280,
+        "resolution_y": 720,
+        "vsync_enabled": true,
+        "gamma": 100.0
+    },
+    "vertical_split_enabled": false,
+    "clipped_split_enabled": false,
+    "staggered_split_enabled": false,
+    "use_frame_interpolation": true,
+    "fov": 60.0,
+    "fps": 301.0,
+    "use_hdr": true,
+    "audio_device": "",
+    "recording_audio_device": "",
+    "recording_loopback": false,
+    "enable_voice_input": false,
+    "enable_voice_receive": true,
+    "use_voice_custom_rolloff": true,
+    "recording_gain": 100.0,
+    "recording_normalize_threshold": 1.0,
+    "recording_normalize_amp": 20.0,
+    "push_to_talk": true,
+    "speaker_mode": 0,
+    "master_volume": 100.0,
+    "gameplay_volume": 100.0,
+    "ambient_volume": 100.0,
+    "environment_volume": 100.0,
+    "notification_volume": 100.0,
+    "music_volume": 100.0,
+    "instrument_fg_enabled": true,
+    "instrument_bg_enabled": true,
+    "minimap_pings_enabled": true,
+    "player_monster_sounds_enabled": true,
+    "out_of_focus_audio_enabled": true,
+    "music_preload": false,
+    "bindings": {
+        "version": 0,
+        "players": [
+            {
+                "kb_mouse_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "2"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "Mouse2"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "K"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "Mouse1"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "Mouse3"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "F"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "Tab"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "B"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "F6"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "Q"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "Left Alt"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "MouseWheelDown"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "C"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "E"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "M"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "Left"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "L"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "P"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "`"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "MouseWheelUp"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "D"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "4"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "Return"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "W"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "A"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "S"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "Right"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "8"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "Up"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "Down"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "1"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "3"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "5"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "6"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "7"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "9"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "0"
+                    }
+                ],
+                "gamepad_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "ButtonY"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "ButtonStart"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "ButtonLeftStick"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "RightTrigger"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "ButtonA"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "ButtonLeftBumper"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "ButtonBack"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "DpadX-"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "ButtonB"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "DpadX+"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "DpadY-"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "ButtonRightStick"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "ButtonX"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "ButtonRightBumper"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ],
+                "joystick_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ]
+            },
+            {
+                "kb_mouse_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "2"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "Mouse2"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "K"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "Mouse1"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "Mouse3"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "F"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "Tab"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "B"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "F6"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "Q"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "Left Alt"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "MouseWheelDown"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "C"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "E"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "M"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "Left"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "L"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "P"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "`"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "MouseWheelUp"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "D"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "4"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "Return"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "W"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "A"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "S"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "Right"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "8"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "Up"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "Down"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "1"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "3"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "5"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "6"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "7"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "9"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "0"
+                    }
+                ],
+                "gamepad_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "ButtonY"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "ButtonStart"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "ButtonLeftStick"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "RightTrigger"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "ButtonA"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "ButtonLeftBumper"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "ButtonBack"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "DpadX-"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "ButtonB"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "DpadX+"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "DpadY-"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "ButtonRightStick"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "ButtonX"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "ButtonRightBumper"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ],
+                "joystick_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ]
+            },
+            {
+                "kb_mouse_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "2"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "Mouse2"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "K"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "Mouse1"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "Mouse3"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "F"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "Tab"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "B"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "F6"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "Q"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "Left Alt"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "MouseWheelDown"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "C"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "E"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "M"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "Left"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "L"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "P"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "`"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "MouseWheelUp"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "D"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "4"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "Return"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "W"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "A"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "S"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "Right"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "8"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "Up"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "Down"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "1"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "3"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "5"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "6"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "7"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "9"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "0"
+                    }
+                ],
+                "gamepad_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "ButtonY"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "ButtonStart"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "ButtonLeftStick"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "RightTrigger"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "ButtonA"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "ButtonLeftBumper"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "ButtonBack"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "DpadX-"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "ButtonB"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "DpadX+"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "DpadY-"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "ButtonRightStick"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "ButtonX"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "ButtonRightBumper"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ],
+                "joystick_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ]
+            },
+            {
+                "kb_mouse_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "2"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "Mouse2"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "K"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "Mouse1"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "Mouse3"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "F"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "Space"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "Tab"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "B"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "F6"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "Q"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "Left Alt"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "MouseWheelDown"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "C"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "E"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "M"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "Left"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "L"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "P"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "`"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "MouseWheelUp"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "R"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "D"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "X"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "4"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "Return"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "W"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "A"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "S"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "Right"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "8"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "Up"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "Down"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "1"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "3"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "5"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "6"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "7"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "9"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "0"
+                    }
+                ],
+                "gamepad_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "ButtonY"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "ButtonStart"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "ButtonLeftStick"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "RightTrigger"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "ButtonA"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "ButtonLeftBumper"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "LeftTrigger"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "ButtonBack"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "DpadX-"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "ButtonB"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "DpadX+"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "DpadY-"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "ButtonRightStick"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "ButtonX"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "DpadY+"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "V"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "ButtonRightBumper"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ],
+                "joystick_bindings": [
+                    {
+                        "binding": "Hotbar Slot 2",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Up / Select",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Pause Game",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Call Out",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Skill Sheet",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Attack",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Use",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cast Spell",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Defend",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Sneak",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Character Status",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Spell List",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Autosort Inventory",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Screenshot",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Command NPC",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Alternate Use Modifier",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Show NPC Commands",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Cycle NPCs",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Map",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Open Log",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Compendium",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Toggle Minimap",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Down / Cancel",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Next",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Voice Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Interact Tooltip Prev",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Expand Inventory Tooltip",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Quick Turn",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 4",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Chat",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Forward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Left",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Move Backward",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Turn Right",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 8",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Look Up",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Look Down",
+                        "input": "[unbound]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 1",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 3",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 5",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 6",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 7",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 9",
+                        "input": "[hidden]"
+                    },
+                    {
+                        "binding": "Hotbar Slot 10",
+                        "input": "[hidden]"
+                    }
+                ]
+            }
+        ]
+    },
+    "controls": [
+        {
+            "version": 5,
+            "mkb_world_tooltips_enabled": true,
+            "gamepad_facehotbar": true,
+            "numkeys_in_inventory_enabled": true,
+            "numkeys_change_hotbar_slot_enabled": true,
+            "mouse_sensitivity": 32.0,
+            "reverse_mouse_enabled": false,
+            "smooth_mouse_enabled": false,
+            "turn_sensitivity_x": 75.0,
+            "turn_sensitivity_y": 50.0,
+            "gamepad_camera_invert_x": false,
+            "gamepad_camera_invert_y": false,
+            "gamepad_deadzone_left": 25.0,
+            "gamepad_deadzone_right": 25.0,
+            "quick_turn_speed_control": 1.0,
+            "quick_turn_speed_mkb_control": 1.0,
+            "spell_quickcast_mkb_enabled": false,
+            "spell_quickcast_controller_enabled": false,
+            "mouse_event_limit_mkb_control": 1000
+        },
+        {
+            "version": 5,
+            "mkb_world_tooltips_enabled": true,
+            "gamepad_facehotbar": true,
+            "numkeys_in_inventory_enabled": true,
+            "numkeys_change_hotbar_slot_enabled": true,
+            "mouse_sensitivity": 32.0,
+            "reverse_mouse_enabled": false,
+            "smooth_mouse_enabled": false,
+            "turn_sensitivity_x": 75.0,
+            "turn_sensitivity_y": 50.0,
+            "gamepad_camera_invert_x": false,
+            "gamepad_camera_invert_y": false,
+            "gamepad_deadzone_left": 25.0,
+            "gamepad_deadzone_right": 25.0,
+            "quick_turn_speed_control": 1.0,
+            "quick_turn_speed_mkb_control": 1.0,
+            "spell_quickcast_mkb_enabled": false,
+            "spell_quickcast_controller_enabled": false,
+            "mouse_event_limit_mkb_control": 1000
+        },
+        {
+            "version": 5,
+            "mkb_world_tooltips_enabled": true,
+            "gamepad_facehotbar": true,
+            "numkeys_in_inventory_enabled": true,
+            "numkeys_change_hotbar_slot_enabled": true,
+            "mouse_sensitivity": 32.0,
+            "reverse_mouse_enabled": false,
+            "smooth_mouse_enabled": false,
+            "turn_sensitivity_x": 75.0,
+            "turn_sensitivity_y": 50.0,
+            "gamepad_camera_invert_x": false,
+            "gamepad_camera_invert_y": false,
+            "gamepad_deadzone_left": 25.0,
+            "gamepad_deadzone_right": 25.0,
+            "quick_turn_speed_control": 1.0,
+            "quick_turn_speed_mkb_control": 1.0,
+            "spell_quickcast_mkb_enabled": false,
+            "spell_quickcast_controller_enabled": false,
+            "mouse_event_limit_mkb_control": 1000
+        },
+        {
+            "version": 5,
+            "mkb_world_tooltips_enabled": true,
+            "gamepad_facehotbar": true,
+            "numkeys_in_inventory_enabled": true,
+            "numkeys_change_hotbar_slot_enabled": true,
+            "mouse_sensitivity": 32.0,
+            "reverse_mouse_enabled": false,
+            "smooth_mouse_enabled": false,
+            "turn_sensitivity_x": 75.0,
+            "turn_sensitivity_y": 50.0,
+            "gamepad_camera_invert_x": false,
+            "gamepad_camera_invert_y": false,
+            "gamepad_deadzone_left": 25.0,
+            "gamepad_deadzone_right": 25.0,
+            "quick_turn_speed_control": 1.0,
+            "quick_turn_speed_mkb_control": 1.0,
+            "spell_quickcast_mkb_enabled": false,
+            "spell_quickcast_controller_enabled": false,
+            "mouse_event_limit_mkb_control": 1000
+        }
+    ],
+    "enemybar_scale": 100.0,
+    "world_tooltip_scale": 100.0,
+    "world_tooltip_scale_splitscreen": 150.0,
+    "classic_mode_enabled": false,
+    "hardcore_mode_enabled": false,
+    "friendly_fire_enabled": true,
+    "keep_inventory_enabled": false,
+    "hunger_enabled": true,
+    "minotaur_enabled": true,
+    "random_traps_enabled": true,
+    "extra_life_enabled": false,
+    "assist_items_enabled": false,
+    "cheats_enabled": false,
+    "skipintro": true,
+    "use_model_cache": false,
+    "debug_keys_enabled": false,
+    "port_number": 57165,
+    "show_lobby_code": true,
+    "lobby_filters": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ]
+}

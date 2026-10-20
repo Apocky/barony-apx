@@ -580,7 +580,11 @@ namespace
 	{
 		ImDrawList* dl = ImGui::GetWindowDrawList();
 		ImGui::PushFont(fontHead()); ImGui::TextUnformatted("Equipment"); ImGui::PopFont();
-		const float row = SZ(32);
+		const float row = SZ(40); // two wrapped text lines per slot
+		const float lineH = ImGui::GetTextLineHeightWithSpacing();
+		const float statsH = lineH * 5 + ImGui::GetStyle().ItemSpacing.y * 2 + SZ(6);
+		ImGui::BeginChild("inv/equip/slots", ImVec2(0, -statsH), false);
+		dl = ImGui::GetWindowDrawList(); // the child's own list (clipped to the child)
 		splitBegin(dl);
 		for ( int s = 0; s < NUM_SLOTS; ++s )
 		{
@@ -606,28 +610,24 @@ namespace
 			const ImVec2 b(a.x + wdt, a.y + row);
 			ch(dl, 0);
 			dl->AddRectFilled(a, b, hov ? COL_CELL_HOVER : COL_CELL);
-			const ImVec2 ia(a.x + SZ(2), a.y + SZ(2)), ib(a.x + row - SZ(2), b.y - SZ(2));
+			const ImVec2 ia(a.x + SZ(2), a.y + SZ(2)), ib(a.x + SZ(34) - SZ(2), a.y + SZ(34) - SZ(2));
 			dl->AddRect(ia, ib, c ? rarityCol(c->rarity) : IM_COL32(90, 70, 40, 255));
 			ch(dl, 1);
 			if ( c ) { drawIcon(dl, c->tex, ImVec2(ia.x + 1, ia.y + 1), ImVec2(ib.x - 1, ib.y - 1)); }
 			ch(dl, 2);
 			ImFont* f = fontBody();
-			dl->AddText(f, f->FontSize, ImVec2(a.x + row + SZ(4), a.y + SZ(1)), COL_DIM, SLOTS[s].label);
-			if ( c ) { dl->PushClipRect(a, b, true); dl->AddText(f, f->FontSize, ImVec2(a.x + row + SZ(4), a.y + row / 2 - SZ(1)), rarityCol(c->rarity), c->name.c_str()); dl->PopClipRect(); }
+			{	// "Slot: full name", wrapped at word boundaries (never cut mid-word), two lines
+				const float tx = a.x + SZ(38), ww = std::max(SZ(40), b.x - tx - SZ(10));
+				const std::string txt = c ? std::string(SLOTS[s].label) + ": " + c->name : std::string(SLOTS[s].label);
+				dl->AddText(f, f->FontSize, ImVec2(tx, a.y + SZ(2)), c ? rarityCol(c->rarity) : COL_DIM, txt.c_str(), nullptr, ww);
+			}
 			if ( w && S.sel == w->uid ) { dl->AddRect(a, b, COL_GOLD_HI, 0.f, 0, SZ(2)); }
 			if ( focusedWin && S.zone == Z_EQUIP && S.slotIdx == s ) { focusFrame(dl, a, b); }
 			ImGui::PopID();
 		}
 		splitEnd(dl);
-		// stats (Barony's own numbers)
-		ImGui::Separator();
 		Stat* st = stats[p];
 		Entity* me = players[p]->entity;
-		ImGui::Text("ATK %d   AC %d", S.atk, S.ac);
-		ImGui::Text("HP %d/%d   MP %d/%d", st->HP, st->MAXHP, st->MP, st->MAXMP);
-		ImGui::Text("STR %d DEX %d CON %d", S.str, S.dex, S.con);
-		ImGui::Text("INT %d PER %d CHR %d", S.intl, S.per, S.chr);
-		ImGui::Text("Load %s / %s", apx_inv::massText(S.carried).c_str(), apx_inv::massText(S.limit).c_str());
 		// bonuses: every effect line Barony writes for each worn item
 		unsigned long long bs = 1;
 		for ( int s = 0; s < NUM_SLOTS; ++s ) { const Item* w = worn(p, SLOTS[s].slot); bs = mix(bs, w ? (w->uid * 31ULL + w->status * 7ULL + (unsigned)(w->beatitude + 100)) : 0); }
@@ -648,6 +648,14 @@ namespace
 			if ( S.bonuses.empty() ) { ImGui::TextDisabled("none"); }
 			for ( auto& l : S.bonuses ) { ImGui::TextWrapped("%s", l.c_str()); }
 		}
+		ImGui::EndChild();
+		// stats (Barony's own numbers), pinned below the scrolling slots so they are never clipped
+		ImGui::Separator();
+		ImGui::Text("ATK %d   AC %d", S.atk, S.ac);
+		ImGui::Text("HP %d/%d   MP %d/%d", st->HP, st->MAXHP, st->MP, st->MAXMP);
+		ImGui::Text("STR %d DEX %d CON %d", S.str, S.dex, S.con);
+		ImGui::Text("INT %d PER %d CHR %d", S.intl, S.per, S.chr);
+		ImGui::Text("Load %s / %s", apx_inv::massText(S.carried).c_str(), apx_inv::massText(S.limit).c_str());
 	}
 
 	void drawBag(int p, State& S, bool focusedWin, bool keyboardPlayer)
@@ -688,9 +696,12 @@ namespace
 		const float footer = ImGui::GetFrameHeightWithSpacing() * 2 + SZ(4);
 		ImGui::BeginChild("inv/bag/grid", ImVec2(0, -footer), true);
 		{ const ImVec2 ga = ImGui::GetWindowPos(); recordRect("inv/bag/grid", ga, ImVec2(ga.x + ImGui::GetWindowWidth(), ga.y + ImGui::GetWindowHeight())); }
-		const float cell = SZ(44), gap = SZ(4);
-		const float avail = ImGui::GetContentRegionAvail().x;
-		S.cols = std::max(1, (int)((avail + gap) / (cell + gap)));
+		const float gap = SZ(4);
+		const float avail = ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ScrollbarSize; // room for the scrollbar
+		S.cols = std::max(1, (int)((avail + gap) / (SZ(60) + gap)));            // about 60 px cells, whole columns
+		const float cell = std::floor((avail - gap * (S.cols - 1)) / (float)S.cols); // stretched so the row fills the panel
+		const ImVec2 gridOrigin = ImGui::GetCursorScreenPos();
+		const float gridViewH = ImGui::GetWindowHeight();
 		ImDrawList* dl = ImGui::GetWindowDrawList();
 		const int n = (int)S.shown.size();
 		const int rows = (n + S.cols - 1) / S.cols;
@@ -742,6 +753,17 @@ namespace
 			}
 		}
 		splitEnd(dl);
+		{	// empty slots fill the visible panel so the bag reads as a grid, not one lonely row (placeholders: no input)
+			const int visRows = (int)(gridViewH / (cell + gap)) + 1;
+			const int total = std::max(rows, visRows) * S.cols;
+			for ( int i = n; i < total && i < n + S.cols * 40; ++i )
+			{
+				const float y0 = gridOrigin.y + (i / S.cols) * (cell + gap);
+				if ( y0 > gridOrigin.y + ImGui::GetScrollY() + gridViewH ) { break; }
+				const ImVec2 a(gridOrigin.x + (i % S.cols) * (cell + gap), y0);
+				dl->AddRectFilled(a, ImVec2(a.x + cell, a.y + cell), IM_COL32(255, 255, 255, 10));
+			}
+		}
 		if ( n == 0 ) { ImGui::TextDisabled(S.cells.empty() ? "Your bag is empty." : "Nothing matches."); }
 		ImGui::EndChild();
 		// dropping a worn item on the bag unequips it (Barony's unequip)
