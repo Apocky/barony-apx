@@ -144,6 +144,7 @@ std::vector<apx_bench::InfuseOption> benchInfuseOptions(int player, const Item* 
 	return rows;
 }
 bool benchInfuse(int player, Item* item, int part, uint32_t crystalUid, std::string& why) { return apxPartsInfuse(player, item, part, crystalUid, benchInfuseStation, why); }
+bool benchExtractGraft(int player, Item* item, int station, std::string& why) { return apxPartsExtractGraft(player, item, station, why) != nullptr; }
 int benchStation = 4; // the station of the last makeOptions call (make carries no station); ASSUMED workbench
 // C5 Make (05b 5.8): option id = slot << 8 | material; slots of the known Forms x materials in the pouch
 std::vector<apx_bench::MakeOption> benchMakeOptions(int player, int station)
@@ -253,6 +254,8 @@ void apxPartsBenchRegister()
 	p.repairPart = &benchRepairPart;
 	p.infuseOptions = &benchInfuseOptions;
 	p.infuse = &benchInfuse;
+	p.extractGraft = &benchExtractGraft;
+	p.sockets = &apxPartsSockets;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }
