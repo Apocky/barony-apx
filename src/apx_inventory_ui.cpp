@@ -143,6 +143,7 @@ static std::vector<Entry> ownEntries(int player)
 }
 
 std::vector<Entry> ownRowsForTest(int player) { return g_own[player]; }
+std::vector<Entry> benchRowsForTest(int player) { return g_bench[player]; }
 void setTab(int player, int tab) { g_tab[player] = (tab % apx_logic::tabCount() + apx_logic::tabCount()) % apx_logic::tabCount(); g_list[player].selected = 0; g_list[player].scroll = 0; }
 void setSort(int player, int col, bool desc) { g_sortCol[player] = std::max(0, std::min(apx_logic::COL_MAX - 1, col)); g_sortDesc[player] = desc; }
 
@@ -386,6 +387,7 @@ bool activateSelected(int player)
 		std::string msg;
 		bool ok = benchActivate(player, g_benchTab[player], vs.station, target, g_bench[player][s], g_benchForm[player], msg);
 		if ( !msg.empty() ) { messagePlayer(player, MESSAGE_INVENTORY, "%s", msg.c_str()); }
+		vs.lastBenchMsg = msg;
 		if ( ok ) { ++vs.benchActions; }
 		return ok;
 	}

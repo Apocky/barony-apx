@@ -2,6 +2,7 @@
 #include "apx_inventory.hpp"
 #include "apx/selftest_all.hpp"
 #include "apx/headless.hpp"
+#include "apx/parts_engine.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "items.hpp"
@@ -384,6 +385,88 @@ static void probe(const char* tag)
 	fclose(f);
 }
 
+// The bench screens driving F6's provider (apx-main 533d195b has both): Salvage keeps a chosen part,
+// Break teaches the Form, the Formbook view lists it, Craft says "crafting: next slice". Run once.
+static void runF6Bench(int dt)
+{
+	auto& pl = *players[0];
+	static Entity* bench = nullptr;
+	static Uint32 salvUid = 0, breakUid = 0;
+	static uint32_t breakForm = 0;
+	static int parts = 0, salvRows = 0, keepRow = -1, itemsBefore = 0, salvOk = 0, succBefore = -1, succAfter = -1, fbRows = 0, fbHasForm = 0;
+	static std::string craftMsg, salvMsg;
+	static int partsAfter = -1, itemsAfter = 0;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	auto selectOwn = [](ItemType t) {
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.type == t ) { setFocus(0, 0, (int)i); return uidToItem(e[i].row.uid); } }
+		return (Item*)nullptr;
+	};
+	if ( dt == 340 )
+	{
+		emptyInventory(0);
+		Item* a = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+		// a second blade: the same Form as the step-3 break (the quickstart character's input cap Wit/2 is 1 Form)
+		Item* b = newItem(STEEL_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+		apxPartsBind(a, 1, 3); // looted (monster), depth 3: the selftest's forced roll
+		apxPartsBind(b, 1, 3);
+		salvUid = a->uid; breakUid = b->uid; breakForm = b->apx.form;
+		parts = (int)apx_bench::provider().parts(a).size();
+		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
+	}
+	else if ( dt == 344 ) { selectOwn(IRON_SWORD); benchTab(0, 1); } // Salvage
+	else if ( dt == 348 )
+	{
+		auto e = benchRowsForTest(0);
+		salvRows = (int)e.size();
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 3 ) { keepRow = (int)i; break; } } // part index 0
+		itemsBefore = (int)list_Size(&stats[0]->inventory);
+		if ( keepRow >= 0 ) { setFocus(0, 2, keepRow); activateSelected(0); }
+	}
+	else if ( dt == 352 )
+	{
+		// the item is consumed; the kept part and the returned materials are new items
+		// F6 keeps the chosen part (as the item itself or a new one) and returns the rest as materials
+		Item* left = uidToItem(salvUid);
+		partsAfter = left ? (int)apx_bench::provider().parts(left).size() : 0;
+		itemsAfter = (int)list_Size(&stats[0]->inventory);
+		salvMsg = viewState(0).lastBenchMsg;
+		salvOk = salvMsg.rfind("Salvaged", 0) == 0 && (left == nullptr || partsAfter <= 1) && itemsAfter > itemsBefore - 1;
+		succBefore = apxPartsFormSuccesses(0, breakForm);
+		pl.inventoryUI.activateItemContextMenuOption(uidToItem(breakUid), PROMPT_APX_BREAK);
+	}
+	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); benchTab(0, 1); } // Formbook
+	else if ( dt == 360 )
+	{
+		fbRows = viewState(0).benchRows;
+		for ( auto& f : apx_bench::provider().formbook(0) ) { if ( f.form == breakForm && f.successes >= 1 ) { fbHasForm = 1; } }
+		benchTab(0, 1); // Craft
+	}
+	else if ( dt == 364 )
+	{
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i )
+		{
+			if ( !e[i].header && e[i].row.kind == 1 ) { setFocus(0, 2, (int)i); activateSelected(0); activateSelected(0); break; } // pick, then craft
+		}
+		craftMsg = viewState(0).lastBenchMsg;
+	}
+	else if ( dt == 368 )
+	{
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"f6bench\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"parts\":%d,\"salvage_rows\":%d,\"keep_row\":%d,\"salvage_ok\":%d,\"salvage_msg\":\"%s\",\"items_before_after\":[%d,%d],\"parts_left_on_item\":%d,"
+				"\"form\":%u,\"form_successes\":[%d,%d],\"break_teaches\":%d,\"formbook_rows\":%d,\"formbook_has_form\":%d,\"craft_msg\":\"%s\",\"craft_next_slice\":%d}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, parts, salvRows, keepRow, salvOk, salvMsg.c_str(), itemsBefore, itemsAfter, partsAfter,
+				breakForm, succBefore, succAfter, succAfter == succBefore + 1 ? 1 : 0, fbRows, fbHasForm, craftMsg.c_str(),
+				craftMsg.find("crafting: next slice") != std::string::npos ? 1 : 0);
+			fclose(f);
+		}
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+	}
+}
+
 // D81: columns sort, category tabs, icons, the rich tooltip with compare-to-equipped. Run once.
 static void runD81(int dt)
 {
@@ -514,7 +597,9 @@ static void runSteps345(int dtIn)
 	{
 		inspectOpen(0, nullptr);
 		// step 3c: Break through the menu activation
-		Item* it = firstLoose(0, true);
+		// a weapon with rolled parts: F6's break needs parts (it declines a plain gem); the stub breaks either
+		Item* it = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+		apxPartsBind(it, 1, 3);
 		breakUid = it ? it->uid : 0;
 		pl.inventoryUI.activateItemContextMenuOption(it, PROMPT_APX_BREAK);
 	}
@@ -626,7 +711,8 @@ static void runUiPhases()
 	else if ( dt == 140 ) { keystatus[SDLK_DOWN] = false; C = listState(0); itemsAfter = (int)list_Size(&stats[0]->inventory); }
 	else if ( dt >= 141 && dt < 331 ) { runSteps345(dt); }
 	else if ( dt >= 331 && dt < 340 ) { runD81(dt); }
-	else if ( dt == 340 )
+	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
+	else if ( dt == 380 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -638,8 +724,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 410 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 450 )
+	else if ( dt == 450 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 490 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )

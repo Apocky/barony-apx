@@ -129,7 +129,11 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 		if ( !pr.parts.empty() )
 		{
 			e.push_back(header("Parts (pick one to keep)"));
-			for ( auto& p : pr.parts ) { e.push_back(line(p.slotName + ": " + p.material, p.massUnits, (uint32_t)(p.slot + 1), 3)); }
+			for ( size_t k = 0; k < pr.parts.size(); ++k )
+			{
+				const auto& p = pr.parts[k];
+				e.push_back(line(p.slotName + ": " + p.material, p.massUnits, (uint32_t)(k + 1), 3)); // uid = part index + 1
+			}
 		}
 		e.push_back(header(ok ? "Returns" : "Cannot be salvaged"));
 		long long ym = 0;
@@ -177,7 +181,7 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 	}
 	if ( tab == 1 && selectedOwn && (row.row.kind == 3 || row.row.kind == 4) )
 	{
-		int keep = row.row.kind == 3 ? (int)row.row.uid - 1 : -1;
+		int keep = row.row.kind == 3 ? (int)row.row.uid - 1 : -1; // the part index, -1 keeps nothing
 		std::string why, name = selectedOwn->getName();
 		bool ok = pv.salvage(player, selectedOwn, keep, why);
 		msg = ok ? "Salvaged the " + name + "." : "Cannot salvage: " + why;
