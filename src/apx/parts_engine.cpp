@@ -374,6 +374,11 @@ void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& 
 }
 }
 
+int apxPartsPouchWeight(int player)
+{
+	return apxPartsEnabled() ? (int)(apxPartsLedgerGrams(player) / 100) : 0;
+}
+
 long long apxPartsLedgerGrams(int player)
 {
 	long long g = 0;
@@ -623,12 +628,24 @@ void apxPartsProbeTick()
 			const long long salvaged = apxPartsCounters.salvaged - salv0, aura = apxPartsCounters.aura_stand_in - aura0;
 			const long long gramsOut = apxPartsCounters.salvage_grams_out - out0, gramsPaid = apxPartsCounters.salvage_grams_paid - paid0, ledgerGain = apxPartsLedgerGrams(0) - ledger0;
 			const bool conserved = gramsOut == gramsPaid + ledgerGain; // no salvaged gram is lost
+			// D85 pouch: Barony's carry weight = items + gold + pouch; the pouch survives save/load
+			int itemWeight = 0;
+			for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { const Item* it = (const Item*)nd->element; if ( it && it->type >= 0 && it->type < NUMITEMS ) { itemWeight += it->getWeight(); } }
+			const int charWeight = players[0]->movement.getCharacterWeight();
+			const int pouchUnits = apxPartsPouchWeight(0);
+			const bool weightOk = !on || charWeight == itemWeight + stats[0]->getGoldWeight() + pouchUnits;
+			const long long pouchBefore = apxPartsLedgerGrams(0);
+			const int saved2 = saveGame(0);
+			const SaveGameInfo info2 = getSaveGameInfo(multiplayer == SINGLE, 0);
+			const int loaded2 = info2.game_version == -1 ? 1 : loadGame(0, info2);
+			const long long pouchAfter = apxPartsLedgerGrams(0);
+			const bool pouchOk = !on || (saved2 == 0 && loaded2 == 0 && pouchAfter == pouchBefore && pouchBefore > 0);
 			const int invAfter = countInv(); // 10 kept items stay; station items are consumed; scrap/gem stacks may appear
 			const bool invOk = invAfter >= invBefore - 10 + ((metal > 0) || (magic > 0) || (gems > 0) ? 1 : 0);
-			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 20 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0 && invOk);
+			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 20 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0 && invOk && weightOk && pouchOk);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"salvage\",\"parts_on\":%d,\"station_ok\":%d,\"bench_ok\":%d,\"bench_kept_one_part\":%d,\"parts_salvaged\":%lld,"
-				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pass\":%s}",
-				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, salvageOk ? "true" : "false");
+				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pouch_units\":%d,\"carry_weight\":%d,\"item_weight\":%d,\"weight_ok\":%d,\"pouch_before\":%lld,\"pouch_after\":%lld,\"pouch_saved\":%d,\"pass\":%s}",
+				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, pouchUnits, charWeight, itemWeight, weightOk ? 1 : 0, pouchBefore, pouchAfter, pouchOk ? 1 : 0, salvageOk ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("net") == std::string::npos ) { exit(pass && salvageOk ? 0 : 3); }

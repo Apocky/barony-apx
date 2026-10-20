@@ -66,7 +66,8 @@ namespace apx_inv
 	bool openRowMenu(int player, Item* item);           // Barony's context menu for an item of the list
 	bool activateSelected(int player);                 // what Enter / gamepad confirm does on the focused row
 	void setFocus(int player, int focus, int selectedRow); // self-test and mouse: 0 ours, 1 theirs, 2 bench
-	void benchTab(int player, int d);                  // Craft / Salvage / Formbook
+	void benchTab(int player, int d);                  // Craft / Salvage / Forms / Materials
+	void setBenchTab(int player, int tab);             // 0 Craft, 1 Salvage, 2 Forms, 3 Materials
 	void setTab(int player, int tab);                  // D81 category tab (0 All, 1 + apx_logic::Kind)
 	void setSort(int player, int col, bool desc);      // D81 column sort (apx_logic::Column)
 	std::vector<apx_logic::Entry> ownRowsForTest(int player);

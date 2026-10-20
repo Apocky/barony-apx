@@ -245,7 +245,7 @@ def main():
         sv = r.get("salvage") or {}
         if not gate("salvage live: station 10 + bench keep-part 10", sv.get("pass") is True,
                     f"station {sv.get('station_ok')}/10, bench {sv.get('bench_ok')}/10, kept one part {sv.get('bench_kept_one_part')}, metal {sv.get('metal_scrap')}, "
-                    f"magic {sv.get('magic_scrap')}, aura gems {sv.get('aura_gems')} (counted {sv.get('aura_counted')}), inventory {sv.get('inventory_before')} -> {sv.get('inventory_after')}, grams out {sv.get('grams_out')} = paid {sv.get('grams_paid')} + ledger {sv.get('ledger_gain')} ({'conserved' if sv.get('conserved') else 'LOST'})"):
+                    f"magic {sv.get('magic_scrap')}, aura gems {sv.get('aura_gems')} (counted {sv.get('aura_counted')}), pouch {sv.get('pouch_before')} g -> {sv.get('pouch_after')} g after save/load, carry weight {sv.get('carry_weight')} = items {sv.get('item_weight')} + gold + pouch {sv.get('pouch_units')} ({'ok' if sv.get('weight_ok') else 'WRONG'}), inventory {sv.get('inventory_before')} -> {sv.get('inventory_after')}, grams out {sv.get('grams_out')} = paid {sv.get('grams_paid')} + ledger {sv.get('ledger_gain')} ({'conserved' if sv.get('conserved') else 'LOST'})"):
             return 1
         if not gate("S5 save round trip (parts on)", r["exit"] == 0 and p.get("pass") and p.get("parts_kept") == p.get("parts_items") and p.get("parts_items", 0) > 0 and r["sidecars"],
                     f"exit {r['exit']}, items {p.get('items_equal')}/{p.get('inventory_before')} equal, parts {p.get('parts_kept')}/{p.get('parts_items')}, "
