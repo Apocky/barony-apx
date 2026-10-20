@@ -215,10 +215,11 @@ void selfTestTick()
 {
 	if ( g_test.empty() || intro || !players[0] || !players[0]->entity || !stats[0] ) { return; }
 	if ( apx::selftestall::armed() && !apx::selftestall::active(apx::selftestall::INVENTORY) ) { return; } // D77: wait for the stage
-	// headless runs 50 logic ticks per UI pass: the UI phases advance one step per UI frame there,
-	// so every injected tap and read sees the list update in between (windowed: one tick = one frame)
+	// the UI phases advance one step per UI frame, so every injected tap and read sees the UI update in
+	// between: headless runs 50 logic ticks per UI pass, and a windowed run can also fit several ticks
+	// in one frame (D88: press, move and release of the menu gate landed in one frame)
 	static unsigned seenUiFrame = 0;
-	if ( apx::headlessOn && g_phase >= 1 )
+	if ( g_phase >= 1 )
 	{
 		if ( uiFrames() == seenUiFrame ) { return; }
 		seenUiFrame = uiFrames();
@@ -1091,6 +1092,100 @@ static void runD88(int dt)
 	}
 }
 
+// D88 menu gate: right click a grid cell, move onto entry k, release; Barony's own hover and release
+// code must run options[k]. The mouse is driven through the state an SDL event sets (mousex/mousey,
+// Input::mouseButtons); the real cursor is never moved.
+static void setMouseVirtual(int vx, int vy)
+{
+	mousex = (Sint32)((long long)vx * xres / Frame::virtualScreenX);
+	mousey = (Sint32)((long long)vy * yres / Frame::virtualScreenY);
+	inputs.getVirtualMouse(0)->draw_cursor = true;
+	inputs.getVirtualMouse(0)->lastMovementFromController = false;
+}
+static void runMenu(int dt)
+{
+	auto& pl = *players[0];
+	static Uint32 uid = 0;
+	static int nOpts = -1, k = 0, opened = 0, activated = 0, menuClosed = 0, cellFound = 0, visible = 0;
+	static std::string rows;
+	static std::vector<int> opts;
+	static std::vector<std::string> labels;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	const int step = (dt - 480) % 7;
+	if ( dt == 518 )
+	{
+		Input::mouseButtons[SDL_BUTTON_RIGHT] = 0;
+		inputs.getUIInteraction(0)->itemMenuOpen = false;
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"d88menu\",\"mode\":\"%s\",\"headless\":%d,\"options\":%d,\"tried\":%d,\"opened\":%d,\"visible\":%d,\"activated\":%d,\"closed\":%d,\"cell_found\":%d,\"menu_opens\":%d,\"rows\":\"%s\"}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, nOpts, k, opened, visible, activated, menuClosed, cellFound, menuOpensForTest(0), rows.c_str());
+			fclose(f);
+		}
+		return;
+	}
+	if ( dt > 518 || (nOpts >= 0 && k >= nOpts) ) { return; }
+	if ( step == 0 )
+	{
+		// a fresh iron sword each entry (drop, break and use change or remove it)
+		Item* it = uid ? uidToItem(uid) : nullptr;
+		if ( !it || it->type != IRON_SWORD ) { it = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory); uid = it ? it->uid : 0; }
+		if ( stats[0]->weapon == it ) { stats[0]->weapon = nullptr; }
+		inspectOpen(0, nullptr);
+		setTab(0, 0);
+		if ( nOpts < 0 && it )
+		{
+			opts.clear(); labels.clear();
+			for ( auto o : getContextMenuOptionsForItem(0, it) ) { opts.push_back((int)o); const char* l = getContextMenuLangEntry(0, o, *it); labels.push_back(l ? l : "?"); }
+			nOpts = (int)opts.size();
+		}
+	}
+	else if ( step == 1 )
+	{
+		// the grid has redrawn with the sword in it: select it
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( e[i].row.uid == uid ) { setFocus(0, 0, (int)i); } }
+	}
+	else if ( step == 2 )
+	{
+		// the cursor onto the sword's own cell (hover selects it, as for a player), right button down
+		SDL_Rect a{};
+		int idx = -1;
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( e[i].row.uid == uid ) { idx = (int)i; } }
+		if ( idx >= 0 && cellRectForTest(0, idx, a) ) { ++cellFound; setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2); }
+		resetMenuOptionForTest(0);
+		Input::mouseButtons[SDL_BUTTON_RIGHT] = 1;
+	}
+	else if ( step == 3 )
+	{
+		auto* ui = inputs.getUIInteraction(0);
+		if ( ui->itemMenuOpen && ui->itemMenuItem == uid ) { ++opened; }
+
+	}
+	else if ( step == 4 )
+	{
+		// a full frame after the open: drawn over our grid, our tooltip out of its way
+		if ( viewState(0).menuOnTop && !viewState(0).tipShown ) { ++visible; }
+		if ( k == 1 ) { g_shot = "apx-d88-menu.png"; } // held: the menu is up
+		// held: onto entry k, read from Barony's menu as laid out at the cursor
+		char nm[32]; snprintf(nm, sizeof(nm), "interact option %d", k + 1);
+		Field* fl = pl.inventoryUI.interactFrame ? pl.inventoryUI.interactFrame->findField(nm) : nullptr;
+		if ( fl ) { SDL_Rect a = fl->getAbsoluteSize(); setMouseVirtual(a.x + a.w / 2, a.y + a.h / 2 + 2); }
+	}
+	else if ( step == 5 ) { Input::mouseButtons[SDL_BUTTON_RIGHT] = 0; } // release over the entry
+	else if ( step == 6 )
+	{
+		const int ran = lastMenuOptionForTest(0);
+		const bool ok = k < (int)opts.size() && ran == opts[k] && lastMenuItemForTest(0) == uid; // that entry, on that item
+		if ( ok ) { ++activated; }
+		if ( !inputs.getUIInteraction(0)->itemMenuOpen ) { ++menuClosed; }
+		rows += std::to_string(k) + ":" + (k < (int)labels.size() ? labels[k] : std::string("?")) + "=" + (ok ? "ran" : "NOT(" + std::to_string(ran) + ")") + "|";
+		++k;
+	}
+}
+
 static void runD81(int dt)
 {
 	auto& pl = *players[0];
@@ -1340,7 +1435,8 @@ static void runUiPhases()
 	else if ( dt >= 410 && dt < 440 ) { runLive86(dt); }
 	else if ( dt >= 440 && dt < 470 ) { runLiveF6(dt); }
 	else if ( dt >= 470 && dt < 480 ) { runD88(dt); }
-	else if ( dt == 480 )
+	else if ( dt >= 480 && dt < 520 ) { runMenu(dt); }
+	else if ( dt == 520 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -1352,8 +1448,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 550 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 590 )
+	else if ( dt == 590 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 630 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )

@@ -59,11 +59,17 @@ namespace apx_inv
 	struct ViewState { int other = OTHER_NONE; int otherRows = 0; int otherSelected = 0; int focus = 0; bool inspectShown = false;
 		Uint32 inspectUid = 0; int station = 0; int stationOps = 0; bool benchShown = false; int transfers = 0; int refusedHeavy = 0;
 		int benchRows = 0; int benchTab = 0; int benchTabSwitches = 0; int benchActions = 0;
-		int tab = 0; int sortCol = 0; bool sortDesc = false; int iconsDrawn = 0; bool tipShown = false; int tipLines = 0; std::string tipDelta; bool tipVsWorn = false; std::string lastBenchMsg; int tipAffixLines = 0; int tipParts = 0; int tipUnknownLines = 0; std::string tipName; int tipRarity = -1; int tipVanillaLines = 0; std::string tipText; };
+		int tab = 0; int sortCol = 0; bool sortDesc = false; int iconsDrawn = 0; bool tipShown = false; int tipLines = 0; std::string tipDelta; bool tipVsWorn = false; std::string lastBenchMsg; int tipAffixLines = 0; int tipParts = 0; int tipUnknownLines = 0; std::string tipName; int tipRarity = -1; int tipVanillaLines = 0; std::string tipText; bool menuOnTop = false; };
 	const ViewState& viewState(int player);
 	void inspectOpen(int player, Item* item);
 	void breakItem(int player, Item* item);
-	bool openRowMenu(int player, Item* item);           // Barony's context menu for an item of the list
+	bool openRowMenu(int player, Item* item, bool atMouse); // Barony's context menu for an item of the grid (at the cursor, or beside the cell)
+	int menuOpensForTest(int player);
+	bool cellRectForTest(int player, int index, SDL_Rect& out); // the own grid's cell of entry index, absolute
+	void noteMenuOption(int player, int prompt, Uint32 uid); // called by Barony's activateItemContextMenuOption
+	Uint32 lastMenuItemForTest(int player);
+	int lastMenuOptionForTest(int player);             // -1 = none since the last reset
+	void resetMenuOptionForTest(int player);
 	bool activateSelected(int player);                 // what Enter / gamepad confirm does on the focused row
 	void setFocus(int player, int focus, int selectedRow); // self-test and mouse: 0 ours, 1 theirs, 2 bench
 	void benchTab(int player, int d);                  // Craft / Salvage / Forms / Materials

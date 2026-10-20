@@ -29252,6 +29252,7 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 		return;
 	}
 	const int player = this->player.playernum;
+	apx_inv::noteMenuOption(player, (int)prompt, item->uid); // apx: which entry ran (D88 menu gate)
 	if ( prompt == PROMPT_APX_INSPECT ) { apx_inv::inspectOpen(player, item); return; } // apx U1
 	if ( prompt == PROMPT_APX_BREAK ) { apx_inv::breakItem(player, item); return; }
 	bool disableItemUsage = false;
