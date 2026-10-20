@@ -547,6 +547,19 @@ else()
   endif (GAME_ENABLED)
 endif(APPLE)
 
+# D90 diag: the symbol file ships beside the exe (barony.pdb) so a crash report can name functions and lines, and the
+# build records the git sha it was configured from.
+if(TARGET barony)
+  execute_process(COMMAND git rev-parse --short HEAD WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} OUTPUT_VARIABLE APX_GIT_SHA OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(APX_GIT_SHA)
+    target_compile_definitions(barony PRIVATE APX_GIT_SHA="${APX_GIT_SHA}")
+  endif()
+  if(MSVC)
+    target_compile_options(barony PRIVATE /Zi)
+    target_link_options(barony PRIVATE /DEBUG /OPT:REF /OPT:ICF)
+  endif()
+endif()
+
 if (GAME_ENABLED)
   if(WIN32)
     # Only for MinGW...
