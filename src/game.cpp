@@ -131,6 +131,27 @@ static bool apxSelftestFeatures(std::string& fields)
 
 static bool apxSelftestImpact(std::string& fields) { return apxRunImpactSelfTest(&fields); }
 
+// Test setting for -apxselftest=all: as each stage begins, every hostile monster on the floor dies (setHP(0), as the
+// /killmonsters cheat does) -- allies and training dummies stay. The stages then spawn what they test; wandering
+// monsters can no longer reach player 0 mid-stage (they killed it during the moves stage). Logged per stage.
+// APX_SELFTEST_CLEAR=0 keeps them (the control).
+static void apxSelftestClearHostiles(apx::selftestall::Stage s)
+{
+	static const bool off = getenv("APX_SELFTEST_CLEAR") && getenv("APX_SELFTEST_CLEAR")[0] == '0';
+	if ( off ) { printlog("[apx-selftest] stage %s: hostiles kept (APX_SELFTEST_CLEAR=0)", apx::selftestall::name(s)); return; }
+	int cleared = 0;
+	for ( node_t* node = map.entities->first; node; node = node->next )
+	{
+		Entity* e = (Entity*)node->element;
+		if ( !e || e->behavior != &actMonster || e->monsterAllyGetPlayerLeader() ) { continue; }
+		Stat* st = e->getStats();
+		if ( !st || st->type == DUMMYBOT || st->HP <= 0 ) { continue; }
+		e->setHP(0);
+		++cleared;
+	}
+	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+}
+
 // tierdmg (D74): a hostile rat, tagged fodder the way the director tags its creatures, hits player 0 for 20 with
 // the rule as the knob says, then with the rule forced off (vanilla); the rule must lower fodder damage.
 // APX_TIER_DAMAGE=0 makes the two equal: FAIL.
@@ -7450,6 +7471,7 @@ int main(int argc, char** argv)
 							apx::selftestall::setInline(apx::selftestall::FEATURES, apxSelftestFeatures);
 							apx::selftestall::setInline(apx::selftestall::IMPACT, apxSelftestImpact);
 							apx::selftestall::setInline(apx::selftestall::TIERDMG, apxSelftestTierDamage);
+							apx::selftestall::setStageBeginHook(apxSelftestClearHostiles);
 						}
 						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
 					}
