@@ -52,3 +52,11 @@ crafted item's parts take the materials the player supplies; form_needed = Formb
 - recipes.json (final for the starting set): one row per gear family; slot grams = volume x density of the first listed material.
 - formbook.json: default and per-origin starting Forms (vanilla ItemType names), known = 1 success, mastered = 5.
 - salvage_materials.json: per material {unit, grams_per_unit, break_loss_pct}; salvage.json percentages apply on top.
+
+## D86 affix metadata (affixes.json; authored by tools/apx/author_gear.py from tools/apx/affix_meta.txt)
+Each affix entry: `name` (internal noun), `pct` (magnitude in percent units of its stat), `pos` ("prefix" | "suffix"), `word` (the display word:
+prefix "Keen", suffix "of Embers"), `stat` (an id from the top-level `stats` catalog: [{id, unit, note}]), `weight` (1-100, roll odds within the pool, higher = commoner).
+A component's name = up to 2 prefix words in affix order + Material + Slot + up to 2 suffix words ("Keen Gory Steel Blade of Embers").
+The appended pool `elemental` (8 entries: Embers, Rime, Sparks, Runes, Gloom, Bloom, Ashen, Frostward) is for components of Uncommon rarity or better; no lookup
+chooses it until the roll code draws from it. Ids stay file order: new affixes go only into NEW pools at the end of the file, never into an existing pool.
+Lint: python tests/apx/test_gear_content.py (13 controls).
