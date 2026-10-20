@@ -276,6 +276,11 @@ def main():
         if not gate("P vanilla APX_PARTS=0 (no parts, no sidecar, same floor)", r["exit"] == 0 and p.get("with_parts") == 0 and not r["sidecars"] and same_floor,
                     f"exit {r['exit']}, with_parts {p.get('with_parts')}, sidecars {len(r['sidecars'])}, floor line equal {bool(same_floor)}: {r['generated']}"):
             return 1
+    if os.environ.get("APX_HEADLESS") == "1" and ("visual" in only or "visual-off" in only):
+        # headless renders no framebuffer (every pixel 0): the tint cannot be measured, so the steps are
+        # NOT RUN (named, never counted as a pass); run them windowed under the f6 lock
+        print("[f6] V palette tint + control: NOT RUN (APX_HEADLESS=1 has no framebuffer)", flush=True)
+        only = [o for o in only if o not in ("visual", "visual-off")]
     if "visual" in only:
         r = results["visual"] = run_visual("visual", args.exe, args.out, {}, args)
         emit(r)
@@ -285,7 +290,8 @@ def main():
     if "visual-off" in only:
         r = results["visual-off"] = run_visual("visual-off", args.exe, args.out, {"APX_PARTS_VIS": "0"}, args)
         emit(r)
-        if not gate("V control APX_PARTS_VIS=0: no tint (< 1.5 %)", r.get("distance_pct") is not None and r["distance_pct"] < 1.5,
+        lit = any(sum(r.get(k) or [0]) > 0 for k in ("mean_iron", "mean_gold"))
+        if not gate("V control APX_PARTS_VIS=0: no tint (< 1.5 %, frame not blank)", lit and r.get("distance_pct") is not None and r["distance_pct"] < 1.5,
                     f"exit {r['exit']}, distance {r.get('distance_pct')} %"):
             return 1
     if "net" in only:
@@ -312,8 +318,8 @@ def main():
     if "net-strip" in only:
         r = results["net-strip"] = run_net("net-strip", args.exe, args.out, {"APX_NET_STRIP": "1"}, args)
         emit(r)
-        if not gate("S5 control APX_NET_STRIP=1 (client gets no blob)", r.get("finish") == "ok" and r.get("recv") == 40 and r.get("recv_none") == 40,
-                    f"received {r.get('recv')}, without blob {r.get('recv_none')}, {r.get('error', '')}"):
+        if not gate("S5 control APX_NET_STRIP=1 (client gets no blob)", r.get("finish") == "ok" and r.get("recv") == 41 and r.get("recv_none") == 41,
+                    f"received {r.get('recv')} (40 items + the D85 bundle), without blob {r.get('recv_none')}, {r.get('error', '')}"):
             return 1
     if "net-vanilla" in only:
         r = results["net-vanilla"] = run_net("net-vanilla", args.exe, args.out, {"APX_PARTS": "0"}, args)
