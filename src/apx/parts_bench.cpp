@@ -13,6 +13,7 @@
 #ifdef APX_HAVE_BENCH_API
 #include "../main.hpp"
 #include "../items.hpp"
+#include "../stat.hpp"
 #include "../apx_bench_api.hpp"
 #include "parts_model.hpp"
 
@@ -121,6 +122,28 @@ std::vector<apx_bench::RepairOption> benchRepairOptions(int player, const Item* 
 	return rows;
 }
 bool benchRepairPart(int player, Item* item, int part, std::string& why) { return apxPartsRepairPart(player, item, part, why); }
+// C6 infuse (05b 5.9): every aura crystal x every part with a free slot; ok/why from a dry run on a copy
+int benchInfuseStation = 3; // the station of the last infuseOptions call (infuse carries none)
+std::vector<apx_bench::InfuseOption> benchInfuseOptions(int player, const Item* item, int station)
+{
+	benchInfuseStation = station;
+	std::vector<apx_bench::InfuseOption> rows;
+	if ( !item || item->apx.nParts == 0 || player < 0 || player >= MAXPLAYERS || !stats[player] ) { return rows; }
+	for ( node_t* n = stats[player]->inventory.first; n; n = n->next )
+	{
+		const Item* c = (const Item*)n->element;
+		if ( !apxPartsIsAura(c) ) { continue; }
+		for ( int k = 0; k < item->apx.nParts; ++k )
+		{
+			apx_bench::InfuseOption o;
+			o.partIndex = k; o.crystalUid = c->uid; o.affix = apxPartsAuraName(c);
+			o.ok = apxPartsInfuseCheck(item, k, apxPartsAuraAffix(c), station, o.why);
+			rows.push_back(o);
+		}
+	}
+	return rows;
+}
+bool benchInfuse(int player, Item* item, int part, uint32_t crystalUid, std::string& why) { return apxPartsInfuse(player, item, part, crystalUid, benchInfuseStation, why); }
 int benchStation = 4; // the station of the last makeOptions call (make carries no station); ASSUMED workbench
 // C5 Make (05b 5.8): option id = slot << 8 | material; slots of the known Forms x materials in the pouch
 std::vector<apx_bench::MakeOption> benchMakeOptions(int player, int station)
@@ -216,6 +239,10 @@ void apxPartsBenchRegister()
 	p.pouch = &benchPouch;
 	p.drawBundle = &benchDrawBundle;
 	p.componentOf = &benchComponentOf;
+	p.repairCost = &apxPartsRepairCost;
+	p.repair = &apxPartsRepair;
+	p.repairPaid = &apxPartsRepairPaid;
+	p.repairGrams = &apxPartsRepairGrams;
 	p.swapSlots = &benchSwapSlots;
 	p.swapPart = &benchSwapPart;
 	p.makeOptions = &benchMakeOptions;
@@ -224,10 +251,8 @@ void apxPartsBenchRegister()
 	p.assemblePreview = &benchAssemblePreview;
 	p.repairOptions = &benchRepairOptions;
 	p.repairPart = &benchRepairPart;
-	p.repairCost = &apxPartsRepairCost;
-	p.repair = &apxPartsRepair;
-	p.repairPaid = &apxPartsRepairPaid;
-	p.repairGrams = &apxPartsRepairGrams;
+	p.infuseOptions = &benchInfuseOptions;
+	p.infuse = &benchInfuse;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }

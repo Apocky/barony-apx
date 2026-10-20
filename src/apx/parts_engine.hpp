@@ -80,6 +80,7 @@ const char* apxPartsAuraName(const Item* item);
 Item* apxPartsMakeAura(int affix, int count, bool identified = true);       // loose (shop stock)
 void apxPartsGivePendingAura(int player);                                  // tinkering station: after it grants the scrap
 bool apxPartsInfuse(int player, Item* item, int part, uint32_t crystalUid, int station, std::string& why); // station 3 = crucible
+bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why); // dry run of the same rules
 // Trade lane (D73/D85): material ids index materials.json; Give/Take move grams in/out of the pouch
 // (server side; logged); Take is false when the pouch is short. The D85 bundle is apxPartsIsBundle.
 int apxPartsMaterialIndex(const char* id);

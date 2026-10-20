@@ -520,6 +520,19 @@ void apxPartsGivePendingAura(int player)
 	apxPartsGiveAura(player, v, true);
 }
 
+bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why) // the same rules, nothing changes
+{
+	if ( station != 3 ) { why = "infuse at a crucible"; return false; }
+	if ( !item || item->apx.nParts == 0 || part < 0 || part >= item->apx.nParts || affix < 0 ) { why = "no such part"; return false; }
+	ApxPart p = item->apx.parts[part];
+	if ( !apxparts::infuse(db(), p, (uint16_t)affix, why) ) { return false; }
+	ApxItemData t = item->apx;
+	t.parts[part] = p;
+	apxparts::refreshDerived(db(), t);
+	if ( !apxparts::isComponent(t) && t.power > apxparts::ipCap(std::max(1, (int)currentlevel)) ) { why = "Item Power over this depth's cap"; return false; }
+	return true;
+}
+
 bool apxPartsInfuse(int player, Item* item, int part, Uint32 crystalUid, int station, std::string& why)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { why = "no player"; return false; }
@@ -1426,9 +1439,30 @@ void apxPartsProbeTick()
 				}
 				bool quickOk = false;
 				if ( prevOk ) { const auto ss = pv.swapSlots(0, a, 4); quickOk = !ss.empty(); for ( auto& x : ss ) { quickOk = quickOk && x.quick == apxPartsIsQuickSlot(a->apx.parts[x.partIndex].slot); } }
-				provOk = prevOk && !dn.empty() && repOk && pvOk && quickOk;
+				// infuse through the provider: infuseOptions lists an ok row, infuse applies it
+				bool infOk = false;
+				if ( prevOk && pv.infuseOptions && pv.infuse && a )
+				{
+					ApxPart q = a->apx.parts[0]; q.rarity = 2; q.nAffix = 0; memset(q.affix, 0, sizeof(q.affix));
+					Item* ic = apxPartsGiveComponent(0, apxparts::componentOf(db(), q, 66, apxparts::FLAG_CRAFTED), true);
+					const apxparts::AffixPool* pl = db().pool(-1, q.slot);
+					for ( int f = 0; !pl && f < (int)db().families.size(); ++f ) { pl = db().pool(f, q.slot); }
+					if ( ic && pl )
+					{
+						Item* cr = apxPartsMakeAura(pl->firstId, 1, true); itemPickup(0, cr); free(cr);
+						const Uint32 icUid = ic->uid;
+						const auto opts = pv.infuseOptions(0, ic, 3);
+						for ( auto& o : opts )
+						{
+							if ( !o.ok ) { continue; }
+							Item* tgt = nullptr; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { if ( ((Item*)nd->element)->uid == icUid ) { tgt = (Item*)nd->element; } }
+							std::string iw; infOk = tgt && pv.infuse(0, tgt, o.partIndex, o.crystalUid, iw) && tgt->apx.parts[0].nAffix == 1; break;
+						}
+					}
+				}
+				provOk = prevOk && !dn.empty() && repOk && pvOk && quickOk && infOk;
 				char nb[256];
-				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0);
+				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d, infuse ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0, infOk ? 1 : 0);
 				provNote = nb;
 			}
 			// STRIP the crafted assembly: every part back as a component, the item gone (05b 5.4)
