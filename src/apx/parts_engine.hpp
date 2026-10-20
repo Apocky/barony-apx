@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -62,7 +62,22 @@ const char* apxPartsComponentName(const Item* item);
 int apxPartsComponentGrams(const Item* item);
 int apxPartsComponentValue(const Item* item);
 struct ApxItemData;
-Item* apxPartsGiveComponent(int player, const ApxItemData& data); // into the player's inventory (itemPickup)
+Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified = true); // into the player's inventory (itemPickup)
+// Trade: loose items in no inventory (shop stock); the caller owns them. A bundle bought through
+// itemPickup goes back into the buyer's pouch by itself (apxPartsTick), or call apxPartsLedgerGive.
+Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true);
+Item* apxPartsMakeBundle(int material, int grams);
+// D85: Barony tinkering reads the pouch: cls 0 = metal, 1 = magic (salvage.json grams per unit)
+int apxPartsPouchScrapUnits(int player, int cls);
+bool apxPartsRepairPart(int player, Item* item, int part, std::string& why); // 05b s5.8b, pouch grams of the part's material
+bool apxPartsPouchTakeScrap(int player, int cls, int units);
+// C6 aura crystals (05b 5.9): GEM_GLASS stand-in, appearance 0xA tag | affix id; same-affix crystals stack.
+bool apxPartsIsAura(const Item* item);
+int apxPartsAuraAffix(const Item* item);
+const char* apxPartsAuraName(const Item* item);
+Item* apxPartsMakeAura(int affix, int count, bool identified = true);       // loose (shop stock)
+void apxPartsGivePendingAura(int player);                                  // tinkering station: after it grants the scrap
+bool apxPartsInfuse(int player, Item* item, int part, uint32_t crystalUid, int station, std::string& why); // station 3 = crucible
 // Trade lane (D73/D85): material ids index materials.json; Give/Take move grams in/out of the pouch
 // (server side; logged); Take is false when the pouch is short. The D85 bundle is apxPartsIsBundle.
 int apxPartsMaterialIndex(const char* id);
@@ -76,9 +91,14 @@ int apxPartsRequiredCount(int family);
 std::vector<uint32_t> apxPartsComponentsForSlot(int player, int slot);       // component item uids for that slot
 Item* apxPartsAssemble(int player, int family, int station, const std::vector<std::pair<int, uint32_t>>& slotUid, std::string& why);
 bool apxPartsSwapAllowed(const Item* item, int part);                      // D87: looted = quick slots only
+bool apxPartsIsQuickSlot(int slot);
+int apxPartsStrip(int player, Item* item, std::string& why);                 // 05b 5.4: components given (-1 = refused)
+std::vector<std::string> apxPartsFits(const Item* item);                     // "Blades Grip", ... for a loose component
+bool apxPartsAssemblePreview(int player, int family, const std::vector<std::pair<int, uint32_t>>& slotUid, int& power, int& cap, std::string& why);
+std::string apxPartsDisplayName(const Item* item);                           // "" = Barony's own
 bool apxPartsSwap(int player, Item* item, int part, uint32_t componentUid, std::string& why); // old part -> component item
 int apxPartsMakeCost(int slot, int material);                              // grams
-Item* apxPartsMake(int player, int slot, int material, int station, int modelId, std::string& why); // spends pouch grams
+Item* apxPartsMake(int player, int slot, int material, int station, uint32_t look, std::string& why); // spends pouch grams; look = BX1 model hash (0 = procedural)
 // bench rows (U1 provider): one part's component name and its affix words
 const char* apxPartsPartName(const Item* item, int part);
 int apxPartsAffixCount(const Item* item, int part);

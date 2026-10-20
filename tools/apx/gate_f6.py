@@ -225,7 +225,7 @@ def main():
     ap.add_argument("--mapseed", type=int, default=101)
     ap.add_argument("--timeout", type=float, default=150.0)
     ap.add_argument("--wait", type=float, default=7200.0)
-    ap.add_argument("--only", default="save,save-strip,save-vanilla,visual,visual-off,net,net-strip,net-vanilla")
+    ap.add_argument("--only", default="save,save-strip,save-payout,save-vanilla,visual,visual-off,net,net-strip,net-vanilla")
     ap.add_argument("--all", action="store_true", help="do not stop at the first failing gate")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -260,15 +260,19 @@ def main():
                     f"station {sv.get('station_ok')}/10, bench {sv.get('bench_ok')}/10, kept one part {sv.get('bench_kept_one_part')}, metal {sv.get('metal_scrap')}, "
                     f"magic {sv.get('magic_scrap')}, aura gems {sv.get('aura_gems')} (counted {sv.get('aura_counted')}), pouch {sv.get('pouch_before')} g -> {sv.get('pouch_after')} g after save/load, carry weight {sv.get('carry_weight')} = items {sv.get('item_weight')} + gold + pouch {sv.get('pouch_units')} ({'ok' if sv.get('weight_ok') else 'WRONG'}), inventory {sv.get('inventory_before')} -> {sv.get('inventory_after')}, grams out {sv.get('grams_out')} = paid {sv.get('grams_paid')} + ledger {sv.get('ledger_gain')} ({'conserved' if sv.get('conserved') else 'LOST'})"):
             return 1
+        if not gate("D85 salvage only adds grams to the pouch (0 scrap items, gain = returned grams); tinkering counts and spends pouch grams",
+                    sv.get("pouch_only") == 1 and sv.get("tinker_reads_pouch") == 1 and sv.get("metal_scrap") == 0 and sv.get("magic_scrap") == 0,
+                    f"scrap items metal {sv.get('metal_scrap')} magic {sv.get('magic_scrap')}, pouch gain {sv.get('ledger_gain')} g = returned {sv.get('grams_out')} g, paid {sv.get('grams_paid')}, tinkering reads pouch {sv.get('tinker_reads_pouch')}"):
+            return 1
         cm = r.get("components") or {}
         if not gate("D86 components: salvage hands the chosen part over as an item; crafted = every part; save/load keeps them", cm.get("pass") is True,
                     f"expected {cm.get('expected')}, gained {cm.get('gained')}, given {cm.get('given')}, crafted {cm.get('crafted_components')}/{cm.get('crafted_parts')} parts, "
                     f"kept after load {cm.get('kept_after_load')}/{cm.get('before_load')}, e.g. \"{cm.get('name')}\""):
             return 1
         cf = r.get("craft") or {}
-        if not gate("C4/C5 live: make from the pouch, assemble a known Form, swap a part (old back intact), looted non-quick refused", cf.get("pass") is True,
+        if not gate("C4/C5/C6 live: make, assemble, swap, strip, infuse at a crucible; looted non-quick refused; unidentified names hide affixes", cf.get("pass") is True,
                     f"form {cf.get('form')}: made {cf.get('made')}/{cf.get('required')}, pouch spent {cf.get('pouch_spent')} g = cost {cf.get('cost')} g, "
-                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}"):
+                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}, strip {cf.get('strip')}, unidentified \"{cf.get('unidentified_name')}\" vs \"{cf.get('identified_name')}\", infused {cf.get('infused')}/2 (refused station/dup/full {cf.get('infuse_refused_station_dup_full')}), crystals used {cf.get('crystals_used')}; U1 provider: {cf.get('provider')}"):
             return 1
         bd = r.get("bundle") or {}
         if not gate("D85 bundles: draw from pouch, survive save/load, pickup returns to pouch", bd.get("pass") is True,
@@ -285,6 +289,13 @@ def main():
         p = r["probe"] or {}
         if not gate("S5 control APX_SAVE_STRIP=1 (parts must be lost)", p.get("parts_items", 0) > 0 and p.get("parts_kept") == 0,
                     f"parts kept {p.get('parts_kept')}/{p.get('parts_items')}"):
+            return 1
+    if "save-payout" in only:
+        r = results["save-payout"] = run_save("save-payout", args.exe, args.out, {"APX_POUCH_SCRAP_PAYOUT": "1"}, args)
+        emit(r)
+        sv = r.get("salvage") or {}
+        if not gate("D85 control APX_POUCH_SCRAP_PAYOUT=1 (the old scrap payout must fail the pouch gate)", sv.get("pouch_only") == 0 and (sv.get("metal_scrap") or 0) + (sv.get("magic_scrap") or 0) > 0,
+                    f"pouch_only {sv.get('pouch_only')}, scrap items metal {sv.get('metal_scrap')} magic {sv.get('magic_scrap')}"):
             return 1
     if "save-vanilla" in only:
         r = results["save-vanilla"] = run_save("save-vanilla", args.exe, args.out, {"APX_PARTS": "0"}, args)

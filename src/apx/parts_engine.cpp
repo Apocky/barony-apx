@@ -360,10 +360,17 @@ void apxPartsFormbookRecv(const uint8_t* d, int len)
 	printlog("apxparts: formbook recv player %d forms %d hash %016llx\n", player, n, (unsigned long long)apxPartsFormbookHash(player));
 }
 
-// Salvage settlement: every returned gram goes into the player's material ledger (no mass is lost to
-// rounding or to materials without a Barony stand-in); whole stand-in units (metal scrap, magic scrap,
-// salvage.json grams each) are paid out of it. The ledger is saved in the sidecar ("ml" rows).
+// Salvage settlement (D85): every returned gram goes into the player's material pouch and stays there as
+// grams; salvage never pays scrap items out (APX_POUCH_SCRAP_PAYOUT=1 = the old payout, a control that
+// must fail the pouch gate). Barony's tinkering spends pouch metal/magic grams as scrap units instead
+// (apxPartsPouchScrapUnits / apxPartsPouchTakeScrap, salvage.json grams per unit). Saved in "ml" rows.
 namespace {
+int scrapGramsPer(int cls)
+{
+	int per[2] = { 400, 200 };
+	for ( auto& s : db().salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
+	return per[cls & 1];
+}
 void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& magicUnits)
 {
 	const apxparts::DB& d = db();
@@ -371,6 +378,7 @@ void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& 
 	if ( player < 0 || player >= MAXPLAYERS ) { return; }
 	for ( auto& mg : r.grams ) { if ( mg.first >= 0 && mg.first < MAX_MATS ) { ledger[player][mg.first] += (uint32_t)std::max(0, mg.second); } }
 	apxPartsCounters.salvage_grams_out += r.massOut;
+	if ( !(getenv("APX_POUCH_SCRAP_PAYOUT") && *getenv("APX_POUCH_SCRAP_PAYOUT") == '1') ) { return; }
 	int per[2] = { 400, 200 };
 	for ( auto& s : d.salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
 	for ( int k = 0; k < 2; ++k )
@@ -471,6 +479,116 @@ constexpr Uint32 COMPONENT_TAG = 0xCu << 28;
 bool keepAsMaterialCtl() { const char* v = getenv("APX_BREAK_KEEP_MATERIAL"); return v && *v == '1'; } // LS44 control: must fail
 }
 
+// ---------------------------------------------------------------- C6 aura crystals + infuse (05b 5.9)
+namespace {
+constexpr Uint32 AURA_TAG = 0xAu << 28;
+std::vector<uint16_t> pendingAura[MAXPLAYERS]; // the station path: SalvageValue runs before the station decides to grant
+}
+bool apxPartsIsAura(const Item* item) { return item && item->type == GEM_GLASS && (item->appearance & 0xF0000000u) == AURA_TAG; }
+int apxPartsAuraAffix(const Item* item) { return apxPartsIsAura(item) ? (int)(item->appearance & 0xFFFF) : -1; }
+const char* apxPartsAuraName(const Item* item)
+{
+	static char buf[96];
+	const int a = apxPartsAuraAffix(item);
+	const char* w = a >= 0 && a < (int)db().affixes.size() ? db().affixes[(size_t)a].label.c_str() : "?";
+	if ( item && !item->identified ) { snprintf(buf, sizeof(buf), "aura crystal"); }
+	else { snprintf(buf, sizeof(buf), "aura crystal (%s)", w); }
+	return buf;
+}
+Item* apxPartsMakeAura(int affix, int count, bool identified)
+{
+	if ( affix < 0 || affix >= (int)db().affixes.size() || count <= 0 ) { return nullptr; }
+	return newItem(GEM_GLASS, SERVICABLE, 0, (Sint16)count, AURA_TAG | (Uint32)affix, identified, nullptr);
+}
+void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified)
+{
+	for ( uint16_t a : affixes )
+	{
+		Item* c = apxPartsMakeAura(a, 1, identified);
+		if ( !c ) { continue; }
+		itemPickup(player, c);
+		free(c);
+		++apxPartsCounters.aura_given;
+		printlog("apxparts: aura crystal given player %d affix %d (%s)\n", player, (int)a, db().affixes[a].label.c_str());
+	}
+}
+void apxPartsGivePendingAura(int player)
+{
+	if ( player < 0 || player >= MAXPLAYERS ) { return; }
+	std::vector<uint16_t> v;
+	v.swap(pendingAura[player]);
+	apxPartsGiveAura(player, v, true);
+}
+
+bool apxPartsInfuse(int player, Item* item, int part, Uint32 crystalUid, int station, std::string& why)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { why = "no player"; return false; }
+	if ( station != 3 ) { why = "infuse at a crucible"; ++apxPartsCounters.infuse_refused; return false; }
+	if ( !item || item->apx.nParts == 0 || part < 0 || part >= item->apx.nParts ) { why = "no such part"; ++apxPartsCounters.infuse_refused; return false; }
+	Item* crystal = nullptr;
+	for ( node_t* n = stats[player]->inventory.first; n; n = n->next ) { Item* it = (Item*)n->element; if ( it && it->uid == crystalUid && apxPartsIsAura(it) ) { crystal = it; } }
+	if ( !crystal ) { why = "the aura crystal is not in the inventory"; ++apxPartsCounters.infuse_refused; return false; }
+	ApxPart p = item->apx.parts[part];
+	if ( !apxparts::infuse(db(), p, (uint16_t)apxPartsAuraAffix(crystal), why) ) { ++apxPartsCounters.infuse_refused; return false; }
+	ApxItemData t = item->apx;
+	t.parts[part] = p;
+	t.power = (uint16_t)apxparts::itemPower(db(), t);
+	if ( !apxparts::isComponent(t) && t.power > apxparts::ipCap(std::max(1, (int)currentlevel)) ) { why = "Item Power over this depth's cap"; ++apxPartsCounters.infuse_refused; return false; }
+	item->apx = t;
+	Item* gone = crystal;
+	consumeItem(gone, player); // one crystal from the stack
+	++apxPartsCounters.infused;
+	printlog("apxparts: infuse player %d part %d affix %d -> %d affixes blob %016llx\n", player, part, (int)p.affix[p.nAffix - 1], (int)p.nAffix,
+		(unsigned long long)apxparts::fnv1a64(&item->apx, sizeof(item->apx)));
+	return true;
+}
+
+// Barony tinkering on the pouch (D85): metal/magic class grams count as scrap units and are spent first
+// from real scrap items, then from the pouch (interface.cpp tinkeringCountScrapTotal / the consume loops)
+int apxPartsPouchScrapUnits(int player, int cls)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !apxPartsEnabled() ) { return 0; }
+	const char* name = cls == 0 ? "metal" : "magic";
+	long long g = 0;
+	for ( size_t m = 0; m < db().materials.size() && m < (size_t)MAX_MATS; ++m ) { if ( db().materials[m].salvageClass == name ) { g += ledger[player][m]; } }
+	return (int)(g / scrapGramsPer(cls));
+}
+bool apxPartsPouchTakeScrap(int player, int cls, int units)
+{
+	if ( units <= 0 ) { return true; }
+	if ( apxPartsPouchScrapUnits(player, cls) < units ) { return false; }
+	const char* name = cls == 0 ? "metal" : "magic";
+	long long owe = (long long)units * scrapGramsPer(cls);
+	for ( size_t m = 0; m < db().materials.size() && m < (size_t)MAX_MATS && owe > 0; ++m )
+	{
+		if ( db().materials[m].salvageClass != name ) { continue; }
+		const long long take = std::min<long long>(owe, ledger[player][m]);
+		ledger[player][m] -= (uint32_t)take;
+		owe -= take;
+	}
+	apxPartsCounters.pouch_scrap_spent += units;
+	printlog("apxparts: tinkering spent %d %s scrap units from the pouch (pouch %lld g)\n", units, name, apxPartsLedgerGrams(player));
+	return true;
+}
+
+// 05b s5.8b: repair one component to full integrity for grams of its own material (mass x lost fraction;
+// ASSUMED until BP1 sets a per-part rule); low integrity (< 0.3) costs a quality step (D87 "small loss")
+bool apxPartsRepairPart(int player, Item* item, int part, std::string& why)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !item || part < 0 || part >= item->apx.nParts ) { why = "no such part"; return false; }
+	ApxPart& p = item->apx.parts[part];
+	if ( p.integrity >= 255 ) { why = "that part is not worn"; return false; }
+	const long long g = std::max(1LL, (long long)apxparts::partMassGrams(db(), p) * (255 - p.integrity) / 255);
+	if ( (long long)ledger[player][p.material] < g ) { why = std::string("the pouch is short of ") + apxPartsMaterialName(p.material); return false; }
+	ledger[player][p.material] -= (uint32_t)g;
+	if ( p.integrity < db().salvage.lowIntegrityByte && p.quality > 1 ) { --p.quality; }
+	p.integrity = 255;
+	item->apx.power = (uint16_t)apxparts::itemPower(db(), item->apx);
+	++apxPartsCounters.parts_repaired;
+	printlog("apxparts: repair part player %d part %d (%s) %lld g pouch %lld g\n", player, part, apxPartsSlotName(p.slot), g, apxPartsLedgerGrams(player));
+	return true;
+}
+
 // trade lane (D73/D85): the pouch as a store of grams
 int apxPartsMaterialIndex(const char* id) { return id ? db().material(id) : -1; }
 bool apxPartsLedgerGive(int player, int material, int grams)
@@ -507,13 +625,13 @@ bool apxPartsIsComponent(const Item* item) { return item && item->type == GEM_GL
 const char* apxPartsComponentName(const Item* item)
 {
 	static char buf[160];
-	snprintf(buf, sizeof(buf), "%s", apxPartsIsComponent(item) ? apxparts::componentName(db(), item->apx.parts[0]).c_str() : "component");
+	snprintf(buf, sizeof(buf), "%s", apxPartsIsComponent(item) ? apxparts::componentName(db(), item->apx.parts[0], item->identified).c_str() : "component");
 	return buf;
 }
 
 void apxPartsDecorateName(const Item* item, char* name, size_t size)
 {
-	if ( !item || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; }
+	if ( !item || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; } // unidentified: Barony's own name, no affix words
 	if ( getenv("APX_PARTS_NAMES") && *getenv("APX_PARTS_NAMES") == '0' ) { return; } // control: vanilla names
 	const std::string n = apxparts::assemblyName(db(), item->apx, name);
 	snprintf(name, size, "%s", n.c_str());
@@ -529,12 +647,26 @@ int apxPartsComponentValue(const Item* item) // ASSUMED: material value x (1 + r
 	return std::max(1, (int)((long long)apxPartsComponentGrams(item) * v / 1000 * (1 + p.rarity)));
 }
 
-Item* apxPartsGiveComponent(int player, const ApxItemData& data)
+Item* apxPartsMakeComponent(const ApxItemData& data, bool identified)
+{
+	if ( !apxparts::isComponent(data) ) { return nullptr; }
+	const ApxPart& p = data.parts[0];
+	Item* c = newItem(GEM_GLASS, SERVICABLE, 0, 1, COMPONENT_TAG | ((Uint32)p.slot << 8) | (Uint32)p.material, identified, nullptr);
+	c->apx = data;
+	return c;
+}
+
+Item* apxPartsMakeBundle(int material, int grams)
+{
+	if ( material < 0 || material >= MAX_MATS || material >= (int)db().materials.size() || grams <= 0 || grams > 0xFFFFF ) { return nullptr; }
+	return newItem(GEM_GLASS, SERVICABLE, 0, 1, BUNDLE_TAG | ((Uint32)material << 20) | (Uint32)grams, true, nullptr);
+}
+
+Item* apxPartsGiveComponent(int player, const ApxItemData& data, bool identified)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] || !apxparts::isComponent(data) ) { return nullptr; }
 	const ApxPart& p = data.parts[0];
-	Item* c = newItem(GEM_GLASS, SERVICABLE, 0, 1, COMPONENT_TAG | ((Uint32)p.slot << 8) | (Uint32)p.material, true, nullptr);
-	c->apx = data;
+	Item* c = apxPartsMakeComponent(data, identified);
 	Item* got = itemPickup(player, c); // itemPickup copies apx (the picked-up copy keeps its parts)
 	free(c);
 	++apxPartsCounters.components_given;
@@ -545,9 +677,9 @@ Item* apxPartsGiveComponent(int player, const ApxItemData& data)
 }
 
 namespace {
-void giveComponents(int player, const apxparts::SalvageResult& r)
+void giveComponents(int player, const apxparts::SalvageResult& r, bool identified = true)
 {
-	for ( auto& c : r.components ) { apxPartsGiveComponent(player, c); }
+	for ( auto& c : r.components ) { apxPartsGiveComponent(player, c, identified); } // a part keeps its item's identification
 }
 }
 
@@ -631,6 +763,66 @@ Item* apxPartsAssemble(int player, int family, int station, const std::vector<st
 }
 
 bool apxPartsSwapAllowed(const Item* item, int part) { return item && apxparts::swapAllowed(db(), item->apx, part); }
+bool apxPartsIsQuickSlot(int slot) { return slot >= 0 && slot < (int)db().slots.size() && db().slots[(size_t)slot].quick; }
+
+int apxPartsStrip(int player, Item* item, std::string& why)
+{
+	if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item has no parts"; return -1; }
+	std::vector<ApxPart> removed;
+	bool consumed = false;
+	ApxItemData d = item->apx;
+	if ( !apxparts::stripParts(db(), d, removed, consumed, why) ) { return -1; }
+	const ApxItemData before = item->apx;
+	const bool known = item->identified;
+	if ( consumed ) { Item* gone = item; consumeItem(gone, player); }
+	else { item->apx = d; }
+	for ( size_t k = 0; k < removed.size(); ++k ) { apxPartsGiveComponent(player, apxparts::componentOf(db(), removed[k], before.rollKey + 211u * (uint32_t)(k + 1), before.flags), known); }
+	++apxPartsCounters.stripped;
+	printlog("apxparts: strip player %d parts %d -> %d components (item %s)\n", player, (int)before.nParts, (int)removed.size(), consumed ? "gone" : "kept");
+	return (int)removed.size();
+}
+
+// 05b section 7 / U1 u1g: the forms and slots a loose component fits
+std::vector<std::string> apxPartsFits(const Item* item)
+{
+	std::vector<std::string> v;
+	if ( !apxPartsIsComponent(item) ) { return v; }
+	const int sl = item->apx.parts[0].slot;
+	for ( auto& f : db().families )
+	{
+		bool fits = false;
+		for ( int r : f.required ) { fits = fits || r == sl; }
+		for ( auto& o : f.optional ) { fits = fits || o.slot == sl; }
+		if ( fits ) { v.push_back(f.id + " " + apxPartsSlotName(sl)); }
+	}
+	return v;
+}
+
+bool apxPartsAssemblePreview(int player, int family, const std::vector<std::pair<int, uint32_t>>& slotUid, int& power, int& cap, std::string& why)
+{
+	cap = depthCap();
+	power = 0;
+	std::vector<ApxPart> parts;
+	for ( auto& su : slotUid )
+	{
+		Item* c = findComponent(player, su.second);
+		if ( !c ) { why = "a component is not in the inventory"; return false; }
+		if ( c->apx.parts[0].slot != su.first ) { why = "a component in the wrong slot"; return false; }
+		parts.push_back(c->apx.parts[0]);
+	}
+	ApxItemData a;
+	const bool ok = apxparts::assemble(db(), family, parts, 0, 1 << 30, a, why); // power even when over the cap
+	if ( ok ) { power = a.power; }
+	if ( ok && power > cap ) { why = "Item Power " + std::to_string(power) + " over this depth's cap " + std::to_string(cap); return false; }
+	return ok;
+}
+
+std::string apxPartsDisplayName(const Item* item)
+{
+	if ( apxPartsIsComponent(item) ) { return apxPartsComponentName(item); }
+	if ( !item || item->apx.nParts == 0 ) { return ""; }
+	return item->getName(); // decorated by apxPartsDecorateName
+}
 
 bool apxPartsSwap(int player, Item* item, int part, Uint32 componentUid, std::string& why)
 {
@@ -650,7 +842,7 @@ bool apxPartsSwap(int player, Item* item, int part, Uint32 componentUid, std::st
 
 int apxPartsMakeCost(int slot, int material) { return apxparts::makeCostGrams(db(), slot, material); }
 
-Item* apxPartsMake(int player, int slot, int material, int station, int modelId, std::string& why)
+Item* apxPartsMake(int player, int slot, int material, int station, uint32_t look, std::string& why)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { why = "no player"; return nullptr; }
 	if ( station == 0 ) { why = "make at a forge or bench"; return nullptr; }
@@ -661,7 +853,7 @@ Item* apxPartsMake(int player, int slot, int material, int station, int modelId,
 	// ASSUMED station and tool points (05b 5.8): forge/anvil 30, other benches 15; a tinkering kit 20
 	const int stationPts = station == 1 || station == 2 ? 30 : 15;
 	int q100 = 0;
-	const ApxPart p = apxparts::makePart(db(), slot, material, stationPts, hasTool(player) ? 20 : 0, (uint8_t)std::max(0, std::min(255, modelId)), &q100);
+	const ApxPart p = apxparts::makePart(db(), slot, material, stationPts, hasTool(player) ? 20 : 0, look, &q100);
 	Item* got = apxPartsGiveComponent(player, apxparts::componentOf(db(), p, (uint32_t)(ticks * 2654435761u) ^ (uint32_t)(slot << 8 | material), apxparts::FLAG_CRAFTED));
 	++apxPartsCounters.made;
 	printlog("apxparts: make player %d %s %s cost %d g quality %d rarity %d pouch %lld g\n", player, apxPartsMaterialName(material), apxPartsSlotName(slot), cost, q100, (int)p.rarity, apxPartsLedgerGrams(player));
@@ -755,14 +947,15 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	};
 	give(TOOL_METAL_SCRAP, metal);
 	give(TOOL_MAGIC_SCRAP, magic);
-	give(GEM_ROCK, r.auraCrystals);
+	apxPartsGiveAura(player, r.auraAffixes, item->identified); // C6: each crystal holds its affix
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
 	printlog("apxparts: salvage-keep player %d type %d parts %d keep %d crafted %d -> components %d metal %d magic %d aura %d (mass %d -> %d g; ledger %lld g)\n", player, (int)item->type,
 		(int)item->apx.nParts, keepPart, (int)r.crafted, (int)r.components.size(), metal, magic, r.auraCrystals, r.massIn, r.massOut, apxPartsLedgerGrams(player));
+	const bool known = item->identified;
 	Item* consumed = item; // D86: no husk; the chosen part (or every part, crafted) is its own item now
 	consumeItem(consumed, player);
-	giveComponents(player, r);
+	giveComponents(player, r, known);
 	return true;
 }
 
@@ -815,6 +1008,12 @@ std::vector<Item*> rollProbeItems(int count, list_t* inventory, const char* fami
 	}
 	return items;
 }
+int countAura(int p)
+{
+	int n = 0;
+	if ( stats[p] ) { for ( node_t* nd = stats[p]->inventory.first; nd; nd = nd->next ) { const Item* it = (const Item*)nd->element; if ( apxPartsIsAura(it) ) { n += it->count; } } }
+	return n;
+}
 int countType(int p, ItemType t)
 {
 	int n = 0;
@@ -833,7 +1032,7 @@ const char* apxPartsShotRequest()
 	return handed.c_str();
 }
 
-namespace { bool craftPass = true; }
+namespace { bool craftPass = true, tinkerOk = false, pouchOnlyOk = false; }
 namespace { bool bundlePass = false, bundleDrawOk = false; long long bundlePouchBeforePickup = 0; char bundleRow[512] = ""; }
 
 void apxPartsProbeTick()
@@ -957,7 +1156,7 @@ void apxPartsProbeTick()
 		bool salvageOk = true;
 		if ( probes.find("salvage") != std::string::npos )
 		{
-			const int metal0 = countType(0, TOOL_METAL_SCRAP), magic0 = countType(0, TOOL_MAGIC_SCRAP), gem0 = countType(0, GEM_ROCK);
+			const int metal0 = countType(0, TOOL_METAL_SCRAP), magic0 = countType(0, TOOL_MAGIC_SCRAP), gem0 = countAura(0);
 			const long long salv0 = apxPartsCounters.salvaged, aura0 = apxPartsCounters.aura_stand_in;
 			const long long out0 = apxPartsCounters.salvage_grams_out, paid0 = apxPartsCounters.salvage_grams_paid, ledger0 = apxPartsLedgerGrams(0);
 			auto countInv = [&]() { int n = 0; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { ++n; } return n; };
@@ -1008,7 +1207,7 @@ void apxPartsProbeTick()
 			for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { const Item* c = (const Item*)nd->element; if ( apxPartsIsComponent(c) && c->apx.parts[0].nAffix > 0 ) { snprintf(compName, sizeof(compName), "%s", c->getName()); } }
 			std::vector<ApxItemData> compsBefore;
 			for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { const Item* c = (const Item*)nd->element; if ( apxPartsIsComponent(c) ) { compsBefore.push_back(c->apx); } }
-			const int metal = countType(0, TOOL_METAL_SCRAP) - metal0, magic = countType(0, TOOL_MAGIC_SCRAP) - magic0, gems = countType(0, GEM_ROCK) - gem0;
+			const int metal = countType(0, TOOL_METAL_SCRAP) - metal0, magic = countType(0, TOOL_MAGIC_SCRAP) - magic0, gems = countAura(0) - gem0;
 			const long long salvaged = apxPartsCounters.salvaged - salv0, aura = apxPartsCounters.aura_stand_in - aura0;
 			const long long gramsOut = apxPartsCounters.salvage_grams_out - out0, gramsPaid = apxPartsCounters.salvage_grams_paid - paid0, ledgerGain = apxPartsLedgerGrams(0) - ledger0;
 			const bool conserved = gramsOut == gramsPaid + ledgerGain; // no salvaged gram is lost
@@ -1037,13 +1236,22 @@ void apxPartsProbeTick()
 				&& compsKept == (int)compsBefore.size() && !compsBefore.empty() && compName[0]);
 			const int invAfter = countInv(); // 20 items consumed (+1 crafted); components are new items; scrap/gem stacks may appear
 			const bool invOk = invAfter >= invBefore - 21 + expectComps + craftedComps;
-			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 21 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0 && invOk && weightOk && pouchOk && compsOk);
+			// D85: salvage only adds grams to the pouch; no scrap items appear; tinkering counts and spends pouch grams
+			const int tinkerBefore = GenericGUI[0].tinkeringCountScrapTotal(TOOL_METAL_SCRAP);
+			apxPartsLedgerCredit(0, db().material("iron"), 800);
+			const int tinkerAfter = GenericGUI[0].tinkeringCountScrapTotal(TOOL_METAL_SCRAP);
+			const long long pouchT0 = apxPartsLedgerGrams(0);
+			const bool took = apxPartsPouchTakeScrap(0, 0, 2);
+			const long long pouchT1 = apxPartsLedgerGrams(0);
+			tinkerOk = tinkerAfter - tinkerBefore == 2 && took && pouchT0 - pouchT1 == 800;
+			pouchOnlyOk = metal == 0 && magic == 0 && ledgerGain == gramsOut && gramsPaid == 0;
+			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 21 && gems == aura && pouchOnlyOk && tinkerOk && conserved && gramsOut > 0 && invOk && weightOk && pouchOk && compsOk);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"components\",\"station_loose\":%d,\"expected\":%d,\"gained\":%d,\"given\":%lld,\"crafted_parts\":%d,\"crafted_components\":%d,\"kept_after_load\":%d,\"before_load\":%d,\"name\":\"%s\",\"pass\":%s}",
 				stationLoose, expectComps, compsGained, compsGiven, craftedParts, craftedComps, compsKept, (int)compsBefore.size(), compName, compsOk ? "true" : "false");
 			probeRow(buf);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"salvage\",\"parts_on\":%d,\"station_ok\":%d,\"bench_ok\":%d,\"bench_kept_one_part\":%d,\"parts_salvaged\":%lld,"
-				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pouch_units\":%d,\"carry_weight\":%d,\"item_weight\":%d,\"weight_ok\":%d,\"pouch_before\":%lld,\"pouch_after\":%lld,\"pouch_saved\":%d,\"pass\":%s}",
-				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, pouchUnits, charWeight, itemWeight, weightOk ? 1 : 0, pouchBefore, pouchAfter, pouchOk ? 1 : 0, salvageOk ? "true" : "false");
+				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pouch_units\":%d,\"carry_weight\":%d,\"item_weight\":%d,\"weight_ok\":%d,\"pouch_before\":%lld,\"pouch_after\":%lld,\"pouch_saved\":%d,\"pouch_only\":%d,\"tinker_reads_pouch\":%d,\"pass\":%s}",
+				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, pouchUnits, charWeight, itemWeight, weightOk ? 1 : 0, pouchBefore, pouchAfter, pouchOk ? 1 : 0, pouchOnlyOk ? 1 : 0, tinkerOk ? 1 : 0, salvageOk ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("craft") != std::string::npos && on )
@@ -1065,14 +1273,14 @@ void apxPartsProbeTick()
 				const int cost = apxPartsMakeCost(slots[(size_t)k], iron);
 				apxPartsLedgerCredit(0, iron, cost);
 				const long long before = apxPartsLedgerGrams(0);
-				Item* c = apxPartsMake(0, slots[(size_t)k], iron, 1, 3, why);
+				Item* c = apxPartsMake(0, slots[(size_t)k], iron, 1, 0xB0B0B0B3u, why);
 				if ( c ) { ++made; slotUid.push_back({ slots[(size_t)k], c->uid }); spent += before - apxPartsLedgerGrams(0); costs += cost; }
 			}
 			const int compsBeforeAsm = [&]() { int n = 0; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { n += apxPartsIsComponent((const Item*)nd->element); } return n; }();
 			Item* a = made == req && req > 0 ? apxPartsAssemble(0, fam, 4, slotUid, craftWhy) : nullptr;
 			const int compsAfterAsm = [&]() { int n = 0; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { n += apxPartsIsComponent((const Item*)nd->element); } return n; }();
 			const bool asmOk = a && a->apx.nParts == req && (a->apx.flags & apxparts::FLAG_CRAFTED) && a->apx.power <= apxparts::ipCap(std::max(1, (int)currentlevel))
-				&& compsBeforeAsm - compsAfterAsm == req && a->apx.parts[0].model == 3;
+				&& compsBeforeAsm - compsAfterAsm == req && a->apx.parts[0].look == 0xB0B0B0B3u;
 			// swap part 0 for a fresh component of the same slot; the old one comes back intact
 			bool swapOk = false;
 			ApxPart old0{};
@@ -1103,10 +1311,113 @@ void apxPartsProbeTick()
 					lootRefused = n && !apxPartsSwap(0, lt[0], 0, n->uid, w2) && w2.find("quick") != std::string::npos;
 				}
 			}
-			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0;
-			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"pass\":%s}",
-				fam >= 0 ? apxPartsFamilyName((uint32_t)fam) : "?", req, made, spent, costs, asmOk ? 1 : 0, a ? a->getName() : "", a ? (int)a->apx.power : 0, craftWhy.c_str(),
-				swapOk ? 1 : 0, lootRefused ? 1 : 0, craftPass ? "true" : "false");
+			char asmName[160] = "";
+			const int asmPower = a ? (int)a->apx.power : 0;
+			if ( a ) { snprintf(asmName, sizeof(asmName), "%s", a->getName()); }
+			// C6 INFUSE: a Rare part with empty affix slots takes a crystal's affix at a crucible only
+			int infused = 0, refusedStation = 0, refusedDup = 0, refusedFull = 0, crystalsUsed = 0;
+			{
+				auto src = rollProbeItems(1, nullptr, "Blades", 30);
+				if ( !src.empty() )
+				{
+					ApxPart q = src[0]->apx.parts[0];
+					q.rarity = 2; q.nAffix = 0; memset(q.affix, 0, sizeof(q.affix));
+					free(src[0]);
+					Item* comp = apxPartsGiveComponent(0, apxparts::componentOf(db(), q, 91, apxparts::FLAG_CRAFTED), true);
+					const apxparts::AffixPool* pl = db().pool(-1, q.slot);
+					for ( int f = 0; !pl && f < (int)db().families.size(); ++f ) { pl = db().pool(f, q.slot); }
+					if ( comp && pl && pl->count >= 3 )
+					{
+						const Uint32 compUid = comp->uid;
+						auto crystal = [&](int affix) -> Uint32 { Item* c = apxPartsMakeAura(affix, 1, true); Item* got = itemPickup(0, c); free(c); return got ? got->uid : 0; };
+						auto findUid = [&](Uint32 u) -> Item* { for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { Item* it = (Item*)nd->element; if ( it && it->uid == u ) { return it; } } return nullptr; };
+						std::string w;
+						const int aura0 = countAura(0);
+						Uint32 c1 = crystal(pl->firstId);
+						refusedStation = !apxPartsInfuse(0, findUid(compUid), 0, c1, 4, w) && w.find("crucible") != std::string::npos;
+						infused += apxPartsInfuse(0, findUid(compUid), 0, c1, 3, w);
+						Uint32 c2 = crystal(pl->firstId);
+						refusedDup = !apxPartsInfuse(0, findUid(compUid), 0, c2, 3, w) && w.find("already") != std::string::npos;
+						Uint32 c3 = crystal(pl->firstId + 1);
+						infused += apxPartsInfuse(0, findUid(compUid), 0, c3, 3, w);
+						Uint32 c4 = crystal(pl->firstId + 2);
+						refusedFull = !apxPartsInfuse(0, findUid(compUid), 0, c4, 3, w) && w.find("no free") != std::string::npos;
+						crystalsUsed = aura0 + 4 - countAura(0);
+						Item* done = findUid(compUid);
+						infused = done && done->apx.parts[0].nAffix == 2 && done->apx.parts[0].affix[0] == pl->firstId && done->apx.parts[0].affix[1] == pl->firstId + 1 ? infused : -infused;
+						(void)c2; (void)c4;
+					}
+				}
+			}
+			const bool infuseOk = infused == 2 && refusedStation && refusedDup && refusedFull && crystalsUsed == 2;
+			// U1h provider wiring, called through apx_bench::provider() as the bench does
+			bool provOk = false;
+			std::string provNote;
+			{
+				const apx_bench::Provider& pv = apx_bench::provider();
+				int pw = 0, cp = 0; std::string pwhy;
+				const bool prevOk = a && pv.assemblePreview && pv.displayName && pv.repairOptions && pv.repairPart && pv.swapSlots;
+				std::string dn = prevOk ? pv.displayName(a) : "";
+				// a worn component: repairOptions lists it; repairPart restores it for pouch grams of its material
+				ApxPart wq = a ? a->apx.parts[0] : ApxPart{};
+				wq.integrity = 100;
+				Item* worn = a ? apxPartsGiveComponent(0, apxparts::componentOf(db(), wq, 55, apxparts::FLAG_CRAFTED), true) : nullptr;
+				bool repOk = false;
+				long long cost = 0;
+				if ( worn && prevOk )
+				{
+					const auto opts = pv.repairOptions(0, worn, 2);
+					cost = opts.size() == 1 && !opts[0].cost.empty() ? opts[0].cost[0].grams : 0;
+					apxPartsLedgerCredit(0, wq.material, (int)cost);
+					const long long g0 = apxPartsLedgerGrams(0);
+					std::string rw;
+					repOk = cost > 0 && pv.repairPart(0, worn, 0, rw) && worn->apx.parts[0].integrity == 255 && g0 - apxPartsLedgerGrams(0) == cost;
+				}
+				// assemblePreview on the required components of the same Form (made fresh)
+				bool pvOk = false;
+				if ( prevOk && fam >= 0 )
+				{
+					std::vector<std::pair<int, Uint32>> picks;
+					for ( int k = 0; k < req; ++k )
+					{
+						apxPartsLedgerCredit(0, iron, apxPartsMakeCost(slots[(size_t)k], iron));
+						if ( Item* c = apxPartsMake(0, slots[(size_t)k], iron, 1, 0, why) ) { picks.push_back({ slots[(size_t)k], c->uid }); }
+					}
+					pvOk = (int)picks.size() == req && pv.assemblePreview(0, (uint32_t)fam, 4, picks, pw, cp, pwhy) && pw > 0 && cp == apxparts::ipCap(std::max(1, (int)currentlevel));
+				}
+				bool quickOk = false;
+				if ( prevOk ) { const auto ss = pv.swapSlots(0, a, 4); quickOk = !ss.empty(); for ( auto& x : ss ) { quickOk = quickOk && x.quick == apxPartsIsQuickSlot(a->apx.parts[x.partIndex].slot); } }
+				provOk = prevOk && !dn.empty() && repOk && pvOk && quickOk;
+				char nb[256];
+				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0);
+				provNote = nb;
+			}
+			// STRIP the crafted assembly: every part back as a component, the item gone (05b 5.4)
+			int stripGot = -1, stripWant = a ? a->apx.nParts : 0;
+			if ( a ) { std::string w3; stripGot = apxPartsStrip(0, a, w3); a = nullptr; }
+			const bool stripOk = stripWant > 0 && stripGot == stripWant;
+			// an unidentified component hides its affix words (05b section 4)
+			char hiddenName[160] = "", shownName[160] = "";
+			{
+				auto src = rollProbeItems(1, nullptr, "Blades", 30);
+				if ( !src.empty() )
+				{
+					int best = 0;
+					for ( int k = 1; k < src[0]->apx.nParts; ++k ) { if ( src[0]->apx.parts[k].nAffix > src[0]->apx.parts[best].nAffix ) { best = k; } }
+					ApxPart q = src[0]->apx.parts[best]; q.rarity = std::min<uint8_t>(q.rarity, 2);
+					const ApxItemData cd = apxparts::componentOf(db(), q, 77, apxparts::FLAG_LOOTED);
+					Item* h = apxPartsGiveComponent(0, cd, false);
+					Item* v = apxPartsGiveComponent(0, cd, true);
+					if ( h ) { snprintf(hiddenName, sizeof(hiddenName), "%s", h->getName()); }
+					if ( v ) { snprintf(shownName, sizeof(shownName), "%s", v->getName()); }
+					free(src[0]);
+				}
+			}
+			const bool hideOk = hiddenName[0] && shownName[0] && strlen(hiddenName) < strlen(shownName) && !strstr(hiddenName, " of ");
+			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk && provOk;
+			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"provider\":\"%s\",\"provider_ok\":%d,\"pass\":%s}",
+				fam >= 0 ? apxPartsFamilyName((uint32_t)fam) : "?", req, made, spent, costs, asmOk ? 1 : 0, asmName, asmPower, craftWhy.c_str(),
+				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, provNote.c_str(), provOk ? 1 : 0, craftPass ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("bundle") != std::string::npos && on )
@@ -1276,7 +1587,8 @@ bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, 
 	if ( metal ) { *metal = mu; }
 	if ( magic ) { *magic = gu; }
 	if ( auraCrystals ) { *auraCrystals = r.auraCrystals; }
-	giveComponents(player, r); // D86: a crafted item's parts come back as component items
+	giveComponents(player, r, item->identified); // D86: a crafted item's parts come back as component items
+	if ( player >= 0 && player < MAXPLAYERS ) { pendingAura[player] = r.auraAffixes; }
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
 	printlog("apxparts: salvage type %d parts %d mass %d g -> %d g (looted %d, discharged %d) metal %d magic %d aura %d ledger %lld g\n",

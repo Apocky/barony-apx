@@ -14,7 +14,8 @@ struct ApxPart
 {
 	uint8_t slot, material, quality, rarity /*0-5*/, integrity /*0-255 = 0.0-1.0*/, nAffix;
 	uint16_t affix[4];
-	uint8_t maker, model; // model: the component's shape id (0 = the default; C10 voxel builder, 05b 5.8)
+	uint8_t maker, pad;
+	uint32_t look; // BX1/C10: 0 = the procedural model from (form, slot, material, rollKey); else the FNV-1a of a player-built voxel model
 };
 struct ApxItemData
 {
@@ -24,8 +25,8 @@ struct ApxItemData
 	ApxPart parts[APX_MAX_PARTS];
 };
 #pragma pack(pop)
-static_assert(sizeof(ApxPart) == 16, "ApxPart is 16 bytes (card)");
-static_assert(sizeof(ApxItemData) == 204, "ApxItemData is 204 bytes (card)");
+static_assert(sizeof(ApxPart) == 20, "ApxPart is 20 bytes (BX1 look, blob v2)");
+static_assert(sizeof(ApxItemData) == 252, "ApxItemData is 252 bytes");
 
 namespace apxparts {
 
@@ -89,7 +90,8 @@ std::string toString(const ApxItemData& it);
 bool fromString(const std::string& s, ApxItemData& it);
 int pack(const ApxItemData& it, uint8_t* out);
 bool unpack(const uint8_t* in, int len, ApxItemData& it);
-constexpr int PACK_MAX = 1 + 8 + 2 + 1 + 1 + 16 * APX_MAX_PARTS;
+constexpr int PACK_ROW_V1 = 16, PACK_ROW = 20; // blob v2 rows carry look (u32 LE); v1 blobs (16-byte rows) still unpack, look 0
+constexpr int PACK_MAX = 1 + 8 + 2 + 1 + 1 + PACK_ROW * APX_MAX_PARTS;
 
 // Salvage (05 section 5, card BF6-6, D86): a crafted item returns EVERY part as a component item (no
 // grams, no aura: the affixes stay on the components). Any other item returns the chosen part
@@ -105,6 +107,7 @@ struct SalvageResult
 	bool discharged = false, looted = false, crafted = false;
 	std::vector<ApxItemData> components;    // the component items handed over (D86)
 	int loosePart = -1;                     // quick salvage (keepPart -1, looted): the part that dropped loose, or -1
+	std::vector<uint16_t> auraAffixes;      // C6: the affix each aura crystal holds (auraCrystals == its size)
 };
 // 05b section 5 step 5, QUICK SALVAGE (no choice): the highest-rarity part (lowest index on a tie) drops
 // loose as a component with the chance by its rarity: Common 0, Uncommon 10, Rare 25, Epic 50,
@@ -123,21 +126,33 @@ bool assemble(const DB& db, int family, const std::vector<ApxPart>& parts, uint3
 bool swapAllowed(const DB& db, const ApxItemData& it, int partIndex);
 // Swap part partIndex for component c (same slot); the old part is returned in `old`.
 bool swapPart(const DB& db, ApxItemData& it, int partIndex, const ApxPart& c, int ipCapValue, ApxPart& old, std::string& why);
-// MAKE: grams of material for one component of this slot (= its mass), and the made part: quality
+// MAKE (look = the built model's hash from the voxel builder, 0 = procedural): grams of material for one component of this slot (= its mass), and the made part: quality
 // 0-100 = 30 x material tier / 9 + station (0-30) + 20 shaping (any valid build, 05b 5.8) + tool (0-20),
 // stored on the 1-10 part scale (/10, at least 1); rarity Common, Uncommon from Fine (50), Rare at
 // Masterwork (70+) (D87); affix slots empty; integrity full; model = modelId.
 int makeCostGrams(const DB& db, int slot, int material);
-ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint8_t modelId, int* quality100 = nullptr);
+ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint32_t look, int* quality100 = nullptr);
+
+// C6 INFUSE (05b 5.9): an aura crystal's affix into an empty affix slot of a part. Slots = the part's
+// rarity (Common 0 .. Legendary 4; Unique 4 until the 5th affix lands). The affix must be one a part of
+// this slot can roll (any family's pool for the slot; ASSUMED) and not already on the part.
+int affixSlots(const ApxPart& p);
+bool affixFitsSlot(const DB& db, int slot, uint16_t affix);
+bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why);
 
 // One part as a component item's data (D86).
 ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);
 // "Keen Steel Blade of Embers": prefixes, Material, Slot, "of" suffixes joined by "and".
-std::string componentName(const DB& db, const ApxPart& p);
+// known = false (affixes not identified, 05b section 4): "Steel Blade", no affix words, no proper name.
+std::string componentName(const DB& db, const ApxPart& p, bool known = true);
 // Assembly names (05b section 4, D87): up to Rare "[best prefix] <form name> [best suffix]" from the best
 // component (highest rarity, lowest index on a tie); Epic and up get a generated proper name from rollKey,
 // "Vey's Ember-Tongue" style (ASSUMED grammar until Apocky sets the style, 05b section 14).
-std::string assemblyName(const DB& db, const ApxItemData& it, const std::string& formName);
+std::string assemblyName(const DB& db, const ApxItemData& it, const std::string& formName, bool known = true);
+// STRIP (05b 5.4, D87): a crafted assembly gives up every part (the item is gone: returns true with
+// consumed = true); a looted one gives up only its optional quick-slot parts (required ones stay).
+// False when nothing can come off.
+bool stripParts(const DB& db, ApxItemData& it, std::vector<ApxPart>& removed, bool& consumed, std::string& why);
 std::string properName(const DB& db, const ApxItemData& it);
 
 } // namespace apxparts

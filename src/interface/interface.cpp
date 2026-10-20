@@ -10752,7 +10752,7 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	int magic = 0;
 	tinkeringGetItemValue(item, &metal, &magic);
 	int apxAura = 0;
-	apxPartsSalvageValue(player, item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5)
+	const bool apxHandled = apxPartsSalvageValue(player, item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5); D85: grams to the pouch, no scrap items
 	bool didCraft = false;
 	int skillLVL = 0;
 	int bonusMetalScrap = 0;
@@ -10915,11 +10915,10 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 		}
 	}
 
-	if ( didCraft && apxAura > 0 ) // apx F6: aura crystals (GEM_ROCK stand-in until BF7)
+	if ( apxHandled ) { didCraft = true; } // apx F6 D85: salvaged into the pouch (metal/magic are 0)
+	if ( didCraft && apxAura > 0 ) // apx F6 C6: aura crystals, each holding its affix (05b 5.9)
 	{
-		Item* aura = newItem(GEM_ROCK, DECREPIT, 0, apxAura, 0, true, nullptr);
-		itemPickup(player, aura);
-		free(aura); // as the scrap grants above: itemPickup copies (local) or sends (remote)
+		apxPartsGivePendingAura(player);
 	}
 	bool increaseSkill = false;
 	if ( stats[player] && didCraft )
@@ -11277,6 +11276,7 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 0, 1); } // apx F6 D85: then the pouch
 		}
 		for ( int c = 0; c < magic; ++c )
 		{
@@ -11285,6 +11285,7 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 1, 1); } // apx F6 D85: then the pouch
 		}
 		if ( tinkeringKitRollIfShouldBreak() )
 		{
@@ -11367,6 +11368,7 @@ int GenericGUIMenu::tinkeringCountScrapTotal(int type)
 			}
 		}
 	}
+	count += apxPartsPouchScrapUnits(gui_player, type == TOOL_METAL_SCRAP ? 0 : 1); // apx F6 D85: pouch grams count as scrap
 	return count;
 }
 
@@ -12929,6 +12931,7 @@ bool GenericGUIMenu::tinkeringConsumeMaterialsForRepair(Item* item, bool upgradi
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 0, 1); } // apx F6 D85: then the pouch
 		}
 		for ( int c = 0; c < magic; ++c )
 		{
@@ -12937,6 +12940,7 @@ bool GenericGUIMenu::tinkeringConsumeMaterialsForRepair(Item* item, bool upgradi
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 1, 1); } // apx F6 D85: then the pouch
 		}
 		if ( tinkeringKitRollIfShouldBreak() && item != tinkeringKitItem )
 		{
