@@ -268,7 +268,7 @@ def main():
         cf = r.get("craft") or {}
         if not gate("C4/C5 live: make from the pouch, assemble a known Form, swap a part (old back intact), looted non-quick refused", cf.get("pass") is True,
                     f"form {cf.get('form')}: made {cf.get('made')}/{cf.get('required')}, pouch spent {cf.get('pouch_spent')} g = cost {cf.get('cost')} g, "
-                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}"):
+                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}, strip {cf.get('strip')}, unidentified \"{cf.get('unidentified_name')}\" vs \"{cf.get('identified_name')}\""):
             return 1
         bd = r.get("bundle") or {}
         if not gate("D85 bundles: draw from pouch, survive save/load, pickup returns to pouch", bd.get("pass") is True,
