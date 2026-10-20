@@ -1200,6 +1200,7 @@ char* Item::getName() const
 	{
 		snprintf(tempstr, sizeof(tempstr), "ITEM%03d", type);
 	}
+	apxPartsDecorateName(this, tempstr, sizeof(tempstr)); // apx F6 05b section 4
 	return tempstr;
 }
 

@@ -160,7 +160,7 @@ std::string loadDB(const std::string& dir, DB& db)
 	if ( db.materials.size() > 255 ) { return "materials.json: over 255 materials (part.material is a byte)"; }
 	for ( auto& r : f.arr("slots") )
 	{
-		Slot s; s.id = r.str("id"); s.role = roleOf(r.str("role")); s.volume = r.num("volume");
+		Slot s; s.id = r.str("id"); s.role = roleOf(r.str("role")); s.volume = r.num("volume"); s.quick = r.num("quick") != 0;
 		if ( s.id.empty() || db.slot(s.id) >= 0 ) { return "forms.json: missing or duplicate slot " + s.id; }
 		db.slots.push_back(s);
 	}
@@ -193,9 +193,10 @@ std::string loadDB(const std::string& dir, DB& db)
 			db.affixPct.push_back({ a.str("name"), a.num("pct") });
 			AffixInfo ai;
 			ai.name = a.str("name"); ai.pct = a.num("pct"); ai.stat = a.str("stat", ai.name.c_str());
-			ai.weight = std::max(1, a.num("weight", 1));
-			const std::string pos = a.str("position");
-			ai.label = a.str("label");
+			ai.weight = std::max(1, std::min(100, a.num("weight", 1)));
+			// content-lane keys (2026-10-19): "pos", "word" ("Keen" / "of Embers"), "stat", "weight" 1-100
+			const std::string pos = a.str("pos", a.str("position"));
+			ai.label = a.str("word", a.str("label"));
 			if ( pos.empty() || ai.label.empty() ) { ++db.affixDefaults; }
 			if ( pos == "prefix" ) { ai.position = AFFIX_PREFIX; }
 			else if ( pos.empty() || pos == "suffix" ) { ai.position = AFFIX_SUFFIX; }
@@ -204,6 +205,7 @@ std::string loadDB(const std::string& dir, DB& db)
 			{
 				bool up = true;
 				for ( char ch : ai.name ) { ai.label += up ? (char)toupper((unsigned char)ch) : ch; up = ch == ' '; }
+				if ( ai.position == AFFIX_SUFFIX ) { ai.label = "of " + ai.label; }
 			}
 			db.affixes.push_back(ai);
 		}
