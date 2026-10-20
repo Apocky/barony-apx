@@ -540,9 +540,23 @@ int Entity::entityLight()
 	{
 		return 255;
 	}
-	int light_x = (int)this->x / 16;
-	int light_y = (int)this->y / 16;
-    const auto& light = lightmaps[0][light_y + light_x * map.height];
+	return entityLightAt((int)this->x / 16, (int)this->y / 16);
+}
+
+// apx BVIS1: the illumination monsters see at a tile, the body of Entity::entityLight (also used by -apxlightprobe)
+int entityLightAt(int light_x, int light_y)
+{
+	if ( light_x < 0 || light_y < 0 || light_x >= (int)map.width || light_y >= (int)map.height )
+	{
+		return 255;
+	}
+    vec4_t light = lightmaps[0][light_y + light_x * map.height];
+    static const bool apxMonsterNewCurve = getenv("APX_VIS_MONSTER_NEWCURVE") && getenv("APX_VIS_MONSTER_NEWCURVE")[0] == '1'; // control: monsters see the new curve
+    if ( !apxMonsterNewCurve && lightmapGameplayDelta.size() == (size_t)map.width * map.height ) // apx BVIS1: the old curve, so monster perception is unchanged
+    {
+        const auto& dlt = lightmapGameplayDelta[light_y + light_x * map.height];
+        light.x += dlt.x; light.y += dlt.y; light.z += dlt.z; light.w += dlt.w;
+    }
     //return (light.x + light.y + light.z) / 3.f;
 	float level = (light.x + light.y + light.z) / 3.f;
 	if ( !strncmp(map.filename, "fortress", 8) )

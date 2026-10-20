@@ -155,6 +155,7 @@ static bool apxSelftestTierDamage(std::string& fields)
 	fields = buf;
 	return off == vanilla && knob < vanilla;
 }
+#include "apx/visshots.hpp"
 static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 #include "interface/ui.hpp"
 #include "ui/GameUI.hpp"
@@ -1057,6 +1058,7 @@ void gameLogic(void)
 {
 	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
 	apx::selftestall::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx D77
+	apx::vis::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx BVIS1
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -7432,6 +7434,14 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strcmp(argv[c], "-apxlightprobe") )
+					{
+						apx::vis::armProbe(); // apx BVIS1: per-tile light monsters see, then quit
+					}
+					else if ( !strcmp(argv[c], "-apxvisshots") )
+					{
+						apx::vis::arm(); // apx BVIS1: far and near screenshots on the test floor, then quit
+					}
 					else if ( !strncmp(argv[c], "-apxselftest=", 13) )
 					{
 						if ( !strcmp(argv[c] + 13, "all") ) // apx D77: every in-game self-test in one process
@@ -8412,7 +8422,9 @@ int main(int argc, char** argv)
 				takeScreenshot(f6Shot);
 				if (!hdrEnabled) { main_framebuffer.bindForWriting(); }
 			}
-			if ( const char* apxShot = apx_inv::takeShotRequest() )
+			const char* apxShot = apx_inv::takeShotRequest(); // U1 self-test, else BVIS1 vision shots
+			if ( !apxShot ) { apxShot = apx::vis::takeShot(); }
+			if ( apxShot )
 			{
 				if (!hdrEnabled) { main_framebuffer.unbindForWriting(); }
 				takeScreenshot(apxShot);

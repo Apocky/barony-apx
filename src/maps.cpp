@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/vision.hpp"
 #include "game.hpp"
 #include "apx/telemetry.hpp"
 #include "stat.hpp"
@@ -11353,7 +11354,7 @@ void map_t::setMapHDRSettings()
 		{
 			*cvar_fogColor = { 1.0f, 1.0f, 1.2f, 1.0f };
 		}
-		*cvar_fogDistance = 384.f;
+		*cvar_fogDistance = apx::vision::fogDistance(384.f); // apx BVIS1: the mist starts 4x further (APX_VIS_FAR=0: 384)
 		*cvar_hdrLimitLow = 1.2f;
 	}
 	else

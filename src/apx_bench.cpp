@@ -46,12 +46,16 @@ static bool stubBreak(int player, Item* item, std::string& why)
 	return true;
 }
 
+static std::vector<PouchRow> stubPouch(int) { return {}; }
+static long long stubPouchGrams(int) { return 0; }
+
 static Provider makeStub()
 {
 	Provider p;
 	p.name = "vanilla stub";
 	p.parts = stubParts; p.formbook = stubFormbook; p.formInputCap = stubCap; p.craftSlots = stubSlots;
 	p.craft = stubCraft; p.salvagePreview = stubPreview; p.salvage = stubSalvage; p.breakItem = stubBreak;
+	p.pouch = stubPouch; p.pouchGrams = stubPouchGrams; p.drawBundle = nullptr;
 	return p;
 }
 static Provider g_stub = makeStub();
@@ -71,7 +75,15 @@ void setProvider(const Provider& p)
 	if ( !g_active.salvagePreview ) { g_active.salvagePreview = g_stub.salvagePreview; }
 	if ( !g_active.salvage ) { g_active.salvage = g_stub.salvage; }
 	if ( !g_active.breakItem ) { g_active.breakItem = g_stub.breakItem; }
+	if ( !g_active.pouch ) { g_active.pouch = g_stub.pouch; }
+	if ( !g_active.pouchGrams ) { g_active.pouchGrams = g_stub.pouchGrams; }
+	// drawBundle stays null until the provider has it (the Materials view hides the action)
 	printlog("[apx] bench provider: %s", g_active.name);
+}
+long long pouchUnits(int player)
+{
+	long long g = g_active.pouchGrams ? g_active.pouchGrams(player) : 0;
+	return g > 0 ? (g + 50) / 100 : 0;
 }
 } // namespace apx_bench
 
@@ -88,7 +100,7 @@ static Entry line(const std::string& t, int32_t mass = 0, uint32_t id = 0, int k
 	return e;
 }
 
-const char* benchTabName(int tab) { static const char* n[] = { "Craft", "Salvage", "Formbook" }; return tab >= 0 && tab < 3 ? n[tab] : "?"; }
+const char* benchTabName(int tab) { static const char* n[] = { "Craft", "Salvage", "Forms", "Materials" }; return tab >= 0 && tab < 4 ? n[tab] : "?"; }
 
 // rows of one bench view. selectedOwn: the item selected in the player's list (salvage target)
 std::vector<Entry> benchEntries(int player, int tab, int station, Item* selectedOwn, uint32_t selectedForm, std::string& head)
@@ -96,7 +108,7 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 	const Provider& pv = provider();
 	std::vector<Entry> e;
 	head.clear();
-	for ( int t = 0; t < 3; ++t ) { head += (t ? " " : "") + (t == tab ? std::string("[") + benchTabName(t) + "]" : std::string(benchTabName(t))); }
+	for ( int t = 0; t < 4; ++t ) { head += (t ? " " : "") + (t == tab ? std::string("[") + benchTabName(t) + "]" : std::string(benchTabName(t))); }
 	if ( tab == 0 ) // Craft: Forms this station can make, then the chosen Form's slots
 	{
 		auto fb = pv.formbook(player);
@@ -129,7 +141,11 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 		if ( !pr.parts.empty() )
 		{
 			e.push_back(header("Parts (pick one to keep)"));
-			for ( auto& p : pr.parts ) { e.push_back(line(p.slotName + ": " + p.material, p.massUnits, (uint32_t)(p.slot + 1), 3)); }
+			for ( size_t k = 0; k < pr.parts.size(); ++k )
+			{
+				const auto& p = pr.parts[k];
+				e.push_back(line(p.slotName + ": " + p.material, p.massUnits, (uint32_t)(k + 1), 3)); // uid = part index + 1
+			}
 		}
 		e.push_back(header(ok ? "Returns" : "Cannot be salvaged"));
 		long long ym = 0;
@@ -140,6 +156,19 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 			e.push_back(line("Discharge " + std::to_string(pr.dischargePct) + "%, aura crystal " + std::to_string(pr.auraPct) + "% per affix"));
 		}
 		e.push_back(line(">> Salvage", 0, 0xFFFFFFFFu, 4));
+	}
+	else if ( tab == 3 ) // Materials: the pouch (D85), grams per material, and Draw out when the provider has it
+	{
+		auto pouch = pv.pouch(player);
+		long long total = pv.pouchGrams(player);
+		e.push_back(header("Material pouch: " + std::to_string(total / 1000) + "." + std::to_string((total % 1000) / 100) + " kg"));
+		if ( pouch.empty() ) { e.push_back(line("Empty. Salvaging fills it.")); }
+		for ( auto& p : pouch ) { e.push_back(line(p.name + "  " + std::to_string(p.grams) + " g", (int32_t)((p.grams + 50) / 100), (uint32_t)(p.material + 1), 6)); }
+		if ( pv.drawBundle )
+		{
+			e.push_back(header("Draw out a 1 kg bundle"));
+			for ( auto& p : pouch ) { if ( p.grams >= 1000 ) { e.push_back(line(">> " + p.name, 0, (uint32_t)(p.material + 1), 5)); } }
+		}
 	}
 	else // Formbook
 	{
@@ -175,9 +204,16 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 		msg = ok ? "Crafted." : "Cannot craft: " + why;
 		return ok;
 	}
+	if ( tab == 3 && row.row.kind == 5 && pv.drawBundle )
+	{
+		std::string why;
+		bool ok = pv.drawBundle(player, (int)row.row.uid - 1, 1000, why);
+		msg = ok ? "You draw out a bundle." : "Cannot draw out: " + why;
+		return ok;
+	}
 	if ( tab == 1 && selectedOwn && (row.row.kind == 3 || row.row.kind == 4) )
 	{
-		int keep = row.row.kind == 3 ? (int)row.row.uid - 1 : -1;
+		int keep = row.row.kind == 3 ? (int)row.row.uid - 1 : -1; // the part index, -1 keeps nothing
 		std::string why, name = selectedOwn->getName();
 		bool ok = pv.salvage(player, selectedOwn, keep, why);
 		msg = ok ? "Salvaged the " + name + "." : "Cannot salvage: " + why;
