@@ -99,6 +99,10 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
 #include "apx/selftest_all.hpp"
+#include "apx/vox/heldmodel.hpp"
+#include "apx/vox/builder.hpp"
+#include "apx/vox/builder_ui.hpp"
+#include "apx/vox/bx1.hpp"
 #include "apx/tiers.hpp"
 #include "apx_combat.hpp"
 #include "apx_stamina.hpp"
@@ -150,6 +154,59 @@ static void apxSelftestClearHostiles(apx::selftestall::Stage s)
 		++cleared;
 	}
 	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+}
+
+// voxel (BX1, C10): a steel sword with rolled parts is drawn from its parts' voxel models: the first-person and
+// held models are runtime models (above the base count), different from the vanilla ones, cached on the second
+// ask; the base count (what models.cache saves) is unchanged. APX_VOX_HELD=0 gives the vanilla models: FAIL.
+static bool apxSelftestVoxel(std::string& fields)
+{
+	const unsigned base = apx::vox::baseModelCount();
+	Item* sword = newItem(STEEL_SWORD, SERVICABLE, 0, 1, 0, true, nullptr);
+	if ( !sword ) { fields = "\"error\":\"no item\""; return false; }
+	apxPartsBind(sword, 0, 5);
+	const int vanFp = itemModelFirstperson(sword), vanTp = itemModel(sword);
+	const int fp = apx::vox::heldModel(sword, true, vanFp), tp = apx::vox::heldModel(sword, false, vanTp);
+	const int fp2 = apx::vox::heldModel(sword, true, vanFp);
+	const int parts = sword->apx.nParts;
+	const auto& st = apx::vox::stats();
+	char buf[320];
+	snprintf(buf, sizeof buf, "\"parts\":%d,\"vanilla_fp\":%d,\"fp\":%d,\"vanilla_tp\":%d,\"tp\":%d,\"cached\":%d,\"base\":%u,\"nummodels\":%u,"
+		"\"registered\":%d,\"skipped_parts\":%d,\"fp_dims\":[%d,%d,%d],\"knob\":%d", parts, vanFp, fp, vanTp, tp, fp2 == fp ? 1 : 0, base, nummodels,
+		st.registered, st.partsSkipped, fp >= 0 ? models[fp]->sizex : 0, fp >= 0 ? models[fp]->sizey : 0, fp >= 0 ? models[fp]->sizez : 0, apx::vox::heldEnabled() ? 1 : 0);
+	fields = buf;
+	const bool composedOk = parts > 0 && fp != vanFp && tp != vanTp && (unsigned)fp >= base && (unsigned)tp >= base && fp2 == fp
+		&& apx::vox::baseModelCount() == base && models[fp]->sizez == models[vanFp]->sizez;
+
+	// the voxel builder, driven as a player would: open a Blade make, an empty build is refused, a hand-drawn blade
+	// is built; the component carries the build's look; a sword with that blade is drawn from the built model
+	int bladeSlot = -1, iron = -1;
+	for ( int i = 0; i < 64 && bladeSlot < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { bladeSlot = i; } }
+	for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+	bool builderOk = false;
+	uint32_t look = 0, madeLook = 0;
+	std::string why;
+	int refusedEmpty = 0, usedLook = 0;
+	if ( bladeSlot >= 0 && iron >= 0 && apx::vox::builder::open(0, bladeSlot << 8 | iron) )
+	{
+		apxPartsLedgerCredit(0, iron, 200000);
+		refusedEmpty = apx::vox::builder::build(0, why) == nullptr ? 1 : 0;
+		apx::bx1::BuildSession* b = apx::vox::builder::session(0);
+		for ( int z = 12; b && z < b->model.sz; ++z ) { b->add(3, z); if ( z < b->model.sz - 3 ) { b->add(2, z); b->add(4, z); } }
+		look = b ? apx::bx1::hash(b->model) : 0;
+		if ( Item* made = apx::vox::builder::build(0, why) ) { madeLook = made->apx.nParts ? made->apx.parts[0].look : 0; }
+		for ( int i = 0; i < sword->apx.nParts; ++i ) { if ( sword->apx.parts[i].slot == bladeSlot ) { sword->apx.parts[i].look = madeLook; } }
+		const int before = apx::vox::stats().looksUsed;
+		const int withLook = apx::vox::heldModel(sword, true, vanFp);
+		usedLook = apx::vox::stats().looksUsed - before;
+		builderOk = refusedEmpty && look && madeLook == look && apx::vox::findLook(look) && usedLook >= 1 && withLook != fp && withLook != vanFp;
+	}
+	char b2[256];
+	snprintf(b2, sizeof b2, ",\"builder\":{\"opened\":%d,\"refused_empty\":%d,\"built\":%d,\"look\":\"%08x\",\"made_look\":\"%08x\",\"held_used_look\":%d,\"why\":\"%s\",\"knob\":%d}",
+		apx::vox::builder::stats().opened, refusedEmpty, apx::vox::builder::stats().built, look, madeLook, usedLook, why.c_str(), apx::vox::builder::enabled() ? 1 : 0);
+	fields += b2;
+	free(sword);
+	return composedOk && builderOk;
 }
 
 // tierdmg (D74): a hostile rat, tagged fodder the way the director tags its creatures, hits player 0 for 20 with
@@ -1080,6 +1137,7 @@ void gameLogic(void)
 	apx_inv::selfTestTick(); // apx: -apxselftest=inventory (U1)
 	apx::selftestall::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx D77
 	apx::vis::tick(!intro && players[0] && players[0]->entity && stats[0] && (apxFloor <= 0 || currentlevel == apxFloor)); // apx BVIS1
+	apx::vox::builderui::tick(); // apx BX1: the voxel builder panel
 	Uint32 x;
 	node_t* node, *nextnode, *node2;
 	Entity* entity;
@@ -1980,6 +2038,7 @@ void gameLogic(void)
 					int totalFloorMonsters = 0;
 					int totalFloorEnemies[MAXPLAYERS];
 					Item tmpItem;
+					memset(&tmpItem, 0, sizeof(tmpItem)); // apx F6: Item::apx must start zeroed (sellValue reads it; garbage nParts crashed C9)
 					for ( int i = 0; i < MAXPLAYERS; ++i )
 					{
 						totalFloorItemValue[i] = 0;
@@ -7455,6 +7514,14 @@ int main(int argc, char** argv)
 					{
 						apxImpactTest = true;
 					}
+					else if ( !strcmp(argv[c], "-apxbuildershot") )
+					{
+						apx::vis::armBuilderShot(); // apx BX1: builder panel screenshots, then quit
+					}
+					else if ( !strcmp(argv[c], "-apxvoxshot") )
+					{
+						apx::vis::armVoxShot(); // apx BX1: held sword from parts, one screenshot, then quit
+					}
 					else if ( !strcmp(argv[c], "-apxlightprobe") )
 					{
 						apx::vis::armProbe(); // apx BVIS1: per-tile light monsters see, then quit
@@ -7472,6 +7539,7 @@ int main(int argc, char** argv)
 							apx::selftestall::setInline(apx::selftestall::IMPACT, apxSelftestImpact);
 							apx::selftestall::setInline(apx::selftestall::TIERDMG, apxSelftestTierDamage);
 							apx::selftestall::setStageBeginHook(apxSelftestClearHostiles);
+							apx::selftestall::setInline(apx::selftestall::VOXEL, apxSelftestVoxel);
 						}
 						apx_inv::selfTestArm(argv[c] + 13); // apx: U1 inventory gates, run on the test floor
 					}

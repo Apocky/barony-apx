@@ -1,0 +1,147 @@
+# 05b invariant 3: affix ids are append-only. id<TAB>pool<TAB>name. Never edit a row; append new ones.
+0	Blade	edge keeping
+1	Blade	bleed
+2	Blade	reach
+3	Blade	keenness
+4	Blade	heft
+5	Blade	balance
+6	Edge	serration
+7	Edge	temper
+8	Edge	bite
+9	Edge	glint
+10	Edge	rending
+11	Edge	hone
+12	Head	crushing
+13	Head	stagger
+14	Head	breach
+15	Head	heft
+16	Head	spikes
+17	Head	ring
+18	Limb	draw weight
+19	Limb	precision
+20	Limb	range
+21	Limb	snap
+22	Limb	flex
+23	Limb	quiet
+24	Plate	deflection
+25	Plate	lightness
+26	Plate	insulation
+27	Plate	bulwark
+28	Plate	sheen
+29	Plate	rivets
+30	Padding	cushion
+31	Padding	warmth
+32	Padding	breathing
+33	Padding	quilting
+34	Padding	absorb
+35	Padding	comfort
+36	Grip	sure grip
+37	Grip	quick hands
+38	Grip	wrap
+39	Grip	control
+40	Grip	sweat-proof
+41	Grip	leverage
+42	Body	weave
+43	Body	ward
+44	Body	drape
+45	Body	hush
+46	Body	dye
+47	Body	toughness
+48	*	durable
+49	*	light
+50	*	fine
+51	*	sturdy
+52	*	gleaming
+53	*	attuned
+54	Point	piercing
+55	Point	needle
+56	Point	slip
+57	Point	poise
+58	Point	anchor
+59	Point	sharp
+60	Shaft	reach
+61	Shaft	straight
+62	Shaft	spring
+63	Shaft	flex
+64	Shaft	long
+65	Shaft	seasoned
+66	Prod	draw weight
+67	Prod	snap
+68	Prod	range
+69	Prod	steady
+70	Prod	quiet
+71	Prod	resilient
+72	Stock	steady aim
+73	Stock	recoil
+74	Stock	light
+75	Stock	sturdy
+76	Stock	carved
+77	Stock	stout
+78	Shell	deflection
+79	Shell	lightness
+80	Shell	bulwark
+81	Shell	padded
+82	Shell	sheen
+83	Shell	snug
+84	Liner	cushion
+85	Liner	warmth
+86	Liner	breathing
+87	Liner	absorb
+88	Liner	quilted
+89	Liner	soft
+90	Upper	grip
+91	Upper	quiet step
+92	Upper	warmth
+93	Upper	water-shedding
+94	Upper	supple
+95	Upper	sturdy
+96	Sole	traction
+97	Sole	quiet step
+98	Sole	spring
+99	Sole	long wear
+100	Sole	cleated
+101	Sole	heel
+102	Palm	sure grip
+103	Palm	quick hands
+104	Palm	padding
+105	Palm	feel
+106	Palm	tacky
+107	Palm	light hand
+108	Cuff	seal
+109	Cuff	wrap
+110	Cuff	guard
+111	Cuff	flex
+112	Cuff	snug cuff
+113	Cuff	warden
+114	Guard	catch
+115	Guard	deflect
+116	Guard	balance
+117	Guard	wide
+118	Guard	forged
+119	Guard	hooked
+120	Pommel	counterweight
+121	Pommel	bash
+122	Pommel	balance
+123	Pommel	charm
+124	Pommel	weighted
+125	Pommel	polished
+126	String	tight
+127	String	silent
+128	String	durable
+129	String	fast
+130	String	waxed
+131	String	long draw
+132	Visor	clear sight
+133	Visor	deflection
+134	Visor	hush
+135	Visor	shade
+136	Visor	narrow
+137	Visor	tinted
+138	elemental	embers
+139	elemental	rime
+140	elemental	sparks
+141	elemental	runes
+142	elemental	gloom
+143	elemental	bloom
+144	elemental	ash
+145	elemental	frostward

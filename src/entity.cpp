@@ -16,6 +16,7 @@ See LICENSE for details.
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
+#include "apx/parts_engine.hpp"
 #include "items.hpp"
 #include "monster.hpp"
 #include "engine/audio/sound.hpp"
@@ -8392,6 +8393,7 @@ Sint32 Entity::getAttack(Entity* my, Stat* myStats, bool isPlayer, int chargeMod
 		attack *= 1.0 - mult;
 	}
 
+	attack = apxPartsAttackMod(myStats, attack); // apx F6 C9: the weapon's makers (tendency D, gimmicks)
 	return attack;
 }
 
@@ -9101,6 +9103,7 @@ Sint32 statGetDEX(Stat* entitystats, Entity* my)
 			DEX += 3;
 		}
 	}
+	DEX += apxPartsStatBonus(entitystats, 0); // apx F6 C9: Silverbough
 	return DEX;
 }
 
@@ -9286,6 +9289,7 @@ Sint32 statGetCON(Stat* entitystats, Entity* my)
 		}
 	}
 
+	CON += apxPartsStatBonus(entitystats, 1); // apx F6 C9: Dunwold
 	return CON;
 }
 
@@ -12815,6 +12819,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 					}
 
 					int myAttack = std::max(0, (Entity::getAttack(this, myStats, behavior == &actPlayer, charge) * damagePreMultiplier) + getBonusAttackOnTarget(*hitstats));
+						myAttack += apxPartsAttackOnTarget(this, myStats, hitstats, myAttack); // apx F6 C9: maker effects on this target
 					if ( player >= 0 )
 					{
 						myAttack = apx::adjustDamage(player, myAttack, pose); // apx: vertical slash weight, slash falloff
@@ -17118,6 +17123,7 @@ int AC(Stat* stat)
 		armor *= 2;
 	}
 
+	armor += apxPartsArmorBonus(stat); // apx F6 C9: armor makers (tendency A, gimmicks)
 	return armor;
 }
 
@@ -17847,6 +17853,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 	{
 		Compendium_t::Events_t::eventUpdateMonster(src->skill[2], Compendium_t::CPDM_KILLED_BY, this, 1);
 	}
+	if ( this->behavior == &actPlayer && src->behavior == &actMonster && root ) { apxPartsOnKill(this->skill[2]); } // apx F6 05b s3: the kill joins the weapon's parts' biography
 
 	if ( this->behavior == &actPlayer && root )
 	{
@@ -25813,6 +25820,7 @@ Item* Entity::getBestShieldIHave() const
 
 bool Entity::degradeArmor(Stat& hitstats, Item& armor, int armornum)
 {
+	if ( apxPartsNoWear(&armor) ) { return false; } // apx F6 C9: Hephaesteum
 	if ( hitstats.type == SHADOW || hitstats.type == LICH || hitstats.type == LICH_FIRE || hitstats.type == LICH_ICE )
 	{
 		return false; //Shadows' armor and shields don't break.

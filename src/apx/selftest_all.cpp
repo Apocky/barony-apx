@@ -91,7 +91,7 @@ namespace selftestall
 
 	const char* name(Stage s)
 	{
-		static const char* names[NUM_STAGES] = { "features", "impact", "tierdmg", "inventory", "moves", "f4c" };
+		static const char* names[NUM_STAGES] = { "features", "impact", "tierdmg", "voxel", "inventory", "moves", "f4c" };
 		return s >= 0 && s < NUM_STAGES ? names[s] : "?";
 	}
 

@@ -28,6 +28,16 @@
 
 ApxPartsCounters apxPartsCounters;
 
+// An Item that was not made by newItem (a stack temporary someone did not zero) can carry garbage apx bytes. Every
+// entry point that receives an arbitrary Item checks this first; an insane one is vanilla here, counted, logged once.
+bool apxPartsSane(const Item* item)
+{
+	if ( !item ) { return false; }
+	if ( item->apx.nParts <= APX_MAX_PARTS ) { return true; }
+	if ( apxPartsCounters.apx_insane++ == 0 ) { printlog("apxparts: WARNING item type %d has garbage parts data (nParts %d): treated as vanilla (counter apx_insane)\n", (int)item->type, (int)item->apx.nParts); }
+	return false;
+}
+
 namespace {
 
 const char* const TYPE_NAMES[] = {
@@ -80,9 +90,30 @@ bool apxPartsEnabled()
 	return on == 1 && !db().families.empty();
 }
 
+void apxPartsBioFloor() // 05b s3 biography: every part of every equipped item carried onto a new floor
+{
+	for ( int p = 0; p < MAXPLAYERS; ++p )
+	{
+		if ( !stats[p] || client_disconnected[p] ) { continue; }
+		Item* worn[] = { stats[p]->weapon, stats[p]->shield, stats[p]->helmet, stats[p]->breastplate, stats[p]->gloves, stats[p]->shoes, stats[p]->cloak, stats[p]->mask };
+		for ( Item* it : worn ) { if ( it ) { for ( int k = 0; k < it->apx.nParts; ++k ) { if ( it->apx.parts[k].floors < 255 ) { ++it->apx.parts[k].floors; } } } }
+	}
+}
+
+void apxPartsOnKill(int player) // 05b s3 biography: a kill by a player counts on every part of the wielded weapon
+{
+	if ( player < 0 || player >= MAXPLAYERS || !stats[player] || !stats[player]->weapon || !apxPartsEnabled() ) { return; }
+	Item* w = stats[player]->weapon;
+	for ( int k = 0; k < w->apx.nParts; ++k ) { if ( w->apx.parts[k].kills < 65535 ) { ++w->apx.parts[k].kills; } }
+	++apxPartsCounters.bio_kills;
+	const int mp = (getenv("APX_MAKERS") && *getenv("APX_MAKERS") == '0') ? 0 : apxparts::makerMods(db(), w->apx, true).mpOnKill; // the Runecourt: Spellsink (APX_MAKERS=0: off)
+	if ( mp > 0 && players[player] && players[player]->entity ) { players[player]->entity->modMP(mp); apxPartsCounters.maker_mp_restored += mp; }
+}
+
 void apxPartsLevelStart()
 {
 	floorIndex = 0;
+	if ( apxPartsEnabled() ) { apxPartsBioFloor(); }
 	::apx::vglue::floorChanged(); // BV1: the variant spawn index restarts with the floor
 	apxPartsBenchRegister();
 	floorParts.clear();
@@ -144,7 +175,7 @@ void apxPartsFromFloor(const Entity* entity, Item* item)
 
 int apxPartsNetAppend(const Item* item, uint8_t* packet, int len)
 {
-	if ( !item || !apxPartsEnabled() || item->apx.nParts == 0 ) { return len; }
+	if ( !apxPartsSane(item) || !apxPartsEnabled() || item->apx.nParts == 0 ) { return len; }
 	if ( getenv("APX_NET_STRIP") && *getenv("APX_NET_STRIP") == '1' ) { return len; } // control: the blob is not sent
 	if ( len + apxparts::PACK_MAX > NET_PACKET_SIZE ) { ++apxPartsCounters.net_blob_dropped; return len; }
 	++apxPartsCounters.net_blob_sent;
@@ -165,7 +196,7 @@ void apxPartsNetRead(Item* item, const uint8_t* packet, int len, int at)
 
 std::string apxPartsSaveString(const Item* item)
 {
-	if ( !item || !apxPartsEnabled() || item->apx.nParts == 0 ) { return ""; }
+	if ( !apxPartsSane(item) || !apxPartsEnabled() || item->apx.nParts == 0 ) { return ""; }
 	if ( getenv("APX_SAVE_STRIP") && *getenv("APX_SAVE_STRIP") == '1' ) { return ""; } // control: parts not written
 	return apxparts::toString(item->apx);
 }
@@ -261,6 +292,14 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex)
 }
 
 // ---------------------------------------------------------------- palette tint (D79 stand-in)
+bool apxPartsMaterialTint(int material, float out[3])
+{
+	const auto& mats = db().materials;
+	if ( material < 0 || material >= (int)mats.size() ) { return false; }
+	for ( int c = 0; c < 3; ++c ) { out[c] = mats[material].tint[c]; }
+	return true;
+}
+
 void apxPartsApplyTint(Entity* entity, const Item* item)
 {
 	static std::unordered_map<Uint32, bool> tinted; // entities whose lightBonus F6 set
@@ -507,6 +546,7 @@ bool keepAsMaterialCtl() { const char* v = getenv("APX_BREAK_KEEP_MATERIAL"); re
 namespace {
 constexpr Uint32 AURA_TAG = 0xAu << 28;
 std::vector<uint16_t> pendingAura[MAXPLAYERS]; // the station path: SalvageValue runs before the station decides to grant
+std::vector<uint8_t> pendingAuraMag[MAXPLAYERS];
 }
 bool apxPartsIsAura(const Item* item) { return item && item->type == GEM_GLASS && (item->appearance & 0xF0000000u) == AURA_TAG; }
 int apxPartsAuraAffix(const Item* item) { return apxPartsIsAura(item) ? (int)(item->appearance & 0xFFFF) : -1; }
@@ -515,20 +555,24 @@ const char* apxPartsAuraName(const Item* item)
 	static char buf[96];
 	const int a = apxPartsAuraAffix(item);
 	const char* w = a >= 0 && a < (int)db().affixes.size() ? db().affixes[(size_t)a].label.c_str() : "?";
+	const int m = apxPartsAuraMag(item);
 	if ( item && !item->identified ) { snprintf(buf, sizeof(buf), "aura crystal"); }
+	else if ( m > 0 ) { snprintf(buf, sizeof(buf), "aura crystal (%s, %d)", w, m); }
 	else { snprintf(buf, sizeof(buf), "aura crystal (%s)", w); }
 	return buf;
 }
-Item* apxPartsMakeAura(int affix, int count, bool identified)
+int apxPartsAuraMag(const Item* item) { return apxPartsIsAura(item) ? (int)((item->appearance >> 16) & 0xFF) : 0; }
+Item* apxPartsMakeAura(int affix, int count, bool identified, int mag)
 {
 	if ( affix < 0 || affix >= (int)db().affixes.size() || count <= 0 ) { return nullptr; }
-	return newItem(GEM_GLASS, SERVICABLE, 0, (Sint16)count, AURA_TAG | (Uint32)affix, identified, nullptr);
+	return newItem(GEM_GLASS, SERVICABLE, 0, (Sint16)count, AURA_TAG | ((Uint32)(mag & 0xFF) << 16) | (Uint32)affix, identified, nullptr);
 }
-void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified)
+void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified, const std::vector<uint8_t>* mags)
 {
-	for ( uint16_t a : affixes )
+	for ( size_t i = 0; i < affixes.size(); ++i )
 	{
-		Item* c = apxPartsMakeAura(a, 1, identified);
+		const uint16_t a = affixes[i];
+		Item* c = apxPartsMakeAura(a, 1, identified, mags && i < mags->size() ? (*mags)[i] : 0); // the crystal keeps the magnitude it held
 		if ( !c ) { continue; }
 		itemPickup(player, c);
 		free(c);
@@ -540,8 +584,10 @@ void apxPartsGivePendingAura(int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return; }
 	std::vector<uint16_t> v;
+	std::vector<uint8_t> m;
 	v.swap(pendingAura[player]);
-	apxPartsGiveAura(player, v, true);
+	m.swap(pendingAuraMag[player]);
+	apxPartsGiveAura(player, v, true, &m);
 }
 
 bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why) // the same rules, nothing changes
@@ -566,7 +612,7 @@ bool apxPartsInfuse(int player, Item* item, int part, Uint32 crystalUid, int sta
 	for ( node_t* n = stats[player]->inventory.first; n; n = n->next ) { Item* it = (Item*)n->element; if ( it && it->uid == crystalUid && apxPartsIsAura(it) ) { crystal = it; } }
 	if ( !crystal ) { why = "the aura crystal is not in the inventory"; ++apxPartsCounters.infuse_refused; return false; }
 	ApxPart p = item->apx.parts[part];
-	if ( !apxparts::infuse(db(), p, (uint16_t)apxPartsAuraAffix(crystal), why) ) { ++apxPartsCounters.infuse_refused; return false; }
+	if ( !apxparts::infuse(db(), p, (uint16_t)apxPartsAuraAffix(crystal), why, (uint8_t)apxPartsAuraMag(crystal)) ) { ++apxPartsCounters.infuse_refused; return false; }
 	ApxItemData t = item->apx;
 	t.parts[part] = p;
 	apxparts::refreshDerived(db(), t);
@@ -644,7 +690,60 @@ Item* apxPartsExtractGraft(int player, Item* item, int station, std::string& why
 	printlog("apxparts: graft extracted player %d from form %s rarity %d -> %s\n", player, apxPartsFamilyName(src.form), (int)g.rarity, got ? got->getName() : "?");
 	return got;
 }
-int apxPartsSockets(const Item* item) { return item && item->apx.nParts && !apxparts::isComponent(item->apx) ? (item->apx.flags & 7) : 0; }
+int apxPartsSockets(const Item* item) { return apxPartsSane(item) && item->apx.nParts && !apxparts::isComponent(item->apx) ? (item->apx.flags & 7) : 0; }
+
+// ---------------------------------------------------------------- C9 makers in play (05b C9; ports ASSUMED, makers.json _mapping)
+namespace {
+bool makersOff() { const char* v = getenv("APX_MAKERS"); return v && *v == '0'; } // control: makers do nothing (gates must fail)
+apxparts::MakerMods modsOf(const Item* it, bool weapon)
+{
+	if ( makersOff() || !apxPartsSane(it) || !apxPartsEnabled() || it->apx.nParts == 0 || apxparts::isComponent(it->apx) ) { return apxparts::MakerMods{}; }
+	return apxparts::makerMods(db(), it->apx, weapon);
+}
+bool lowHp(const Stat* s) { return s && s->MAXHP > 0 && s->HP * 100 <= s->MAXHP * 30; }
+bool isUndead(const Stat* s) { return s && (s->type == SKELETON || s->type == GHOUL || s->type == LICH || s->type == LICH_FIRE || s->type == LICH_ICE || s->type == VAMPIRE || s->type == SHADOW || s->type == REVENANT_SKULL); }
+}
+
+int apxPartsAttackMod(const Stat* s, int attack)
+{
+	if ( !s || !s->weapon ) { return attack; }
+	const apxparts::MakerMods m = modsOf(s->weapon, true);
+	int pct = m.dmgPct + (lowHp(s) ? m.lowHpDmgPct : 0) + (s->MP > 0 ? m.dmgPctMp : 0);
+	if ( !pct ) { return attack; }
+	return std::max(0, attack * (100 + pct) / 100);
+}
+
+int apxPartsAttackOnTarget(Entity* me, const Stat* s, const Stat* target, int attack)
+{
+	if ( !s || !s->weapon ) { return 0; }
+	const apxparts::MakerMods m = modsOf(s->weapon, true);
+	if ( m.dmgPctMp > 0 && me && s->MP > 0 ) { me->modMP(-1); ++apxPartsCounters.maker_mp_spent; } // the Outer Choir: each hit costs 1 MP
+	return isUndead(target) && m.undeadPct ? attack * m.undeadPct / 100 : 0;
+}
+
+int apxPartsArmorBonus(const Stat* s)
+{
+	if ( !s ) { return 0; }
+	int ac = 0;
+	const Item* pieces[] = { s->helmet, s->breastplate, s->gloves, s->shoes, s->shield, s->cloak, s->mask };
+	for ( const Item* it : pieces ) { const apxparts::MakerMods m = modsOf(it, false); ac += m.acFlat + (lowHp(s) ? m.lowHpAc : 0); }
+	return ac;
+}
+
+int apxPartsStatBonus(const Stat* s, int which)
+{
+	if ( !s ) { return 0; }
+	int v = 0;
+	const Item* worn[] = { s->weapon, s->helmet, s->breastplate, s->gloves, s->shoes, s->shield, s->cloak, s->mask };
+	for ( size_t k = 0; k < sizeof(worn) / sizeof(worn[0]); ++k ) { const apxparts::MakerMods m = modsOf(worn[k], k == 0); v += which == 0 ? m.dex : m.con; }
+	return v;
+}
+
+bool apxPartsNoWear(const Item* item) { return modsOf(item, true).noWear || modsOf(item, false).noWear; }
+int apxPartsMakerWeightPct(const Item* item) { return modsOf(item, false).weightPct; }
+int apxPartsMakerValuePct(const Item* item) { return modsOf(item, false).valuePct; }
+int apxPartsItemMaker(const Item* item) { return apxPartsSane(item) && item->apx.nParts ? apxparts::itemMaker(db(), item->apx) : 0; }
+const char* apxPartsMakerName(int maker) { return maker > 0 && maker <= (int)db().makers.size() ? db().makers[(size_t)maker - 1].name.c_str() : ""; }
 
 // trade lane (D73/D85): the pouch as a store of grams
 int apxPartsMaterialIndex(const char* id) { return id ? db().material(id) : -1; }
@@ -688,7 +787,7 @@ const char* apxPartsComponentName(const Item* item)
 
 void apxPartsDecorateName(const Item* item, char* name, size_t size)
 {
-	if ( !item || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; } // unidentified: Barony's own name, no affix words
+	if ( !apxPartsSane(item) || !name || !apxPartsEnabled() || item->apx.nParts == 0 || apxparts::isComponent(item->apx) || !item->identified ) { return; } // unidentified: Barony's own name, no affix words
 	if ( getenv("APX_PARTS_NAMES") && *getenv("APX_PARTS_NAMES") == '0' ) { return; } // control: vanilla names
 	const std::string n = apxparts::assemblyName(db(), item->apx, name);
 	snprintf(name, size, "%s", n.c_str());
@@ -1011,7 +1110,7 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 	};
 	give(TOOL_METAL_SCRAP, metal);
 	give(TOOL_MAGIC_SCRAP, magic);
-	apxPartsGiveAura(player, r.auraAffixes, item->identified); // C6: each crystal holds its affix
+	apxPartsGiveAura(player, r.auraAffixes, item->identified, &r.auraMags); // C6: each crystal holds its affix and magnitude
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
 	printlog("apxparts: salvage-keep player %d type %d parts %d keep %d crafted %d -> components %d metal %d magic %d aura %d (mass %d -> %d g; ledger %lld g)\n", player, (int)item->type,
@@ -1097,7 +1196,7 @@ const char* apxPartsShotRequest()
 	return handed.c_str();
 }
 
-namespace { bool craftPass = true, tinkerOk = false, pouchOnlyOk = false; }
+namespace { bool craftPass = true, tinkerOk = false, pouchOnlyOk = false, makersPass = false; }
 namespace { bool bundlePass = false, bundleDrawOk = false; long long bundlePouchBeforePickup = 0; char bundleRow[512] = ""; }
 
 void apxPartsProbeTick()
@@ -1498,6 +1597,70 @@ void apxPartsProbeTick()
 				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d, infuse ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0, infOk ? 1 : 0);
 				provNote = nb;
 			}
+			// C9 makers through Barony's own numbers (getAttack, AC, statGetDEX, MP on a kill, wear), each maker on vs off
+			{
+				auto mk = [&](const char* id) { for ( size_t m = 0; m < db().makers.size(); ++m ) { if ( db().makers[m].id == id ) { return (uint8_t)(m + 1); } } return (uint8_t)0; };
+				const uint8_t deep = mk("mfr.mythic_fantasy.deepanvil"), silver = mk("mfr.mythic_fantasy.silverbough"), rune = mk("mfr.mythic_fantasy.runecourt"),
+					heph = mk("mfr.mythic_antiquity.hephaesteum"), ash = mk("mfr.gothic_horror.ashgrave");
+				auto setMaker = [&](Item* it, uint8_t m) { for ( int k = 0; k < it->apx.nParts; ++k ) { it->apx.parts[k].maker = m; } };
+				auto wv = rollProbeItems(1, &stats[0]->inventory, "Blades", 5);
+				auto hv = rollProbeItems(1, &stats[0]->inventory, "Helms", 5);
+				Entity* me = players[0]->entity;
+				char mb[400] = "";
+				bool ok = false;
+				if ( !wv.empty() && !hv.empty() && me )
+				{
+					Item* w = wv[0]; Item* h = hv[0];
+					w->beatitude = 0; h->beatitude = 0; w->identified = h->identified = true;
+					Item* oldW = stats[0]->weapon; Item* oldH = stats[0]->helmet; // the slots, swapped directly (no equip side effects), restored below
+					stats[0]->weapon = w; stats[0]->helmet = h;
+					const bool worn = stats[0]->weapon == w && stats[0]->helmet == h;
+					setMaker(w, 0); setMaker(h, 0);
+					const int a0 = Entity::getAttack(me, stats[0], true, 0), ac0 = AC(stats[0]), dex0 = statGetDEX(stats[0], me);
+					setMaker(w, deep); setMaker(h, deep);
+					const int a1 = Entity::getAttack(me, stats[0], true, 0), ac1 = AC(stats[0]);
+					setMaker(h, silver);
+					const int dex1 = statGetDEX(stats[0], me);
+					setMaker(w, rune);
+					stats[0]->MP = 0;
+					apxPartsOnKill(0);
+					const int mpGain = stats[0]->MP;
+					setMaker(w, heph);
+					const bool noWear = me->spellEffectPreserveItem(w);
+					setMaker(w, 0);
+					const bool wearBack = !me->spellEffectPreserveItem(w);
+					setMaker(w, ash);
+					const int hp = stats[0]->HP;
+					stats[0]->HP = std::max(1, stats[0]->MAXHP / 5);
+					const int aLow = Entity::getAttack(me, stats[0], true, 0);
+					stats[0]->HP = hp;
+					const int aHigh = Entity::getAttack(me, stats[0], true, 0);
+					const bool off = getenv("APX_MAKERS") && *getenv("APX_MAKERS") == '0';
+					const bool deepOk = a1 == std::max(0, a0 * (100 + 8 + 15) / 100) && a1 > a0 && ac1 == ac0 + 1;
+					const bool silverOk = dex1 == dex0 + 1, runeOk = mpGain >= 3, hephOk = noWear && wearBack;
+					const bool ashOk = aLow == std::max(0, a0 * (100 + 20) / 100) && aHigh == a0 && aLow > aHigh;
+					ok = worn && deepOk && silverOk && runeOk && hephOk && ashOk;
+					snprintf(mb, sizeof(mb), "worn %d; Deepanvil attack %d -> %d (want %d), AC %d -> %d; Silverbough DEX %d -> %d; Runecourt kill MP +%d; Hephaesteum no wear %d (off again %d); Ashgrave low HP attack %d vs %d (want %d)%s",
+						worn ? 1 : 0, a0, a1, a0 * 123 / 100, ac0, ac1, dex0, dex1, mpGain, noWear ? 1 : 0, wearBack ? 1 : 0, aLow, aHigh, a0 * 120 / 100, off ? " [APX_MAKERS=0]" : "");
+					stats[0]->weapon = oldW; stats[0]->helmet = oldH;
+				}
+				// regression (C9 crash, game.cpp floor-value tally): an Item never zeroed carries garbage apx; every reader
+				// must treat it as vanilla and count it, never walk past ApxItemData::parts
+				const long long insane0 = apxPartsCounters.apx_insane;
+				{
+					Item junk;
+					memset(&junk, 0xAB, sizeof(junk));
+					junk.type = IRON_SWORD; junk.status = SERVICABLE; junk.beatitude = 0; junk.count = 1; junk.appearance = 7; junk.identified = true;
+					volatile int sink = junk.sellValue(0) + junk.getWeight() + junk.getGoldValue() + (int)strlen(junk.getName()) + apxPartsSockets(&junk) + apxPartsItemMaker(&junk)
+						+ (apxPartsNoWear(&junk) ? 1 : 0) + (int)apxPartsSaveString(&junk).size();
+					(void)sink;
+				}
+				const bool junkOk = apxPartsCounters.apx_insane > insane0;
+				ok = ok && junkOk;
+				snprintf(buf, sizeof(buf), "{\"probe\":\"makers\",\"makers\":%d,\"detail\":\"%s\",\"garbage_item_treated_vanilla\":%d,\"pass\":%s}", (int)db().makers.size(), mb, junkOk ? 1 : 0, ok ? "true" : "false");
+				probeRow(buf);
+				makersPass = ok;
+			}
 			// C12: a cursed unidentified looted item -> its component is cursed and unidentified; assembling with it
 			// gives a cursed unidentified item; equipped, Barony's curse binding holds it; worn long enough, use identifies it
 			bool c12Ok = false;
@@ -1739,7 +1902,7 @@ bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, 
 	if ( magic ) { *magic = gu; }
 	if ( auraCrystals ) { *auraCrystals = r.auraCrystals; }
 	giveComponents(player, r, item->identified, item->beatitude); // D86: a crafted item's parts come back as component items
-	if ( player >= 0 && player < MAXPLAYERS ) { pendingAura[player] = r.auraAffixes; }
+	if ( player >= 0 && player < MAXPLAYERS ) { pendingAura[player] = r.auraAffixes; pendingAuraMag[player] = r.auraMags; }
 	++apxPartsCounters.salvaged;
 	apxPartsCounters.aura_stand_in += r.auraCrystals;
 	printlog("apxparts: salvage type %d parts %d mass %d g -> %d g (looted %d, discharged %d) metal %d magic %d aura %d ledger %lld g\n",

@@ -14,6 +14,7 @@
 
 namespace apx_bench
 {
+bool (*makeOpenHook)(int player, int optionId) = nullptr; // BX1 (C10)
 // ---------------------------------------------------------------- vanilla stub
 static std::vector<PartRow> stubParts(const Item*) { return {}; }
 static std::vector<FormRow> stubFormbook(int) { return {}; }
@@ -367,6 +368,11 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 	}
 	if ( tab == 2 && row.row.kind == 8 )
 	{
+		if ( makeOpenHook && makeOpenHook(player, (int)row.row.uid - 1) ) // BX1: build it in the voxel builder first
+		{
+			msg = "Build the component in the voxel builder, then press Build.";
+			return true;
+		}
 		std::string why;
 		bool ok = pv.make(player, (int)row.row.uid - 1, why);
 		msg = ok ? "Made a component." : "Cannot make: " + why;

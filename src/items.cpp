@@ -5406,6 +5406,7 @@ Sint32 Item::getGoldValue() const
 {
 	if ( apxPartsIsBundle(this) ) { return apxPartsBundleValue(this); } // apx F6 D85
 	if ( apxPartsIsComponent(this) ) { return apxPartsComponentValue(this); } // apx F6 D86
+	if ( apx.nParts > 0 && apxPartsMakerValuePct(this) ) { const int pct = apxPartsMakerValuePct(this); Item t = *this; t.apx.nParts = 0; return std::max(1, t.getGoldValue() * (100 + pct) / 100); } // apx F6 C9 tendency V
 	if ( type >= 0 && type < NUMITEMS )
 	{
 		if ( items[type].category == TOME_SPELL )
@@ -5472,6 +5473,7 @@ Sint32 Item::getWeight() const
 {
 	if ( apxPartsIsBundle(this) ) { return std::max(1, apxPartsBundleGrams(this) / 100); } // apx F6 D85: 1 unit = 100 g
 	if ( apxPartsIsComponent(this) ) { return std::max(1, apxPartsComponentGrams(this) / 100); } // apx F6 D86
+	if ( apx.nParts > 0 && apxPartsMakerWeightPct(this) ) { const int pct = apxPartsMakerWeightPct(this); Item t = *this; t.apx.nParts = 0; return std::max(1, t.getWeight() * (100 + pct) / 100); } // apx F6 C9 tendency W
 	if ( type >= 0 && type < NUMITEMS )
 	{
 		if ( itemTypeIsQuiver(type) )

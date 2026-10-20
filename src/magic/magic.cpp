@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "../apx/parts_engine.hpp"
 #include "../main.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
@@ -3433,6 +3434,7 @@ Entity* spellEffectFlameSprite(Entity& caster, spellElement_t& element, real_t x
 bool Entity::spellEffectPreserveItem(Item* item)
 {
 	if ( !item ) { return false; }
+	if ( apxPartsNoWear(item) ) { return true; } // apx F6 C9: Hephaesteum items never lose condition from wear
 	if ( Stat* myStats = getStats() )
 	{
 		if ( behavior != &actPlayer )

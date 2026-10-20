@@ -110,8 +110,10 @@ int main(int argc, char** argv)
 			ApxPart& p = it.parts[k];
 			p.slot = (uint8_t)rr.next(); p.material = (uint8_t)rr.next(); p.quality = (uint8_t)rr.next(); p.rarity = (uint8_t)rr.next();
 			p.integrity = (uint8_t)rr.next(); p.maker = (uint8_t)rr.next(); p.nAffix = (uint8_t)rr.below(5);
-			for ( int a = 0; a < 4; ++a ) { p.affix[a] = (uint16_t)rr.next(); }
+			p.nAffix = (uint8_t)rr.below(APX_MAX_AFFIX + 1);
+			for ( int a = 0; a < APX_MAX_AFFIX; ++a ) { p.affix[a] = (uint16_t)rr.next(); p.mag[a] = rr.below(2) ? 0 : (uint8_t)rr.next(); }
 			p.look = rr.below(3) ? 0u : ((uint32_t)rr.next() | 1u); // BX1 looks: saved (v2 strings) and packed (v2 blobs)
+			if ( rr.below(2) ) { p.kills = (uint16_t)rr.next(); p.floors = (uint8_t)rr.next(); p.foundDepth = (uint8_t)rr.next(); } // biography
 		}
 	};
 	{
@@ -168,14 +170,24 @@ int main(int argc, char** argv)
 			{
 				ApxItemData a, b{};
 				do { randomItem(a); } while ( a.nParts == 0 );
-				for ( int k = 0; k < a.nParts; ++k ) { a.parts[k].look = 0; }
-				uint8_t v2b[PACK_MAX + 8], v1b[PACK_MAX + 8];
-				const int L = pack(a, v2b);
-				int j = 0;
-				for ( int i = 0; i < 13; ++i ) { v1b[j++] = v2b[i]; }
-				v1b[0] = 1;
-				for ( int k = 0; k < a.nParts; ++k ) { for ( int i = 0; i < PACK_ROW_V1; ++i ) { v1b[j++] = v2b[13 + k * PACK_ROW + i]; } }
-				v1ok += L == 13 + PACK_ROW * a.nParts && unpack(v1b, j, b) && !memcmp(&a, &b, sizeof(a));
+				// what a v1 writer could hold: 4 affixes, no magnitudes, look or biography
+				for ( int k = 0; k < a.nParts; ++k ) { ApxPart& q = a.parts[k]; q.look = 0; q.nAffix %= 5; q.affix[4] = 0; memset(q.mag, 0, sizeof(q.mag)); q.kills = 0; q.floors = q.foundDepth = 0; q.pad2 = 0; }
+				uint8_t v3b[PACK_MAX + 8], v1b[PACK_MAX + 8], v2b[PACK_MAX + 8];
+				const int L = pack(a, v3b);
+				int j = 0, j2 = 0;
+				for ( int i = 0; i < 13; ++i ) { v1b[j++] = v3b[i]; v2b[j2++] = v3b[i]; }
+				v1b[0] = 1; v2b[0] = 2;
+				for ( int k = 0; k < a.nParts; ++k ) // v1 row: 6 head bytes, 4 affixes, maker, pad; v2 adds look
+				{
+					const ApxPart& q = a.parts[k];
+					const uint8_t row[20] = { q.slot, q.material, q.quality, q.rarity, q.integrity, q.nAffix,
+						(uint8_t)q.affix[0], (uint8_t)(q.affix[0] >> 8), (uint8_t)q.affix[1], (uint8_t)(q.affix[1] >> 8), (uint8_t)q.affix[2], (uint8_t)(q.affix[2] >> 8), (uint8_t)q.affix[3], (uint8_t)(q.affix[3] >> 8),
+						q.maker, q.pad, 0, 0, 0, 0 };
+					for ( int i = 0; i < PACK_ROW_V1; ++i ) { v1b[j++] = row[i]; }
+					for ( int i = 0; i < PACK_ROW_V2; ++i ) { v2b[j2++] = row[i]; }
+				}
+				ApxItemData b2{};
+				v1ok += L == 13 + PACK_ROW * a.nParts && unpack(v1b, j, b) && !memcmp(&a, &b, sizeof(a)) && unpack(v2b, j2, b2) && !memcmp(&a, &b2, sizeof(a));
 			}
 			gate("pack_v1_compat", v1ok == 1000, kv("v1_blobs_read", v1ok));
 		}
@@ -485,7 +497,8 @@ int main(int argc, char** argv)
 			for ( int k = 0; k < it.nParts; ++k )
 			{
 				const ApxPart& q = it.parts[k];
-				const std::string want = componentName(db, ApxPart{ q.slot, q.material, 0, 0, 0, 0, { 0, 0, 0, 0 }, 0, 0, 0 });
+				ApxPart bare{}; bare.slot = q.slot; bare.material = q.material;
+				const std::string want = componentName(db, bare);
 				++hid; hidOk += componentName(db, q, false) == want && want.find(" of ") == std::string::npos;
 			}
 			hidOk += 0;
@@ -530,12 +543,12 @@ int main(int argc, char** argv)
 				std::string why;
 				for ( size_t k = 0; k < fit.size() && k < 6; ++k )
 				{
-					const bool room = p.nAffix < std::min(4, rar);
+					const bool room = p.nAffix < std::min(APX_MAX_AFFIX, rar);
 					++tried;
 					const bool r = infuse(db, p, fit[k], why);
 					if ( room ) { ok += r; } else { ++full; fullRefused += !r; }
 				}
-				if ( p.nAffix > 0 ) { ++dup; ApxPart q = p; if ( q.nAffix < std::min(4, rar) ) { dupRefused += !infuse(db, q, p.affix[0], why); } else { dupRefused += 1; } }
+				if ( p.nAffix > 0 ) { ++dup; ApxPart q = p; if ( q.nAffix < std::min(APX_MAX_AFFIX, rar) ) { dupRefused += !infuse(db, q, p.affix[0], why); } else { dupRefused += 1; } }
 				if ( !other.empty() ) { ++foreign; ApxPart q{}; q.slot = (uint8_t)sl; q.rarity = 4; foreignRefused += !infuse(db, q, other[0], why); }
 			}
 		}
@@ -587,6 +600,156 @@ int main(int argc, char** argv)
 		}
 		gate("C7_graft_sockets", rare > 0 && rareOk == rare && low > 0 && lowRefused == low && sockOk == sock && mount > 0 && mountOk == mount,
 			join({ kv("grafts", rareOk) + "/" + std::to_string(rare), kv("below_rare_refused", lowRefused) + "/" + std::to_string(low), kv("sockets_follow", sockOk) + "/" + std::to_string(sock), kv("graft_mounted", mountOk) + "/" + std::to_string(mount) }));
+	}
+	{
+		// 05b s3/s4 data row: magnitudes inside the tier range; Unique rolls 5 affixes; conflicting affixes never share
+		// a part (roll and infuse), using a test table where each pool's entries 0 and 1 conflict; found depth recorded
+		DB t = db;
+		for ( auto& pl : t.pools ) { if ( pl.count >= 2 ) { t.affixes[(size_t)pl.firstId].conflicts.push_back(pl.firstId + 1); t.affixes[(size_t)pl.firstId + 1].conflicts.push_back(pl.firstId); } }
+		Counters c; ApxItemData it;
+		long long parts = 0, magOk = 0, uniq = 0, uniq5 = 0, conflictSeen = 0, depthOk = 0;
+		for ( uint32_t i = 0; i < 40000; ++i )
+		{
+			const int depth = 1 + i % 40;
+			roll(t, *gearForms[i % gearForms.size()], 43, depth, 0, i, it, c);
+			for ( int k = 0; k < it.nParts; ++k )
+			{
+				const ApxPart& q = it.parts[k];
+				++parts;
+				bool ok = true;
+				for ( int a = 0; a < q.nAffix; ++a )
+				{
+					const AffixInfo& ai = t.affixes[q.affix[a]];
+					const int tr = std::max(1, std::min(5, (int)q.rarity));
+					ok = ok && q.mag[a] >= ai.magLo[tr] && q.mag[a] <= ai.magHi[tr];
+					for ( int b = 0; b < a; ++b ) { for ( int cf : ai.conflicts ) { conflictSeen += cf == q.affix[b]; } }
+				}
+				magOk += ok;
+				depthOk += q.foundDepth == depth || q.foundDepth == std::min(40, depth);
+				if ( q.rarity == 5 ) { ++uniq; uniq5 += q.nAffix == 5; }
+			}
+		}
+		// infuse refuses a conflicting affix and keeps the crystal's magnitude
+		int infConf = 0, infConfRefused = 0, infMag = 0, infMagOk = 0;
+		for ( auto& pl : t.pools )
+		{
+			if ( pl.count < 3 ) { continue; }
+			ApxPart p{}; p.rarity = 4;
+			int sl = -1;
+			for ( size_t s = 0; s < t.slots.size() && sl < 0; ++s ) { if ( affixFitsSlot(t, (int)s, (uint16_t)pl.firstId) && affixFitsSlot(t, (int)s, (uint16_t)(pl.firstId + 1)) && affixFitsSlot(t, (int)s, (uint16_t)(pl.firstId + 2)) ) { sl = (int)s; } }
+			if ( sl < 0 ) { continue; }
+			p.slot = (uint8_t)sl;
+			std::string why;
+			if ( !infuse(t, p, (uint16_t)pl.firstId, why, 37) ) { continue; }
+			++infMag; infMagOk += p.mag[0] == 37;
+			++infConf; infConfRefused += !infuse(t, p, (uint16_t)(pl.firstId + 1), why) && why.find("conflicts") != std::string::npos;
+		}
+		// Unique (boss/named, not in the loot rarity table): 5 affix slots, filled by infuse
+		int unique5 = 0;
+		for ( size_t sl = 0; sl < t.slots.size() && !unique5; ++sl )
+		{
+			ApxPart u{}; u.slot = (uint8_t)sl; u.rarity = 5;
+			std::string why;
+			for ( size_t a = 0; a < t.affixes.size() && u.nAffix < 5; ++a ) { if ( affixFitsSlot(t, (int)sl, (uint16_t)a) ) { infuse(t, u, (uint16_t)a, why); } }
+			if ( u.nAffix == 5 ) { ApxPart v = u; unique5 = !infuse(t, v, u.affix[0] == 0 ? 1 : 0, why) ? 5 : 0; }
+		}
+		gate("C3_data_row", parts > 0 && magOk == parts && uniq5 == uniq && unique5 == 5 && conflictSeen == 0 && depthOk == parts && infConf > 0 && infConfRefused == infConf && infMagOk == infMag,
+			join({ kv("parts", (int)parts), kv("magnitudes_in_tier", (int)magOk), kv("rolled_unique_with_5", (int)uniq5) + "/" + std::to_string(uniq), kv("unique_takes_5_by_infuse", unique5), kv("conflicting_pairs_rolled", (int)conflictSeen),
+				kv("found_depth_ok", (int)depthOk), kv("infuse_conflict_refused", infConfRefused) + "/" + std::to_string(infConf), kv("crystal_magnitude_kept", infMagOk) + "/" + std::to_string(infMag) }));
+	}
+	{
+		// C9 makers (05b C9; makers.json): 40 rows, the 8 active roll on the families they stamp, every part one maker;
+		// item maker = >= 2 non-graft parts; foreign allowance by rarity; foreign parts count 75 % in IP; a graft of
+		// another maker brings its gimmick at 75 %
+		int active = 0;
+		for ( auto& m : db.makers ) { active += m.active; }
+		Counters c; ApxItemData it;
+		long long stamped = 0, stampedOk = 0, unstamped = 0, unstampedOk = 0; std::vector<int> seen(db.makers.size() + 1, 0);
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 47, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			bool fam = false;
+			for ( auto& m : db.makers ) { if ( !m.active ) { continue; } for ( int f : m.families ) { fam = fam || f == (int)it.form; } }
+			const int mk = it.parts[0].maker;
+			bool same = true; for ( int k = 0; k < it.nParts; ++k ) { same = same && it.parts[k].maker == mk; }
+			if ( fam )
+			{
+				++stamped;
+				bool makes = false;
+				if ( mk > 0 && mk <= (int)db.makers.size() ) { for ( int f : db.makers[(size_t)mk - 1].families ) { makes = makes || f == (int)it.form; } }
+				stampedOk += same && makes && db.makers[(size_t)mk - 1].active && itemMaker(db, it) == (it.nParts == 1 ? mk : (it.nParts >= 2 ? mk : 0)) && foreignParts(db, it) == 0;
+				if ( mk >= 0 && mk < (int)seen.size() ) { ++seen[(size_t)mk]; }
+			}
+			else { ++unstamped; unstampedOk += mk == 0; }
+		}
+		int activeSeen = 0;
+		for ( size_t m = 0; m < db.makers.size(); ++m ) { activeSeen += db.makers[m].active && seen[m + 1] > 0; }
+		// foreign allowance and the 75 % rule on a built Blades assembly
+		const int blades = db.family("Blades");
+		const int deep = [&]() { for ( size_t m = 0; m < db.makers.size(); ++m ) { if ( db.makers[m].id == "mfr.mythic_fantasy.deepanvil" ) { return (int)m + 1; } } return 0; }();
+		const int silver = [&]() { for ( size_t m = 0; m < db.makers.size(); ++m ) { if ( db.makers[m].id == "mfr.mythic_fantasy.silverbough" ) { return (int)m + 1; } } return 0; }();
+		bool allowOk = false, ipOk = false, graftOk = false, modsOk = false;
+		if ( blades >= 0 && deep && silver )
+		{
+			const Family& f = db.families[(size_t)blades];
+			auto partOf = [&](int slot, int maker, int rarity) { ApxPart p{}; p.slot = (uint8_t)slot; p.material = 0; p.quality = 10; p.rarity = (uint8_t)rarity; p.integrity = 255; p.maker = (uint8_t)maker; return p; };
+			// Blade + Grip required, Guard and Pommel optional: three Deepanvil, one Silverbough
+			std::vector<ApxPart> parts = { partOf(f.required[0], deep, 0), partOf(f.required[1], deep, 0), partOf(db.slot("Guard"), deep, 0), partOf(db.slot("Pommel"), silver, 0) };
+			ApxItemData a; std::string w0, w1;
+			const bool commonRefused = !assemble(db, blades, parts, 1, 1 << 30, a, w0) && w0.find("foreign") != std::string::npos;
+			for ( auto& p : parts ) { p.rarity = 1; }
+			const bool uncommonOk = assemble(db, blades, parts, 1, 1 << 30, a, w1);
+			allowOk = commonRefused && uncommonOk && itemMaker(db, a) == deep && foreignParts(db, a) == 1;
+			ApxItemData same = a; for ( int k = 0; k < same.nParts; ++k ) { same.parts[k].maker = (uint8_t)deep; }
+			ApxItemData one = a; one.nParts = 1; one.parts[0] = a.parts[3];
+			const int foreignV = itemPower(db, one);
+			ipOk = itemPower(db, a) == itemPower(db, same) - foreignV + foreignV * db.foreignPct / 100;
+			// mods: Deepanvil weapon = tendency D+800 (8) + gimmick 15; as armor: +1 AC
+			const MakerMods mw = makerMods(db, a, true), ma = makerMods(db, a, false);
+			modsOk = mw.dmgPct == 8 + 15 && ma.acFlat == 1;
+			// a Deepanvil graft on a Silverbough item: Silverbough D-300 (-3) + Deepanvil's +15 at 75 % (11); +1 DEX from Silverbough
+			ApxItemData s2 = a;
+			for ( int k = 0; k < s2.nParts; ++k ) { s2.parts[k].maker = (uint8_t)silver; }
+			ApxPart g = partOf(db.slot("Graft"), deep, 2);
+			s2.parts[s2.nParts++] = g;
+			const MakerMods mg = makerMods(db, s2, true);
+			graftOk = itemMaker(db, s2) == silver && mg.dmgPct == -3 + 15 * db.foreignPct / 100 && mg.dex == 1;
+		}
+		gate("C9_makers", db.makers.size() == 40 && active == 8 && stamped > 0 && stampedOk == stamped && unstampedOk == unstamped && activeSeen == 8 && allowOk && ipOk && modsOk && graftOk,
+			join({ kv("makers", (int)db.makers.size()), kv("active", active), kv("stamped_ok", (int)stampedOk) + "/" + std::to_string(stamped), kv("unstamped_maker0", (int)unstampedOk) + "/" + std::to_string(unstamped),
+				kv("active_seen", activeSeen), kv("allowance", allowOk ? 1 : 0), kv("foreign_75pct_ip", ipOk ? 1 : 0), kv("mods", modsOk ? 1 : 0), kv("graft_75pct", graftOk ? 1 : 0) }));
+	}
+	{
+		// 05b invariant 3: affix ids are append-only. Every row of tests/apx/affix_ids.txt (frozen) still names the
+		// same pool and affix; new ids may only come after it. Control: the same check on a copy with two names swapped fails.
+		std::string ids = argv[2];
+		const size_t sl = ids.find_last_of("/\\");
+		ids = (sl == std::string::npos ? std::string() : ids.substr(0, sl + 1)) + "affix_ids.txt";
+		FILE* f = fopen(ids.c_str(), "rb");
+		std::vector<std::pair<std::string, std::string>> golden;
+		if ( f )
+		{
+			char line[256];
+			while ( fgets(line, sizeof(line), f) )
+			{
+				if ( line[0] == '#' ) { continue; }
+				std::string s(line);
+				while ( !s.empty() && (s.back() == '\n' || s.back() == '\r') ) { s.pop_back(); }
+				const size_t a = s.find('\t'), b = s.find('\t', a + 1);
+				if ( a == std::string::npos || b == std::string::npos ) { continue; }
+				golden.push_back({ s.substr(a + 1, b - a - 1), s.substr(b + 1) });
+			}
+			fclose(f);
+		}
+		auto poolOf = [&](const DB& d, size_t id) { for ( auto& p : d.pools ) { if ( id >= (size_t)p.firstId && id < (size_t)(p.firstId + p.count) ) { return p.key; } } return std::string("?"); };
+		auto check = [&](const DB& d) { int same = 0; for ( size_t i = 0; i < golden.size(); ++i ) { same += i < d.affixes.size() && d.affixes[i].name == golden[i].second && poolOf(d, i) == golden[i].first; } return same; };
+		const int same = check(db);
+		DB t = db;
+		if ( t.affixes.size() > 1 ) { std::swap(t.affixes[0].name, t.affixes[1].name); }
+		const int ctrl = check(t);
+		gate("affix_ids_append_only", !golden.empty() && same == (int)golden.size() && db.affixes.size() >= golden.size() && ctrl < same,
+			join({ kv("frozen", (int)golden.size()), kv("unchanged", same), kv("now", (int)db.affixes.size()), kv("control_swapped_unchanged", ctrl) }));
 	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;

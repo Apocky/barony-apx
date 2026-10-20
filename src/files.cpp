@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx/vox/heldmodel.hpp"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -4114,7 +4115,12 @@ void saveModelCache() {
 		char modelCacheHeader[32] = "BARONY";
 		strcat(modelCacheHeader, VERSION);
 		model_cache->write(&modelCacheHeader, sizeof(char), strlen(modelCacheHeader));
-		for (size_t model_index = 0; model_index < nummodels; model_index++) {
+#ifndef EDITOR
+		const size_t apxCacheCount = apx::vox::baseModelCount(); // apx BX1: runtime models are not cached
+#else
+		const size_t apxCacheCount = nummodels;
+#endif
+		for (size_t model_index = 0; model_index < apxCacheCount; model_index++) {
 			polymodel_t* cur = &polymodels[model_index];
 			model_cache->write(&cur->numfaces, sizeof(cur->numfaces), 1);
 			model_cache->write(cur->faces, sizeof(polytriangle_t), cur->numfaces);

@@ -450,9 +450,9 @@
   },
   {
    "id": "Binding",
+   "quick": 1,
    "role": "grip",
-   "volume": 20,
-   "quick": 1
+   "volume": 20
   },
   {
    "id": "Spike",
@@ -546,9 +546,9 @@
   },
   {
    "id": "Boss",
+   "quick": 1,
    "role": "balance",
-   "volume": 150,
-   "quick": 1
+   "volume": 150
   },
   {
    "id": "Rim",
@@ -567,9 +567,9 @@
   },
   {
    "id": "Lens",
+   "quick": 1,
    "role": "other",
-   "volume": 20,
-   "quick": 1
+   "volume": 20
   },
   {
    "id": "Reservoir",
@@ -618,9 +618,9 @@
   },
   {
    "id": "Cord",
+   "quick": 1,
    "role": "grip",
-   "volume": 10,
-   "quick": 1
+   "volume": 10
   },
   {
    "id": "Shell",
