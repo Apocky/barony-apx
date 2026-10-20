@@ -11,3 +11,9 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 06:33 -07:00 F2: rebased (801cf254), apx-gen 7057f3d9, gates PASS on db9ca6c8; merge-ready pending Apocky/parent OK.
 
+## 2026-10-19 22:34 -07:00 D93 Phase M1 (`apx::move`)
+In flight: Implementing Phase M1 (`src/apx/move/`, `src/apx/in/in.hpp` stub, `data/apx/move/move.json`, `tests/apx/test_move.cpp`, `actplayer.cpp` & creature impulse glue, `-apxmovegate` gate) on branch `apx/move` in `C:\Users\Apocky\source\repos\barony-apx-move`.
+Resume: build and run `tests/apx/test_move.cpp`, then `pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache`, then run `-apxmovegate` under a slot lock.
+Next: read remaining lines of `handlePlayerMovement` and `handlePlayerCameraUpdate` in `src/actplayer.cpp`, write `src/apx/in/in.hpp`, `src/apx/move/move.hpp`, `data/apx/move/move.json`, and `tests/apx/test_move.cpp`.
+
+
