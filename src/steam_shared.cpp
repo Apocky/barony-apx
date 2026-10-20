@@ -211,7 +211,7 @@ bool CSteamStatistics::RequestStats()
 		return false;
 	}
 	// Request user stats.
-	return SteamUserStats()->RequestCurrentStats();
+	return true; // apx: Steamworks SDK 1.61+ removed RequestCurrentStats; Steam loads the current user's stats at startup and still sends UserStatsReceived_t
 }
 
 bool CSteamStatistics::RequestGlobalStats()

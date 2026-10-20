@@ -8,6 +8,7 @@
 
 namespace apx
 {
+	extern bool noInputGrab;           // any automated launch: never warp or grab the user's real mouse (set in main)
 	extern bool headlessOn;            // -apxheadless on the command line, or APX_HEADLESS=1
 	void headlessInit(bool flag);      // call once after the command line is parsed, before initApp()
 	int headlessBatch();               // logic ticks per main-loop pass (APX_HEADLESS_BATCH, default 50)

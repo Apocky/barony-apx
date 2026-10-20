@@ -18,6 +18,7 @@
 #include "../paths.hpp"
 #include "../shops.hpp"
 #include "trade_glue.hpp"
+#include "parts_engine.hpp"
 #include "../items.hpp"
 #include "lua_layer.hpp"
 
@@ -283,7 +284,7 @@ int api_trade_state(lua_State* L) {
 	auto& c = apx::tradeglue::counters;
 	lua_newtable(L);
 	auto put = [&](const char* k, int v) { lua_pushinteger(L, v); lua_setfield(L, -2, k); };
-	put("shops", c.shops); put("hamlet", c.hamlet); put("rows_realized", c.rowsRealized); put("rows_pending_pouch", c.rowsPendingPouch);
+	put("bundles", c.bundles); put("shops", c.shops); put("hamlet", c.hamlet); put("rows_realized", c.rowsRealized); put("rows_pending_pouch", c.rowsPendingPouch);
 	put("rows_pending_service", c.rowsPendingService); put("class_refused", c.classRefused); put("purse_refused", c.purseRefused); put("peddlers", c.peddlers);
 	lua_pushboolean(L, apx::tradeglue::on()); lua_setfield(L, -2, "on");
 	return 1;
@@ -300,13 +301,14 @@ int api_shop_uids(lua_State* L) {
 }
 // Opens nothing on screen: points player 0's shop globals at the shopkeeper so the real hooks answer for it.
 struct ShopCtx {
-	int oldType; Uint32 oldUid; bool ok = false; Entity* shop = nullptr;
+	int oldType; Uint32 oldUid; bool oldUnknown = false; bool ok = false; Entity* shop = nullptr;
 	explicit ShopCtx(lua_Integer uid) {
 		oldType = shopkeepertype[0]; oldUid = shopkeeper[0];
+		if ( players[0] ) { oldUnknown = players[0]->shopGUI.itemUnknownPreventPurchase; players[0]->shopGUI.itemUnknownPreventPurchase = false; }
 		shop = uidToEntity((Sint32)uid);
 		if ( shop && shop->behavior == &actMonster && shop->getStats() && shop->getStats()->type == SHOPKEEPER ) { shopkeepertype[0] = shop->monsterStoreType; shopkeeper[0] = shop->getUID(); ok = true; }
 	}
-	~ShopCtx() { shopkeepertype[0] = oldType; shopkeeper[0] = oldUid; }
+	~ShopCtx() { shopkeepertype[0] = oldType; shopkeeper[0] = oldUid; if ( players[0] ) { players[0]->shopGUI.itemUnknownPreventPurchase = oldUnknown; } }
 };
 int api_shop_info(lua_State* L) {
 	ShopCtx c(luaL_checkinteger(L, 1));
@@ -322,10 +324,39 @@ int api_shop_info(lua_State* L) {
 		lua_pushstring(L, apx::tradeglue::typeName((int)it->type)); lua_setfield(L, -2, "type");
 		lua_pushinteger(L, it->count); lua_setfield(L, -2, "count");
 		lua_pushinteger(L, it->buyValue(0)); lua_setfield(L, -2, "price");
+		if ( apxPartsIsBundle(it) ) { lua_pushinteger(L, apxPartsBundleMaterial(it)); lua_setfield(L, -2, "bundle_material"); lua_pushinteger(L, apxPartsBundleGrams(it)); lua_setfield(L, -2, "bundle_grams"); }
 		lua_rawseti(L, -2, ++n);
 	}
 	lua_setfield(L, -2, "items");
 	return 1;
+}
+// Buys shelf item #index (1-based) for player 0 through the real buyItemFromShop; returns ok, gold before, gold after, the price asked.
+int api_shop_buy(lua_State* L) {
+	ShopCtx c(luaL_checkinteger(L, 1));
+	lua_Integer idx = luaL_checkinteger(L, 2);
+	if ( !c.ok ) { lua_pushnil(L); return 1; }
+	Item* it = nullptr; lua_Integer k = 0;
+	for ( node_t* nd = c.shop->getStats()->inventory.first; nd; nd = nd->next ) { if ( nd->element && ++k == idx ) { it = (Item*)nd->element; break; } }
+	if ( !it ) { lua_pushnil(L); return 1; }
+	int before = stats[0]->GOLD, price = it->buyValue(0);
+	bool consumed = false;
+	bool ok = buyItemFromShop(0, it, consumed);
+	lua_pushboolean(L, ok); lua_pushinteger(L, before); lua_pushinteger(L, stats[0]->GOLD); lua_pushinteger(L, price);
+	return 4;
+}
+int api_pouch_grams(lua_State* L) { lua_pushinteger(L, (lua_Integer)apxPartsLedgerGrams((int)luaL_optinteger(L, 1, 0))); return 1; }
+// Sell probe for a bundle of `material` (id string) and `grams`: sellable, offer, purse refused.
+int api_shop_probe_bundle(lua_State* L) {
+	ShopCtx c(luaL_checkinteger(L, 1));
+	int mi = apxPartsMaterialIndex(luaL_checkstring(L, 2));
+	Item* it = (c.ok && mi >= 0) ? apxPartsMakeBundle(mi, (int)luaL_checkinteger(L, 3)) : nullptr;
+	if ( !it ) { lua_pushnil(L); return 1; }
+	bool sellable = isItemSellableToShop(0, it);
+	int offer = it->sellValue(0);
+	bool purse = apx::tradeglue::purseRefuses(0, it);
+	free(it);
+	lua_pushboolean(L, sellable); lua_pushinteger(L, offer); lua_pushboolean(L, purse);
+	return 3;
 }
 // Sell probe through the real path pieces: isItemSellableToShop, Item::sellValue, the purse check. Does not move gold or items.
 int api_shop_probe_sell(lua_State* L) {
@@ -374,6 +405,7 @@ Sint32* statField(Stat* s, const char* n) {
 	if ( !strcmp(n, "con") ) return &s->CON;     if ( !strcmp(n, "int") ) return &s->INT;
 	if ( !strcmp(n, "per") ) return &s->PER;     if ( !strcmp(n, "chr") ) return &s->CHR;
 	if ( !strcmp(n, "level") ) return &s->LVL;
+	if ( !strcmp(n, "gold") ) return &s->GOLD;
 	return nullptr;
 }
 int api_get_stat(lua_State* L) {
@@ -520,7 +552,7 @@ const luaL_Reg kApi[] = {
 	{ "log", api_log }, { "message", api_message }, { "on", api_on }, { "after", api_after }, { "every", api_every },
 	{ "cancel", api_cancel }, { "tick", api_tick }, { "floor", api_floor }, { "rand", api_rand }, { "seed", api_seed },
 	{ "spawn", api_spawn }, { "set_tile", api_set_tile }, { "get_tile", api_get_tile }, { "get_stat", api_get_stat },
-	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "test_teleport", api_test_teleport }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
+	{ "set_stat", api_set_stat }, { "hurt", api_hurt }, { "set_target", api_set_target }, { "path_to", api_path_to }, { "monster_state", api_monster_state }, { "spawn_peddler", api_spawn_peddler }, { "spawn_haven", api_spawn_haven }, { "test_teleport", api_test_teleport }, { "check_enemy", api_check_enemy }, { "trade_discount", api_trade_discount }, { "trade_state", api_trade_state }, { "shop_uids", api_shop_uids }, { "shop_info", api_shop_info }, { "shop_probe_sell", api_shop_probe_sell }, { "shop_set_purse", api_shop_drain }, { "shop_buy", api_shop_buy }, { "pouch_grams", api_pouch_grams }, { "shop_probe_bundle", api_shop_probe_bundle }, { "tile_los", api_tile_los }, { "row", api_row }, { "run_seed", api_run_seed }, { "clock_us", api_clock_us }, { "monsters_near", api_monsters_near }, { "light_at", api_light_at }, { "line_of_sight", api_line_of_sight }, { "entity_pos", api_entity_pos }, { "player_uid", api_player_uid },
 	{ "monster_count", api_monster_count }, { "is_test", api_is_test }, { "test_quit", api_test_quit },
 	{ "stats", api_stats }, { nullptr, nullptr }
 };

@@ -19,7 +19,7 @@ local BUYS = { [0] = { metal = 1, stone = 1 }, [4] = { reagent = 1, shard = 1, g
                [6] = { provision = 1, wood = 1, hide = 1, fibre = 1, bone = 1 }, [2] = { gem = 1, shard = 1, other = 1 }, [7] = { provision = 1, wood = 1, hide = 1 } }
 local TRADE_ITEMS = { TOOL_TORCH = 1, TOOL_LANTERN = 1, TOOL_METAL_SCRAP = 1, TOOL_MAGIC_SCRAP = 1, STEEL_SWORD = 1, IRON_SHIELD = 1,
                       BRONZE_AXE = 1, CHAIN_BOOTS = 1, CLOAK_PROTECTION = 1, HAT_PHRYGIAN = 1 }
-local function allowed(t) return TRADE_ITEMS[t] or t:match("^FOOD_") ~= nil end
+local function allowed(t) return TRADE_ITEMS[t] or t == "GEM_GLASS" or t:match("^FOOD_") ~= nil end   -- GEM_GLASS = the F6 bundle carrier
 
 local function check_shop(uid, label)
   local info = apx.shop_info(uid)
@@ -38,6 +38,13 @@ local function check_shop(uid, label)
     local want = buys[cls] ~= nil
     check(string.format("%s: %s (%s) %s", label, name, cls, want and "bought" or "refused"), sellable == want)
     if sellable then check(label .. ": offer for " .. name .. " is about a third", offer >= 1 and offer <= vanilla // 3 + 1, offer .. " of " .. vanilla) end
+  end
+  -- material lots are F6 bundles: sold by material class
+  local BUNDLE_CLASS = { iron = "metal", wood = "wood", silk = "fibre", quartz = "shard" }
+  for mat, cls in pairs(BUNDLE_CLASS) do
+    local sellable, offer = apx.shop_probe_bundle(uid, mat, 400)
+    check(string.format("%s: %s bundle (%s) %s", label, mat, cls, buys[cls] and "bought" or "refused"), sellable == (buys[cls] ~= nil))
+    if sellable then check(label .. ": " .. mat .. " bundle offer is positive", offer >= 1, tostring(offer)) end
   end
   return info
 end
@@ -67,6 +74,23 @@ poll = apx.every(10, function()
     check("general store uses store type 7", gi ~= nil and gi.store_type == 7)
     local hi = check_shop(hav, "haven merchant")
     check("haven merchant is one of the five trades (not general)", hi ~= nil and hi.store_type ~= 7 and BUYS[hi.store_type] ~= nil)
+    -- buy a material lot for real: gold falls by the price, the grams arrive in the pouch
+    local bi, bidx
+    for i, it in ipairs(hi.items) do if it.bundle_grams then bi, bidx = it, i; break end end
+    if check("the haven merchant stocks a material lot (bundle)", bi ~= nil, #hi.items .. " items") then
+      -- CONTROL first: with no gold the same purchase is refused and the pouch does not change
+      apx.set_stat(apx.player_uid(0), "gold", 0)
+      local pb = apx.pouch_grams(0)
+      local ok0 = apx.shop_buy(hav, bidx)
+      check("CONTROL: with no gold the purchase is refused and the pouch is unchanged", ok0 == false and apx.pouch_grams(0) == pb)
+      apx.set_stat(apx.player_uid(0), "gold", 90000)
+      local before = apx.pouch_grams(0)
+      local ok, g0, g1, price = apx.shop_buy(hav, bidx)
+      check("buying the lot succeeded and cost its price", ok and (g0 - g1) == price and price >= 1, string.format("ok %s price %s paid %s", tostring(ok), tostring(price), tostring(g0 and g1 and g0 - g1)))
+      apx.after(120, function()   -- a headless pass is a batch of ticks; the pouch absorbs the lot on the pass after the pickup
+        check("the lot's grams arrived in the pouch", apx.pouch_grams(0) - before == bi.bundle_grams, string.format("%d -> %d (lot %d g)", before, apx.pouch_grams(0), bi.bundle_grams))
+      end)
+    end
     local pi = apx.shop_info(ped)
     check("peddler has a small stock and half a purse", pi ~= nil and #pi.items >= 1 and #pi.items <= 5, pi and (#pi.items .. " items, purse " .. pi.purse) or "nil")
     -- purse is finite: set it to 1 gold, an in-trade sale worth more than 1 must be refused
@@ -89,8 +113,10 @@ poll = apx.every(10, function()
     end
     check("a wild monster counts the peddler as an enemy", sk ~= nil and apx.check_enemy(sk, ped) == true)
     check("CONTROL: a wild monster does not attack the general store keeper", sk ~= nil and apx.check_enemy(sk, gen) == false)
-    check("no script errors", apx.stats().errors == 0, tostring(apx.stats().errors))
-    finish()
+    apx.after(160, function()   -- let the pouch absorb the bought lot (next pass) before the final checks
+      check("no script errors", apx.stats().errors == 0, tostring(apx.stats().errors))
+      finish()
+    end)
   end)
 end)
 apx.after(50 * 150, function() apx.log("TTEST FAIL timeout"); apx.test_quit(1) end)

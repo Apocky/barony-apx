@@ -458,12 +458,18 @@ namespace props
 					apxPartsSalvageItem(0, s2, -1, w2);
 				}
 				P.repairGrams = apx_bench::provider().repairCost(0, sw, why, mat);
-				// through the bench screen: the Salvage tab (U1f index 3) at a FIELD bench lists the Repair row
+				// through the bench screen: the Repair tab at a FIELD bench lists the one-step repair row (U1i names)
 				std::string head, msg;
 				uint32_t form = 0;
-				auto rows = apx_inv::benchEntries(0, 3, apx_logic::FIELD, sw, form, head);
+				auto rows = apx_inv::benchEntries(0, apx_logic::TAB_REPAIR, apx_logic::FIELD, sw, form, head);
 				for ( auto& row : rows )
-					if ( !row.header && row.row.kind == 9 ) { P.repairRow = 1; P.repairOk = apx_inv::benchActivate(0, 3, apx_logic::FIELD, sw, row, form, msg); P.repairWhy = msg; break; }
+					if ( !row.header && row.row.kind == apx_logic::ROW_REPAIR_STEP )
+					{
+						P.repairRow = 1;
+						P.repairOk = apx_inv::benchActivate(0, apx_logic::TAB_REPAIR, apx_logic::FIELD, sw, row, form, msg);
+						P.repairWhy = msg;
+						break;
+					}
 				P.statusAfter = (int)sw->status;
 				{ std::string w4, m4; Item probeCopy = *sw; probeCopy.status = (Status)P.statusBefore; P.gramsNoLedger = apx_bench::provider().repairGrams(&probeCopy, w4, m4); }
 				long long l0 = apxPartsLedgerGrams(0);

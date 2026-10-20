@@ -24,6 +24,10 @@ namespace selftestall
 
 	// stages that run inside one tick (features, impact, tierdmg) register a function; it fills fields
 	using InlineStage = bool (*)(std::string& fields);
+
+	// called as each stage begins, before the stage spawns anything (game.cpp: clear the floor's hostiles)
+	using StageBeginHook = void (*)(Stage s);
+	void setStageBeginHook(StageBeginHook fn);
 	void setInline(Stage s, InlineStage fn);
 
 	// once per game tick; ready = player 0 alive on the target floor and not in the intro

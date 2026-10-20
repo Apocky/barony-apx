@@ -7,6 +7,7 @@
 namespace apx
 {
 	bool headlessOn = false;
+	bool noInputGrab = false;
 	static int batch = 50;
 
 	void headlessInit(bool flag)
