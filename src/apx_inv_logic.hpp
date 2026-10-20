@@ -177,6 +177,12 @@ namespace apx_logic
 		return b;
 	}
 
+	// ---------------------------------------------------------------- bench tabs and row kinds (stable names; other lanes use these)
+	enum BenchTab : int { TAB_ASSEMBLE = 0, TAB_SWAP = 1, TAB_MAKE = 2, TAB_REPAIR = 3, TAB_SALVAGE = 4, TAB_FORMS = 5, TAB_MATERIALS = 6, BENCH_TAB_COUNT = 7 };
+	enum BenchRow : int {
+		ROW_INFO = 0, ROW_FORM = 1, ROW_SALVAGE_PART = 3, ROW_BREAK = 4, ROW_DRAW_BUNDLE = 5, ROW_POUCH = 6, ROW_SWAP = 7, ROW_MAKE = 8,
+		ROW_QUICK_SALVAGE = 9, ROW_ASM_PICK = 10, ROW_ASSEMBLE = 11, ROW_REPAIR_PART = 12, ROW_REPAIR_STEP = 13 };
+
 	// ---------------------------------------------------------------- stations (step 5)
 	enum Station : int { NONE, FORGE, ANVIL, CRUCIBLE, WORKBENCH, ALEMBIC, FIELD, STATION_MAX }; // FIELD: a table (BP1)
 	inline const char* stationName(int s)

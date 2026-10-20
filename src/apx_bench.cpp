@@ -130,7 +130,7 @@ static Entry line(const std::string& t, int32_t mass = 0, uint32_t id = 0, int k
 	return e;
 }
 
-const int BENCH_TABS = 7; // Assemble, Swap, Make, Repair, Salvage, Forms, Materials (05b section 7)
+const int BENCH_TABS = apx_logic::BENCH_TAB_COUNT; // Assemble, Swap, Make, Repair, Salvage, Forms, Materials (05b section 7)
 const char* benchTabName(int tab) { static const char* n[] = { "Asm", "Swap", "Make", "Rep", "Salv", "Forms", "Mats" }; return tab >= 0 && tab < BENCH_TABS ? n[tab] : "?"; }
 
 // per player: the component chosen to keep in Salvage, and the component chosen per slot in Assemble
@@ -200,8 +200,9 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 			}
 			int power = 0, cap = 0;
 			std::string why;
-			bool ok = allRequired && pv.assemblePreview(player, form, station, picks, power, cap, why);
-			e.push_back(header("Item power " + std::to_string(power) + " / cap " + std::to_string(cap)));
+			const bool hasPreview = pv.assemblePreview != stubProvider().assemblePreview;
+			bool ok = allRequired && (hasPreview ? pv.assemblePreview(player, form, station, picks, power, cap, why) : true);
+			e.push_back(header(hasPreview ? "Item power " + std::to_string(power) + " / cap " + std::to_string(cap) : "Item power: shown when the provider has a preview"));
 			e.push_back(line(ok ? ">> Assemble" : (allRequired ? "   " + why : "   fill every required slot"), 0, selectedForm, ok ? 11 : 0));
 		}
 	}
@@ -237,7 +238,7 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 			e.push_back(x);
 		}
 	}
-	else if ( tab == 3 ) // Repair: a component's integrity back, for pouch material of its kind
+	else if ( tab == apx_logic::TAB_REPAIR ) // Repair: a component's integrity back, for pouch material of its kind
 	{
 		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
 		e.push_back(header(std::string(selectedOwn->getName()) + ": repair"));
@@ -249,7 +250,7 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 			{
 				std::string why, mat;
 				int g = pv.repairCost(player, selectedOwn, why, mat);
-				e.push_back(line(g >= 0 ? ">> Repair one step: " + std::to_string(g) + " g of " + mat : "   Cannot repair: " + why, 0, 0, g >= 0 ? 13 : 0));
+				e.push_back(line(g >= 0 ? ">> Repair one step: " + std::to_string(g) + " g of " + mat : "   Cannot repair: " + why, 0, 0, g >= 0 ? apx_logic::ROW_REPAIR_STEP : apx_logic::ROW_INFO));
 			}
 			else { e.push_back(line("Repair here: a field bench or an anvil.")); }
 		}
@@ -363,7 +364,7 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 		msg = ok ? "Made a component." : "Cannot make: " + why;
 		return ok;
 	}
-	if ( tab == 3 && row.row.kind == 13 && selectedOwn )
+	if ( tab == apx_logic::TAB_REPAIR && row.row.kind == apx_logic::ROW_REPAIR_STEP && selectedOwn )
 	{
 		std::string why, name = selectedOwn->getName();
 		bool ok = pv.repair(player, selectedOwn, why);
