@@ -25,6 +25,7 @@
 #include "prng.hpp"
 #include "mod_tools.hpp"
 #include "apx_stamina.hpp"
+#include "apx/variants_glue.hpp" // apx BV1
 
 /*-------------------------------------------------------------------------------
 
@@ -818,6 +819,7 @@ void actHudWeapon(Entity* my)
 			|| (itemCategory(apxWeapon) == WEAPON && !isRangedWeapon(*apxWeapon)
 				&& apxWeapon->type != TOOL_WHIP && apxWeapon->type != TOOL_BEARTRAP);
 		apx::tick(HUDWEAPON_PLAYERNUM, HUDWEAPON_CHOP, apxMelee, stats[HUDWEAPON_PLAYERNUM]->defending);
+		apx::vglue::selftestStep(); // apx BV1: the scripted variant kill run (APX_VARIANTS_SELFTEST), local player only
 	}
 
 	bool swingweapon = false;

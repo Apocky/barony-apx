@@ -11,6 +11,7 @@
 #include "props_rules.hpp"
 #include "parts_model.hpp"
 #include "../apx_bench_api.hpp"
+#include "variants_glue.hpp" // apx BV1
 
 #include <cctype>
 #include <cstdio>
@@ -81,6 +82,7 @@ bool apxPartsEnabled()
 void apxPartsLevelStart()
 {
 	floorIndex = 0;
+	::apx::vglue::floorChanged(); // BV1: the variant spawn index restarts with the floor
 	apxPartsBenchRegister();
 	floorParts.clear();
 }
@@ -299,6 +301,16 @@ const char* apxPartsFamilyName(uint32_t form) { return form < db().families.size
 const char* apxPartsMaterialName(int m) { return m >= 0 && m < (int)db().materials.size() ? db().materials[m].id.c_str() : "?"; }
 const char* apxPartsSlotName(int s) { return s >= 0 && s < (int)db().slots.size() ? db().slots[s].id.c_str() : "?"; }
 int apxPartsPartMassGrams(const Item* item, int part) { return item && part >= 0 && part < item->apx.nParts ? apxparts::partMassGrams(db(), item->apx.parts[part]) : 0; }
+
+bool apxPartsLedgerGive(int player, const char* material, int grams)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !material || grams <= 0 ) { return false; }
+	for ( int m = 0; m < (int)db().materials.size() && m < MAX_MATS; ++m )
+	{
+		if ( db().materials[m].id == material ) { ledger[player][m] += (uint32_t)grams; return true; }
+	}
+	return false;
+}
 
 int apxPartsFormSuccesses(int player, uint32_t form)
 {

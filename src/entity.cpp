@@ -40,6 +40,7 @@ See LICENSE for details.
 #include "ui/MainMenu.hpp"
 #include "ui/GameUI.hpp"
 #include "apx_stamina.hpp"
+#include "apx/variants_glue.hpp" // apx BV1
 #include "apx_combat.hpp"
 #include "apx/combat/impact.hpp" // [apx-hit] impact_uses
 #include "apx/tiers.hpp"
@@ -13199,6 +13200,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 						damage = apx::fam::beforeHit(player, this, hit.entity, hitstats, damage, previousMonsterState); // apx F4d: sneak and critical moves
 					}
 					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
+					damage = apx::vglue::scaleDamage(this, damage); // apx BV1: a variant creature's damage multiple
 					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 					if ( player >= 0 )

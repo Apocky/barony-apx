@@ -82,6 +82,7 @@ void apxPartsProbeTick();                                // APX_BF6_PROBE, once 
 // Formbook (card BF6-6; 05 section 5): per player, Form id (= apx.form, the family) -> successes 0-5;
 // known at 1, mastered at 5. Breaking an item with parts teaches its Form and consumes the item.
 // A new Form needs a free input slot: known Forms < max(1, INT / 2) (Wit stand-in; ASSUMED reading).
+bool apxPartsLedgerGive(int player, const char* material, int grams); // BV1: a creature's material drop goes into the player's ledger
 int apxPartsFormSuccesses(int player, uint32_t form);
 int apxPartsFormInputCap(int player);
 bool apxPartsBreak(int player, Item* item, std::string& why);     // consumes the item when it returns true
