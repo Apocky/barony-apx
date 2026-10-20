@@ -30,7 +30,7 @@ try {
     $env:APX_DIAG_DIR = $dir
     foreach ($kv in ($Env -split ',' | Where-Object { $_ })) { $k, $v = $kv -split '=', 2; [Environment]::SetEnvironmentVariable($k, $v) }
     $args = "-windowed -size=1280x720 -quickstart=barbarian -apxfloor=1 -apxmapseed=$Seed -apxselftest=all"
-    if ($Headless) { $args += ' -apxheadless'; $env:APX_HEADLESS_BATCH = '1' } # one logic tick per pass: stages stay seconds of game time, so wandering monsters cannot reach the test character
+    if ($Headless) { $args += ' -apxheadless' } # default tick batch (fast); hostiles are cleared at each stage start in the game (APX_SELFTEST_CLEAR), which is what keeps the test character safe
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $p = Start-Process -FilePath $Exe -WorkingDirectory $dir -ArgumentList $args -PassThru
     $json = Join-Path $dir 'selftest-all.json'

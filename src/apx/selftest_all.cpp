@@ -19,6 +19,7 @@ namespace selftestall
 		int g_settle = 0;          // ticks on the floor before the first stage
 		Result g_result[NUM_STAGES];
 		InlineStage g_inline[NUM_STAGES] = {};
+		StageBeginHook g_beginHook = nullptr;
 		std::chrono::steady_clock::time_point g_launch = std::chrono::steady_clock::now();
 		std::chrono::steady_clock::time_point g_stageStart;
 		bool g_finished = false;
@@ -47,6 +48,7 @@ namespace selftestall
 			g_stage = s;
 			g_stageStart = std::chrono::steady_clock::now();
 			if ( s < NUM_STAGES ) { printlog("[apx-selftest] stage %s begins at %lld ms", name((Stage)s), msSince(g_launch)); }
+			if ( s < NUM_STAGES && g_beginHook ) { g_beginHook((Stage)s); }
 		}
 
 		void finish(const char* why)
@@ -94,6 +96,7 @@ namespace selftestall
 	}
 
 	void setInline(Stage s, InlineStage fn) { if ( s >= 0 && s < NUM_STAGES ) { g_inline[s] = fn; } }
+	void setStageBeginHook(StageBeginHook fn) { g_beginHook = fn; }
 
 	void done(Stage s, bool pass, const std::string& fields)
 	{
