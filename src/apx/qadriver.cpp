@@ -136,6 +136,16 @@ namespace qa
 				later((Uint32)ms, up);
 				g_waitUntil = SDL_GetTicks() + (Uint32)ms + 30;
 			}
+			else if ( op == "kdown" || op == "kup" )
+			{
+				// non-blocking key press / release: hold several keys at once (W + Left Shift), release with kup
+				std::string name; std::getline(in >> std::ws, name);
+				while ( !name.empty() && (name.back() == ' ' || name.back() == '\r') ) { name.pop_back(); }
+				SDL_Scancode sc = SDL_GetScancodeFromName(name.c_str());
+				if ( sc == SDL_SCANCODE_UNKNOWN ) { printlog("[apx-qa] unknown key '%s'", name.c_str()); return; }
+				pushKey(sc, op == "kdown");
+				g_waitUntil = SDL_GetTicks() + 20;
+			}
 			else if ( op == "mark" )
 			{
 				std::string label; in >> label;

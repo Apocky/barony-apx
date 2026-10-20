@@ -100,6 +100,7 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
+#include "apx/move/move.hpp"
 #include "apx/qadriver.hpp" // apx: -apxqa=<dir> interactive QA driver
 #include "apx/in/in_glue.hpp" // apx D93 C0: apx::in owns play input
 #include "apx/selftest_all.hpp"
@@ -157,7 +158,7 @@ static void apxSelftestClearHostiles(apx::selftestall::Stage s)
 		e->setHP(0);
 		++cleared;
 	}
-	printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared);
+	if ( !apx::selftestall::sweeping() || cleared > 0 ) { printlog("[apx-selftest] stage %s: test setting cleared %d hostile monsters%s (APX_SELFTEST_CLEAR=0 keeps them)", apx::selftestall::name(s), cleared, apx::selftestall::sweeping() ? " (sweep: spawned since)" : ""); }
 }
 
 // voxel (BX1, C10): a steel sword with rolled parts is drawn from its parts' voxel models: the first-person and
@@ -252,6 +253,7 @@ static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 
 #include "UnicodeDecoder.h"
 #include "apx/lua_layer.hpp"
+#include "apx/hostility.hpp" // apx D93
 static bool apxLuaTestMode = false;
 #include "apx_stamina.hpp"
 
@@ -1379,6 +1381,9 @@ void gameLogic(void)
 	{
 		fadealpha = std::max(0, fadealpha - 10);
 	}
+
+	apx::hostility::frame(); // apx D93: floor reset, calm start, gate
+	apx::move::frame(); // apx M1: impulses on creatures, cost summary
 
 	// handle safe packets
 	if ( !(ticks % 4) )

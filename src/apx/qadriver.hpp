@@ -6,6 +6,7 @@
 // Commands (one per line; # starts a comment):
 //   key <name> [ms]          press and release a key (SDL scancode name, e.g. I, Escape, Return, W, Space)
 //   hold <name> <ms>         hold a key for ms milliseconds (walk with W, etc.)
+//   kdown <name> / kup <name>  press / release a key without waiting: hold W and Left Shift together (names may contain spaces)
 //   move <x> <y>             move the game's mouse pointer to window pixel (x, y)
 //   click <x> <y> [right]    move there, press and release the left (or right) button
 //   drag <x0> <y0> <x1> <y1> left-button drag

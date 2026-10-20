@@ -92,7 +92,7 @@ namespace apx
 		int releases = 0;               // melee releases since the press (combo chain)
 		// counters
 		int swings = 0, swingsWhileBlocking = 0, clamped = 0;
-		real_t spentSwing = 0.0, spentBlock = 0.0;
+		real_t spentSwing = 0.0, spentBlock = 0.0, spentSprint = 0.0;
 		// net
 		Uint32 lastNetTick = 0;
 		real_t lastNetValue = -1.0;
@@ -216,7 +216,7 @@ namespace apx
 		}
 	}
 
-	// Single writer of stamina. reason: 0 swing, 1 block drain.
+	// Single writer of stamina. reason: 0 swing, 1 block drain, 2 sprint drain (apx::move).
 	inline real_t spend(int player, real_t amount, int reason)
 	{
 		Stamina_t& s = get(player);
@@ -226,6 +226,7 @@ namespace apx
 		const real_t actual = before - s.value;
 		if ( amount > 0.0 ) { s.lastSpendTick = ticks; }
 		if ( reason == 0 ) { s.spentSwing += actual; }
+		else if ( reason == 2 ) { s.spentSprint += actual; }
 		else { s.spentBlock += actual; s.blockDrained += actual; }
 		grantEnduranceUse(player, actual);
 		return actual;
