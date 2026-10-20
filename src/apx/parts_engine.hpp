@@ -51,8 +51,8 @@ void apxPartsBundlesRegister(int player);                    // loadGame: bundle
 void apxPartsTick();                                         // game loop: absorb picked-up bundles
 const char* apxPartsBundleName(const Item* item);            // "bundle of iron (0.6 kg)"
 int apxPartsLedgerMaterialGrams(int player, int material);
-int apxPartsBundleValue(const Item* item);
-void apxPartsLedgerCredit(int player, int material, int grams); // selftest seed for the pouch (logged)                    // gold: grams x material value_per_kg / 1000        // the pouch in Barony weight units (1 unit = 100 g, as U1's list), for carry weight
+int apxPartsBundleValue(const Item* item);                    // gold: grams x material value_per_kg / 1000
+void apxPartsLedgerCredit(int player, int material, int grams); // selftest seed for the pouch (logged)
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);
