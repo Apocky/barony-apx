@@ -90,6 +90,7 @@ namespace combat
 		int extraIndex = 0;         // HF_EXTRA_TARGET: 0 = first extra target
 		int path = PATH_MELEE;
 		int dir = DIR_THRUST;
+		float dmgMult = 1.f;        // riposte and chamber swings
 	};
 	struct HitResult
 	{
@@ -126,6 +127,8 @@ namespace combat
 	// ---- control and hooks ---------------------------------------------------------------------------------
 	bool coreEnabled();                   // the core runs (APX_COMBAT_OLD=1 / APX_COMBAT=0 = control)
 	bool ownsMelee(int player);           // this player's melee goes through the core now
+	bool blockOwned(int player);          // the core, not Barony's Defend binding, raises this player's shield (C2)
+	bool blockWanted(int player);         // the core wants the shield up now (read by actHudShield)
 	bool swinging(int player);            // Windup, Active or Recovery
 	State stateOf(Entity* e);
 	void tickPlayer(int player);          // once per sim tick (actPlayer)
@@ -139,7 +142,7 @@ namespace combat
 	struct Counters
 	{
 		long long swings = 0, quick = 0, directional = 0, charged = 0, hits = 0, sweepTargets = 0, wallBlocked = 0, fizzled = 0, kills = 0;
-		long long legacyHits = 0, objectPasses = 0, hitStops = 0;
+		long long legacyHits = 0, objectPasses = 0, hitStops = 0, blocks = 0, timedBlocks = 0, dodged = 0, feints = 0, kicks = 0, dodges = 0;
 		double staminaSpent = 0;
 	};
 	const Counters& counters();

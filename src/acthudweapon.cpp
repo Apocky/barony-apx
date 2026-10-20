@@ -4424,7 +4424,8 @@ void actHudShield(Entity* my)
 				if ( (players[HUDSHIELD_PLAYERNUM]->hud.weapon->skill[0] % 3 == 0)
 					|| (apx::blockSwingEnabled() && apx::get(HUDSHIELD_PLAYERNUM).swingWhileBlock) ) // apx D64: block stays up through a swing begun under block
 				{
-					if (input.binaryToggle("Defend") || apx::forceDefend())
+					// apx D93 C2: the combat core raises the shield from apx::in Block (vanilla Defend binding = APX_COMBAT_OLD=1 control)
+					if ( apx::combat::blockOwned(HUDSHIELD_PLAYERNUM) ? apx::combat::blockWanted(HUDSHIELD_PLAYERNUM) : (input.binaryToggle("Defend") || apx::forceDefend()) )
 					{
 						defending = true;
 					}
