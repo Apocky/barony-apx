@@ -102,6 +102,8 @@ static apx_logic::Row logicRow(const Item& it, int player, int priceMode)
 	r.slot = checkEquipType(&it);
 	r.kinds = kindsOf(it);
 	r.icon = getItemSpritePath(player, const_cast<Item&>(it));
+	apx_bench::PartRow comp;
+	if ( apx_bench::provider().componentOf(&it, comp) ) { r.rarity = std::max(0, std::min(5, comp.rarity)); }
 	return r;
 }
 
@@ -402,13 +404,13 @@ bool activateSelected(int player)
 
 void setBenchTab(int player, int tab)
 {
-	g_benchTab[player] = ((tab % 4) + 4) % 4;
+	g_benchTab[player] = ((tab % 6) + 6) % 6;
 	g_benchSel[player] = 0; g_benchScroll[player] = 0;
 }
 
 void benchTab(int player, int d)
 {
-	g_benchTab[player] = (g_benchTab[player] + 4 + d) % 4;
+	g_benchTab[player] = (g_benchTab[player] + 6 + d) % 6;
 	g_benchSel[player] = 0; g_benchScroll[player] = 0;
 	++g_view[player].benchTabSwitches;
 }
@@ -439,6 +441,13 @@ bool listHandleMove(int player)
 }
 
 // ---------------------------------------------------------------- frames
+static Uint32 rarityColor(int r)
+{
+	static const Uint32 c[] = { makeColor(235, 235, 235, 255), makeColor(110, 220, 110, 255), makeColor(110, 160, 255, 255),
+		makeColor(200, 120, 255, 255), makeColor(255, 160, 60, 255), makeColor(255, 215, 80, 255) }; // 5 Unique: gold
+	return r >= 0 && r <= 5 ? c[r] : c[0];
+}
+
 static Field* label(Frame* parent, const char* name, int len, int hj)
 {
 	auto f = parent->addField(name, len);
@@ -685,7 +694,7 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 		f->setSize(SDL_Rect{ info ? 10 : nameX, 0, info ? r.w - 16 : nameW, ROW_H });
 		f->setText(fitText(f, d.row.name + (d.row.equipped ? " [E]" : ""), info ? r.w - 20 : nameW).c_str());
 		int c0 = d.row.type < 0 ? 4 : std::max(0, std::min(4, d.row.status));
-		f->setTextColor(d.row.equipped ? makeColor(140, 220, 255, 255) : cond[c0]);
+		f->setTextColor(d.row.equipped ? makeColor(140, 220, 255, 255) : d.row.rarity >= 0 ? rarityColor(d.row.rarity) : cond[c0]);
 		if ( ls.cols )
 		{
 			mf->setText("");
@@ -733,13 +742,31 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 	L.push_back({ std::string("Condition: ") + apx_logic::conditionWord(r.status), W });
 	L.push_back({ r.identified ? "Beatitude: " + std::string(r.beatitude > 0 ? "+" : "") + std::to_string(r.beatitude) : "Beatitude: unknown", W });
 	if ( !r.kinds.empty() ) { L.push_back({ "Damage kinds: " + r.kinds, W }); }
+	// D86: a component item shows its own rarity and affixes; an assembled item lists its components
+	apx_bench::PartRow self;
+	int affixLines = 0;
+	if ( apx_bench::provider().componentOf(it, self) )
+	{
+		L.push_back({ std::string("Component, ") + apx_logic::rarityName(self.rarity) + (self.material.empty() ? "" : " " + self.material), rarityColor(self.rarity) });
+		for ( auto& a : self.affixes ) { L.push_back({ "  " + a, makeColor(180, 200, 255, 255) }); ++affixLines; }
+	}
 	auto parts = apx_bench::provider().parts(it);
 	if ( !parts.empty() )
 	{
-		L.push_back({ "Parts", makeColor(230, 190, 90, 255) });
-		for ( auto& p : parts ) { L.push_back({ "  " + p.slotName + ": " + p.material + "  q" + std::to_string(p.quality), W }); }
+		L.push_back({ "Components", makeColor(230, 190, 90, 255) });
+		for ( auto& p : parts )
+		{
+			std::string nm = p.name.empty() ? p.material : p.name;
+			L.push_back({ "  " + p.slotName + ": " + nm + "  q" + std::to_string(p.quality), rarityColor(p.rarity) });
+			if ( !p.affixes.empty() )
+			{
+				std::string ax;
+				for ( auto& a : p.affixes ) { ax += (ax.empty() ? "" : ", ") + a; }
+				L.push_back({ "    " + ax, makeColor(180, 200, 255, 255) });
+				++affixLines;
+			}
+		}
 	}
-	else { L.push_back({ "Parts: with F6", G }); }
 	const int w = TIP_W, top = 80;
 	int h = top + (int)std::min<size_t>(L.size() - 2, 12) * ROW_H + 10;
 	tip->setDisabled(false);
@@ -760,6 +787,8 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 	auto& vs = g_view[player];
 	vs.tipLines = (int)L.size();
 	vs.tipDelta = delta;
+	vs.tipAffixLines = affixLines;
+	vs.tipParts = (int)parts.size();
 	{
 		Item* eqw = r.power >= 0 ? equippedFor(player, *it, r.slot) : nullptr;
 		vs.tipVsWorn = eqw && eqw != it;
