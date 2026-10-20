@@ -11,7 +11,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, bio_kills = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, use_identified = 0, bio_kills = 0, maker_mp_spent = 0, maker_mp_restored = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -84,6 +84,17 @@ int apxPartsAuraMag(const Item* item);
 void apxPartsGiveAura(int player, const std::vector<uint16_t>& affixes, bool identified, const std::vector<uint8_t>* mags = nullptr);
 void apxPartsOnKill(int player);                                           // Entity::awardXP: a player's kill (biography)
 void apxPartsBioFloor();                                                   // level start: equipped parts carried a floor
+// C9 makers in play (05b C9; Barony ports ASSUMED, data/apx/makers.json _mapping). APX_MAKERS=0 = control (no effect).
+class Stat; // class, as Barony declares it (MSVC mangles the tag)
+int apxPartsAttackMod(const Stat* s, int attack);                          // Entity::getAttack: tendency D + gimmicks
+int apxPartsAttackOnTarget(Entity* me, const Stat* s, const Stat* target, int attack); // per hit: extra vs target; the Outer Choir's MP cost
+int apxPartsArmorBonus(const Stat* s);                                     // AC(): tendency A + gimmicks
+int apxPartsStatBonus(const Stat* s, int which);                           // 0 = DEX, 1 = CON
+bool apxPartsNoWear(const Item* item);                                     // Hephaesteum
+int apxPartsMakerWeightPct(const Item* item);
+int apxPartsMakerValuePct(const Item* item);
+int apxPartsItemMaker(const Item* item);
+const char* apxPartsMakerName(int maker);
 void apxPartsGivePendingAura(int player);                                  // tinkering station: after it grants the scrap
 bool apxPartsInfuse(int player, Item* item, int part, uint32_t crystalUid, int station, std::string& why); // station 3 = crucible
 bool apxPartsInfuseCheck(const Item* item, int part, int affix, int station, std::string& why); // dry run of the same rules

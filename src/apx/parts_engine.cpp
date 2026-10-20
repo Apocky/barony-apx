@@ -96,6 +96,8 @@ void apxPartsOnKill(int player) // 05b s3 biography: a kill by a player counts o
 	Item* w = stats[player]->weapon;
 	for ( int k = 0; k < w->apx.nParts; ++k ) { if ( w->apx.parts[k].kills < 65535 ) { ++w->apx.parts[k].kills; } }
 	++apxPartsCounters.bio_kills;
+	const int mp = (getenv("APX_MAKERS") && *getenv("APX_MAKERS") == '0') ? 0 : apxparts::makerMods(db(), w->apx, true).mpOnKill; // the Runecourt: Spellsink (APX_MAKERS=0: off)
+	if ( mp > 0 && players[player] && players[player]->entity ) { players[player]->entity->modMP(mp); apxPartsCounters.maker_mp_restored += mp; }
 }
 
 void apxPartsLevelStart()
@@ -672,6 +674,59 @@ Item* apxPartsExtractGraft(int player, Item* item, int station, std::string& why
 }
 int apxPartsSockets(const Item* item) { return item && item->apx.nParts && !apxparts::isComponent(item->apx) ? (item->apx.flags & 7) : 0; }
 
+// ---------------------------------------------------------------- C9 makers in play (05b C9; ports ASSUMED, makers.json _mapping)
+namespace {
+bool makersOff() { const char* v = getenv("APX_MAKERS"); return v && *v == '0'; } // control: makers do nothing (gates must fail)
+apxparts::MakerMods modsOf(const Item* it, bool weapon)
+{
+	if ( !it || it->apx.nParts == 0 || apxparts::isComponent(it->apx) || !apxPartsEnabled() || makersOff() ) { return apxparts::MakerMods{}; }
+	return apxparts::makerMods(db(), it->apx, weapon);
+}
+bool lowHp(const Stat* s) { return s && s->MAXHP > 0 && s->HP * 100 <= s->MAXHP * 30; }
+bool isUndead(const Stat* s) { return s && (s->type == SKELETON || s->type == GHOUL || s->type == LICH || s->type == LICH_FIRE || s->type == LICH_ICE || s->type == VAMPIRE || s->type == SHADOW || s->type == REVENANT_SKULL); }
+}
+
+int apxPartsAttackMod(const Stat* s, int attack)
+{
+	if ( !s || !s->weapon ) { return attack; }
+	const apxparts::MakerMods m = modsOf(s->weapon, true);
+	int pct = m.dmgPct + (lowHp(s) ? m.lowHpDmgPct : 0) + (s->MP > 0 ? m.dmgPctMp : 0);
+	if ( !pct ) { return attack; }
+	return std::max(0, attack * (100 + pct) / 100);
+}
+
+int apxPartsAttackOnTarget(Entity* me, const Stat* s, const Stat* target, int attack)
+{
+	if ( !s || !s->weapon ) { return 0; }
+	const apxparts::MakerMods m = modsOf(s->weapon, true);
+	if ( m.dmgPctMp > 0 && me && s->MP > 0 ) { me->modMP(-1); ++apxPartsCounters.maker_mp_spent; } // the Outer Choir: each hit costs 1 MP
+	return isUndead(target) && m.undeadPct ? attack * m.undeadPct / 100 : 0;
+}
+
+int apxPartsArmorBonus(const Stat* s)
+{
+	if ( !s ) { return 0; }
+	int ac = 0;
+	const Item* pieces[] = { s->helmet, s->breastplate, s->gloves, s->shoes, s->shield, s->cloak, s->mask };
+	for ( const Item* it : pieces ) { const apxparts::MakerMods m = modsOf(it, false); ac += m.acFlat + (lowHp(s) ? m.lowHpAc : 0); }
+	return ac;
+}
+
+int apxPartsStatBonus(const Stat* s, int which)
+{
+	if ( !s ) { return 0; }
+	int v = 0;
+	const Item* worn[] = { s->weapon, s->helmet, s->breastplate, s->gloves, s->shoes, s->shield, s->cloak, s->mask };
+	for ( size_t k = 0; k < sizeof(worn) / sizeof(worn[0]); ++k ) { const apxparts::MakerMods m = modsOf(worn[k], k == 0); v += which == 0 ? m.dex : m.con; }
+	return v;
+}
+
+bool apxPartsNoWear(const Item* item) { return modsOf(item, true).noWear || modsOf(item, false).noWear; }
+int apxPartsMakerWeightPct(const Item* item) { return modsOf(item, false).weightPct; }
+int apxPartsMakerValuePct(const Item* item) { return modsOf(item, false).valuePct; }
+int apxPartsItemMaker(const Item* item) { return item && item->apx.nParts ? apxparts::itemMaker(db(), item->apx) : 0; }
+const char* apxPartsMakerName(int maker) { return maker > 0 && maker <= (int)db().makers.size() ? db().makers[(size_t)maker - 1].name.c_str() : ""; }
+
 // trade lane (D73/D85): the pouch as a store of grams
 int apxPartsMaterialIndex(const char* id) { return id ? db().material(id) : -1; }
 bool apxPartsLedgerGive(int player, int material, int grams)
@@ -1123,7 +1178,7 @@ const char* apxPartsShotRequest()
 	return handed.c_str();
 }
 
-namespace { bool craftPass = true, tinkerOk = false, pouchOnlyOk = false; }
+namespace { bool craftPass = true, tinkerOk = false, pouchOnlyOk = false, makersPass = false; }
 namespace { bool bundlePass = false, bundleDrawOk = false; long long bundlePouchBeforePickup = 0; char bundleRow[512] = ""; }
 
 void apxPartsProbeTick()
@@ -1523,6 +1578,56 @@ void apxPartsProbeTick()
 				char nb[256];
 				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d, infuse ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0, infOk ? 1 : 0);
 				provNote = nb;
+			}
+			// C9 makers through Barony's own numbers (getAttack, AC, statGetDEX, MP on a kill, wear), each maker on vs off
+			{
+				auto mk = [&](const char* id) { for ( size_t m = 0; m < db().makers.size(); ++m ) { if ( db().makers[m].id == id ) { return (uint8_t)(m + 1); } } return (uint8_t)0; };
+				const uint8_t deep = mk("mfr.mythic_fantasy.deepanvil"), silver = mk("mfr.mythic_fantasy.silverbough"), rune = mk("mfr.mythic_fantasy.runecourt"),
+					heph = mk("mfr.mythic_antiquity.hephaesteum"), ash = mk("mfr.gothic_horror.ashgrave");
+				auto setMaker = [&](Item* it, uint8_t m) { for ( int k = 0; k < it->apx.nParts; ++k ) { it->apx.parts[k].maker = m; } };
+				auto wv = rollProbeItems(1, &stats[0]->inventory, "Blades", 5);
+				auto hv = rollProbeItems(1, &stats[0]->inventory, "Helms", 5);
+				Entity* me = players[0]->entity;
+				char mb[400] = "";
+				bool ok = false;
+				if ( !wv.empty() && !hv.empty() && me && !stats[0]->weapon )
+				{
+					Item* w = wv[0]; Item* h = hv[0];
+					w->beatitude = 0; h->beatitude = 0; w->identified = h->identified = true;
+					useItem(w, 0); useItem(h, 0);
+					const bool worn = stats[0]->weapon == w && stats[0]->helmet == h;
+					setMaker(w, 0); setMaker(h, 0);
+					const int a0 = Entity::getAttack(me, stats[0], true, 0), ac0 = AC(stats[0]), dex0 = statGetDEX(stats[0], me);
+					setMaker(w, deep); setMaker(h, deep);
+					const int a1 = Entity::getAttack(me, stats[0], true, 0), ac1 = AC(stats[0]);
+					setMaker(h, silver);
+					const int dex1 = statGetDEX(stats[0], me);
+					setMaker(w, rune);
+					stats[0]->MP = 0;
+					apxPartsOnKill(0);
+					const int mpGain = stats[0]->MP;
+					setMaker(w, heph);
+					const bool noWear = me->spellEffectPreserveItem(w);
+					setMaker(w, 0);
+					const bool wearBack = !me->spellEffectPreserveItem(w);
+					setMaker(w, ash);
+					const int hp = stats[0]->HP;
+					stats[0]->HP = std::max(1, stats[0]->MAXHP / 5);
+					const int aLow = Entity::getAttack(me, stats[0], true, 0);
+					stats[0]->HP = hp;
+					const int aHigh = Entity::getAttack(me, stats[0], true, 0);
+					const bool off = getenv("APX_MAKERS") && *getenv("APX_MAKERS") == '0';
+					const bool deepOk = a1 == std::max(0, a0 * (100 + 8 + 15) / 100) && a1 > a0 && ac1 == ac0 + 1;
+					const bool silverOk = dex1 == dex0 + 1, runeOk = mpGain >= 3, hephOk = noWear && wearBack;
+					const bool ashOk = aLow == std::max(0, a0 * (100 + 20) / 100) && aHigh == a0 && aLow > aHigh;
+					ok = worn && deepOk && silverOk && runeOk && hephOk && ashOk;
+					snprintf(mb, sizeof(mb), "worn %d; Deepanvil attack %d -> %d (want %d), AC %d -> %d; Silverbough DEX %d -> %d; Runecourt kill MP +%d; Hephaesteum no wear %d (off again %d); Ashgrave low HP attack %d vs %d (want %d)%s",
+						worn ? 1 : 0, a0, a1, a0 * 123 / 100, ac0, ac1, dex0, dex1, mpGain, noWear ? 1 : 0, wearBack ? 1 : 0, aLow, aHigh, a0 * 120 / 100, off ? " [APX_MAKERS=0]" : "");
+					useItem(stats[0]->weapon, 0); useItem(stats[0]->helmet, 0); // unequip for the C12 phase
+				}
+				snprintf(buf, sizeof(buf), "{\"probe\":\"makers\",\"makers\":%d,\"detail\":\"%s\",\"pass\":%s}", (int)db().makers.size(), mb, ok ? "true" : "false");
+				probeRow(buf);
+				makersPass = ok;
 			}
 			// C12: a cursed unidentified looted item -> its component is cursed and unidentified; assembling with it
 			// gives a cursed unidentified item; equipped, Barony's curse binding holds it; worn long enough, use identifies it

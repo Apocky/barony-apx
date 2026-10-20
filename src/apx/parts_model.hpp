@@ -58,6 +58,11 @@ enum AffixPos : uint8_t { AFFIX_PREFIX = 0, AFFIX_SUFFIX = 1 };
 // conflicts: affix ids that may not share a component with this one ("conflicts": [names]).
 struct AffixInfo { std::string name, label, stat, element; int pct = 0, weight = 1; AffixPos position = AFFIX_SUFFIX; int magLo[6] = {}, magHi[6] = {}; std::vector<int> conflicts; };
 struct StandIn { std::string cls, item; int grams = 0; };
+// 05b C9 makers (data/apx/makers.json from PALIMPSEST spec 11 s5.2; the active eight roll, Apocky 2026-10-19).
+// A part's maker = index in makers + 1 (0 = none). Tendencies mapped to Barony (ASSUMED, in the file's _mapping):
+// D -> weapon damage % (delta / 100), A -> AC per armor piece (delta / 1000), W -> weight %, V -> value %.
+struct MakerGimmick { std::string kind, on; int value = 0; }; // on: weapon | armor | any
+struct Maker { std::string id, name; bool active = false; std::vector<int> families; int dmgPct = 0, acFlat = 0, weightPct = 0, valuePct = 0; std::vector<MakerGimmick> gimmick; };
 struct SalvageParams { int lootedPct = 60, craftedPct = 100, dischargePct = 20, auraPerAffixPct = 25, lowIntegrityByte = 77, lowIntegrityFactorPct = 50; std::string auraItem; std::vector<StandIn> standIns; };
 
 struct DB
@@ -72,6 +77,9 @@ struct DB
 	int affixDefaults = 0;                                  // entries with no position/label in the data
 	SalvageParams salvage;
 	int plainFamily = -1, fleshMaterial = -1;
+	std::vector<Maker> makers;
+	int foreignPct = 75;
+	int foreignAllowance[6] = { 0, 1, 2, 3, 3, 3 }; // by the assembly's rarity (05b 5.7)
 	int material(const std::string& id) const;
 	int slot(const std::string& id) const;
 	int family(const std::string& id) const;
@@ -141,6 +149,15 @@ bool swapPart(const DB& db, ApxItemData& it, int partIndex, const ApxPart& c, in
 // Masterwork (70+) (D87); affix slots empty; integrity full; model = modelId.
 int makeCostGrams(const DB& db, int slot, int material);
 ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint32_t look, int* quality100 = nullptr);
+
+// C9 (05b 5.7, G19 s5): the assembly's maker supplied at least two non-graft components (most wins, lowest id on a
+// tie; a one-part item: that part's maker); foreign = non-graft parts of another maker (maker 0 is no maker).
+int itemMaker(const DB& db, const ApxItemData& it);
+int foreignParts(const DB& db, const ApxItemData& it);
+// What an item's makers do (05b C9): the item maker's mapped tendencies and gimmick at full strength; a graft of
+// another maker adds its gimmick at foreignPct (75 percent). weapon = the item is wielded as a weapon, else armor.
+struct MakerMods { int dmgPct = 0, acFlat = 0, dex = 0, con = 0, mpOnKill = 0, undeadPct = 0, lowHpDmgPct = 0, lowHpAc = 0, dmgPctMp = 0, weightPct = 0, valuePct = 0; bool noWear = false; };
+MakerMods makerMods(const DB& db, const ApxItemData& it, bool weapon);
 
 // C7 (05b sections 1 and 5 step 10): an assembly's derived fields follow its components after every bench
 // change: sockets = its rarity (best component, 0-4), resonance element = the best part's material,

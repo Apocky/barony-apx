@@ -657,6 +657,69 @@ int main(int argc, char** argv)
 			join({ kv("parts", (int)parts), kv("magnitudes_in_tier", (int)magOk), kv("rolled_unique_with_5", (int)uniq5) + "/" + std::to_string(uniq), kv("unique_takes_5_by_infuse", unique5), kv("conflicting_pairs_rolled", (int)conflictSeen),
 				kv("found_depth_ok", (int)depthOk), kv("infuse_conflict_refused", infConfRefused) + "/" + std::to_string(infConf), kv("crystal_magnitude_kept", infMagOk) + "/" + std::to_string(infMag) }));
 	}
+	{
+		// C9 makers (05b C9; makers.json): 40 rows, the 8 active roll on the families they stamp, every part one maker;
+		// item maker = >= 2 non-graft parts; foreign allowance by rarity; foreign parts count 75 % in IP; a graft of
+		// another maker brings its gimmick at 75 %
+		int active = 0;
+		for ( auto& m : db.makers ) { active += m.active; }
+		Counters c; ApxItemData it;
+		long long stamped = 0, stampedOk = 0, unstamped = 0, unstampedOk = 0; std::vector<int> seen(db.makers.size() + 1, 0);
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 47, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			bool fam = false;
+			for ( auto& m : db.makers ) { if ( !m.active ) { continue; } for ( int f : m.families ) { fam = fam || f == (int)it.form; } }
+			const int mk = it.parts[0].maker;
+			bool same = true; for ( int k = 0; k < it.nParts; ++k ) { same = same && it.parts[k].maker == mk; }
+			if ( fam )
+			{
+				++stamped;
+				bool makes = false;
+				if ( mk > 0 && mk <= (int)db.makers.size() ) { for ( int f : db.makers[(size_t)mk - 1].families ) { makes = makes || f == (int)it.form; } }
+				stampedOk += same && makes && db.makers[(size_t)mk - 1].active && itemMaker(db, it) == (it.nParts == 1 ? mk : (it.nParts >= 2 ? mk : 0)) && foreignParts(db, it) == 0;
+				if ( mk >= 0 && mk < (int)seen.size() ) { ++seen[(size_t)mk]; }
+			}
+			else { ++unstamped; unstampedOk += mk == 0; }
+		}
+		int activeSeen = 0;
+		for ( size_t m = 0; m < db.makers.size(); ++m ) { activeSeen += db.makers[m].active && seen[m + 1] > 0; }
+		// foreign allowance and the 75 % rule on a built Blades assembly
+		const int blades = db.family("Blades");
+		const int deep = [&]() { for ( size_t m = 0; m < db.makers.size(); ++m ) { if ( db.makers[m].id == "mfr.mythic_fantasy.deepanvil" ) { return (int)m + 1; } } return 0; }();
+		const int silver = [&]() { for ( size_t m = 0; m < db.makers.size(); ++m ) { if ( db.makers[m].id == "mfr.mythic_fantasy.silverbough" ) { return (int)m + 1; } } return 0; }();
+		bool allowOk = false, ipOk = false, graftOk = false, modsOk = false;
+		if ( blades >= 0 && deep && silver )
+		{
+			const Family& f = db.families[(size_t)blades];
+			auto partOf = [&](int slot, int maker, int rarity) { ApxPart p{}; p.slot = (uint8_t)slot; p.material = 0; p.quality = 10; p.rarity = (uint8_t)rarity; p.integrity = 255; p.maker = (uint8_t)maker; return p; };
+			// Blade + Grip required, Guard and Pommel optional: three Deepanvil, one Silverbough
+			std::vector<ApxPart> parts = { partOf(f.required[0], deep, 0), partOf(f.required[1], deep, 0), partOf(db.slot("Guard"), deep, 0), partOf(db.slot("Pommel"), silver, 0) };
+			ApxItemData a; std::string w0, w1;
+			const bool commonRefused = !assemble(db, blades, parts, 1, 1 << 30, a, w0) && w0.find("foreign") != std::string::npos;
+			for ( auto& p : parts ) { p.rarity = 1; }
+			const bool uncommonOk = assemble(db, blades, parts, 1, 1 << 30, a, w1);
+			allowOk = commonRefused && uncommonOk && itemMaker(db, a) == deep && foreignParts(db, a) == 1;
+			ApxItemData same = a; for ( int k = 0; k < same.nParts; ++k ) { same.parts[k].maker = (uint8_t)deep; }
+			ApxItemData one = a; one.nParts = 1; one.parts[0] = a.parts[3];
+			const int foreignV = itemPower(db, one);
+			ipOk = itemPower(db, a) == itemPower(db, same) - foreignV + foreignV * db.foreignPct / 100;
+			// mods: Deepanvil weapon = tendency D+800 (8) + gimmick 15; as armor: +1 AC
+			const MakerMods mw = makerMods(db, a, true), ma = makerMods(db, a, false);
+			modsOk = mw.dmgPct == 8 + 15 && ma.acFlat == 1;
+			// a Deepanvil graft on a Silverbough item: Silverbough D-300 (-3) + Deepanvil's +15 at 75 % (11); +1 DEX from Silverbough
+			ApxItemData s2 = a;
+			for ( int k = 0; k < s2.nParts; ++k ) { s2.parts[k].maker = (uint8_t)silver; }
+			ApxPart g = partOf(db.slot("Graft"), deep, 2);
+			s2.parts[s2.nParts++] = g;
+			const MakerMods mg = makerMods(db, s2, true);
+			graftOk = itemMaker(db, s2) == silver && mg.dmgPct == -3 + 15 * db.foreignPct / 100 && mg.dex == 1;
+		}
+		gate("C9_makers", db.makers.size() == 40 && active == 8 && stamped > 0 && stampedOk == stamped && unstampedOk == unstamped && activeSeen == 8 && allowOk && ipOk && modsOk && graftOk,
+			join({ kv("makers", (int)db.makers.size()), kv("active", active), kv("stamped_ok", (int)stampedOk) + "/" + std::to_string(stamped), kv("unstamped_maker0", (int)unstampedOk) + "/" + std::to_string(unstamped),
+				kv("active_seen", activeSeen), kv("allowance", allowOk ? 1 : 0), kv("foreign_75pct_ip", ipOk ? 1 : 0), kv("mods", modsOk ? 1 : 0), kv("graft_75pct", graftOk ? 1 : 0) }));
+	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;
 }

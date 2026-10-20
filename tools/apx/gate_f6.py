@@ -98,7 +98,7 @@ def run_save(name, exe, out, env_extra, args):
     finally:
         lock.unlink(missing_ok=True)
     text = log_text(d)
-    probe, salvage, bundle, comps, craft = None, None, None, None, None
+    probe, salvage, bundle, comps, craft, makers = None, None, None, None, None, None
     if rows.exists():
         for l in rows.read_text().splitlines():
             if l.strip():
@@ -113,9 +113,11 @@ def run_save(name, exe, out, env_extra, args):
                     comps = j
                 elif j.get("probe") == "craft":
                     craft = j
+                elif j.get("probe") == "makers":
+                    makers = j
     gen = re.findall(r"successfully generated a dungeon with [^\n]*", text)
     sidecars = sorted(str(x) for x in d.rglob("*.apxparts"))
-    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage, "bundle": bundle, "components": comps, "craft": craft,
+    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage, "bundle": bundle, "components": comps, "craft": craft, "makers": makers,
             "generated": gen[-1] if gen else None, "sidecars": sidecars, "run_dir": str(d),
             "data_line": (re.findall(r"apxparts: data [^\n]*", text) or [None])[-1]}
 
@@ -225,7 +227,7 @@ def main():
     ap.add_argument("--mapseed", type=int, default=101)
     ap.add_argument("--timeout", type=float, default=150.0)
     ap.add_argument("--wait", type=float, default=7200.0)
-    ap.add_argument("--only", default="save,save-strip,save-payout,save-vanilla,visual,visual-off,net,net-strip,net-vanilla")
+    ap.add_argument("--only", default="save,save-strip,save-payout,save-makers-off,save-vanilla,visual,visual-off,net,net-strip,net-vanilla")
     ap.add_argument("--all", action="store_true", help="do not stop at the first failing gate")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -269,6 +271,9 @@ def main():
                     f"expected {cm.get('expected')}, gained {cm.get('gained')}, given {cm.get('given')}, crafted {cm.get('crafted_components')}/{cm.get('crafted_parts')} parts, "
                     f"kept after load {cm.get('kept_after_load')}/{cm.get('before_load')}, e.g. \"{cm.get('name')}\""):
             return 1
+        mk = r.get("makers") or {}
+        if not gate("C9 makers live through Barony's getAttack / AC / DEX / kill MP / wear", mk.get("pass") is True, f"{mk.get('makers')} makers: {mk.get('detail')}"):
+            return 1
         cf = r.get("craft") or {}
         if not gate("C4/C5/C6 live: make, assemble, swap, strip, infuse at a crucible; looted non-quick refused; unidentified names hide affixes", cf.get("pass") is True,
                     f"form {cf.get('form')}: made {cf.get('made')}/{cf.get('required')}, pouch spent {cf.get('pouch_spent')} g = cost {cf.get('cost')} g, "
@@ -296,6 +301,12 @@ def main():
         sv = r.get("salvage") or {}
         if not gate("D85 control APX_POUCH_SCRAP_PAYOUT=1 (the old scrap payout must fail the pouch gate)", sv.get("pouch_only") == 0 and (sv.get("metal_scrap") or 0) + (sv.get("magic_scrap") or 0) > 0,
                     f"pouch_only {sv.get('pouch_only')}, scrap items metal {sv.get('metal_scrap')} magic {sv.get('magic_scrap')}"):
+            return 1
+    if "save-makers-off" in only:
+        r = results["save-makers-off"] = run_save("save-makers-off", args.exe, args.out, {"APX_MAKERS": "0"}, args)
+        emit(r)
+        mk = r.get("makers") or {}
+        if not gate("C9 control APX_MAKERS=0 (makers do nothing: the live maker gate must fail)", mk.get("pass") is False, f"{mk.get('detail')}"):
             return 1
     if "save-vanilla" in only:
         r = results["save-vanilla"] = run_save("save-vanilla", args.exe, args.out, {"APX_PARTS": "0"}, args)

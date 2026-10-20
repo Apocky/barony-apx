@@ -239,6 +239,34 @@ std::string loadDB(const std::string& dir, DB& db)
 			if ( !found ) { return "affixes.json: affix " + db.affixes[i].name + " conflicts with unknown affix " + nm; }
 		}
 	}
+	{
+		// C9 makers (optional file: without it, maker stays 0 everywhere)
+		J mk;
+		if ( readJson(dir + "/makers.json", mk).empty() )
+		{
+			db.foreignPct = mk.num("foreign_pct", 75);
+			const auto& al = mk.arr("foreign_allowance_by_rarity");
+			for ( size_t k = 0; k < al.size() && k < 6; ++k ) { db.foreignAllowance[k] = (int)al[k].n; }
+			for ( auto& r : mk.arr("makers") )
+			{
+				Maker m;
+				m.id = r.str("id"); m.name = r.str("name");
+				const J* act = r.get("active");
+				m.active = act && act->t == J::BOOL && act->n != 0;
+				if ( const J* b = r.get("barony") )
+				{
+					for ( auto& f : b->arr("families") ) { const int fi = db.family(f.s); if ( fi < 0 ) { return "makers.json: " + m.id + " stamps unknown family " + f.s; } m.families.push_back(fi); }
+					if ( const J* t = b->get("tendencies") )
+					{
+						m.dmgPct = t->num("D") / 100; m.acFlat = t->num("A") / 1000; m.weightPct = t->num("W") / 100; m.valuePct = t->num("V") / 100;
+					}
+					for ( auto& g : b->arr("gimmick") ) { m.gimmick.push_back({ g.str("kind"), g.str("on", "any"), g.num("value") }); }
+				}
+				db.makers.push_back(m);
+			}
+			if ( db.makers.size() > 255 ) { return "makers.json: more than 255 makers (a part's maker is one byte)"; }
+		}
+	}
 	SalvageParams& s = db.salvage;
 	s.lootedPct = sv.num("looted_return_pct", 60); s.craftedPct = sv.num("crafted_return_pct", 100);
 	s.dischargePct = sv.num("discharge_pct", 20); s.auraPerAffixPct = sv.num("aura_per_affix_pct", 25);
