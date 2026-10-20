@@ -32,6 +32,8 @@ std::vector<apx_bench::PartRow> benchParts(const Item* item)
 		r.rarity = p.rarity;
 		r.massUnits = (int32_t)(apxPartsPartMassGrams(item, k) / 100);
 		r.integrity = p.integrity / 255.f;
+		r.name = apxPartsPartName(item, k);
+		for ( int a = 0; a < apxPartsAffixCount(item, k); ++a ) { r.affixes.push_back(apxPartsAffixWord(item, k, a)); }
 		rows.push_back(r);
 	}
 	return rows;
@@ -72,6 +74,28 @@ bool benchSalvagePreview(int, const Item* item, int keepSlot, apx_bench::Salvage
 bool benchSalvage(int player, Item* item, int keepSlot, std::string& why) { return apxPartsSalvageItem(player, item, keepSlot, why); }
 bool benchBreak(int player, Item* item, std::string& why) { return apxPartsBreak(player, item, why); }
 
+std::vector<apx_bench::PouchRow> benchPouch(int player)
+{
+	std::vector<apx_bench::PouchRow> rows;
+	for ( int m = 0; m < apxPartsMaterialCount(); ++m )
+	{
+		const int g = apxPartsLedgerMaterialGrams(player, m);
+		if ( g > 0 ) { rows.push_back({ m, apxPartsMaterialName(m), (long long)g }); }
+	}
+	return rows;
+}
+bool benchDrawBundle(int player, int material, long long grams, std::string& why)
+{
+	if ( grams <= 0 || grams > 0xFFFFF ) { why = "grams out of range (1 .. 1,048,575)"; return false; }
+	return apxPartsDrawBundle(player, material, (int)grams, why) != nullptr;
+}
+int benchComponentOf(const Item* item, apx_bench::PartRow& out)
+{
+	if ( !apxPartsIsComponent(item) ) { return 0; }
+	out = benchParts(item)[0];
+	return 1;
+}
+
 } // namespace
 
 void apxPartsBenchRegister()
@@ -90,6 +114,9 @@ void apxPartsBenchRegister()
 	p.salvage = &benchSalvage;
 	p.breakItem = &benchBreak;
 	p.pouchGrams = &apxPartsLedgerGrams; // D85: the one carry-weight rule (actplayer.cpp, U1) reads the real ledger
+	p.pouch = &benchPouch;
+	p.drawBundle = &benchDrawBundle;
+	p.componentOf = &benchComponentOf;
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }

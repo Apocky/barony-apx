@@ -140,11 +140,29 @@ void roll(const DB& db, const TypeForm& tfIn, uint32_t realm, int depth, int sou
 			p.maker = 0;
 			const AffixPool* pool = db.pool(tf.family, slots[k]);
 			p.nAffix = pool ? (uint8_t)std::min<int>(p.rarity, std::min(4, pool->count)) : 0;
+			// 05b section 4 fill order (G19:66): a prefix, then a suffix, then any; each pick weighted by the
+			// affix's rarity weight among the unused entries of the wanted position (any position when none is left)
 			bool used[64] = { false };
 			for ( int a = 0; a < p.nAffix; ++a )
 			{
-				int pick;
-				do { pick = r.below(pool->count); } while ( used[pick] );
+				const int want = a == 0 ? AFFIX_PREFIX : a == 1 ? AFFIX_SUFFIX : -1;
+				auto ok = [&](int j, bool posOnly) {
+					if ( used[j] ) { return false; }
+					const size_t id = (size_t)(pool->firstId + j);
+					return !posOnly || want < 0 || (id < db.affixes.size() && db.affixes[id].position == want);
+				};
+				bool posOnly = false;
+				for ( int j = 0; j < pool->count && j < 64 && !posOnly; ++j ) { posOnly = want >= 0 && ok(j, true); }
+				int sum = 0;
+				for ( int j = 0; j < pool->count && j < 64; ++j ) { if ( ok(j, posOnly) ) { const size_t id = (size_t)(pool->firstId + j); sum += id < db.affixes.size() ? db.affixes[id].weight : 1; } }
+				int x = r.below(sum), pick = 0;
+				for ( int j = 0; j < pool->count && j < 64; ++j )
+				{
+					if ( !ok(j, posOnly) ) { continue; }
+					const size_t id = (size_t)(pool->firstId + j);
+					x -= id < db.affixes.size() ? db.affixes[id].weight : 1;
+					if ( x < 0 ) { pick = j; break; }
+				}
 				used[pick] = true;
 				p.affix[a] = (uint16_t)(pool->firstId + pick);
 			}
@@ -298,7 +316,7 @@ int partMassGrams(const DB& db, const ApxPart& p)
 	return (int)((long long)vol * dens / 1000); // cm^3 x kg/m^3 / 1000 = grams
 }
 
-SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_t seed, bool symmetric)
+SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_t seed, bool symmetric, bool keepAsMaterial)
 {
 	SalvageResult r;
 	const SalvageParams& sp = db.salvage;
@@ -313,8 +331,16 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 		return r;
 	}
 	if ( comp ) { keepPart = -1; } // a component salvages to its material
+	if ( keepAsMaterial ) { keepPart = -1; }
 	const int pct = (r.looted && !symmetric) ? sp.lootedPct : sp.craftedPct;
 	if ( r.looted && r.affixesIn > 0 && !symmetric ) { r.discharged = rng.below(100) < sp.dischargePct; }
+	if ( r.looted && keepPart < 0 && !keepAsMaterial && it.nParts > 0 ) // quick salvage: maybe one loose part
+	{
+		int best = 0;
+		for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
+		const int rar = std::min<int>(5, it.parts[best].rarity);
+		if ( rng.below(100) < LOOSE_PCT[rar] ) { keepPart = best; r.loosePart = best; }
+	}
 	for ( int k = 0; k < it.nParts; ++k )
 	{
 		const ApxPart& p = it.parts[k];
@@ -351,16 +377,20 @@ ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t key, uint8_t fl
 std::string componentName(const DB& db, const ApxPart& p)
 {
 	auto cap = [](std::string s) { if ( !s.empty() ) { s[0] = (char)toupper((unsigned char)s[0]); } for ( auto& ch : s ) { if ( ch == '_' ) { ch = ' '; } } return s; };
+	// 05b section 4 / content-lane lint: prefix words in affix order + Material + Slot + suffix words; at most
+	// 2 prefixes and 2 suffixes shown; a second suffix drops its "of": "of Embers and Bleeding"
 	std::string pre, suf;
-	std::vector<std::string> sufs;
+	int nPre = 0, nSuf = 0;
 	for ( int a = 0; a < p.nAffix && a < 4; ++a )
 	{
 		if ( p.affix[a] >= db.affixes.size() ) { continue; }
 		const AffixInfo& ai = db.affixes[p.affix[a]];
-		if ( ai.position == AFFIX_PREFIX ) { pre += ai.label + " "; }
-		else { sufs.push_back(ai.label); }
+		if ( ai.position == AFFIX_PREFIX ) { if ( nPre++ < 2 ) { pre += ai.label + " "; } continue; }
+		if ( nSuf++ >= 2 ) { continue; }
+		std::string w = ai.label;
+		if ( w.compare(0, 3, "of ") != 0 ) { w = "of " + w; }
+		suf += nSuf == 1 ? " " + w : " and " + w.substr(3);
 	}
-	for ( size_t k = 0; k < sufs.size(); ++k ) { suf += (k == 0 ? " of " : k + 1 == sufs.size() ? " and " : ", ") + sufs[k]; }
 	const std::string mat = p.material < db.materials.size() ? cap(db.materials[p.material].id) : "?";
 	const std::string slot = p.slot < db.slots.size() ? cap(db.slots[p.slot].id) : "Part";
 	return pre + mat + " " + slot + suf;
