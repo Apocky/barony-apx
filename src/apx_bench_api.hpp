@@ -14,12 +14,15 @@ class Item;
 namespace apx_bench
 {
 	struct PartRow  { int slot = 0; std::string slotName, material; int quality = 0, rarity = 0; /* 0 common .. 4 legendary, 5 unique */ int32_t massUnits = 0; float integrity = 1.f;
-		std::string name; std::vector<std::string> affixes; };   // D86: a component has a name, rarity 0 common .. 4 legendary, affixes
+		std::string name; std::vector<std::string> affixes;
+		bool affixesKnown = true;              // 05b s4: affixes show as "unknown" until identified
+		std::string maker; std::vector<std::string> fits; };   // fits: the Forms and slots a loose component goes on   // D86: a component has a name, rarity 0 common .. 4 legendary, affixes
 	struct FormRow  { uint32_t form = 0; std::string name, family; int successes = 0; };        // known >= 1, mastered at 5
 	struct SlotNeed { int slot = 0; std::string name; bool required = true; int qgate = 0; std::vector<uint32_t> candidateUids; };
 	struct YieldRow { std::string material; int32_t massUnits = 0; };
 	struct PouchRow { int material = -1; std::string name; long long grams = 0; };   // D85: the material pouch (F6 ledger)
-	struct SwapSlot { int partIndex = 0; std::string name; std::vector<uint32_t> candidateUids; };          // D86 Swap
+	struct SwapSlot { int partIndex = 0; std::string name; std::vector<uint32_t> candidateUids; bool quick = false; }; // D86 Swap (looted: quick slots only)
+	struct RepairOption { int partIndex = 0; std::string name; float integrity = 1.f; std::vector<PouchRow> cost; bool affordable = false; }; // 05b s5.8b
 	struct MakeOption { int id = 0; std::string name; std::vector<PouchRow> cost; bool affordable = false; }; // D86 Make
 	struct SalvagePreview { std::vector<PartRow> parts; std::vector<YieldRow> yield; int dischargePct = 0, auraPct = 0; bool looted = false; };
 
@@ -44,6 +47,11 @@ namespace apx_bench
 		bool (*swapPart)(int player, Item* item, int partIndex, uint32_t componentUid, std::string& why) = nullptr; // the old part returns as a component
 		std::vector<MakeOption> (*makeOptions)(int player, int station) = nullptr;
 		bool (*make)(int player, int optionId, std::string& why) = nullptr;                       // spends pouch grams, adds a component item
+		// C3/C4 (05b sections 4, 5, 7)
+		std::string (*displayName)(const Item* item) = nullptr;   // generated component / assembly name; "" = Barony's own
+		bool (*assemblePreview)(int player, uint32_t form, int station, const std::vector<std::pair<int, uint32_t>>& slotUid, int& power, int& cap, std::string& why) = nullptr;
+		std::vector<RepairOption> (*repairOptions)(int player, const Item* item, int station) = nullptr;
+		bool (*repair)(int player, Item* item, int partIndex, std::string& why) = nullptr;
 	};
 	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub

@@ -2,6 +2,7 @@
 // built as rows for the U1 list widget, plus the vanilla stub provider of apx_bench_api.hpp.
 // F6 registers the real provider (parts, Formbook, craft, salvage); fields it leaves null use the stub.
 #include "apx_bench_api.hpp"
+#include <map>
 #include "apx_inventory.hpp"
 #include "game.hpp"
 #include "stat.hpp"
@@ -52,6 +53,10 @@ static std::vector<SwapSlot> stubSwapSlots(int, const Item*, int) { return {}; }
 static bool stubSwap(int, Item*, int, uint32_t, std::string& why) { why = "components arrive with F6"; return false; }
 static std::vector<MakeOption> stubMakeOptions(int, int) { return {}; }
 static bool stubMake(int, int, std::string& why) { why = "components arrive with F6"; return false; }
+static std::string stubDisplayName(const Item*) { return ""; }
+static bool stubAssemblePreview(int, uint32_t, int, const std::vector<std::pair<int, uint32_t>>&, int& power, int& cap, std::string& why) { power = 0; cap = 0; why = "assembly arrives with F6"; return false; }
+static std::vector<RepairOption> stubRepairOptions(int, const Item*, int) { return {}; }
+static bool stubRepair(int, Item*, int, std::string& why) { why = "repair arrives with F6"; return false; }
 static long long stubPouchGrams(int) { return 0; }
 
 static Provider makeStub()
@@ -62,6 +67,7 @@ static Provider makeStub()
 	p.craft = stubCraft; p.salvagePreview = stubPreview; p.salvage = stubSalvage; p.breakItem = stubBreak;
 	p.pouch = stubPouch; p.pouchGrams = stubPouchGrams; p.drawBundle = nullptr;
 	p.componentOf = stubComponentOf; p.swapSlots = stubSwapSlots; p.swapPart = stubSwap; p.makeOptions = stubMakeOptions; p.make = stubMake;
+	p.displayName = stubDisplayName; p.assemblePreview = stubAssemblePreview; p.repairOptions = stubRepairOptions; p.repair = stubRepair;
 	return p;
 }
 static Provider g_stub = makeStub();
@@ -89,6 +95,10 @@ void setProvider(const Provider& p)
 	if ( !g_active.swapPart ) { g_active.swapPart = g_stub.swapPart; }
 	if ( !g_active.makeOptions ) { g_active.makeOptions = g_stub.makeOptions; }
 	if ( !g_active.make ) { g_active.make = g_stub.make; }
+	if ( !g_active.displayName ) { g_active.displayName = g_stub.displayName; }
+	if ( !g_active.assemblePreview ) { g_active.assemblePreview = g_stub.assemblePreview; }
+	if ( !g_active.repairOptions ) { g_active.repairOptions = g_stub.repairOptions; }
+	if ( !g_active.repair ) { g_active.repair = g_stub.repair; }
 	printlog("[apx] bench provider: %s", g_active.name);
 }
 long long pouchUnits(int player)
@@ -111,54 +121,97 @@ static Entry line(const std::string& t, int32_t mass = 0, uint32_t id = 0, int k
 	return e;
 }
 
-const int BENCH_TABS = 6; // Assemble, Swap, Make, Salvage, Forms, Materials (D86)
-const char* benchTabName(int tab) { static const char* n[] = { "Asm", "Swap", "Make", "Salv", "Forms", "Mats" }; return tab >= 0 && tab < BENCH_TABS ? n[tab] : "?"; }
+const int BENCH_TABS = 7; // Assemble, Swap, Make, Repair, Salvage, Forms, Materials (05b section 7)
+const char* benchTabName(int tab) { static const char* n[] = { "Asm", "Swap", "Make", "Rep", "Salv", "Forms", "Mats" }; return tab >= 0 && tab < BENCH_TABS ? n[tab] : "?"; }
 
-// rows of one bench view. selectedOwn: the item selected in the player's list (salvage target)
+// per player: the component chosen to keep in Salvage, and the component chosen per slot in Assemble
+struct BenchPick { Uint32 salvageItem = 0; int keep = -1; uint32_t asmForm = 0; std::map<int, uint32_t> asmPick; };
+static BenchPick g_pick[MAXPLAYERS];
+int benchKeep(int player) { return g_pick[player].keep; }
+
+static std::string grams(long long g) { return std::to_string(g) + " g"; }
+static std::string costText(const std::vector<PouchRow>& cost)
+{
+	std::string s;
+	for ( auto& c : cost ) { s += (s.empty() ? "" : ", ") + c.name + " " + grams(c.grams); }
+	return s;
+}
+static std::string componentLabel(const Provider& pv, uint32_t uid, int* rarity)
+{
+	Item* c = uidToItem(uid);
+	if ( !c ) { return "?"; }
+	PartRow pr;
+	if ( pv.componentOf(c, pr) ) { if ( rarity ) { *rarity = pr.rarity; } }
+	std::string n = pv.displayName(c);
+	return n.empty() ? std::string(c->getName()) : n;
+}
+
+// rows of one bench view. selectedOwn: the item selected in the player's list
 std::vector<Entry> benchEntries(int player, int tab, int station, Item* selectedOwn, uint32_t selectedForm, std::string& head)
 {
 	const Provider& pv = provider();
+	auto& pk = g_pick[player];
 	std::vector<Entry> e;
 	head.clear();
 	for ( int t = 0; t < BENCH_TABS; ++t ) { head += (t ? " " : "") + (t == tab ? std::string("[") + benchTabName(t) + "]" : std::string(benchTabName(t))); }
-	if ( tab == 0 ) // Craft: Forms this station can make, then the chosen Form's slots
+	if ( tab == 0 ) // Assemble: a known Form, a component per slot, item power against the depth cap
 	{
 		auto fb = pv.formbook(player);
-		std::string ops;
-		for ( auto& o : apx_logic::stationOps(station) ) { ops += (ops.empty() ? "" : ", ") + o; }
-		e.push_back(header(std::string(apx_logic::stationName(station)) + ": " + ops));
-		e.push_back(header("Forms"));
+		e.push_back(header(std::string(apx_logic::stationName(station)) + ": assemble a known Form"));
 		if ( fb.empty() ) { e.push_back(line("No Forms known yet. Break an item to learn its Form.")); }
-		for ( auto& f : fb ) { if ( f.successes > 0 ) { e.push_back(line(f.name + "  " + std::to_string(f.successes) + "/5", 0, f.form, 1)); } }
+		for ( auto& f : fb )
+		{
+			if ( f.successes <= 0 ) { continue; }
+			// the row carries form + 1: Form id 0 (Blades) is a real Form, 0 means none chosen
+			e.push_back(line((f.form + 1 == selectedForm ? "[*] " : "    ") + f.name + "  " + std::to_string(f.successes) + "/5", 0, f.form + 1, 1));
+		}
 		if ( selectedForm )
 		{
-			e.push_back(header("Slots"));
-			for ( auto& s : pv.craftSlots(player, selectedForm, station) )
+			const uint32_t form = selectedForm - 1;
+			if ( pk.asmForm != selectedForm ) { pk.asmForm = selectedForm; pk.asmPick.clear(); }
+			auto slots = pv.craftSlots(player, form, station);
+			std::vector<std::pair<int, uint32_t>> picks;
+			bool allRequired = true;
+			for ( auto& s : slots )
 			{
-				long long m = 0;
-				for ( uint32_t uid : s.candidateUids ) { if ( Item* it = uidToItem(uid) ) { m += it->getWeight(); } }
-				e.push_back(line(s.name + (s.required ? "" : " (optional)") + "  " + std::to_string(s.candidateUids.size()) + " fit", (int32_t)m, 0, 2));
+				e.push_back(header(s.name + (s.required ? "" : " (optional)")));
+				if ( s.candidateUids.empty() ) { e.push_back(line("  no fitting component carried")); }
+				auto chosen = pk.asmPick.find(s.slot);
+				for ( uint32_t uid : s.candidateUids )
+				{
+					int rar = -1;
+					bool on = chosen != pk.asmPick.end() && chosen->second == uid;
+					Item* c = uidToItem(uid);
+					Entry x = line((on ? "[x] " : "[ ] ") + componentLabel(pv, uid, &rar), c ? c->getWeight() : 0, uid, 10);
+					x.row.slot = s.slot; x.row.rarity = rar;
+					e.push_back(x);
+				}
+				if ( chosen != pk.asmPick.end() ) { picks.push_back({ s.slot, chosen->second }); }
+				else if ( s.required ) { allRequired = false; }
 			}
+			int power = 0, cap = 0;
+			std::string why;
+			bool ok = allRequired && pv.assemblePreview(player, form, station, picks, power, cap, why);
+			e.push_back(header("Item power " + std::to_string(power) + " / cap " + std::to_string(cap)));
+			e.push_back(line(ok ? ">> Assemble" : (allRequired ? "   " + why : "   fill every required slot"), 0, selectedForm, ok ? 11 : 0));
 		}
-		for ( auto& op : apx_logic::stationOps(station) ) { (void)op; }
 	}
-	else if ( tab == 1 ) // Swap: replace a part of the item selected in our list with a carried component
+	else if ( tab == 1 ) // Swap: a part of the selected item for a carried component (looted items: quick slots only)
 	{
 		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
 		e.push_back(header(std::string(selectedOwn->getName()) + ": swap a part"));
 		auto slots = pv.swapSlots(player, selectedOwn, station);
-		if ( slots.empty() ) { e.push_back(line("No part can be swapped here.")); }
+		if ( slots.empty() ) { e.push_back(line("No part can be swapped here (looted: quick slots only).")); }
 		for ( auto& s : slots )
 		{
-			e.push_back(header(s.name));
+			e.push_back(header(s.name + (s.quick ? " (quick slot)" : "")));
 			if ( s.candidateUids.empty() ) { e.push_back(line("  no fitting component carried")); }
 			for ( uint32_t uid : s.candidateUids )
 			{
+				int rar = -1;
 				Item* c = uidToItem(uid);
-				Entry x = line(c ? std::string(">> ") + c->getName() : "?", c ? c->getWeight() : 0, uid, 7);
-				x.row.slot = s.partIndex;
-				PartRow pr;
-				if ( c && pv.componentOf(c, pr) ) { x.row.rarity = pr.rarity; }
+				Entry x = line(">> " + componentLabel(pv, uid, &rar), c ? c->getWeight() : 0, uid, 7);
+				x.row.slot = s.partIndex; x.row.rarity = rar;
 				e.push_back(x);
 			}
 		}
@@ -166,51 +219,73 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 	else if ( tab == 2 ) // Make: a component from pouch materials
 	{
 		auto opts = pv.makeOptions(player, station);
-		e.push_back(header("Make a component (pouch " + std::to_string(pv.pouchGrams(player)) + " g)"));
+		e.push_back(header("Make a component (pouch " + grams(pv.pouchGrams(player)) + ")"));
 		if ( opts.empty() ) { e.push_back(line("Nothing to make here yet.")); }
 		for ( auto& o : opts )
 		{
-			std::string cost;
-			for ( auto& c : o.cost ) { cost += (cost.empty() ? "" : ", ") + c.name + " " + std::to_string(c.grams) + " g"; }
-			Entry x = line((o.affordable ? ">> " : "   ") + o.name + "  (" + cost + ")", 0, (uint32_t)(o.id + 1), 8);
+			Entry x = line((o.affordable ? ">> " : "   ") + o.name + "  (" + costText(o.cost) + ")", 0, (uint32_t)(o.id + 1), 8);
 			if ( !o.affordable ) { x.row.status = 1; }
 			e.push_back(x);
 		}
 	}
-	else if ( tab == 3 ) // Salvage / dismantle the item selected in our list
+	else if ( tab == 3 ) // Repair: a component's integrity back, for pouch material of its kind
 	{
 		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
+		e.push_back(header(std::string(selectedOwn->getName()) + ": repair"));
+		auto opts = pv.repairOptions(player, selectedOwn, station);
+		if ( opts.empty() ) { e.push_back(line("Nothing to repair.")); }
+		for ( auto& o : opts )
+		{
+			int pct = (int)(o.integrity * 100.f + 0.5f);
+			Entry x = line((o.affordable ? ">> " : "   ") + o.name + "  " + std::to_string(pct) + "%  (" + costText(o.cost) + ")", 0, (uint32_t)(o.partIndex + 1), 12);
+			if ( !o.affordable ) { x.row.status = 1; }
+			e.push_back(x);
+		}
+	}
+	else if ( tab == 4 ) // Salvage: choose the component to keep, preview the return, then break
+	{
+		if ( !selectedOwn ) { e.push_back(line("Select an item in your pack.")); return e; }
+		if ( pk.salvageItem != selectedOwn->uid ) { pk.salvageItem = selectedOwn->uid; pk.keep = -1; }
 		SalvagePreview pr;
-		bool ok = pv.salvagePreview(player, selectedOwn, -1, pr);
-		e.push_back(header(std::string(apx_logic::stationName(station)) + ": dismantle"));
-		e.push_back(header(std::string(selectedOwn->getName()) + (pr.looted ? " (looted)" : "")));
+		bool ok = pv.salvagePreview(player, selectedOwn, pk.keep, pr);
+		e.push_back(header(std::string(apx_logic::stationName(station)) + ": break"));
+		e.push_back(header(std::string(selectedOwn->getName()) + (pr.looted ? " (looted)" : " (crafted)")));
 		e.push_back(line("Item", selectedOwn->getWeight()));
 		if ( !pr.parts.empty() )
 		{
-			e.push_back(header("Parts (pick one to keep)"));
+			e.push_back(header(pr.looted ? "Keep one component" : "Every component returns"));
 			for ( size_t k = 0; k < pr.parts.size(); ++k )
 			{
 				const auto& p = pr.parts[k];
-				e.push_back(line(p.slotName + ": " + p.material, p.massUnits, (uint32_t)(k + 1), 3)); // uid = part index + 1
+				std::string nm = p.name.empty() ? p.material : p.name;
+				Entry x = line(((int)k == pk.keep ? "[x] " : "[ ] ") + p.slotName + ": " + nm, p.massUnits, (uint32_t)(k + 1), 3); // uid = part index + 1
+				x.row.rarity = p.rarity;
+				e.push_back(x);
 			}
 		}
-		e.push_back(header(ok ? "Returns" : "Cannot be salvaged"));
+		e.push_back(header(ok ? "Returns to the pouch" : "Cannot be salvaged"));
 		long long ym = 0;
 		for ( auto& y : pr.yield ) { e.push_back(line(y.material, y.massUnits)); ym += y.massUnits; }
-		if ( ok && !pr.yield.empty() ) { e.push_back(line("Total returned", (int32_t)ym)); }
+		if ( ok && !pr.yield.empty() ) { e.push_back(line("Total", (int32_t)ym)); }
 		if ( pr.dischargePct || pr.auraPct )
 		{
 			e.push_back(line("Discharge " + std::to_string(pr.dischargePct) + "%, aura crystal " + std::to_string(pr.auraPct) + "% per affix"));
 		}
-		e.push_back(line(">> Salvage", 0, 0xFFFFFFFFu, 4));
+		if ( ok )
+		{
+			if ( !pr.looted || pr.parts.empty() ) { e.push_back(line(">> Break", 0, 0, 4)); }
+			else if ( pk.keep >= 0 ) { e.push_back(line(">> Break, keeping " + pr.parts[pk.keep].slotName, 0, (uint32_t)(pk.keep + 1), 4)); }
+			else { e.push_back(line("   choose the component to keep")); }
+			if ( pr.looted && !pr.parts.empty() ) { e.push_back(line(">> Quick salvage (no choice)", 0, 0, 9)); }
+		}
 	}
-	else if ( tab == 5 ) // Materials: the pouch (D85), grams per material, and Draw out when the provider has it
+	else if ( tab == 6 ) // Materials: the pouch (D85), grams per material, and Draw out when the provider has it
 	{
 		auto pouch = pv.pouch(player);
 		long long total = pv.pouchGrams(player);
 		e.push_back(header("Material pouch: " + std::to_string(total / 1000) + "." + std::to_string((total % 1000) / 100) + " kg"));
-		if ( pouch.empty() ) { e.push_back(line("Empty. Salvaging fills it.")); }
-		for ( auto& p : pouch ) { e.push_back(line(p.name + "  " + std::to_string(p.grams) + " g", (int32_t)((p.grams + 50) / 100), (uint32_t)(p.material + 1), 6)); }
+		if ( pouch.empty() ) { e.push_back(line(total > 0 ? "Held as one store (" + grams(total) + ")." : "Empty. Salvaging fills it.")); }
+		for ( auto& p : pouch ) { e.push_back(line(p.name + "  " + grams(p.grams), (int32_t)((p.grams + 50) / 100), (uint32_t)(p.material + 1), 6)); }
 		if ( pv.drawBundle )
 		{
 			e.push_back(header("Draw out a 1 kg bundle"));
@@ -236,19 +311,23 @@ std::vector<Entry> benchEntries(int player, int tab, int station, Item* selected
 bool benchActivate(int player, int tab, int station, Item* selectedOwn, const Entry& row, uint32_t& selectedForm, std::string& msg)
 {
 	const Provider& pv = provider();
+	auto& pk = g_pick[player];
 	if ( row.header ) { return false; }
-	if ( tab == 0 && row.row.kind == 1 && station == apx_logic::FIELD ) { msg = "No crafting at a field bench."; return false; } // apx BP1
-	if ( tab == 0 && row.row.kind == 1 )
+	if ( tab == 0 && (row.row.kind == 1 || row.row.kind == 11) && station == apx_logic::FIELD ) { msg = "No assembling at a field bench."; return false; } // apx BP1
+	if ( tab == 0 && row.row.kind == 1 ) { selectedForm = row.row.uid; return true; }   // pick the Form
+	if ( tab == 0 && row.row.kind == 10 )                                               // pick or unpick a component for a slot
 	{
-		if ( selectedForm != row.row.uid ) { selectedForm = row.row.uid; return true; } // first press picks the Form
-		std::vector<std::pair<int, uint32_t>> pick;
-		for ( auto& s : pv.craftSlots(player, selectedForm, station) )
-		{
-			if ( !s.candidateUids.empty() ) { pick.push_back({ s.slot, s.candidateUids.front() }); }
-		}
+		auto it = pk.asmPick.find(row.row.slot);
+		if ( it != pk.asmPick.end() && it->second == row.row.uid ) { pk.asmPick.erase(it); } else { pk.asmPick[row.row.slot] = row.row.uid; }
+		return true;
+	}
+	if ( tab == 0 && row.row.kind == 11 && selectedForm )
+	{
+		std::vector<std::pair<int, uint32_t>> picks(pk.asmPick.begin(), pk.asmPick.end());
 		std::string why;
-		bool ok = pv.craft(player, selectedForm, station, pick, why);
-		msg = ok ? "Crafted." : "Cannot craft: " + why;
+		bool ok = pv.craft(player, selectedForm - 1, station, picks, why);
+		msg = ok ? "Assembled." : "Cannot assemble: " + why;
+		if ( ok ) { pk.asmPick.clear(); }
 		return ok;
 	}
 	if ( tab == 1 && row.row.kind == 7 && selectedOwn )
@@ -265,19 +344,28 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 		msg = ok ? "Made a component." : "Cannot make: " + why;
 		return ok;
 	}
-	if ( tab == 5 && row.row.kind == 5 && pv.drawBundle )
+	if ( tab == 3 && row.row.kind == 12 && selectedOwn )
+	{
+		std::string why;
+		bool ok = pv.repair(player, selectedOwn, (int)row.row.uid - 1, why);
+		msg = ok ? "Repaired." : "Cannot repair: " + why;
+		return ok;
+	}
+	if ( tab == 6 && row.row.kind == 5 && pv.drawBundle )
 	{
 		std::string why;
 		bool ok = pv.drawBundle(player, (int)row.row.uid - 1, 1000, why);
 		msg = ok ? "You draw out a bundle." : "Cannot draw out: " + why;
 		return ok;
 	}
-	if ( tab == 3 && selectedOwn && (row.row.kind == 3 || row.row.kind == 4) )
+	if ( tab == 4 && selectedOwn && row.row.kind == 3 ) { pk.salvageItem = selectedOwn->uid; pk.keep = (int)row.row.uid - 1; return true; } // choose the keep
+	if ( tab == 4 && selectedOwn && (row.row.kind == 4 || row.row.kind == 9) )
 	{
-		int keep = row.row.kind == 3 ? (int)row.row.uid - 1 : -1; // the part index, -1 keeps nothing
+		int keep = row.row.kind == 4 ? (int)row.row.uid - 1 : -1; // the part index; -1: quick salvage / crafted (all return)
 		std::string why, name = selectedOwn->getName();
 		bool ok = pv.salvage(player, selectedOwn, keep, why);
 		msg = ok ? "Salvaged the " + name + "." : "Cannot salvage: " + why;
+		if ( ok ) { pk.keep = -1; pk.salvageItem = 0; }
 		return ok;
 	}
 	return false;
