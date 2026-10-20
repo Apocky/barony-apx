@@ -1174,6 +1174,8 @@ namespace combat
 		for ( int i = 0; i < 16 && !m; ++i ) { const double a = me->yaw + (i % 8) * (PI / 4), d = 26.0 + 8.0 * (i / 8); m = summonMonster(t, me->x + cos(a) * d, me->y + sin(a) * d, false); }
 		if ( !m || !m->getStats() ) { row("{\"ev\":\"foe\",\"made\":0}"); return; }
 		gFoeUid = m->getUID();
+		row("{\"ev\":\"foe_effects\",\"par\":%d,\"asleep\":%d,\"stasis\":%d,\"stun\":%d,\"mobile\":%d}", (int)m->getStats()->getEffectActive(EFF_PARALYZED), (int)m->getStats()->getEffectActive(EFF_ASLEEP), (int)m->getStats()->getEffectActive(EFF_STASIS), (int)m->getStats()->getEffectActive(EFF_STUNNED), (int)m->isMobile());
+		m->setEffect(EFF_ASLEEP, false, 0, false); m->setEffect(EFF_PARALYZED, false, 0, false); m->setEffect(EFF_STUNNED, false, 0, false);
 		m->getStats()->HP = m->getStats()->MAXHP = 9999;
 		m->monsterAcquireAttackTarget(*me, MONSTER_STATE_PATH, false);
 		row("{\"ev\":\"foe\",\"made\":1,\"type\":%d,\"uid\":%u}", (int)t, m->getUID());
