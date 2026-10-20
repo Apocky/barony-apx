@@ -594,8 +594,10 @@ namespace apx
 	}
 
 	// ---- per-tick local update, called from actHudWeapon --------------------------------------------------
+	inline unsigned long long tickCalls = 0; // D93: calls of tick() (visible in the combat perf row: the HUD weapon runs it)
 	inline void tick(int player, int chop, bool melee, bool defending)
 	{
+		++tickCalls;
 		if ( !staminaEnabled() ) { return; }
 		selftestAdvance(player);
 		Stamina_t& s = get(player);

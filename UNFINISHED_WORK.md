@@ -14,3 +14,6 @@ In flight: apx-gen vendored at src/apx/gen (527a535), bridge src/apx/apx_gen_bri
 
 ## 2026-10-19 23:10 -07:00 COMBAT lane C1 (branch apx/combat, worktree ..arony-apx-combat)
 In flight: D93 combat core built, selftest-all 7/7 PASS. Resume: build toolspxuild.ps1; next write toolspx\combat_qa.py (QA-driver real-input gate, APX_COMBAT_QA=<family>[:crowd]), run on normal start and -apxfloor=1, commit, push, ls-remote.
+
+## 2026-10-20 00:30 -07:00 COMBAT lane C1 done
+Nothing in flight. apx/combat pushed (gate PASS, evidence C:\Apocrypha\diagnostics\combatinal). Resume: C2 = block, timed block, riposte, chamber, dodge, feint, kick, bash on apx::combat (04b section 8); when apx/input merges, delete src/apx/in/in_stub.cpp and take its in.hpp.

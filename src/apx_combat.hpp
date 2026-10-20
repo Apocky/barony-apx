@@ -232,6 +232,11 @@ namespace combat_glue
 		}
 		else if ( poiseOn() && r.poise.hit(poiseIn) ) startStagger(target, r);
 		const bool phys = physicalPlayer(target);
+		// D93: at most 6 hit lines per second of game time (a 150-creature fight wrote one file line per blow: ~0.02 ms each, p99 of the combat tick)
+		static Uint32 logSecond = 0xFFFFFFFFu;
+		static int logCount = 0;
+		if ( ::ticks / 50 != logSecond ) { logSecond = ::ticks / 50; logCount = 0; }
+		if ( ++logCount <= 6 )
 		printlog("[apx-f4c] hit uid=%u type=%d zone=%s base=%d dmg=%d poise=%.0f/%.0f%s staggered=%d legs=%d/%d arms=%d/%d", target->getUID(),
 			(int)tStats->type, zoneName(z), damage, out, phys ? r.phys.value : r.poise.value, phys ? r.phys.max : (double)r.poise.max,
 			phys ? " physical" : "", (int)staggeredRec(target, r),

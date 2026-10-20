@@ -57,12 +57,14 @@ namespace combat
 		constexpr int kMaxHoldTicks = 100;       // a charge held this long releases itself
 		constexpr float kBeamHalfWidth = 4.f;    // units: a line move's half width beyond the body radius
 		constexpr int kFizzleTicks = 12;
+		constexpr int kMaxHitsPerTick = 1;       // hits resolved in one sim tick (one hit costs ~0.12 ms in Barony's own stat code); swept targets left over follow on the next ticks, 20 ms each
 
 		Counters gCount;
 		bool gObjectPass = false;
 		// the swing in flight / last finished, for the self-test and QA verdicts
 		struct LastSwing { int swing = 0, moveId = 0, dir = 0, hits = 0; bool charged = false, done = false; double cost = 0, table = 0, before = 0, after = 0; };
 		LastSwing gLast;
+		std::vector<Uint32> gDummies; // the QA arena's creatures
 
 		// ---------------------------------------------------------------- JSONL telemetry
 		FILE* jsonl()
@@ -77,8 +79,27 @@ namespace combat
 			}
 			return f;
 		}
+		double gLogMs = 0.0;   // time spent writing telemetry: excluded from the core's measured cost
+		double gLegacyMs = 0.0; // applyHit time at the Barony hit sites (creature melee, arrows, thrown) since the last player tick: counted in the per-tick cost
+		struct LegacyTimer { std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now(); ~LegacyTimer() { gLegacyMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(); } };
+		// where the time goes (ms, calls), dumped in the perf row (sec_ms / sec_n):
+		//  0 damage calc   5 getAttack  6 AC  7 damage table  8 AC effectiveness   (inside 0)
+		//  1 rule stages (tier D74, zones F4c, poise D75; 9 = the tier part)
+		//  2 modHP   3 consequences (10 effects and armour wear, 11 messages, 12 enemy bar, 13 sound, 14 alert)   4 sweep scan   15 object pass
+		double gSecMs[16] = {};
+		long long gSecN[16] = {};
+		struct Sec
+		{
+			int i; std::chrono::steady_clock::time_point t0;
+			explicit Sec(int idx) : i(idx), t0(std::chrono::steady_clock::now()) {}
+			void end() { if ( i >= 0 ) { gSecMs[i] += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(); ++gSecN[i]; i = -1; } }
+			~Sec() { end(); }
+		};
+		bool logOn() { static const bool on = envOne("APX_COMBAT_LOG") || jsonl() != nullptr; return on; }
 		void row(const char* fmt, ...)
 		{
+			if ( !logOn() ) { return; } // counters only unless APX_COMBAT_LOG=1 or APX_COMBAT_JSONL is set
+			const auto t0 = std::chrono::steady_clock::now();
 			FILE* f = jsonl();
 			char buf[640];
 			va_list ap;
@@ -87,6 +108,7 @@ namespace combat
 			va_end(ap);
 			printlog("[apx-combat] %s", buf);
 			if ( f ) { fprintf(f, "%s\n", buf); fflush(f); }
+			gLogMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 		}
 
 		// ---------------------------------------------------------------- perf ring
@@ -174,13 +196,27 @@ namespace combat
 	bool objectPass() { return gObjectPass; }
 	const Counters& counters() { return gCount; }
 
+	static int arenaAlive()
+	{
+		int n = 0;
+		for ( Uint32 uid : gDummies ) { Entity* e = uidToEntity(uid); if ( e && e->getStats() && e->getStats()->HP > 0 ) { ++n; } }
+		return n;
+	}
+
 	void perfDump()
 	{
 		if ( gPerf.all.empty() ) { return; }
-		row("{\"ev\":\"perf\",\"ticks\":%zu,\"p50_ms\":%.4f,\"p99_ms\":%.4f,\"max_ms\":%.4f,\"swing_ticks\":%zu,\"swing_p50_ms\":%.4f,\"swing_p99_ms\":%.4f,\"swing_max_ms\":%.4f,\"creatures\":%d}",
+		char secMsBuf[400] = "", secNBuf[300] = "";
+		for ( int i = 0; i < 16; ++i ) { char t[32]; snprintf(t, sizeof t, "%s%.4f", i ? "," : "", gSecMs[i]); strcat(secMsBuf, t); snprintf(t, sizeof t, "%s%lld", i ? "," : "", gSecN[i]); strcat(secNBuf, t); }
+		row("{\"ev\":\"perf\",\"ticks\":%zu,\"p50_ms\":%.4f,\"p99_ms\":%.4f,\"max_ms\":%.4f,\"swing_ticks\":%zu,\"swing_p50_ms\":%.4f,\"swing_p99_ms\":%.4f,\"swing_max_ms\":%.4f,\"creatures\":%d,\"stamina\":%.2f,\"stamina_max\":%.2f,\"last_spend\":%u,\"now\":%u,\"defending\":%d,\"stamina_ticks\":%llu,\"sec_ms\":[%s],\"sec_n\":[%s],\"arena\":%zu,\"arena_alive\":%d,\"swimming\":%d,\"inwater\":%d,\"z\":%.2f}",
 			gPerf.all.size(), pct(gPerf.all, 0.5), pct(gPerf.all, 0.99), pct(gPerf.all, 1.0),
 			gPerf.active.size(), pct(gPerf.active, 0.5), pct(gPerf.active, 0.99), pct(gPerf.active, 1.0),
-			map.creatures ? (int)list_Size(map.creatures) : 0);
+			map.creatures ? (int)list_Size(map.creatures) : 0, apx::get(0).value, apx::get(0).maxValue, (unsigned)apx::get(0).lastSpendTick, (unsigned)ticks,
+			stats[0] ? (int)stats[0]->defending : -1, apx::tickCalls,
+			secMsBuf, secNBuf,
+			gDummies.size(), arenaAlive(),
+			(players[0] && players[0]->entity) ? (int)players[0]->movement.isPlayerSwimming() : -1, (players[0] && players[0]->entity) ? (int)players[0]->entity->skill[13] : -1,
+			(players[0] && players[0]->entity) ? (double)players[0]->entity->z : 0.0);
 		gPerf.all.clear();
 		gPerf.active.clear();
 	}
@@ -302,8 +338,11 @@ namespace combat
 			const bool isPlayerAtk = me->behavior == &actPlayer;
 			const int maxCharge = Stat::getMaxAttackCharge(ms);
 			const int charge = (mv && mv->charged) ? maxCharge : 0;
+			Sec t5(5);
 			int myAttack = std::max(0, Entity::getAttack(me, ms, isPlayerAtk, charge) + me->getBonusAttackOnTarget(*ts));
 			myAttack += apxPartsAttackOnTarget(me, ms, ts, myAttack);
+			t5.end();
+			Sec t6(6);
 			int enemyAC = AC(ts);
 			if ( mv )
 			{
@@ -315,8 +354,11 @@ namespace combat
 				}
 				if ( mv->armourIgnore > 0.f ) { enemyAC = (int)(enemyAC * (1.0 - mv->armourIgnore)); }
 			}
+			t6.end();
+			Sec t8b(8);
 			int numBlessings = 0;
 			const real_t eff = Entity::getACEffectiveness(target, ts, target->behavior == &actPlayer, me, ms, numBlessings);
+			t8b.end();
 			const int attackAfterReductions = (int)(std::max(0.0, (myAttack * eff - enemyAC)) + (1.0 - eff) * myAttack);
 
 			// weapon skill and the damage-table class
@@ -324,6 +366,7 @@ namespace combat
 			if ( weaponskill < 0 ) { weaponskill = PRO_UNARMED; }
 			DamageTableType dmgType = DAMAGE_TABLE_UNARMED;
 			if ( weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM ) { dmgType = (DamageTableType)(weaponskill - PRO_SWORD); }
+			Sec t7(7);
 			real_t wm = Entity::getDamageTableMultiplier(target, *ts, dmgType); // class table (+ the class's impact rule when on) and Barony's bonuses
 			// D93: the impact rule for THIS move (kind, momentum, contact area) in place of the class's reference move
 			mult = 1.f;
@@ -334,6 +377,7 @@ namespace combat
 				const float mine = apx::combat::multiplierForMove((int)ts->type, m, -1.f);
 				if ( cls > 0.f && mine >= 0.f ) { mult = mine / cls; wm *= mult; apx::combat::countUse(); }
 			}
+			t7.end();
 			Entity::modifyDamageMultipliersFromEffects(target, me, wm, dmgType);
 			int damage = (int)(attackAfterReductions * wm);
 			if ( eff < 0.99 ) { damage = std::max(1, damage); } else { damage = std::max(0, damage); }
@@ -393,12 +437,16 @@ namespace combat
 		if ( !(h.flags & HF_PRECOMPUTED) )
 		{
 			if ( !me || !ms ) { r.landed = false; return r; }
+			Sec sec(0);
 			damage = meleeDamage(me, ms, target, ts, mv, h, unaware, r.multiplier, sneak);
 		}
 		r.sneak = sneak;
 
+		Sec secRules(1);
 		// rule stage: D74 tier damage (a hostile creature's hit on a player or follower; the knob lives in tiers.cpp)
+		Sec t9(9);
 		if ( me ) { damage = apx::tierdmg::onCreatureHit(me, target, damage, (apx::tierdmg::Path)h.path); }
+		t9.end();
 		if ( me && h.path == PATH_MELEE && (h.flags & HF_PRECOMPUTED) ) { damage = apx::vglue::scaleDamage(me, damage); } // BV1: a variant creature's damage multiple
 		// rule stage: F4c zones and D75 poise (armour and stance are read inside), staggered x1.5
 		const combat::Zone zone = zoneOf(h, mv);
@@ -409,10 +457,13 @@ namespace combat
 		}
 		r.zone = (int)zone;
 		r.staggered = ts->getEffectActive(EFF_PARALYZED) != 0 && !stagBefore;
+		secRules.end();
 		if ( h.flags & HF_DRY ) { r.damage = damage; r.hpAfter = ts->HP; return r; }
 
 		const Sint32 oldHP = ts->HP;
+		Sec secHP(2);
 		target->modHP(-damage);
+		secHP.end();
 		r.damage = std::max(0, oldHP - ts->HP);
 		r.hpAfter = ts->HP;
 		r.blocked = wasBlocking && damage == 0;
@@ -420,8 +471,9 @@ namespace combat
 		if ( (h.flags & HF_PRECOMPUTED) ) { return r; } // creature melee, arrows, thrown: the engine does the rest of its own bookkeeping
 
 		// ---- the swing's consequences (player melee) ----
-		if ( mv ) { afterEffects(me, target, ts, mv, damage, wasBlocking, stagBefore, unaware); }
-		if ( r.damage > 0 ) { wearArmour(target, ts, mv); }
+		Sec secCons(3);
+		{ Sec t10(10); if ( mv ) { afterEffects(me, target, ts, mv, damage, wasBlocking, stagBefore, unaware); }
+		if ( r.damage > 0 ) { wearArmour(target, ts, mv); } }
 		if ( me->behavior == &actPlayer )
 		{
 			const int player = me->skill[2];
@@ -430,7 +482,7 @@ namespace combat
 			{
 				if ( damage == 0 ) { messagePlayerMonsterEvent(player, 0xFFFFFFFF, *ts, Language::get(691), Language::get(ts->sex ? 695 : 696), MSG_COMBAT_BASIC); }
 				else if ( sneak && unaware ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(2543), Language::get(2544), MSG_COMBAT); }
-				else { messagePlayerMonsterEvent(player, color, *ts, Language::get(690), Language::get(694), MSG_COMBAT_BASIC); }
+				else { Sec t11(11); messagePlayerMonsterEvent(player, color, *ts, Language::get(690), Language::get(694), MSG_COMBAT_BASIC); }
 			}
 			else
 			{
@@ -449,9 +501,10 @@ namespace combat
 			DamageGib gib = DMG_DEFAULT;
 			if ( r.multiplier >= 1.15f || (mv && mv->charged) ) { gib = (mv && mv->charged) ? DMG_STRONGEST : DMG_STRONGER; }
 			else if ( r.multiplier > 0.f && r.multiplier <= 0.85f ) { gib = DMG_WEAKER; }
+			Sec t12(12);
 			updateEnemyBar(me, target, ts->name[0] ? ts->name : getMonsterLocalizedName(ts->type).c_str(), ts->HP, ts->MAXHP, false, gib);
 		}
-		playSoundEntity(target, 28, 64); // hit
+		{ Sec t13(13); playSoundEntity(target, 28, 64); } // hit
 		if ( r.killed )
 		{
 			target->killedByMonsterObituary(me);
@@ -463,6 +516,7 @@ namespace combat
 			const bool friendly = !(svFlags & SV_FLAG_FRIENDLYFIRE) && me->checkFriend(target) && me->friendlyFireProtection(target);
 			if ( !friendly && target->monsterAlertBeforeHit(me) && target->monsterState != MONSTER_STATE_ATTACK && target->monsterSpecialState == 0 )
 			{
+				Sec t14(14);
 				target->monsterAcquireAttackTarget(*me, MONSTER_STATE_PATH, true);
 			}
 		}
@@ -471,6 +525,7 @@ namespace combat
 
 	int onLegacyHit(Entity* attacker, Entity* target, int damage, int path)
 	{
+		LegacyTimer legacyTimer;
 		++gCount.legacyHits;
 		if ( !gEnabled )
 		{
@@ -525,8 +580,10 @@ namespace combat
 			return got < dist - slack - 1.0;
 		}
 
-		void sweepStep(int p, Fighter& f, const MoveRow& mv, double u0, double u1)
+		// returns true when swept targets are left over for the next tick (the per-tick hit budget)
+		bool sweepStep(int p, Fighter& f, const MoveRow& mv, double u0, double u1)
 		{
+			Sec scan(4);
 			Entity* me = players[p]->entity;
 			const double yaw = me->yaw;
 			const double reachW = STRIKERANGE * (double)mv.reach;
@@ -534,7 +591,8 @@ namespace combat
 			double lo = 0, hi = 0;
 			if ( sector )
 			{
-				const double c0 = sweepCentre(mv, f.dir, u0), c1 = sweepCentre(mv, f.dir, u1);
+				const double c0 = sweepCentre(mv, f.dir, 0.0), c1 = sweepCentre(mv, f.dir, u1); // everything swept since the swing began (a deferred hit is not lost as the blade moves on)
+				(void)u0;
 				lo = std::min(c0, c1); hi = std::max(c0, c1);
 			}
 			struct Cand { Entity* e; double d; };
@@ -569,11 +627,15 @@ namespace combat
 				if ( !ffOn && me->checkFriend(e) && me->friendlyFireProtection(e) ) { continue; }
 				cands.push_back({ e, d });
 			}
-			if ( cands.empty() ) { return; }
+			scan.end();
+			if ( cands.empty() ) { return false; }
+			int hitsThisTick = 0;
+			bool deferred = false;
 			std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.d < b.d; });
 			for ( const Cand& c : cands )
 			{
 				if ( f.hitCount >= maxTargets ) { break; }
+				if ( hitsThisTick >= kMaxHitsPerTick ) { deferred = true; break; }
 				const double ang = std::atan2(c.e->y - me->y, c.e->x - me->x);
 				const double r = std::max(c.e->sizex, c.e->sizey);
 				if ( wallBetween(me, ang, c.d, r) ) { ++gCount.wallBlocked; continue; } // walls block a sweep, bodies never
@@ -589,7 +651,7 @@ namespace combat
 				const HitResult res = applyHit(h);
 				if ( !res.landed ) { continue; }
 				f.hitUids.push_back(c.e->getUID());
-				++f.hitCount;
+				++f.hitCount; ++hitsThisTick;
 				++gCount.hits; ++gCount.sweepTargets;
 				if ( f.hitstop == 0 ) { f.hitstop = msToTicks(kHitStopMs); ++gCount.hitStops; }
 				cameravars[p].shakey += 4;
@@ -598,12 +660,26 @@ namespace combat
 					(unsigned)ticks, f.swingId, p, familyName(mv.family), mv.id, mv.name, dirName(f.dir), mv.charged ? 1 : 0, c.e->getUID(), es ? (int)es->type : -1, tname.c_str(),
 					c.d, f.hitCount - 1, res.damage, hpBefore, res.zone, res.multiplier, res.sneak ? 1 : 0, res.staggered ? 1 : 0, res.killed ? 1 : 0, f.hitstop);
 			}
+			return deferred;
 		}
 
 		// non-creature targets on the line (doors, colliders, boulders, furniture) still use Barony's object code
 		void objectStrike(int p, Fighter& f, const MoveRow& mv)
 		{
 			Entity* me = players[p]->entity;
+			// cheap pre-filter (the full line trace walks every entity of the floor, ~0.1 ms): is a solid non-creature entity in front and in reach?
+			bool near = false;
+			const double reachW = STRIKERANGE * (double)mv.reach;
+			for ( node_t* node = map.entities ? map.entities->first : nullptr; node && !near; node = node->next )
+			{
+				Entity* e = (Entity*)node->element;
+				if ( !e || e == me || isCreature(e) || e->flags[PASSABLE] || e->flags[INVISIBLE] || e->flags[SPRITE] ) { continue; }
+				const double dx = e->x - me->x, dy = e->y - me->y;
+				const double r = std::max(e->sizex, e->sizey);
+				if ( dx * dx + dy * dy > (reachW + r + 4.0) * (reachW + r + 4.0) ) { continue; }
+				if ( std::fabs(wrapPi(std::atan2(dy, dx) - me->yaw)) < 0.9 ) { near = true; }
+			}
+			if ( !near ) { return; }
 			const hit_t saved = hit;
 			const real_t got = lineTrace(me, me->x, me->y, me->yaw, STRIKERANGE * mv.reach, LINETRACE_ATK_CHECK_FRIENDLYFIRE, false);
 			(void)got;
@@ -639,7 +715,13 @@ namespace combat
 			Stat* ms = stats[p];
 			apx::Stamina_t& sta = apx::get(p);
 			const bool held = rec.isHeld(in::A_ATTACK);
-			if ( f.hitstop > 0 && f.st == State::Active ) { --f.hitstop; return; } // 40 ms hit stop: the swing's clock holds
+			if ( f.hitstop > 0 && f.st == State::Active )
+			{
+				// 40 ms hit stop: the swing's clock and the pose hold; swept targets still waiting for their hit (per-tick budget) land meanwhile
+				--f.hitstop;
+				if ( const MoveRow* hm = moveById(f.moveId) ) { sweepStep(p, f, *hm, 0.0, std::min(1.0, (double)f.t / f.activeTicks)); }
+				return;
+			}
 
 			if ( f.st == State::Idle )
 			{
@@ -718,11 +800,11 @@ namespace combat
 			{
 				const MoveRow* mv = moveById(f.moveId);
 				if ( !mv ) { resetSwing(f); return; }
-				if ( !f.objectChecked ) { f.objectChecked = true; objectStrike(p, f, *mv); }
+				if ( !f.objectChecked && f.t >= 2 ) { f.objectChecked = true; Sec t15(15); objectStrike(p, f, *mv); } // not on the tick of the first creature hit: it is the costliest one
 				const double u0 = (double)f.t / f.activeTicks, u1 = (double)(f.t + 1) / f.activeTicks;
-				sweepStep(p, f, *mv, u0, u1);
+				const bool deferred = sweepStep(p, f, *mv, u0, std::min(1.0, u1));
 				++f.t;
-				if ( f.t >= f.activeTicks ) { f.st = State::Recovery; f.t = 0; gLast.hits = f.hitCount; gLast.done = true; }
+				if ( f.t >= f.activeTicks && !(deferred && f.t < f.activeTicks + 6) ) { f.st = State::Recovery; f.t = 0; gLast.hits = f.hitCount; gLast.done = true; }
 				return;
 			}
 
@@ -744,11 +826,13 @@ namespace combat
 	{
 		if ( p < 0 || p >= MAXPLAYERS || !players[p] ) { return; }
 		const auto t0 = std::chrono::steady_clock::now();
+		const double log0 = gLogMs;
 		const in::TickRecord& rec = in::take(p); // always take: nothing accumulates while the core is idle
 		Fighter& f = gF[p];
 		apx::Stamina_t& sta = apx::get(p);
 		if ( !players[p]->entity || !stats[p] ) { resetSwing(f); return; }
 		Entity* me = players[p]->entity;
+		if ( gEnabled && players[p]->isLocalPlayer() ) { apx::tick(p, 0, false, stats[p]->defending); } // stamina: regen, block drain, net (was the HUD's)
 		const bool own = ownsMelee(p) && stats[p]->HP > 0;
 		if ( !own )
 		{
@@ -759,7 +843,7 @@ namespace combat
 		// stagger, paralysis or downed: the swing is lost
 		if ( !me->isMobile() || !apx::combat_glue::canAttack(me) )
 		{
-			if ( f.st == State::Windup || f.st == State::Active ) { row("{\"ev\":\"cancel\",\"tick\":%u,\"player\":%d,\"state\":\"%s\"}", (unsigned)ticks, p, stateName(f.st)); }
+			if ( f.st == State::Windup || f.st == State::Active ) { row("{\"ev\":\"cancel\",\"tick\":%u,\"player\":%d,\"state\":\"%s\",\"mobile\":%d,\"can_attack\":%d,\"skill9\":%d,\"paralyzed\":%d,\"hp\":%d}", (unsigned)ticks, p, stateName(f.st), (int)me->isMobile(), (int)apx::combat_glue::canAttack(me), (int)me->skill[9], (int)stats[p]->getEffectActive(EFF_PARALYZED), (int)stats[p]->HP); }
 			if ( f.st != State::Idle ) { sta.swingWhileBlock = false; resetSwing(f); }
 			f.needRelease = rec.isHeld(in::A_ATTACK);
 			sta.prevChop = false;
@@ -768,7 +852,8 @@ namespace combat
 		qaOnce(p);
 		controlTick(p, f, rec);
 		sta.prevChop = swinging(p);
-		const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+		const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() - (gLogMs - log0) + gLegacyMs;
+		gLegacyMs = 0.0;
 		gPerf.all.push_back((float)ms);
 		if ( f.st == State::Active ) { gPerf.active.push_back((float)ms); }
 		if ( gPerf.all.size() >= 2000 ) { perfDump(); }
@@ -849,8 +934,6 @@ namespace combat
 	// =========================================================================================================
 	namespace
 	{
-		std::vector<Uint32> gDummies;
-
 		void equipFamily(int p, int fam)
 		{
 			Stat* st = stats[p];
@@ -880,6 +963,21 @@ namespace combat
 			row("{\"ev\":\"equip\",\"fam\":\"%s\",\"resolved\":\"%s\",\"weapon\":%d}", familyName(fam), familyName(famOf(st)), st->weapon ? (int)st->weapon->type : -1);
 		}
 
+		// QA: the floor's own monsters would wander in and stagger the player mid-swing; the arena is calm (the crowd the gate asks for fights on purpose)
+		void calmFloor()
+		{
+			int cleared = 0;
+			for ( node_t* node = map.creatures ? map.creatures->first : nullptr; node; node = node->next )
+			{
+				Entity* e = (Entity*)node->element;
+				if ( !e || e->behavior != &actMonster || !e->getStats() || e->getStats()->HP <= 0 ) { continue; }
+				if ( e->monsterAllyGetPlayerLeader() ) { continue; }
+				e->getStats()->HP = 0;
+				++cleared;
+			}
+			row("{\"ev\":\"calm\",\"cleared\":%d}", cleared);
+		}
+
 		void clearDummies()
 		{
 			for ( Uint32 uid : gDummies ) { Entity* e = uidToEntity(uid); if ( e && e->getStats() ) { e->getStats()->HP = 0; } }
@@ -902,7 +1000,7 @@ namespace combat
 		}
 
 		// n creatures on rings around the player (perf and crowd QA): rats, goblins, skeletons
-		int spawnCrowd(int p, int n)
+		int spawnCrowd(int p, int n, bool still)
 		{
 			Entity* me = players[p]->entity;
 			const Monster kinds[3] = { RAT, GOBLIN, SKELETON };
@@ -911,7 +1009,7 @@ namespace combat
 			{
 				const double ring = 20.0 + 14.0 * (i / 12);
 				const double ang = (i % 12) * (2 * PI / 12) + 0.17 * (i / 12);
-				Entity* d = summonMonster(kinds[made % 3], me->x + cos(ang) * ring, me->y + sin(ang) * ring, false);
+				Entity* d = summonMonster(still ? DUMMYBOT : kinds[made % 3], me->x + cos(ang) * ring, me->y + sin(ang) * ring, false);
 				if ( !d || !d->getStats() ) { continue; }
 				d->getStats()->HP = d->getStats()->MAXHP = 9999;
 				d->monsterState = MONSTER_STATE_WAIT; // stand and do not fight: the gate measures the core, not the AI
@@ -932,13 +1030,15 @@ namespace combat
 			std::string s = qa;
 			int crowd = 0;
 			const size_t colon = s.find(':');
-			if ( colon != std::string::npos ) { crowd = std::atoi(s.c_str() + colon + 1); s = s.substr(0, colon); }
+			bool crowdStill = false;
+			if ( colon != std::string::npos ) { crowd = std::atoi(s.c_str() + colon + 1); crowdStill = s.find(":still") != std::string::npos; s = s.substr(0, colon); }
 			int fam = FAM_SWORD;
 			for ( int i = 1; i < FAM_COUNT; ++i ) { if ( s == familyName(i) ) { fam = i; } }
 			stats[p]->HP = stats[p]->MAXHP = std::max(stats[p]->MAXHP, 999);
 			equipFamily(p, fam);
+			calmFloor();
 			spawnTestCluster(p);
-			const int made = crowd > 0 ? spawnCrowd(p, crowd) : 0;
+			const int made = crowd > 0 ? spawnCrowd(p, crowd, crowdStill) : 0;
 			row("{\"ev\":\"qa_setup\",\"fam\":\"%s\",\"cluster\":%zu,\"crowd_asked\":%d,\"crowd_made\":%d}", familyName(fam), gDummies.size(), crowd, made);
 		}
 	} // namespace
@@ -949,8 +1049,10 @@ namespace combat
 		if ( argc > 1 ) { for ( int i = 1; i < FAM_COUNT; ++i ) { if ( !strcmp(argv[1], familyName(i)) ) { fam = i; } } }
 		equipFamily(0, fam);
 		clearDummies();
+		calmFloor();
 		spawnTestCluster(0);
-		const int made = argc > 2 ? spawnCrowd(0, std::atoi(argv[2])) : 0;
+		if ( argc > 2 ) { stats[0]->MAXHP = std::max(stats[0]->MAXHP, 9999); stats[0]->HP = stats[0]->MAXHP; } // a crowd that fights back must not end the measurement
+		const int made = argc > 2 ? spawnCrowd(0, std::atoi(argv[2]), argc > 3 && !strcmp(argv[3], "still")) : 0;
 		row("{\"ev\":\"arena\",\"fam\":\"%s\",\"cluster\":%zu,\"crowd\":%d}", familyName(fam), gDummies.size(), made);
 	});
 	static ConsoleCommand ccmd_apxcombat_perf("/apxcombat_perf", "apx: write the combat core's per-tick cost (p50/p99) to the log", [](int, const char**) { perfDump(); });

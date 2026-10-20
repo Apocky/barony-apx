@@ -14,6 +14,7 @@
 //   look <dx> <dy>           relative mouse motion (turn the view)
 //   wheel <n>                mouse wheel ticks (+ up, - down)
 //   wait <ms>                pause the script
+//   waitlevel <n> [ms]       pause until floor n is loaded and player 0 stands on it (default timeout 90 s); logs reached or TIMED OUT
 //   shot <name>              screenshot to <dir>/<name>.png (the game's own back-buffer capture)
 //   console <text>           run a Barony console command (cheats allowed in QA, e.g. /spawnitem ...)
 //   quit                     close the game

@@ -824,7 +824,9 @@ void actHudWeapon(Entity* my)
 		const bool apxMelee = !apxWeapon
 			|| (itemCategory(apxWeapon) == WEAPON && !isRangedWeapon(*apxWeapon)
 				&& apxWeapon->type != TOOL_WHIP && apxWeapon->type != TOOL_BEARTRAP);
-		apx::tick(HUDWEAPON_PLAYERNUM, HUDWEAPON_CHOP, apxMelee, stats[HUDWEAPON_PLAYERNUM]->defending);
+		// apx D93 C1: with the combat core on, the stamina tick (regen, block drain, net) runs from apx::combat::tickPlayer every sim tick;
+		// this HUD call stays only as the APX_COMBAT_OLD=1 control (the HUD returns early while the player swims, so regen stopped there)
+		if ( !apx::combat::coreEnabled() ) { apx::tick(HUDWEAPON_PLAYERNUM, HUDWEAPON_CHOP, apxMelee, stats[HUDWEAPON_PLAYERNUM]->defending); }
 		apx::vglue::selftestStep(); // apx BV1: the scripted variant kill run (APX_VARIANTS_SELFTEST), local player only
 	}
 
