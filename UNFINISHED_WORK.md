@@ -20,3 +20,7 @@ Next: read remaining lines of `handlePlayerMovement` and `handlePlayerCameraUpda
 
 ## 2026-10-19 hostility lane (apx/hostility)
 In flight: nothing after this commit. apx::hostility (src/apx/hostility.cpp, data/apx/combat/hostility.json), gate tools/apx/hostility_gate.py. Resume: python tools/apx/hostility_gate.py --exe build/vs2022/Release/barony.exe. Next: COMBAT lane routes applyHit through apx::hostility::onHit; decide post-calm hits on a standing player.
+
+## 2026-10-19 23:46 -07:00 D93 M1 (`apx::move`) done on apx/move
+Nothing in flight. Gate: `python tools/apx/move_gate.py --exe build/vs2022/Release/barony.exe` (normal + floor1, new + control APX_MOVE_OLD=1) PASS; results C:\Apocrypha\diagnostics\move\ (summary-20261019-234124.json, baseline.json). Offline units `pwsh tools/apx/move_test.ps1` (44 checks). selftest-all 7/7, golden parity 3/3.
+Open: src/apx/in/in.hpp+in.cpp are a STUB of apx::in (same Button names as branch apx/input); on merge take the INPUT lane's in.hpp, delete src/apx/in/in.cpp and its CMake line. Not covered by the gate: swim, levitate, crawl states, slippery/grease tiles, co-op (remote players keep dead reckoning), creature impulses (code path in frame(), no gate row).
