@@ -57,6 +57,7 @@ static long long stubPouchGrams(int) { return 0; }
 static int stubRepairCost(int, const Item*, std::string& why, std::string&) { why = "no repair before F6"; return -1; }
 static bool stubRepair(int, Item*, std::string& why) { why = "no repair before F6"; return false; }
 static bool stubRepairPaid(int, Item*, std::string& why) { why = "no repair before F6"; return false; }
+static int stubRepairGrams(const Item*, std::string& why, std::string&) { why = "no repair before F6"; return -1; }
 static Provider makeStub()
 {
 	Provider p;
@@ -65,7 +66,7 @@ static Provider makeStub()
 	p.craft = stubCraft; p.salvagePreview = stubPreview; p.salvage = stubSalvage; p.breakItem = stubBreak;
 	p.pouch = stubPouch; p.pouchGrams = stubPouchGrams; p.drawBundle = nullptr;
 	p.componentOf = stubComponentOf; p.swapSlots = stubSwapSlots; p.swapPart = stubSwap; p.makeOptions = stubMakeOptions; p.make = stubMake;
-	p.repairCost = stubRepairCost; p.repair = stubRepair; p.repairPaid = stubRepairPaid;
+	p.repairCost = stubRepairCost; p.repair = stubRepair; p.repairPaid = stubRepairPaid; p.repairGrams = stubRepairGrams;
 	return p;
 }
 static Provider g_stub = makeStub();
@@ -84,6 +85,7 @@ void setProvider(const Provider& p)
 	if ( !g_active.repairCost ) { g_active.repairCost = g_stub.repairCost; }
 	if ( !g_active.repair ) { g_active.repair = g_stub.repair; }
 	if ( !g_active.repairPaid ) { g_active.repairPaid = g_stub.repairPaid; }
+	if ( !g_active.repairGrams ) { g_active.repairGrams = g_stub.repairGrams; }
 	if ( !g_active.craft ) { g_active.craft = g_stub.craft; }
 	if ( !g_active.salvagePreview ) { g_active.salvagePreview = g_stub.salvagePreview; }
 	if ( !g_active.salvage ) { g_active.salvage = g_stub.salvage; }

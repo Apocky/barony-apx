@@ -67,6 +67,7 @@ def checks(r):
          [r.get("torch_found"), r.get("torch_kept"), r.get("torch_dark"), r.get("got_torch"), r.get("relit")]),
         ("repair one step through F6 (ledger grams), from the bench Salvage tab row", r.get("repair_row") == 1 and r.get("repair_ok") == 1 and r.get("status_after") == r.get("status_before", -9) + 1 and r.get("repair_grams", 0) > 0,
          [r.get("repair_ok"), r.get("status_before"), r.get("status_after"), r.get("repair_grams"), r.get("repair_why")]),
+        ("repairGrams (no ledger check) equals the bench cost", r.get("grams_no_ledger") == r.get("repair_grams") and r.get("repair_grams", 0) > 0, [r.get("grams_no_ledger"), r.get("repair_grams")]),
         ("repairPaid: one more step, ledger untouched (merchant service)", r.get("paid_ok") == 1 and r.get("paid_status") == r.get("status_after", -9) + 1 and r.get("paid_ledger_delta") == 0,
          [r.get("paid_ok"), r.get("status_after"), r.get("paid_status"), r.get("paid_ledger_delta")]),
     ]

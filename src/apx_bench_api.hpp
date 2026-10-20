@@ -49,6 +49,8 @@ namespace apx_bench
 		bool (*repair)(int player, Item* item, std::string& why) = nullptr;
 		// the same checks and one-step rule, the ledger untouched: a merchant service charges gold first (trade lane)
 		bool (*repairPaid)(int player, Item* item, std::string& why) = nullptr;
+		// grams for one condition step with NO ledger check (a merchant's price); -1 + why when it cannot be repaired
+		int  (*repairGrams)(const Item* item, std::string& why, std::string& material) = nullptr;
 	};
 	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub

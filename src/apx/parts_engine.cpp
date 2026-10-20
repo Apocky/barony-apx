@@ -533,6 +533,15 @@ int apxPartsRepairCost(int player, const Item* item, std::string& why, std::stri
 	return g;
 }
 
+int apxPartsRepairGrams(const Item* item, std::string& why, std::string& material)
+{
+	if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item has no parts to mend (use a repair scroll)"; return -1; }
+	const int g = apx::props::repairCostGrams(apxPartsPartMassGrams(item, 0), (int)item->status);
+	if ( g < 0 ) { why = "already in excellent condition"; return -1; }
+	material = apxPartsMaterialName(item->apx.parts[0].material);
+	return g;
+}
+
 static bool repairStep(int player, Item* item, std::string& why, bool fromLedger)
 {
 	std::string mat;
@@ -541,10 +550,8 @@ static bool repairStep(int player, Item* item, std::string& why, bool fromLedger
 	else
 	{
 		// a merchant: the same checks except the ledger (the shop charged gold for the grams)
-		if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item has no parts to mend (use a repair scroll)"; return false; }
-		g = apx::props::repairCostGrams(apxPartsPartMassGrams(item, 0), (int)item->status);
-		if ( g < 0 ) { why = "already in excellent condition"; return false; }
-		mat = apxPartsMaterialName(item->apx.parts[0].material);
+		g = apxPartsRepairGrams(item, why, mat);
+		if ( g < 0 ) { return false; }
 	}
 	if ( fromLedger ) { ledger[player][item->apx.parts[0].material] -= (uint32_t)g; }
 	item->status = (Status)std::min((int)EXCELLENT, (int)item->status + 1);

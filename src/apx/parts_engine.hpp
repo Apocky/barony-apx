@@ -86,7 +86,8 @@ bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 // of the main part's material (props_rules repairCostGrams); -1 = cannot (why says)
 int apxPartsRepairCost(int player, const Item* item, std::string& why, std::string& material);
 bool apxPartsRepair(int player, Item* item, std::string& why);
-bool apxPartsRepairPaid(int player, Item* item, std::string& why); // merchant: same rule, no ledger debit (gold charged by the shop)
+bool apxPartsRepairPaid(int player, Item* item, std::string& why);
+int apxPartsRepairGrams(const Item* item, std::string& why, std::string& material); // no ledger check (merchant price) // merchant: same rule, no ledger debit (gold charged by the shop)
 const char* apxPartsFamilyName(uint32_t form);
 int apxPartsPartMassGrams(const Item* item, int part);
 const char* apxPartsMaterialName(int material);
