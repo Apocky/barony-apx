@@ -706,43 +706,68 @@ static void loadLightmapTexture(int which, map_t& map) {
     const float bounceK = 0.f;
 #endif
     if (!fullbright && bounceK > 0.f) {
+        // Lag fix (2026-10-19): this runs in glBeginCamera, i.e. for EVERY camera pass of every frame (more passes with
+        // the inventory open); at 2560x1440 the vision knobs cost floor-1 fps p50 126 -> 72-106 with the inventory open.
+        // The bounce changes slowly, so its added term is computed at most once per game tick per lightmap and
+        // re-applied in between; the blur is two sliding-window passes over a precomputed open-tile mask (linear in the
+        // map, independent of R). APX_VIS_BOUNCE_EVERYCALL=1 recomputes on every call (the old cost; control).
         const int W = map.width, H = map.height, R = 3; // tiles
-        static std::vector<float> sum, cnt, sum2, cnt2;
-        sum.assign(W * H * 3, 0.f); cnt.assign(W * H, 0.f); sum2.assign(W * H * 3, 0.f); cnt2.assign(W * H, 0.f);
-        const int xoff = MAPLAYERS * map.height, yoff = MAPLAYERS;
-        auto open = [&](int x, int y) { return !testTileOccludes(map, y * yoff + x * xoff); };
-        for (int y = 0; y < H; ++y) { // horizontal pass
-            for (int x = 0; x < W; ++x) {
-                for (int k = std::max(0, x - R); k <= std::min(W - 1, x + R); ++k) {
-                    if (!open(k, y)) { continue; }
-                    const float* px = &pixels[(y * W + k) * 4];
-                    float* s3 = &sum[(y * W + x) * 3];
-                    s3[0] += px[0]; s3[1] += px[1]; s3[2] += px[2];
-                    cnt[y * W + x] += 1.f;
+        static std::vector<float> addTerm[MAXPLAYERS + 1];
+        static Uint32 addTick[MAXPLAYERS + 1] = {};
+        static const bool everyCall = getenv("APX_VIS_BOUNCE_EVERYCALL") && getenv("APX_VIS_BOUNCE_EVERYCALL")[0] == '1';
+        std::vector<float>& add = addTerm[which];
+        const bool fresh = !everyCall && addTick[which] == ticks && add.size() == (size_t)W * H * 3;
+        if (!fresh) {
+            static std::vector<uint8_t> open;
+            static std::vector<float> rowSum, rowCnt;
+            open.assign((size_t)W * H, 0);
+            const int xoff = MAPLAYERS * map.height, yoff = MAPLAYERS;
+            for (int y = 0; y < H; ++y) { for (int x = 0; x < W; ++x) { open[(size_t)y * W + x] = !testTileOccludes(map, y * yoff + x * xoff); } }
+            rowSum.assign((size_t)W * H * 3, 0.f); rowCnt.assign((size_t)W * H, 0.f);
+            for (int y = 0; y < H; ++y) { // horizontal: running window sums of open tiles
+                float s0 = 0, s1 = 0, s2 = 0, c = 0;
+                auto addCol = [&](int x, float sign) {
+                    if (x < 0 || x >= W || !open[(size_t)y * W + x]) { return; }
+                    const float* px = &pixels[((size_t)y * W + x) * 4];
+                    s0 += sign * px[0]; s1 += sign * px[1]; s2 += sign * px[2]; c += sign;
+                };
+                for (int x = 0; x < R && x < W; ++x) { addCol(x, 1.f); }
+                for (int x = 0; x < W; ++x) {
+                    addCol(x + R, 1.f);
+                    float* d = &rowSum[((size_t)y * W + x) * 3];
+                    d[0] = s0; d[1] = s1; d[2] = s2; rowCnt[(size_t)y * W + x] = c;
+                    addCol(x - R, -1.f);
                 }
             }
-        }
-        for (int x = 0; x < W; ++x) { // vertical pass
-            for (int y = 0; y < H; ++y) {
-                for (int k = std::max(0, y - R); k <= std::min(H - 1, y + R); ++k) {
-                    const float* s3 = &sum[(k * W + x) * 3];
-                    float* d3 = &sum2[(y * W + x) * 3];
-                    d3[0] += s3[0]; d3[1] += s3[1]; d3[2] += s3[2];
-                    cnt2[y * W + x] += cnt[k * W + x];
+            add.assign((size_t)W * H * 3, 0.f);
+            for (int x = 0; x < W; ++x) { // vertical: running window sums of the row sums, then the added term
+                float s0 = 0, s1 = 0, s2 = 0, c = 0;
+                auto addRow = [&](int y, float sign) {
+                    if (y < 0 || y >= H) { return; }
+                    const float* r = &rowSum[((size_t)y * W + x) * 3];
+                    s0 += sign * r[0]; s1 += sign * r[1]; s2 += sign * r[2]; c += sign * rowCnt[(size_t)y * W + x];
+                };
+                for (int y = 0; y < R && y < H; ++y) { addRow(y, 1.f); }
+                for (int y = 0; y < H; ++y) {
+                    addRow(y + R, 1.f);
+                    if (c > 0.5f && open[(size_t)y * W + x]) {
+                        const float* px = &pixels[((size_t)y * W + x) * 4];
+                        float* a = &add[((size_t)y * W + x) * 3];
+                        a[0] = bounceK * std::max(0.f, s0 / c - px[0]);
+                        a[1] = bounceK * std::max(0.f, s1 / c - px[1]);
+                        a[2] = bounceK * std::max(0.f, s2 / c - px[2]);
+                    }
+                    addRow(y - R, -1.f);
                 }
             }
+            addTick[which] = ticks;
         }
-        for (int y = 0; y < H; ++y) {
-            for (int x = 0; x < W; ++x) {
-                const float c = cnt2[y * W + x];
-                if (c <= 0.f || !open(x, y)) { continue; }
-                float* px = &pixels[(y * W + x) * 4];
-                const float* s3 = &sum2[(y * W + x) * 3];
-                for (int ch = 0; ch < 3; ++ch) { px[ch] += bounceK * std::max(0.f, s3[ch] / c - px[ch]); }
-            }
+        for (size_t i = 0, n = (size_t)W * H; i < n; ++i) {
+            float* px = &pixels[i * 4];
+            const float* a = &add[i * 3];
+            px[0] += a[0]; px[1] += a[1]; px[2] += a[2];
         }
     }
-
     // load lightmap texture data
     GL_CHECK_ERR(glActiveTexture(GL_TEXTURE1));
     lightmapTexture[which]->loadFloat(pixels.data(), map.width, map.height, true, false);

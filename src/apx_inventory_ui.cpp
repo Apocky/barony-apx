@@ -52,6 +52,28 @@ bool benchActivate(int player, int tab, int station, Item* selectedOwn, const En
 constexpr int ROW_H = 20, HEAD_H = 34, MAX_ROWS = 40, PANEL_W = 220, TIP_W = 320;
 constexpr int CELL = 40, MAX_CELLS = 120;
 static int g_cols[MAXPLAYERS][3] = {};   // columns of the own (0) and other (1) grids, for up/down moves
+// Lag fix (2026-10-19): the list and grid updates looked up every row/cell by name each frame with findFrame, which
+// searches the whole panel subtree recursively: MAX_CELLS (120) x the tree per frame, the 0.1.4 inventory-open
+// slowdown (start map fps p50 131 -> 76). Now the panel's direct children are indexed once per update by the number in
+// their name ("apx cell 7" -> [7]); APX_UI_FINDFRAME=1 keeps the old per-cell findFrame (the control).
+static bool legacyFindFrame()
+{
+	static const bool on = getenv("APX_UI_FINDFRAME") && getenv("APX_UI_FINDFRAME")[0] == '1';
+	return on;
+}
+static void indexChildren(Frame* parent, const char* prefix, std::vector<Frame*>& out, int count)
+{
+	out.assign((size_t)count, nullptr);
+	const size_t pl = strlen(prefix);
+	for ( Frame* c : parent->getFrames() )
+	{
+		const char* n = c ? c->getName() : nullptr;
+		if ( !n || strncmp(n, prefix, pl) ) { continue; }
+		const int i = atoi(n + pl);
+		if ( i >= 0 && i < count ) { out[(size_t)i] = c; }
+	}
+}
+
 static const char* FONT = "fonts/pixel_maz_multiline.ttf#16#2";
 
 const ListState& listState(int player) { return g_list[std::max(0, std::min(MAXPLAYERS - 1, player))]; }
@@ -752,11 +774,13 @@ static int drawList(int player, Frame* list, const SDL_Rect& r, const std::vecto
 	static const Uint32 cond[] = { makeColor(230, 70, 60, 255), makeColor(240, 140, 60, 255), makeColor(240, 210, 90, 255),
 		makeColor(225, 225, 225, 255), makeColor(255, 255, 255, 255) };
 	int drawn = 0;
+	static std::vector<Frame*> rowsByIndex;
+	if ( !legacyFindFrame() ) { indexChildren(list, "apx row ", rowsByIndex, MAX_ROWS); }
 	for ( int i = 0; i < MAX_ROWS; ++i )
 	{
 		char nm[32];
 		snprintf(nm, sizeof(nm), "apx row %d", i);
-		Frame* row = list->findFrame(nm);
+		Frame* row = legacyFindFrame() ? list->findFrame(nm) : rowsByIndex[(size_t)i];
 		Field* f = row ? row->findField("text") : nullptr;
 		Field* mf = row ? row->findField("mass") : nullptr;
 		if ( !row || !f || !mf ) { continue; }
@@ -937,10 +961,12 @@ static int drawGrid(int player, Frame* g, const SDL_Rect& r, const std::vector<E
 		if ( sel / cols >= scroll + rowsVis ) { scroll = sel / cols - rowsVis + 1; }
 	}
 	int drawn = 0;
+	static std::vector<Frame*> cellsByIndex;
+	if ( !legacyFindFrame() ) { indexChildren(g, "apx cell ", cellsByIndex, MAX_CELLS); }
 	for ( int i = 0; i < MAX_CELLS; ++i )
 	{
 		char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", i);
-		Frame* c = g->findFrame(nm);
+		Frame* c = legacyFindFrame() ? g->findFrame(nm) : cellsByIndex[(size_t)i];
 		if ( !c ) { continue; }
 		int idx = scroll * cols + i;
 		if ( i >= cols * rowsVis || idx >= n ) { c->setDisabled(true); continue; }
@@ -983,10 +1009,12 @@ static int cellUnderMouse(int player, Frame* g, int focusId)
 	if ( !g || g->isDisabled() ) { return -1; }
 	const int n = focusId == 1 ? (int)g_other[player].size() : (int)g_own[player].size();
 	const int scroll = focusId == 1 ? g_otherScroll[player] : g_list[player].scroll;
+	std::vector<Frame*> cellsByIndex;
+	if ( !legacyFindFrame() ) { indexChildren(g, "apx cell ", cellsByIndex, MAX_CELLS); } // fps: one pass over the children
 	for ( int i = 0; i < MAX_CELLS; ++i )
 	{
 		char nm[32]; snprintf(nm, sizeof(nm), "apx cell %d", i);
-		Frame* c = g->findFrame(nm);
+		Frame* c = legacyFindFrame() ? g->findFrame(nm) : cellsByIndex[(size_t)i];
 		if ( !c || c->isDisabled() ) { continue; }
 		if ( c->capturesMouseInRealtimeCoords() )
 		{
