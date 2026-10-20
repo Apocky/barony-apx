@@ -18,6 +18,7 @@ namespace inv
 {
 	bool replacesVanilla(int player);   // the plain inventory is open: our window, not Barony's
 	bool anyOpen();
+	bool selfTest(std::string& fields);  // headless: model + every action through Barony's item paths (selftest-all)
 	bool popupOpen();                   // our quick menu or drop confirm is open (Escape and keys belong to it)
 	bool mouseOwned();                  // the keyboard-and-mouse player has our window open
 	bool wantsKey(const SDL_Event& e);  // a key our window uses this frame (Barony must not see it)

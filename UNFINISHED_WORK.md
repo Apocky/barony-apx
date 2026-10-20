@@ -30,3 +30,6 @@ In flight: nothing after this commit. apx::hostility (src/apx/hostility.cpp, dat
 ## 2026-10-19 23:46 -07:00 D93 M1 (`apx::move`) done on apx/move
 Nothing in flight. Gate: `python tools/apx/move_gate.py --exe build/vs2022/Release/barony.exe` (normal + floor1, new + control APX_MOVE_OLD=1) PASS; results C:\Apocrypha\diagnostics\move\ (summary-20261019-234124.json, baseline.json). Offline units `pwsh tools/apx/move_test.ps1` (44 checks). selftest-all 7/7, golden parity 3/3.
 Open: src/apx/in/in.hpp+in.cpp are a STUB of apx::in (same Button names as branch apx/input); on merge take the INPUT lane's in.hpp, delete src/apx/in/in.cpp and its CMake line. Not covered by the gate: swim, levitate, crawl states, slippery/grease tiles, co-op (remote players keep dead reckoning), creature impulses (code path in frame(), no gate row).
+
+## 2026-10-20 00:50 -07:00 D92 inventory window (apx/inv-imgui) P0+P1 done
+Nothing in flight. Merged origin/apx-main (apx::in owns the gate; apx::ui exposes wantsMouse/wantsKeyboard). Gate: `pwsh tools/apx/inv_qa.ps1 -Script tools/apx/qa/inv_play.txt -Exe build/vs2022/Release/barony.exe`; run C:\Apocrypha\runs\invfinal-20261020-004721. Control: `-Env APX_VANILLA_INVENTORY=1` with inv_control.txt. Not done: P2+ modes, split-screen 2/4 player layout check, 2560x1440 shots, multi-gamepad focus.

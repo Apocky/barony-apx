@@ -19,6 +19,7 @@
 #include "ui/GameUI.hpp"
 #include "ui/Button.hpp"
 #include "apx/vox/builder.hpp"
+#include "apx/ui/inventory.hpp"
 #include "apx/qadriver.hpp"
 #include <filesystem>
 #include <fstream>
@@ -231,7 +232,9 @@ void selfTestTick()
 		if ( apx::selftestall::armed() && apx::headlessOn ) // the UI phases need a visible window (keys, screenshots)
 		{
 			g_test.clear();
-			allModeDone(",\"ui\":\"skipped_headless\"");
+			std::string wf; const bool wok = apx::ui::inv::selfTest(wf); // D92: the window's model and actions, headless
+			if ( !wok ) { g_gatesPass = false; }
+			allModeDone(",\"ui\":\"d92_window_model_headless\"," + wf);
 		}
 		return;
 	}
@@ -337,7 +340,11 @@ static void runGates()
 static void runUiPhases()
 {
 	g_test.clear();
-	if ( apx::selftestall::armed() ) { allModeDone(",\"ui\":\"d92_window_tested_by_qa_driver\""); }
+	if ( apx::selftestall::armed() )
+	{
+		std::string wf; if ( !apx::ui::inv::selfTest(wf) ) { g_gatesPass = false; }
+		allModeDone(",\"ui\":\"d92_window_model_and_actions\"," + wf);
+	}
 	else { mainloop = 0; }
 }
 

@@ -1206,6 +1206,70 @@ namespace
 		return false;
 	}
 
+	// ------------------------------------------------------------------ headless self-test (selftest-all INVENTORY stage)
+	// Drives the window's model and every action by the same functions the clicks call (doAction/assignHotbar/refilter),
+	// each through Barony's own item paths, and asserts the game effect. Clicking real widgets is the QA driver's job
+	// (tools/apx/qa/inv_play.txt); this runs where no window exists.
+	bool selfTest(std::string& fields)
+	{
+		const int p = 0;
+		if ( !stats[p] || !players[p] ) { fields = "\"window\":\"no_player\""; return false; }
+		State& S = g_st[p];
+		const bool wasOpen = S.open; S.open = false;
+		int pass = 0, total = 0;
+		std::ostringstream o;
+		auto chk = [&](const char* name, bool ok) { ++total; if ( ok ) { ++pass; } o << (total > 1 ? "," : "") << "\"" << name << "\":" << (ok ? 1 : 0); };
+		Item* sword = newItem(IRON_SWORD, EXCELLENT, 0, 1, 7, true, &stats[p]->inventory);
+		Item* apple = newItem(FOOD_APPLE, EXCELLENT, 0, 2, 7, true, &stats[p]->inventory);
+		const Uint32 swordUid = sword->uid, appleUid = apple->uid;
+		const int savedCat = S.cat, savedSort = S.sort; char savedSearch[64]; memcpy(savedSearch, S.search, sizeof savedSearch);
+		S.search[0] = 0; S.cat = CAT_ALL; S.sort = SORT_NAME;
+		rebuild(p, S); refilter(S);
+		chk("model_has_items", cellOf(S, swordUid) && cellOf(S, appleUid));
+		S.cat = CAT_WEAPONS; refilter(S);
+		chk("category_weapons", shownIndex(S, swordUid) >= 0 && shownIndex(S, appleUid) < 0);
+		S.cat = CAT_ALL; snprintf(S.search, sizeof S.search, "apple"); refilter(S);
+		chk("search_apple", shownIndex(S, appleUid) >= 0 && shownIndex(S, swordUid) < 0);
+		S.search[0] = 0; refilter(S);
+		bool sorted = true;
+		for ( size_t i = 1; i < S.shown.size(); ++i ) { sorted &= S.cells[S.shown[i - 1]].lname <= S.cells[S.shown[i]].lname; }
+		chk("sort_name", sorted);
+		// every action the details buttons list must exist for these items
+		auto has = [&](Item* it, int prompt) { for ( auto& a : actionsFor(p, S, it) ) { if ( a.prompt == prompt ) { return true; } } return false; };
+		chk("buttons_equip_drop", has(sword, PROMPT_EQUIP) && has(sword, PROMPT_DROP) && has(apple, PROMPT_DROP));
+		// equip / unequip change the game
+		doAction(p, S, swordUid, PROMPT_EQUIP);
+		chk("equip", ownItem(p, swordUid) && itemIsEquipped(ownItem(p, swordUid), p));
+		doAction(p, S, swordUid, PROMPT_UNEQUIP);
+		chk("unequip", ownItem(p, swordUid) && !itemIsEquipped(ownItem(p, swordUid), p));
+		// hotbar assign, then clear
+		assignHotbar(p, S, 2, appleUid);
+		chk("hotbar_assign", players[p]->hotbar.slots()[2].item == appleUid);
+		assignHotbar(p, S, 2, 0);
+		chk("hotbar_clear", players[p]->hotbar.slots()[2].item == 0);
+		// use (eat) consumes one apple
+		int eatPrompt = -1; for ( auto& a : actionsFor(p, S, apple) ) { if ( a.prompt == PROMPT_EAT || a.prompt == PROMPT_CONSUME || a.prompt == PROMPT_INTERACT ) { eatPrompt = a.prompt; break; } }
+		const Sint32 savedHunger = stats[p]->HUNGER; stats[p]->HUNGER = 400; // hungry enough to eat
+		const Sint32 hungerBefore = stats[p]->HUNGER;
+		if ( eatPrompt >= 0 ) { doAction(p, S, appleUid, eatPrompt); }
+		Item* a2 = ownItem(p, appleUid);
+		chk("use_eat", eatPrompt >= 0 && a2 && a2->count == 1 && stats[p]->HUNGER > hungerBefore);
+		stats[p]->HUNGER = savedHunger;
+		// a locked item refuses to drop, an unlocked one leaves the bag
+		doAction(p, S, swordUid, ACT_LOCK);
+		doAction(p, S, swordUid, PROMPT_DROP);
+		chk("lock_blocks_drop", ownItem(p, swordUid) != nullptr && S.lastResult != "gone");
+		doAction(p, S, swordUid, ACT_LOCK);
+		doAction(p, S, swordUid, PROMPT_DROP);
+		chk("drop_sword", ownItem(p, swordUid) == nullptr);
+		for ( int k = 0; k < 3 && ownItem(p, appleUid); ++k ) { doAction(p, S, appleUid, PROMPT_DROP); } // Barony drops one of a stack per click
+		chk("drop_apple", ownItem(p, appleUid) == nullptr);
+		S.locked.clear(); S.search[0] = 0; S.cat = savedCat; S.sort = savedSort; memcpy(S.search, savedSearch, sizeof savedSearch);
+		S.sel = 0; S.sig = ~0ULL; S.open = wasOpen;
+		fields = "\"window\":{" + o.str() + "}";
+		return pass == total;
+	}
+
 	bool popupOpen() { return g_popupWasOpen || g_popupOpen; }
 
 	bool mouseOwned()
