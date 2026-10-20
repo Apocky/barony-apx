@@ -32,6 +32,10 @@ namespace apxparts {
 enum Source : uint8_t { SRC_CHEST = 0, SRC_MONSTER = 1, SRC_FLOOR = 2, SRC_SHOP = 3, SRC_CRAFT = 4 };
 enum Role : uint8_t { ROLE_STRIKE = 0, ROLE_STRUCTURAL, ROLE_BALANCE, ROLE_GRIP, ROLE_OTHER };
 constexpr uint8_t FLAG_CRAFTED = 1 << 6, FLAG_LOOTED = 1 << 7;
+// D86 component: one part as its own item (form = COMPONENT_FORM, nParts 1). It rides every path an
+// item with parts already rides (save sidecar, packet blob, floor map) and never stacks.
+constexpr uint32_t COMPONENT_FORM = 0xC0000000u;
+inline bool isComponent(const ApxItemData& d) { return d.form == COMPONENT_FORM && d.nParts == 1; }
 
 struct Material { std::string id; int density = 0, hardness = 0, tier = 1, valuePerKg = 0, meltC = 0, flammable = 0, element = 0; std::string salvageClass; float tint[3] = { 0, 0, 0 }; };
 struct Slot { std::string id; Role role = ROLE_OTHER; int volume = 0; };
@@ -39,6 +43,11 @@ struct OptSlot { int slot = 0, q = 0; };
 struct Family { std::string id; std::vector<int> required; std::vector<OptSlot> optional; };
 struct TypeForm { int family = -1; std::vector<int> materials; };
 struct AffixPool { std::string key; int firstId = 0, count = 0; };
+// D86 affix entry: position (prefix "Keen ..." or suffix "... of Embers"), the label used in the name,
+// the named stat or effect, and a rarity weight. Missing fields default to suffix / Capitalised name /
+// name / 1 (counted in DB::affixDefaults so the data lane can see what is still unset).
+enum AffixPos : uint8_t { AFFIX_PREFIX = 0, AFFIX_SUFFIX = 1 };
+struct AffixInfo { std::string name, label, stat; int pct = 0, weight = 1; AffixPos position = AFFIX_SUFFIX; };
 struct StandIn { std::string cls, item; int grams = 0; };
 struct SalvageParams { int lootedPct = 60, craftedPct = 100, dischargePct = 20, auraPerAffixPct = 25, lowIntegrityByte = 77, lowIntegrityFactorPct = 50; std::string auraItem; std::vector<StandIn> standIns; };
 
@@ -50,6 +59,8 @@ struct DB
 	std::vector<std::pair<std::string, TypeForm>> typeForms; // vanilla ItemType name -> form (sorted by name)
 	std::vector<AffixPool> pools;
 	std::vector<std::pair<std::string, int>> affixPct;      // global affix id -> (name, pct)
+	std::vector<AffixInfo> affixes;                         // global affix id -> D86 entry (same order)
+	int affixDefaults = 0;                                  // entries with no position/label in the data
 	SalvageParams salvage;
 	int plainFamily = -1, fleshMaterial = -1;
 	int material(const std::string& id) const;
@@ -80,18 +91,25 @@ int pack(const ApxItemData& it, uint8_t* out);
 bool unpack(const uint8_t* in, int len, ApxItemData& it);
 constexpr int PACK_MAX = 1 + 8 + 2 + 1 + 1 + 16 * APX_MAX_PARTS;
 
-// Salvage (05 section 5, card BF6-6): keepPart stays (the returned item holds it); every other
-// part returns material grams; looted items return looted_return_pct, crafted 100; magic
-// discharge and aura crystals for affixes; low integrity halves a part's yield.
+// Salvage (05 section 5, card BF6-6, D86): a crafted item returns EVERY part as a component item (no
+// grams, no aura: the affixes stay on the components). Any other item returns the chosen part
+// (keepPart, -1 = none) as a component item and every other part as material grams: looted items at
+// looted_return_pct, the rest at crafted_return_pct; magic discharge (looted, 20 %) strips the kept
+// component's affixes; aura crystals for the affixes of the parts that became material; low integrity
+// halves a part's yield. A component item itself salvages to its material at crafted_return_pct.
 struct SalvageResult
 {
-	std::vector<std::pair<int, int>> grams; // (material, grams) per returned part
-	int massIn = 0, massOut = 0;            // grams of the non-kept parts, before and after the rules
+	std::vector<std::pair<int, int>> grams; // (material, grams) per part returned as material
+	int massIn = 0, massOut = 0;            // grams of the parts returned as material, before and after the rules
 	int auraCrystals = 0, affixesIn = 0;
-	bool discharged = false, looted = false;
-	ApxItemData kept{};                     // the item reduced to the kept part
+	bool discharged = false, looted = false, crafted = false;
+	std::vector<ApxItemData> components;    // the component items handed over (D86)
 };
 SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_t seed, bool symmetric = false);
 int partMassGrams(const DB& db, const ApxPart& p);
+// One part as a component item's data (D86).
+ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);
+// "Keen Steel Blade of Embers": prefixes, Material, Slot, "of" suffixes joined by "and".
+std::string componentName(const DB& db, const ApxPart& p);
 
 } // namespace apxparts

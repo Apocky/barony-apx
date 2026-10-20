@@ -1,5 +1,6 @@
 // F6: the seeded roll, Item Power and its cap, the save string, the packet blob, salvage.
 // Card BF6 sections "Data model" and BF6-1/3/4/6. Integer arithmetic only; deterministic in its inputs.
+#include <cctype>
 #include "parts_model.hpp"
 #include <algorithm>
 #include <cstdio>
@@ -302,9 +303,17 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 	SalvageResult r;
 	const SalvageParams& sp = db.salvage;
 	SplitMix rng(seed ^ 0x5A17A6E5ULL);
-	r.looted = (it.flags & FLAG_LOOTED) && !(it.flags & FLAG_CRAFTED);
-	const int pct = (r.looted && !symmetric) ? sp.lootedPct : sp.craftedPct;
+	const bool comp = isComponent(it);
+	r.crafted = (it.flags & FLAG_CRAFTED) && !comp;
+	r.looted = (it.flags & FLAG_LOOTED) && !(it.flags & FLAG_CRAFTED) && !comp;
 	for ( int k = 0; k < it.nParts; ++k ) { r.affixesIn += it.parts[k].nAffix; }
+	if ( r.crafted ) // D86: every part comes back as a component item
+	{
+		for ( int k = 0; k < it.nParts; ++k ) { r.components.push_back(componentOf(db, it.parts[k], it.rollKey + (uint32_t)k, it.flags)); }
+		return r;
+	}
+	if ( comp ) { keepPart = -1; } // a component salvages to its material
+	const int pct = (r.looted && !symmetric) ? sp.lootedPct : sp.craftedPct;
 	if ( r.looted && r.affixesIn > 0 && !symmetric ) { r.discharged = rng.below(100) < sp.dischargePct; }
 	for ( int k = 0; k < it.nParts; ++k )
 	{
@@ -320,14 +329,41 @@ SalvageResult salvage(const DB& db, const ApxItemData& it, int keepPart, uint64_
 	}
 	if ( keepPart >= 0 && keepPart < it.nParts )
 	{
-		r.kept = it;
-		r.kept.parts[0] = it.parts[keepPart];
-		for ( int k = 1; k < APX_MAX_PARTS; ++k ) { memset(&r.kept.parts[k], 0, sizeof(ApxPart)); }
-		r.kept.nParts = 1;
-		if ( r.discharged ) { r.kept.parts[0].nAffix = 0; memset(r.kept.parts[0].affix, 0, sizeof(r.kept.parts[0].affix)); }
-		r.kept.power = (uint16_t)itemPower(db, r.kept);
+		ApxPart p = it.parts[keepPart];
+		if ( r.discharged ) { p.nAffix = 0; memset(p.affix, 0, sizeof(p.affix)); }
+		r.components.push_back(componentOf(db, p, it.rollKey + (uint32_t)keepPart, it.flags));
 	}
 	return r;
+}
+
+ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t key, uint8_t flags)
+{
+	ApxItemData c{};
+	c.form = COMPONENT_FORM;
+	c.rollKey = key;
+	c.nParts = 1;
+	c.flags = (uint8_t)(flags & (FLAG_CRAFTED | FLAG_LOOTED));
+	c.parts[0] = p;
+	c.power = (uint16_t)itemPower(db, c);
+	return c;
+}
+
+std::string componentName(const DB& db, const ApxPart& p)
+{
+	auto cap = [](std::string s) { if ( !s.empty() ) { s[0] = (char)toupper((unsigned char)s[0]); } for ( auto& ch : s ) { if ( ch == '_' ) { ch = ' '; } } return s; };
+	std::string pre, suf;
+	std::vector<std::string> sufs;
+	for ( int a = 0; a < p.nAffix && a < 4; ++a )
+	{
+		if ( p.affix[a] >= db.affixes.size() ) { continue; }
+		const AffixInfo& ai = db.affixes[p.affix[a]];
+		if ( ai.position == AFFIX_PREFIX ) { pre += ai.label + " "; }
+		else { sufs.push_back(ai.label); }
+	}
+	for ( size_t k = 0; k < sufs.size(); ++k ) { suf += (k == 0 ? " of " : k + 1 == sufs.size() ? " and " : ", ") + sufs[k]; }
+	const std::string mat = p.material < db.materials.size() ? cap(db.materials[p.material].id) : "?";
+	const std::string slot = p.slot < db.slots.size() ? cap(db.slots[p.slot].id) : "Part";
+	return pre + mat + " " + slot + suf;
 }
 
 } // namespace apxparts

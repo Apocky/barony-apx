@@ -182,9 +182,10 @@ int main(int argc, char** argv)
 	}
 
 	// S4 salvage over seeded items (D76 stop rule: 95% half-width under 0.5 points or 10^5 items)
+	long long craftedN = 0, craftedOk = 0, keptN = 0, keptOk = 0; // D86 component hand-over
 	auto salvageRun = [&](bool symmetric, double& lootedPct, double& craftedPct, double& dischargePct, double& auraPct, double& hwLooted, int& lowHalvedOk, int& lowParts, int& items) {
 		double sumL = 0, sumL2 = 0, sumC = 0; long long nL = 0, nC = 0, withAff = 0, disch = 0, affixes = 0, auras = 0;
-		lowHalvedOk = 0; lowParts = 0;
+		lowHalvedOk = 0; lowParts = 0; craftedN = craftedOk = keptN = keptOk = 0;
 		Counters c;
 		for ( items = 0; items < 100000; ++items )
 		{
@@ -192,9 +193,24 @@ int main(int argc, char** argv)
 			const int depth = 1 + items % 40;
 			roll(db, *gearForms[(size_t)items % gearForms.size()], 7, depth, items % 5, (uint32_t)items, it, c);
 			if ( it.nParts < 2 ) { continue; }
-			it.flags = (uint8_t)((it.flags & 0x3f) | (items % 2 ? FLAG_LOOTED : FLAG_CRAFTED));
+			// thirds: looted (60 %), crafted (every part a component), neither (shop/start gear: 100 %)
+			it.flags = (uint8_t)((it.flags & 0x3f) | (items % 3 == 0 ? FLAG_LOOTED : items % 3 == 1 ? FLAG_CRAFTED : 0));
 			const int keep = items % it.nParts;
 			SalvageResult r = salvage(db, it, keep, rollKey(7, (uint8_t)depth, 9, (uint32_t)items), symmetric);
+			if ( it.flags & FLAG_CRAFTED )
+			{
+				++craftedN;
+				bool ok = r.crafted && (int)r.components.size() == it.nParts && r.grams.empty() && r.auraCrystals == 0;
+				for ( size_t k = 0; ok && k < r.components.size(); ++k ) { ok = isComponent(r.components[k]) && !memcmp(&r.components[k].parts[0], &it.parts[k], sizeof(ApxPart)); }
+				craftedOk += ok;
+				continue;
+			}
+			{
+				++keptN;
+				const ApxItemData* c = r.components.size() == 1 ? &r.components[0] : nullptr;
+				keptOk += c && isComponent(*c) && c->parts[0].slot == it.parts[keep].slot && c->parts[0].material == it.parts[keep].material
+					&& c->parts[0].nAffix == (r.discharged ? 0 : it.parts[keep].nAffix) && (int)r.grams.size() == it.nParts - 1;
+			}
 			// the integrity-adjusted base: what the rule says each part gives at 100 percent
 			long long base = 0;
 			for ( int k = 0; k < it.nParts; ++k )
@@ -226,12 +242,30 @@ int main(int argc, char** argv)
 		salvageRun(false, lp, cp, dp, ap, hw, lowOk, lowN, items);
 		const bool pass = std::fabs(lp - db.salvage.lootedPct) <= 1.0 && std::fabs(cp - db.salvage.craftedPct) <= 1.0
 			&& std::fabs(dp - db.salvage.dischargePct) <= 1.0 && std::fabs(ap - db.salvage.auraPerAffixPct) <= 1.0 && lowOk == lowN && lowN > 0;
+		gate("D86_salvage_components", craftedN > 0 && craftedOk == craftedN && keptN > 0 && keptOk == keptN,
+			join({ kv("crafted_items", (int)craftedN), kv("crafted_every_part_a_component", (int)craftedOk), kv("other_items", (int)keptN), kv("chosen_part_a_component", (int)keptOk) }));
 		gate("S4_salvage", pass, join({ kv("items", items), kv("looted_return_pct", lp), kv("looted_half_width", hw), kv("crafted_return_pct", cp),
 			kv("discharge_pct", dp), kv("aura_per_affix_pct", ap), kv("low_integrity_parts", lowN), kv("low_integrity_halved", lowOk) }));
 		double lp2, cp2, dp2, ap2, hw2;
 		salvageRun(true, lp2, cp2, dp2, ap2, hw2, lowOk, lowN, items);
 		const bool asym = std::fabs(lp2 - db.salvage.lootedPct) <= 1.0 && std::fabs(cp2 - db.salvage.craftedPct) <= 1.0;
 		gate("S4_ctrl_symmetric", !asym, join({ kv("looted_return_pct", lp2), kv("crafted_return_pct", cp2), "\"note\":\"APX_SALVAGE_SYMMETRIC=1 must fail the asymmetry test\"" }));
+	}
+	{
+		// D86 names: prefix/suffix from the affix table; a component salvages back to its material
+		ApxItemData it; Counters c;
+		std::string name; int found = 0;
+		for ( uint32_t i = 0; i < 2000 && !found; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 7, 30, 0, i, it, c);
+			for ( int k = 0; k < it.nParts; ++k ) { if ( it.parts[k].nAffix >= 2 ) { name = componentName(db, it.parts[k]); found = k + 1; break; } }
+		}
+		const std::string mat = found ? db.materials[it.parts[found - 1].material].id : "";
+		ApxItemData comp = found ? componentOf(db, it.parts[found - 1], 1, FLAG_LOOTED) : ApxItemData{};
+		SalvageResult back = salvage(db, comp, 0, 5);
+		const bool ok = found && name.size() > mat.size() && (name.find(" of ") != std::string::npos || name.find(' ') < name.size()) && isComponent(comp)
+			&& back.components.empty() && back.grams.size() == 1 && back.massOut == partMassGrams(db, comp.parts[0]) * db.salvage.craftedPct / 100 * (comp.parts[0].integrity < db.salvage.lowIntegrityByte ? db.salvage.lowIntegrityFactorPct : 100) / 100;
+		gate("D86_component_name", ok, join({ "\"name\":\"" + name + "\"", kv("affix_defaults", db.affixDefaults), kv("back_to_material_g", back.massOut) }));
 	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;
