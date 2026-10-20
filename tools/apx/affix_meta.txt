@@ -1,0 +1,126 @@
+# D86 affix metadata, one line per affix: pool | name | pos | word | stat
+# pos = prefix or suffix; word = the display word in the component name ("Keen Steel Blade of Embers"); stat = id from the catalog in author_gear.py
+# Weight is derived (100 - 6 x pct, at least 5) unless the pool line says otherwise. Existing affix ids are file order and never move.
+Blade|edge keeping|suffix|of Lasting Edge|edge
+Blade|bleed|prefix|Gory|bleed
+Blade|reach|prefix|Long|reach
+Blade|keenness|prefix|Keen|dmg
+Blade|heft|prefix|Heavy|stagger
+Blade|balance|suffix|of Balance|speed
+Edge|serration|prefix|Serrated|bleed
+Edge|temper|suffix|of Tempering|durability
+Edge|bite|prefix|Biting|dmg
+Edge|glint|suffix|of Glinting|light
+Edge|rending|prefix|Rending|pierce_armor
+Edge|hone|prefix|Honed|edge
+Head|crushing|prefix|Crushing|dmg
+Head|stagger|suffix|of Staggering|stagger
+Head|breach|prefix|Breaching|pierce_armor
+Head|heft|prefix|Heavy|stagger
+Head|spikes|prefix|Spiked|bleed
+Head|ring|suffix|of Ringing|stun
+Limb|draw weight|prefix|Stout|dmg
+Limb|precision|prefix|Precise|accuracy
+Limb|range|suffix|of Reaching|range
+Limb|snap|prefix|Snappy|speed
+Limb|flex|suffix|of Flexing|durability
+Limb|quiet|prefix|Hushed|quiet
+Plate|deflection|prefix|Deflecting|block
+Plate|lightness|prefix|Light|mass
+Plate|insulation|suffix|of Insulation|resist_storm
+Plate|bulwark|prefix|Bulwark|armor
+Plate|sheen|suffix|of Sheen|light
+Plate|rivets|prefix|Riveted|durability
+Padding|cushion|prefix|Cushioned|poise
+Padding|warmth|suffix|of Warmth|resist_frost
+Padding|breathing|prefix|Airy|stamina
+Padding|quilting|prefix|Quilted|armor
+Padding|absorb|suffix|of Absorbing|resist_crush
+Padding|comfort|suffix|of Comfort|regen_hp
+Grip|sure grip|prefix|Sure|grip
+Grip|quick hands|prefix|Nimble|speed
+Grip|wrap|suffix|of Wrapping|grip
+Grip|control|prefix|Steady|accuracy
+Grip|sweat-proof|suffix|of Dryness|grip
+Grip|leverage|suffix|of Leverage|dmg
+Body|weave|prefix|Woven|durability
+Body|ward|suffix|of Warding|resist_arcane
+Body|drape|prefix|Flowing|quiet
+Body|hush|suffix|of Hush|quiet
+Body|dye|suffix|of Colour|trade
+Body|toughness|prefix|Tough|armor
+*|durable|prefix|Durable|durability
+*|light|prefix|Light|mass
+*|fine|prefix|Fine|trade
+*|sturdy|prefix|Sturdy|durability
+*|gleaming|prefix|Gleaming|light
+*|attuned|suffix|of Attunement|regen_mp
+Point|piercing|prefix|Piercing|pierce_armor
+Point|needle|prefix|Needle|accuracy
+Point|slip|suffix|of Slipping|speed
+Point|poise|suffix|of Poise|poise
+Point|anchor|suffix|of Anchoring|grip
+Shaft|reach|prefix|Long|reach
+Shaft|straight|prefix|True|accuracy
+Shaft|spring|suffix|of Spring|speed
+Shaft|flex|suffix|of Flexing|durability
+Shaft|long|prefix|Lengthy|reach
+Prod|draw weight|prefix|Stout|dmg
+Prod|snap|prefix|Snappy|speed
+Prod|range|suffix|of Reaching|range
+Prod|steady|prefix|Steady|accuracy
+Prod|quiet|prefix|Hushed|quiet
+Stock|steady aim|prefix|Steady|accuracy
+Stock|recoil|suffix|of Calm Recoil|stamina
+Stock|light|prefix|Light|mass
+Stock|sturdy|prefix|Sturdy|durability
+Shell|deflection|prefix|Deflecting|block
+Shell|lightness|prefix|Light|mass
+Shell|bulwark|prefix|Bulwark|armor
+Shell|padded|prefix|Padded|poise
+Shell|sheen|suffix|of Sheen|light
+Liner|cushion|prefix|Cushioned|poise
+Liner|warmth|suffix|of Warmth|resist_frost
+Liner|breathing|prefix|Airy|stamina
+Liner|absorb|suffix|of Absorbing|resist_crush
+Upper|grip|prefix|Gripping|grip
+Upper|quiet step|suffix|of Quiet Steps|quiet
+Upper|warmth|suffix|of Warmth|resist_frost
+Upper|water-shedding|suffix|of Dryness|resist_storm
+Sole|traction|prefix|Surefooted|grip
+Sole|quiet step|suffix|of Quiet Steps|quiet
+Sole|spring|suffix|of Spring|speed
+Sole|long wear|prefix|Hardwearing|durability
+Palm|sure grip|prefix|Sure|grip
+Palm|quick hands|prefix|Nimble|speed
+Palm|padding|prefix|Padded|poise
+Palm|feel|suffix|of Feeling|accuracy
+Cuff|seal|suffix|of Sealing|resist_frost
+Cuff|wrap|suffix|of Wrapping|grip
+Cuff|guard|prefix|Guarding|block
+Cuff|flex|suffix|of Flexing|durability
+Guard|catch|prefix|Catching|block
+Guard|deflect|prefix|Deflecting|block
+Guard|balance|suffix|of Balance|speed
+Guard|wide|prefix|Wide|block
+Pommel|counterweight|suffix|of Counterweight|speed
+Pommel|bash|prefix|Bashing|stagger
+Pommel|balance|suffix|of Balance|speed
+Pommel|charm|suffix|of Charm|luck
+String|tight|prefix|Taut|dmg
+String|silent|prefix|Silent|quiet
+String|durable|prefix|Durable|durability
+String|fast|prefix|Quick|speed
+Visor|clear sight|prefix|Clear|accuracy
+Visor|deflection|prefix|Deflecting|block
+Visor|hush|suffix|of Hush|quiet
+Visor|shade|suffix|of Shade|quiet
+# new pool "elemental" (appended last; the roll code may draw one for components of Uncommon rarity or better, D86). weight 15 each.
+elemental|embers|suffix|of Embers|dmg_fire
+elemental|rime|suffix|of Rime|dmg_frost
+elemental|sparks|suffix|of Sparks|dmg_storm
+elemental|runes|suffix|of Runes|dmg_arcane
+elemental|gloom|suffix|of Gloom|dmg_death
+elemental|bloom|suffix|of Bloom|dmg_life
+elemental|ash|prefix|Ashen|resist_fire
+elemental|frostward|prefix|Frostward|resist_frost
