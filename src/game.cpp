@@ -100,6 +100,8 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 #include "apx/headless.hpp"
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
+#include "apx/vox/builder.hpp"
+#include "apx/vox/bx1.hpp"
 #include "apx/tiers.hpp"
 #include "apx_combat.hpp"
 #include "apx_stamina.hpp"
@@ -172,9 +174,38 @@ static bool apxSelftestVoxel(std::string& fields)
 		"\"registered\":%d,\"skipped_parts\":%d,\"fp_dims\":[%d,%d,%d],\"knob\":%d", parts, vanFp, fp, vanTp, tp, fp2 == fp ? 1 : 0, base, nummodels,
 		st.registered, st.partsSkipped, fp >= 0 ? models[fp]->sizex : 0, fp >= 0 ? models[fp]->sizey : 0, fp >= 0 ? models[fp]->sizez : 0, apx::vox::heldEnabled() ? 1 : 0);
 	fields = buf;
-	free(sword);
-	return parts > 0 && fp != vanFp && tp != vanTp && (unsigned)fp >= base && (unsigned)tp >= base && fp2 == fp
+	const bool composedOk = parts > 0 && fp != vanFp && tp != vanTp && (unsigned)fp >= base && (unsigned)tp >= base && fp2 == fp
 		&& apx::vox::baseModelCount() == base && models[fp]->sizez == models[vanFp]->sizez;
+
+	// the voxel builder, driven as a player would: open a Blade make, an empty build is refused, a hand-drawn blade
+	// is built; the component carries the build's look; a sword with that blade is drawn from the built model
+	int bladeSlot = -1, iron = -1;
+	for ( int i = 0; i < 64 && bladeSlot < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { bladeSlot = i; } }
+	for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+	bool builderOk = false;
+	uint32_t look = 0, madeLook = 0;
+	std::string why;
+	int refusedEmpty = 0, usedLook = 0;
+	if ( bladeSlot >= 0 && iron >= 0 && apx::vox::builder::open(0, bladeSlot << 8 | iron) )
+	{
+		apxPartsLedgerCredit(0, iron, 200000);
+		refusedEmpty = apx::vox::builder::build(0, why) == nullptr ? 1 : 0;
+		apx::bx1::BuildSession* b = apx::vox::builder::session(0);
+		for ( int z = 12; b && z < b->model.sz; ++z ) { b->add(3, z); if ( z < b->model.sz - 3 ) { b->add(2, z); b->add(4, z); } }
+		look = b ? apx::bx1::hash(b->model) : 0;
+		if ( Item* made = apx::vox::builder::build(0, why) ) { madeLook = made->apx.nParts ? made->apx.parts[0].look : 0; }
+		for ( int i = 0; i < sword->apx.nParts; ++i ) { if ( sword->apx.parts[i].slot == bladeSlot ) { sword->apx.parts[i].look = madeLook; } }
+		const int before = apx::vox::stats().looksUsed;
+		const int withLook = apx::vox::heldModel(sword, true, vanFp);
+		usedLook = apx::vox::stats().looksUsed - before;
+		builderOk = refusedEmpty && look && madeLook == look && apx::vox::findLook(look) && usedLook >= 1 && withLook != fp && withLook != vanFp;
+	}
+	char b2[256];
+	snprintf(b2, sizeof b2, ",\"builder\":{\"opened\":%d,\"refused_empty\":%d,\"built\":%d,\"look\":\"%08x\",\"made_look\":\"%08x\",\"held_used_look\":%d,\"why\":\"%s\",\"knob\":%d}",
+		apx::vox::builder::stats().opened, refusedEmpty, apx::vox::builder::stats().built, look, madeLook, usedLook, why.c_str(), apx::vox::builder::enabled() ? 1 : 0);
+	fields += b2;
+	free(sword);
+	return composedOk && builderOk;
 }
 
 // tierdmg (D74): a hostile rat, tagged fodder the way the director tags its creatures, hits player 0 for 20 with

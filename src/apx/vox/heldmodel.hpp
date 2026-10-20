@@ -21,7 +21,11 @@ namespace vox
 	int registerModel(const bx1::VoxModel& m);   // a model index, or -1; the same content returns the same index
 	unsigned baseModelCount();                     // nummodels before any runtime model (models.txt)
 	int heldModel(const Item* item, bool firstPerson, int vanillaModel); // composed index, or vanillaModel
-	struct Stats { int registered = 0, composed = 0, cacheHits = 0, partsSkipped = 0; };
+
+	// player-built models (the voxel builder): stored once per look hash as <outputdir>/apxlooks/<hash>.vox
+	uint32_t storeLook(const bx1::VoxModel& m);      // returns the look hash (0 on failure)
+	const bx1::VoxModel* findLook(uint32_t look);     // cached; loads from the store; nullptr when absent
+	struct Stats { int registered = 0, composed = 0, cacheHits = 0, partsSkipped = 0, looksUsed = 0, looksMissing = 0; };
 	const Stats& stats();
 } // namespace vox
 } // namespace apx

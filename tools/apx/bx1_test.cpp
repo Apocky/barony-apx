@@ -130,6 +130,41 @@ static bool gateBuildRules()
 	return ok;
 }
 
+static bool gateSession()
+{
+	bool ok = true;
+	auto expect = [&](bool cond, const char* what) { if ( !cond ) { printf("  BAD  %s\n", what); ok = false; } };
+	BuildSession b;
+	b.begin(Slot::Grip, kSteel, kLeather);
+	expect(b.model.count() == 0 && b.layer == 2, "begin: empty grip volume, middle layer");
+	expect(!b.validate().ok && b.validate().why == "empty", "empty build is not valid");
+	for ( int z = 0; z < b.model.sz; ++z ) { b.add(2, z); }
+	Check c = b.validate();
+	expect(c.ok && shapingPoints(c) == 20, "a straight grip through both mounts earns 20");
+	b.remove(2, 6);
+	expect(!b.validate().ok && b.validate().why == "not one connected piece", "removing a middle voxel breaks it");
+	b.add(2, 6);
+	b.mirror = true;
+	b.add(0, 3);
+	expect(b.model.get(0, 2, 3) != 255 && b.model.get(3, 2, 3) != 255, "mirror adds both sides");
+	b.remove(3, 3);
+	expect(b.model.get(0, 2, 3) == 255 && b.model.get(3, 2, 3) == 255, "mirror removes both sides");
+	b.layerUp(); b.layerUp(); b.layerUp();
+	expect(b.layer == b.model.sy - 1, "layer stops at the top");
+	expect(!b.add(99, 0), "outside the volume is refused");
+	// a blade drawn by hand: 3 wide on the middle layer from z 12 to the tang
+	BuildSession s;
+	s.begin(Slot::Blade, kSteel, kLeather);
+	for ( int z = 12; z < s.model.sz; ++z ) { s.add(3, z); if ( z < s.model.sz - 3 ) { s.add(2, z); s.add(4, z); } }
+	Check cb = s.validate();
+	expect(cb.ok, "hand-drawn blade is valid");
+	const uint32_t h = hash(s.model);
+	VoxModel back; std::string err;
+	expect(readBytes(toBytes(s.model), back, err) && hash(back) == h && h != 0, "built model round-trips with the same look hash");
+	printf("G-session %s: builder session (grip %d voxels, blade %d voxels, look %08x)\n", ok ? "PASS" : "FAIL", b.model.count(), s.model.count(), h);
+	return ok;
+}
+
 int main(int argc, char** argv)
 {
 	if ( argc >= 5 && !std::strcmp(argv[1], "gen") )
@@ -145,8 +180,8 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	const std::string dir = argc >= 2 ? argv[1] : "C:/Program Files (x86)/Steam/steamapps/common/Barony/models";
-	const bool a = gateRoundTrip(dir), b = gateGenerators(), c = gateBuildRules();
-	const bool all = a && b && c;
+	const bool a = gateRoundTrip(dir), b = gateGenerators(), c = gateBuildRules(), d = gateSession();
+	const bool all = a && b && c && d;
 	printf("%s: BX1 offline gates\n", all ? "PASS" : "FAIL");
 	return all ? 0 : 1;
 }

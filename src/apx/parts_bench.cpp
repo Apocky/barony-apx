@@ -231,6 +231,9 @@ void apxPartsBenchRegister()
 	apx_bench::setProvider(p);
 	printlog("apxparts: bench provider registered (parts, formbook, salvage, break; craft next slice)\n");
 }
+// BX1 (C10): MAKE with the voxel builder's model: the same as the Make tab's make, with the built model's look hash
+Item* apxPartsBenchMakeLook(int player, int optionId, uint32_t look, std::string& why) { return apxPartsMake(player, optionId >> 8, optionId & 0xFF, benchStation, look, why); }
 #else
 void apxPartsBenchRegister() {} // apx_bench_api.hpp not in this tree yet (BU1 apx/u1b)
+Item* apxPartsBenchMakeLook(int, int, uint32_t, std::string& why) { why = "no bench"; return nullptr; }
 #endif

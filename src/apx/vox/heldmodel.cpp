@@ -2,12 +2,15 @@
 #include "../../main.hpp"
 #include "../../init.hpp"
 #include "../../items.hpp"
+#include "../../files.hpp"
 #include "../parts_engine.hpp"
 #include "bx1.hpp"
 #include "heldmodel.hpp"
 
 #include <algorithm>
 #include <cstdlib>
+#include <filesystem>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <unordered_map>
@@ -51,6 +54,37 @@ namespace vox
 	unsigned baseModelCount() { return g_base ? g_base : nummodels; }
 	const Stats& stats() { return g_stats; }
 
+	namespace
+	{
+		std::unordered_map<uint32_t, bx1::VoxModel> g_looks;
+		std::string lookPath(uint32_t look)
+		{
+			char name[32];
+			snprintf(name, sizeof name, "/apxlooks/%08x.vox", look);
+			return std::string(outputdir) + name;
+		}
+	} // namespace
+
+	uint32_t storeLook(const bx1::VoxModel& m)
+	{
+		const uint32_t h = bx1::hash(m);
+		std::error_code ec;
+		std::filesystem::create_directories(std::string(outputdir) + "/apxlooks", ec);
+		if ( !bx1::write(lookPath(h), m) ) { printlog("[apx-vox] cannot write %s", lookPath(h).c_str()); return 0; }
+		g_looks[h] = m;
+		return h;
+	}
+
+	const bx1::VoxModel* findLook(uint32_t look)
+	{
+		if ( !look ) { return nullptr; }
+		auto it = g_looks.find(look);
+		if ( it != g_looks.end() ) { return &it->second; }
+		bx1::VoxModel m; std::string err;
+		if ( !bx1::read(lookPath(look), m, err) ) { return nullptr; }
+		return &(g_looks[look] = m);
+	}
+
 	int registerModel(const bx1::VoxModel& m)
 	{
 		if ( !g_base ) { g_base = nummodels; }
@@ -89,7 +123,7 @@ namespace vox
 
 		// the cache key: the vanilla box this view uses and what the parts are
 		std::string key = std::to_string(vanillaModel) + (firstPerson ? "f" : "t") + ":" + std::to_string(item->apx.rollKey);
-		for ( int i = 0; i < item->apx.nParts && i < APX_MAX_PARTS; ++i ) { key += "," + std::to_string(item->apx.parts[i].slot) + "/" + std::to_string(item->apx.parts[i].material); }
+		for ( int i = 0; i < item->apx.nParts && i < APX_MAX_PARTS; ++i ) { key += "," + std::to_string(item->apx.parts[i].slot) + "/" + std::to_string(item->apx.parts[i].material) + "/" + std::to_string(item->apx.parts[i].look); }
 		auto hit = g_composed.find(key);
 		if ( hit != g_composed.end() ) { return hit->second >= 0 ? hit->second : vanillaModel; }
 
@@ -105,6 +139,11 @@ namespace vox
 			apxPartsMaterialTint(p.material, t);
 			const bx1::Rgb base = rgb(t);
 			const bx1::Rgb accent = s == bx1::Slot::Grip ? bx1::Rgb{ 110, 70, 40 } : bx1::Rgb{ (uint8_t)(base.r * 3 / 4), (uint8_t)(base.g * 3 / 4), (uint8_t)(base.b * 3 / 4) };
+			if ( p.look ) // a player-built model (the voxel builder) wins over the procedural one
+			{
+				if ( const bx1::VoxModel* built = findLook(p.look) ) { pieces.push_back({ *built, order }); ++g_stats.looksUsed; continue; }
+				++g_stats.looksMissing; // not on this machine (yet): fall back to the procedural model
+			}
 			pieces.push_back({ bx1::makeComponent(s, (uint64_t)item->apx.rollKey * 1315423911ull + (uint64_t)i * 2654435761ull, base, accent), order });
 		}
 		if ( pieces.empty() ) { g_composed[key] = -1; return vanillaModel; }

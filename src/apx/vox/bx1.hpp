@@ -64,5 +64,26 @@ namespace bx1
 	struct Check { bool ok = false; std::string why; int voxels = 0; int pieces = 0; int mountsMissed = 0; };
 	Check check(Slot s, const VoxModel& v);
 	int shapingPoints(const Check& c);       // D87: any valid build earns the full 20, else 0
+
+	// The voxel builder's session (D87, 05b step 8): the player builds one component freely in the slot's volume,
+	// one layer at a time (the layer is a y slice: x across, z along the part), with an optional mirror across x.
+	// The UI only calls these; the self-test drives them the same way.
+	struct BuildSession
+	{
+		Slot slot = Slot::Blade;
+		VoxModel model;                      // always the slot volume
+		int layer = 0;                       // current y
+		bool mirror = false;
+		uint8_t colour = 2;                  // palette index used by add (1..6: dark, base, light, edge, accent, accent dark)
+		int edits = 0;
+		void begin(Slot s, Rgb material, Rgb accent);
+		bool add(int x, int z);              // at (x, layer, z); mirrored too when mirror is on; false outside or no change
+		bool remove(int x, int z);
+		void clear();
+		void layerUp() { if ( layer + 1 < model.sy ) { ++layer; } }
+		void layerDown() { if ( layer > 0 ) { --layer; } }
+		bool isMount(int x, int y, int z) const;
+		Check validate() const { return check(slot, model); }
+	};
 } // namespace bx1
 } // namespace apx

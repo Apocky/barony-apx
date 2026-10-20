@@ -419,5 +419,48 @@ namespace bx1
 	}
 
 	int shapingPoints(const Check& c) { return c.ok ? 20 : 0; }
-} // namespace bx1
+
+	// ------------------------------------------------------------------ the builder's session
+	void BuildSession::begin(Slot s, Rgb material, Rgb accent)
+	{
+		slot = s;
+		const SlotRule& R = slotRule(s);
+		model = VoxModel();
+		model.resize(R.sx, R.sy, R.sz);
+		paletteRamp(model, material, accent);
+		layer = R.sy / 2;
+		mirror = false;
+		colour = 2;
+		edits = 0;
+	}
+
+	bool BuildSession::add(int x, int z)
+	{
+		if ( !model.inside(x, layer, z) ) { return false; }
+		bool changed = model.get(x, layer, z) != colour;
+		model.set(x, layer, z, colour);
+		const int mx = model.sx - 1 - x;
+		if ( mirror && mx != x ) { changed |= model.get(mx, layer, z) != colour; model.set(mx, layer, z, colour); }
+		edits += changed;
+		return changed;
+	}
+
+	bool BuildSession::remove(int x, int z)
+	{
+		if ( !model.inside(x, layer, z) ) { return false; }
+		bool changed = model.get(x, layer, z) != 255;
+		model.set(x, layer, z, 255);
+		const int mx = model.sx - 1 - x;
+		if ( mirror && mx != x ) { changed |= model.get(mx, layer, z) != 255; model.set(mx, layer, z, 255); }
+		edits += changed;
+		return changed;
+	}
+
+	void BuildSession::clear() { std::fill(model.data.begin(), model.data.end(), 255); ++edits; }
+
+	bool BuildSession::isMount(int x, int y, int z) const
+	{
+		for ( const Cell& m : slotRule(slot).mounts ) { if ( m.x == x && m.y == y && m.z == z ) { return true; } }
+		return false;
+	}} // namespace bx1
 } // namespace apx
