@@ -12,7 +12,7 @@ namespace tradeglue
 {
 	struct Counters
 	{
-		int shops = 0, hamlet = 0, rowsRealized = 0, rowsPendingPouch = 0, rowsPendingService = 0;
+		int bundles = 0, shops = 0, hamlet = 0, rowsRealized = 0, rowsPendingPouch = 0, rowsPendingService = 0;
 		int classRefused = 0, purseRefused = 0, sold = 0, soldGold = 0, peddlers = 0;
 	};
 	extern Counters counters;
