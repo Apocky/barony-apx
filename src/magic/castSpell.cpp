@@ -26,6 +26,7 @@
 #include "../prng.hpp"
 #include "../mod_tools.hpp"
 #include "../paths.hpp"
+#include "../apx/magic/magic.hpp" // apx S1: apx::magic
 
 void castSpellInit(Uint32 caster_uid, spell_t* spell, bool usingSpellbook, bool usingTome)
 {
@@ -165,6 +166,20 @@ void castSpellInit(Uint32 caster_uid, spell_t* spell, bool usingSpellbook, bool 
 					return;
 				}
 			}
+		}
+	}
+
+	if ( player >= 0 )
+	{
+		// apx S1 (D93 "Rewrite casting now"): the player's casting is apx::magic from here on; every hotbar, quick-cast, spellbook and tome route
+		// arrives in this function. APX_MAGIC_OLD=1 falls through to Barony's own path below (the CONTROL).
+		apx::magic::SpellRef apxRef;
+		apxRef.spell = spell;
+		apxRef.book = usingSpellbook;
+		apxRef.tome = usingTome;
+		if ( apx::magic::beginCast(player, apxRef) )
+		{
+			return;
 		}
 	}
 

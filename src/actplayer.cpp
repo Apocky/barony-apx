@@ -41,6 +41,7 @@
 #include "apx/props.hpp"
 #include "apx/hollow_probe.hpp"
 #include "apx/move/move.hpp" // apx M1: our own player movement (D93)
+#include "apx/magic/magic.hpp" // apx S1: our own casting (D93)
 
 bool settings_smoothmouse = false;
 bool usecamerasmoothing = false;
@@ -11491,6 +11492,7 @@ void actPlayer(Entity* my)
 		{
 			apx::move::step(PLAYER_NUM); // apx M1: integrate this tick (data/apx/move/move.json)
 		}
+		apx::magic::tick(PLAYER_NUM); // apx S1: cast time, concentration, release (no-op under APX_MAGIC_OLD=1)
 		if ( !usecamerasmoothing )
 		{
 			players[PLAYER_NUM]->movement.handlePlayerMovement(false);

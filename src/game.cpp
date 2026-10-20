@@ -100,6 +100,7 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
 #include "apx/move/move.hpp"
+#include "apx/magic/magic.hpp" // apx S1
 #include "apx/qadriver.hpp" // apx: -apxqa=<dir> interactive QA driver
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
@@ -1380,6 +1381,7 @@ void gameLogic(void)
 
 	apx::hostility::frame(); // apx D93: floor reset, calm start, gate
 	apx::move::frame(); // apx M1: impulses on creatures, cost summary
+	apx::magic::frame(); // apx S1: stamps, pending emissions, projectile cost sample
 
 	// handle safe packets
 	if ( !(ticks % 4) )
