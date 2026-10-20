@@ -4315,6 +4315,7 @@ int Player::PlayerMovement_t::getCharacterWeight()
 		}
 	}
 	weight += stats[player.playernum]->getGoldWeight();
+	weight += apxPartsPouchWeight(player.playernum); // apx F6 D85: the material pouch counts (D57)
 	return weight;
 }
 

@@ -36,7 +36,8 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex);
 // give (GEM_ROCK stand-in). v1 has no keep-one-part choice (that needs the BU1 bench UI): every part
 // returns. False = a vanilla item, the caller keeps its vanilla numbers.
 bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, int* auraCrystals);
-long long apxPartsLedgerGrams(int player); // salvaged material grams held for the player (not yet items)
+long long apxPartsLedgerGrams(int player); // the material pouch (D85): salvaged grams held for the player
+int apxPartsPouchWeight(int player);        // the pouch in Barony weight units (1 unit = 100 g, as U1's list), for carry weight
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);
