@@ -29,6 +29,16 @@ Set-Content "$stage\VERSION.txt" "Apocky's Labyrinth $Version`r`nbuilt from $(gi
 $banned = Get-ChildItem $stage -Recurse -File | Where-Object { $_.Extension -in '.vox', '.png', '.ogg', '.wav', '.lmp', '.fsb', '.bank' }
 if ($banned) { $banned | ForEach-Object { "BANNED: $($_.FullName)" }; throw 'package contains game assets' }
 
+Copy-Item barony.ico $stage   # installer icon and shortcuts (our flaming anarchy icon, D61)
+
+# The installer (Inno Setup 6): dist\ApockysLabyrinth-<Version>-Setup.exe
+$iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $iscc) { throw 'Inno Setup 6 (ISCC.exe) not found: winget install JRSoftware.InnoSetup' }
+& $iscc /Q "/DAppVersion=$Version" "/DSrcDir=$stage" "/O$(Join-Path $root 'dist')" tools\apx\installer\ApockysLabyrinth.iss
+if ($LASTEXITCODE -ne 0) { throw "installer build failed ($LASTEXITCODE)" }
+$setup = Join-Path $root "dist\ApockysLabyrinth-$Version-Setup.exe"
+"installer: $setup $([math]::Round((Get-Item $setup).Length / 1MB, 1)) MB"
+
 $zip = Join-Path $root "dist\$name.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path "$stage\*" -DestinationPath $zip

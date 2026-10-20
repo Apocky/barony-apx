@@ -32,6 +32,7 @@ int main()
 	knobs().noClamp = brk == "clamp";
 	knobs().buyAnything = brk == "buyany";
 	knobs().vanillaStock = brk == "vanilla";
+	knobs().flatRarity = brk == "flatrarity";
 
 	// 1. price rule: clamp, monotone in demand, anti-monotone in supply
 	{
@@ -125,6 +126,35 @@ int main()
 		std::set<std::string> cl; for ( auto& r : hs ) { cl.insert(r.cls); }
 		CHECK(cl.count("service") && cl.count("provision") && cl.count("material") && cl.count("reagent") && cl.count("component"), "Hamlet misses a stock class");
 		CHECK((int)hs.size() <= kHamletMaxRows && hs.size() > 20, "Hamlet size %d", (int)hs.size());
+	}
+	// 4b. components (D86): rarity raises the price, deeper floors stock rarer ones, a merchant buys only its materials' class
+	{
+		int nonMono = 0, bad = 0;
+		for ( int base = 1; base < 3000; base += 7 ) { for ( int r = 0; r < 5; ++r ) { if ( componentPrice(base, r + 1) <= componentPrice(base, r) && base > 1 ) { ++nonMono; } } }
+		CHECK(nonMono == 0, "component price not strictly rising with rarity in %d cases", nonMono);
+		CHECK(componentPrice(100, 0) == 100, "a Common component keeps the base price, got %d", componentPrice(100, 0));
+		CHECK(componentPrice(100, 4) == 800, "Legendary is 8x, got %d", componentPrice(100, 4));
+		long long rareShallow = 0, rareDeep = 0, compShallow = 0, compDeep = 0;
+		for ( uint32_t seed = 1; seed <= 2000; ++seed )
+			for ( auto& t : kTrades )
+				for ( int depth : { 1, 9 } )
+					for ( auto& r : buildStock(t, seed * 40503u, depth) )
+					{
+						if ( r.cls != "component" ) { continue; }
+						if ( r.rarity < 0 || r.rarity > 4 || r.affixes != r.rarity ) { ++bad; }
+						if ( depth == 1 ) { ++compShallow; if ( r.rarity >= 2 ) { ++rareShallow; } } else { ++compDeep; if ( r.rarity >= 2 ) { ++rareDeep; } }
+					}
+		CHECK(bad == 0, "%d component rows with a bad rarity or affix count", bad);
+		CHECK(compShallow > 500 && compDeep > 500, "too few components sampled (%lld, %lld)", compShallow, compDeep);
+		double fs = (double)rareShallow / std::max(1LL, compShallow), fd = (double)rareDeep / std::max(1LL, compDeep);
+		CHECK(fd > fs + 0.10, "rare (>= Uncommon+1) share must rise with depth: floor 1 %.3f, floor 9 %.3f", fs, fd);
+		const TradeRow* smith = findTrade("smith"); int purse = 100000;
+		CHECK(smith && componentOffer(*smith, "metal", 100, 3, purse) > 0, "smith buys a metal component");
+		CHECK(smith && componentOffer(*smith, "wood", 100, 3, purse) == 0, "smith refuses a wooden component");
+		int p1 = 100000, p2 = 100000;
+		int offCommon = smith ? componentOffer(*smith, "metal", 300, 0, p1) : 0, offRare = smith ? componentOffer(*smith, "metal", 300, 4, p2) : 0;
+		CHECK(offRare > offCommon * 4, "a Legendary component fetches far more than a Common one (%d vs %d)", offRare, offCommon);
+		std::printf("info: components rarity>=2 share: floor 1 %.3f, floor 9 %.3f\n", fs, fd);
 	}
 	// 5. floor shops: general store rate 0.5 (95 percent half-width stop), never the same trade twice running, none on floor 1
 	{

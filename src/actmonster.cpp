@@ -33,6 +33,7 @@
 #include "apx/lua_layer.hpp"
 #include "menu.hpp"
 #include "apx_combat.hpp"
+#include "apx/variants_glue.hpp" // apx BV1
 
 float limbs[NUMMONSTERS][30][3];
 
@@ -2848,6 +2849,7 @@ void monsterChaseBump(Entity* my, Stat* myStats, bool hasrangedweapon, real_t di
 
 void actMonster(Entity* my)
 {
+	apx::vglue::tick(my); // apx BV1: a client applies the variant look the host sent
 	if (!my)
 	{
 		return;
@@ -3067,6 +3069,7 @@ void actMonster(Entity* my)
 		}
 
 		MONSTER_INIT = 2;
+		apx::vglue::onMonsterInit(my, myStats); // apx BV1: roll and apply the creature variant
 		if ( myStats->type == MIMIC )
 		{
 			// no turn, handled earlier
@@ -3887,6 +3890,7 @@ void actMonster(Entity* my)
 			}
 		}
 
+		apx::vglue::onDeath(my, myStats); // apx BV1: the variant's own loot table
 		//TODO: Refactor die function.
 		// drop all equipment
 		entity = dropItemMonster(myStats->helmet, my, myStats);

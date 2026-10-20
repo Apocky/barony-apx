@@ -3,15 +3,19 @@ APOCKY'S LABYRINTH -- install in three steps (Windows, 64-bit)
 You need: your own copy of Barony on Steam (installed). Apocky's Labyrinth uses Barony's art,
 sounds and music from your install; they belong to Turning Wheel and are not included here.
 
-1. Download ApockysLabyrinth-<version>-win64.zip from the Releases page:
-   https://github.com/Apocky/barony-apx/releases
-2. Right-click the zip, Extract All, to any folder you can write to (for example your Documents).
-3. Double-click "Play Apocky's Labyrinth.cmd".
-   It finds your Steam Barony by itself. If it cannot, it asks you to paste the folder path once
-   and remembers it (barony-path.txt).
+1. Download ApockysLabyrinth-<version>-Setup.exe from the Releases page:
+   https://github.com/Apocky/barony-apx/releases/latest
+2. Run it. It finds your Steam Barony by itself (or lets you pick its folder), installs to your user
+   folder (no admin needed), and adds Start menu and optional desktop shortcuts.
+3. Start Apocky's Labyrinth from the Start menu.
 
-Your Steam Barony and its saves are not changed. This game keeps its own saves and logs in the
-folder you extracted. To uninstall, delete that folder.
+(Prefer no installer? The -win64.zip works too: extract it and double-click "Play Apocky's Labyrinth.cmd".)
+
+UPDATING: you never need a second copy. Each time you start the game it checks for a newer release and
+offers to update your existing install in place. Running a newer Setup.exe does the same. Your saves stay.
+To uninstall: Windows Settings > Apps > Apocky's Labyrinth (your saves are kept).
+
+Your Steam Barony and its saves are not changed. This game keeps its own saves and logs in its install folder.
 
 Playing together: everyone needs the same release version.
 If Windows SmartScreen warns about an unknown publisher: "More info", then "Run anyway"

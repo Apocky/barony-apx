@@ -21,13 +21,13 @@ namespace trade
 
 	// One line of a shop's stock. units = grams (material, reagent, component) or a count (service 1, provision, light, rare 1).
 	// basePrice is for the whole row at neutral demand/supply; markup > 0 marks the rare finished piece (price = gold value x markup).
-	struct StockRow { std::string cls, id, detail; int units = 0; int basePrice = 0; int markup = 0; };
+	struct StockRow { std::string cls, id, detail; int units = 0; int basePrice = 0; int markup = 0; int rarity = 0, affixes = 0; };   // rarity 0 Common .. 4 Legendary (5 Unique never sold); affixes = its affix slots (D86)
 
 #include "trade_table.inc"
 #include "trade_itemcls.inc"
 
 	// ---- controls: each makes a gate fail on purpose (tests/units only) ----------------------------------------------
-	struct Knobs { bool noClamp = false, buyAnything = false, vanillaStock = false; };
+	struct Knobs { bool noClamp = false, buyAnything = false, vanillaStock = false, flatRarity = false; };
 	inline Knobs& knobs() { static Knobs k; return k; }
 
 	inline const TradeRow* findTrade(const std::string& id) { for ( auto& t : kTrades ) { if ( t.id == id ) { return &t; } } return nullptr; }
@@ -91,9 +91,31 @@ namespace trade
 		return false;
 	}
 	inline int lotBase(const MatRow& m, int grams) { return std::max(1, (int)((long long)grams * m.vpk * kLotMarkup / 1000)); }
+	// ---- components (D86): first-class items with rarity and affixes; price from rarity (percent of the Common price) ------------
+	constexpr int kRarityPct[6] = { 100, 160, 260, 450, 800, 1600 };
+	inline int componentPrice(int commonPrice, int rarity)
+	{
+		if ( knobs().flatRarity ) { return std::max(1, commonPrice); }   // CONTROL: rarity ignored
+		rarity = std::max(0, std::min(5, rarity));
+		return std::max(1, (int)((long long)commonPrice * kRarityPct[rarity] / 100));
+	}
+	// rarity a shop's component is rolled at: deeper floors stock rarer ones; Unique (5) is never on a shelf
+	inline int rollRarity(int depth, int draw /*0..99 from the rng*/)
+	{
+		int w[5] = { std::max(20, 60 - 4 * depth), 25, 10 + depth, 4 + depth / 2, 1 + depth / 4 };
+		int sum = 0; for ( int x : w ) { sum += x; }
+		int r = draw * sum / 100;
+		for ( int k = 0; k < 5; ++k ) { if ( r < w[k] ) { return k; } r -= w[k]; }
+		return 0;
+	}
+	// what a merchant pays for a component the player sells: a third of its price, only if its material class is the trade's
+	inline int componentOffer(const TradeRow& t, const std::string& materialCategory, int commonPrice, int rarity, int& purse)
+	{
+		return sellToMerchant(t, materialCategory, componentPrice(commonPrice, rarity), purse);
+	}
 	inline int servicePrice(const std::string& id) { for ( auto& s : kServices ) { if ( s.id == id ) { return s.price; } } return 0; }
 
-	inline void addGroup(std::vector<StockRow>& out, const SellGroup& g, Rng& rng, bool allowRare)
+	inline void addGroup(std::vector<StockRow>& out, const SellGroup& g, Rng& rng, bool allowRare, int depth = 1)
 	{
 		static const int kGrams[4] = { 200, 400, 800, 1600 };
 		int n = g.lo + rng.below(g.hi - g.lo + 1);
@@ -124,7 +146,9 @@ namespace trade
 				const MatRow* m = findMat(mid); if ( !m ) { continue; }
 				int grams = std::max(5, (int)((long long)s->volume * m->density / 1000));
 				r.cls = "component"; r.id = s->id; r.detail = mid; r.units = grams;
-				r.basePrice = std::max(1, lotBase(*m, grams) * kWorkPct / 100);
+				int common = std::max(1, lotBase(*m, grams) * kWorkPct / 100);
+				r.rarity = rollRarity(depth, rng.below(100)); r.affixes = r.rarity;
+				r.basePrice = componentPrice(common, r.rarity);
 			}
 			else if ( g.cls == "service" )
 			{
@@ -154,11 +178,11 @@ namespace trade
 			return out;
 		}
 		Rng rng(stockSeed(mapSeed, floor, t.id));
-		for ( auto& g : t.sells ) { addGroup(out, g, rng, true); }
+		for ( auto& g : t.sells ) { addGroup(out, g, rng, true, floor); }
 		// pad to the minimum from the trade's own material groups (never from outside the trade)
 		for ( int guard = 0; (int)out.size() < kMinRows && guard < 40; ++guard )
 		{
-			for ( auto& g : t.sells ) { if ( g.cls == "material" || g.cls == "reagent" ) { SellGroup one = g; one.lo = one.hi = 1; addGroup(out, one, rng, false); break; } }
+			for ( auto& g : t.sells ) { if ( g.cls == "material" || g.cls == "reagent" ) { SellGroup one = g; one.lo = one.hi = 1; addGroup(out, one, rng, false, floor); break; } }
 		}
 		while ( (int)out.size() > kMaxRows ) { out.pop_back(); }
 		return out;
