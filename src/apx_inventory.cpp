@@ -729,6 +729,114 @@ static void runComponents(int dt)
 	}
 }
 
+// Live D85/D86 chain on the real F6 engine (no test provider): salvage at the bench (choose the keep,
+// break) -> a component item appears and the pouch grows -> draw a bundle out of the pouch (F6's
+// engine call; its provider has no drawBundle yet) -> pick the bundle up -> the pouch is back.
+// Carry mass = the list rows' sum at every step. Make and Swap: not in F6's engine yet (reported).
+static int countComponents()
+{
+	int n = 0;
+	for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { if ( apxPartsIsComponent((Item*)nd->element) ) { ++n; } }
+	return n;
+}
+static void runLive86(int dt)
+{
+	auto& pl = *players[0];
+	static Entity* bench = nullptr;
+	static Uint32 swordUid = 0, compUid = 0, bundleUid = 0;
+	static long long g0 = -1, g1 = -1, g2 = -1, g3 = -1;
+	static int comps0 = -1, comps1 = -1, compRowRarity = -9, compParts = -1, rows0 = 0, rows1 = 0, rows2 = 0, rows3 = 0, keep = -2, bundleMat = -1, salvaged = 0, picked = 0;
+	static std::string compName, why;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	auto rowsOk = []() { return checkRows(rows(0), carriedMass(0)).empty() ? 1 : 0; };
+	if ( dt == 410 )
+	{
+		emptyInventory(0);
+		Item* sword = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+		apxPartsBind(sword, 1, 3); // looted, depth 3
+		swordUid = sword->uid;
+		g0 = apx_bench::provider().pouchGrams(0);
+		comps0 = countComponents();
+		rows0 = rowsOk();
+		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
+		auto e = ownRowsForTest(0);
+		setBenchTab(0, 4); // Salvage
+	}
+	else if ( dt == 412 )
+	{
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.uid == swordUid ) { setFocus(0, 0, (int)i); } }
+	}
+	else if ( dt == 414 )
+	{
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 3 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } } // choose the keep
+	}
+	else if ( dt == 416 )
+	{
+		keep = benchKeep(0);
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 4 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } } // Break, keeping it
+		salvaged = viewState(0).lastBenchMsg.rfind("Salvaged", 0) == 0;
+	}
+	else if ( dt == 419 )
+	{
+		comps1 = countComponents();
+		g1 = apx_bench::provider().pouchGrams(0);
+		rows1 = rowsOk();
+		for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next )
+		{
+			Item* it = (Item*)nd->element;
+			if ( apxPartsIsComponent(it) ) { compUid = it->uid; compName = apxPartsComponentName(it); compParts = (int)apx_bench::provider().parts(it).size(); }
+		}
+		for ( auto& e : ownRowsForTest(0) ) { if ( !e.header && e.row.uid == compUid ) { compRowRarity = e.row.rarity; } }
+	}
+	else if ( dt == 421 )
+	{
+		// draw out 10 g of the first material the pouch holds (a small salvage leaves under 100 g per material)
+		for ( int m = 0; m < 64 && !bundleUid; ++m )
+		{
+			std::string w;
+			if ( Item* b = apxPartsDrawBundle(0, m, 10, w) ) { bundleUid = b->uid; bundleMat = m; } else if ( why.empty() ) { why = w; }
+		}
+	}
+	else if ( dt == 424 )
+	{
+		g2 = apx_bench::provider().pouchGrams(0);
+		rows2 = rowsOk();
+		// pick the bundle up again the way a floor pickup does: the item arrives through itemPickup
+		if ( Item* b = uidToItem(bundleUid) )
+		{
+			Item* copy = newItem(b->type, b->status, b->beatitude, b->count, b->appearance, b->identified, nullptr);
+			copy->apx = b->apx;
+			list_RemoveNode(b->node);
+			Item* got = itemPickup(0, copy);
+			if ( got && got != copy ) { free(copy); }
+			picked = got != nullptr;
+		}
+	}
+	else if ( dt == 428 )
+	{
+		g3 = apx_bench::provider().pouchGrams(0);
+		rows3 = rowsOk();
+	}
+	else if ( dt == 430 )
+	{
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"live86\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"keep\":%d,\"salvaged\":%d,\"components\":[%d,%d],\"component\":{\"name\":\"%s\",\"parts\":%d,\"row_rarity\":%d},"
+				"\"pouch_g\":[%lld,%lld,%lld,%lld],\"bundle\":{\"material\":%d,\"drawn\":%d,\"picked\":%d,\"why\":\"%s\"},\"rows_sum_ok\":[%d,%d,%d,%d],"
+				"\"pouch_grew\":%d,\"bundle_debited\":%d,\"pickup_restored\":%d,\"make\":\"not in F6 engine yet\",\"swap\":\"not in F6 engine yet\"}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, keep, salvaged, comps0, comps1, compName.c_str(), compParts, compRowRarity,
+				g0, g1, g2, g3, bundleMat, bundleUid ? 1 : 0, picked, why.c_str(), rows0, rows1, rows2, rows3,
+				g1 > g0 ? 1 : 0, bundleUid && g2 == g1 - 10 ? 1 : 0, bundleUid && picked && g3 == g1 ? 1 : 0);
+			fclose(f);
+		}
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+	}
+}
+
 // D81: columns sort, category tabs, icons, the rich tooltip with compare-to-equipped. Run once.
 static void runD81(int dt)
 {
@@ -976,7 +1084,8 @@ static void runUiPhases()
 	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
 	else if ( dt >= 370 && dt < 380 ) { runPouch(dt); }
 	else if ( dt >= 380 && dt < 410 ) { runComponents(dt); }
-	else if ( dt == 420 )
+	else if ( dt >= 410 && dt < 432 ) { runLive86(dt); }
+	else if ( dt == 440 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -988,8 +1097,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 490 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 530 )
+	else if ( dt == 510 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 550 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
