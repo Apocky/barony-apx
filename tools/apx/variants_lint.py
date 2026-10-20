@@ -117,8 +117,14 @@ def lint(d, root=ROOT):
                     errs.append("R7: %s loot %s: unknown material" % (nid, k))
                 elif kind == "item" and ident not in items:
                     errs.append("R7: %s loot %s: unknown item type" % (nid, k))
+                elif kind == "comp":
+                    # D86: components are first-class items (rarity, prefix/suffix); data-only until F6's component item lands.
+                    # format comp:<material>@<rarity>[+<affix word>]
+                    mm = re.fullmatch(r"([a-z]+)@(common|uncommon|rare|epic|legendary)(\+[a-z]+)?", ident)
+                    if not mm or mm.group(1) not in mats:
+                        errs.append("R7: %s loot %s: component must be comp:<material>@<rarity>[+affix] with a known material" % (nid, k))
                 elif kind not in ("mat", "item"):
-                    errs.append("R7: %s loot %s: id must start mat: or item:" % (nid, k))
+                    errs.append("R7: %s loot %s: id must start mat:, item: or comp:" % (nid, k))
         if n.get("level") != "base":
             for k in n.get("loot", {}).get("reweight", {}):
                 pt = resolve_loot(nodes, n["loot"].get("extends")) or {}

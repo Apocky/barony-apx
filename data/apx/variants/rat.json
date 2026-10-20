@@ -81,6 +81,10 @@
      [
       "item:SCROLL_REMOVECURSE",
       0.03
+     ],
+     [
+      "comp:bone@uncommon+cursed",
+      0.2
      ]
     ],
     "extends": "rat.undead",
@@ -117,6 +121,10 @@
      [
       "item:GEM_AMETHYST",
       0.4
+     ],
+     [
+      "comp:bone@rare+whispering",
+      0.35
      ]
     ],
     "extends": "rat.undead.accursed",
@@ -155,6 +163,10 @@
      [
       "mat:bone",
       0.5
+     ],
+     [
+      "comp:bone@common",
+      0.3
      ]
     ],
     "extends": "rat.undead",
@@ -189,6 +201,10 @@
     "add": [
      [
       "mat:ivory",
+      0.3
+     ],
+     [
+      "comp:ivory@rare+clattering",
       0.3
      ]
     ],
@@ -231,6 +247,10 @@
      [
       "mat:quartz",
       0.15
+     ],
+     [
+      "comp:glass@uncommon+ethereal",
+      0.2
      ]
     ],
     "extends": "rat.undead",
@@ -265,6 +285,10 @@
     "add": [
      [
       "item:GEM_OPAL",
+      0.3
+     ],
+     [
+      "comp:aethite@rare+wailing",
       0.3
      ]
     ],
@@ -346,6 +370,10 @@
      [
       "mat:coal",
       0.3
+     ],
+     [
+      "comp:coal@uncommon+smoldering",
+      0.2
      ]
     ],
     "extends": "rat.elemental",
@@ -383,6 +411,10 @@
      [
       "item:GEM_RUBY",
       0.35
+     ],
+     [
+      "comp:coal@rare+cinder",
+      0.3
      ]
     ],
     "extends": "rat.elemental.fire",
@@ -424,6 +456,10 @@
      [
       "mat:salt",
       0.2
+     ],
+     [
+      "comp:ice@uncommon+rimed",
+      0.2
      ]
     ],
     "extends": "rat.elemental",
@@ -461,6 +497,10 @@
      [
       "item:GEM_AQUAMARINE",
       0.35
+     ],
+     [
+      "comp:ice@rare+rimeheart",
+      0.3
      ]
     ],
     "extends": "rat.elemental.frost",
@@ -502,6 +542,10 @@
      [
       "mat:glass",
       0.2
+     ],
+     [
+      "comp:quartz@uncommon+charged",
+      0.2
      ]
     ],
     "extends": "rat.elemental",
@@ -539,6 +583,10 @@
      [
       "item:GEM_FLUORITE",
       0.35
+     ],
+     [
+      "comp:quartz@rare+thunder",
+      0.3
      ]
     ],
     "extends": "rat.elemental.storm",
