@@ -124,3 +124,29 @@ elemental|gloom|suffix|of Gloom|dmg_death
 elemental|bloom|suffix|of Bloom|dmg_life
 elemental|ash|prefix|Ashen|resist_fire
 elemental|frostward|prefix|Frostward|resist_frost
+# D86 / 05b s4: a Unique takes 5 affixes, so every pool needs >= 5 entries. Extra entries (6th field = pct) are appended INSIDE their pool;
+# ids are file order, so every pool after an extended one is renumbered once (before any save exists). Pools already at 5-6 are untouched.
+Point|sharp|prefix|Sharp|dmg|9
+Shaft|seasoned|prefix|Seasoned|durability|8
+Prod|resilient|prefix|Resilient|durability|7
+Stock|carved|prefix|Carved|trade|3
+Stock|stout|prefix|Stout|stagger|6
+Shell|snug|prefix|Snug|poise|7
+Liner|quilted|prefix|Quilted|armor|8
+Liner|soft|prefix|Soft|regen_hp|4
+Upper|supple|prefix|Supple|speed|6
+Upper|sturdy|prefix|Sturdy|durability|8
+Sole|cleated|prefix|Cleated|grip|8
+Sole|heel|suffix|of the Heel|stagger|5
+Palm|tacky|prefix|Tacky|grip|7
+Palm|light hand|suffix|of the Light Hand|speed|5
+Cuff|snug cuff|prefix|Snug|block|5
+Cuff|warden|suffix|of the Warden|resist_pierce|7
+Guard|forged|prefix|Forged|durability|8
+Guard|hooked|prefix|Hooked|stagger|6
+Pommel|weighted|prefix|Weighted|stagger|7
+Pommel|polished|prefix|Polished|trade|3
+String|waxed|prefix|Waxed|resist_storm|6
+String|long draw|suffix|of the Long Draw|range|8
+Visor|narrow|prefix|Narrow|accuracy|7
+Visor|tinted|prefix|Tinted|resist_arcane|6

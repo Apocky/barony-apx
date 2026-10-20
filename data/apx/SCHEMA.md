@@ -60,3 +60,10 @@ A component's name = up to 2 prefix words in affix order + Material + Slot + up 
 The appended pool `elemental` (8 entries: Embers, Rime, Sparks, Runes, Gloom, Bloom, Ashen, Frostward) is for components of Uncommon rarity or better; no lookup
 chooses it until the roll code draws from it. Ids stay file order: new affixes go only into NEW pools at the end of the file, never into an existing pool.
 Lint: python tests/apx/test_gear_content.py (13 controls).
+
+## 05b s4 affix keys (authored; read by the F6 loader since apx/f6 bd28d9c4)
+`mag`: 5 pairs [lo, hi], Uncommon..Unique, pct units of the affix's stat (1-255), rising by tier: pct x [0.5, 0.75, 1.0, 1.4, 2.0] x 0.8..1.2.
+`element`: fire | frost | earth | storm | arcane | life | death, present only on affixes whose stat is elemental (resonance tag for C9).
+`conflicts`: names of affixes that may not share a component (both directions listed; names exist in some pool; lint checks symmetry).
+Every pool now has 6 entries (24 pools, 146 affixes; `elemental` has 8): the pools of 4-5 got 1-2 entries each appended INSIDE their pool, so affix ids after
+Point are renumbered once (no save exists yet). New affixes in future go into new pools at the end.
