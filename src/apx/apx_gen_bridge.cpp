@@ -620,6 +620,26 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		printlog("apxgen: FAILED no entrance room\n");
 		return -1;
 	}
+	// a player must never spawn in water or lava (D93): the arrival tile and its open neighbours become dry floor.
+	// Seeds 101/102 (floor 1) had a water fixture on the start tile; swimming blocks every swing and weapon use.
+	{
+		int fixed = 0;
+		for ( int dx = -1; dx <= 1; ++dx )
+			for ( int dy = -1; dy <= 1; ++dy )
+			{
+				const int x = start.x + dx, y = start.y + dy;
+				if ( x < 0 || y < 0 || x >= W || y >= H ) { continue; }
+				if ( tileAt(x, y, 1) != 0 ) { continue; } // a wall stays a wall
+				const Sint32 cur = tileAt(x, y, 0);
+				if ( cur == 0 || (swimmingtiles && swimmingtiles[cur]) || (lavatiles && lavatiles[cur]) )
+				{
+					printlog("apxgen: start-area tile %d,%d was %d (water/lava/pit), now floor %d\n", x, y, (int)cur, (int)tx.floor);
+					tileAt(x, y, 0) = tx.floor;
+					++fixed;
+				}
+			}
+		if ( fixed ) { printlog("apxgen: kept the player start dry: %d tiles near %d,%d\n", fixed, start.x, start.y); }
+	}
 
 	// torches. Rooms: one per TORCH_FACES wall faces (at least 2), faces walked in perimeter order
 	// (sorted by angle round the room centre) so they spread along all walls. Corridors: one per
