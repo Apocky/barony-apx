@@ -10,6 +10,8 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "apx_inventory.hpp"
+#include "apx_bench_api.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
@@ -4315,7 +4317,7 @@ int Player::PlayerMovement_t::getCharacterWeight()
 		}
 	}
 	weight += stats[player.playernum]->getGoldWeight();
-	weight += apxPartsPouchWeight(player.playernum); // apx F6 D85: the material pouch counts (D57)
+	if ( !apx_inv::vanillaGrid() ) { weight += (int)apx_bench::pouchUnits(player.playernum); } // apx D85: the material pouch is carried; one source for weight and the list row (F6 fills pouchGrams from its ledger)
 	return weight;
 }
 

@@ -83,7 +83,7 @@ void setProvider(const Provider& p)
 long long pouchUnits(int player)
 {
 	long long g = g_active.pouchGrams ? g_active.pouchGrams(player) : 0;
-	return g > 0 ? (g + 50) / 100 : 0;
+	return g > 0 ? g / 100 : 0; // whole units, rounded down as F6 counts them (apxPartsPouchWeight)
 }
 } // namespace apx_bench
 
