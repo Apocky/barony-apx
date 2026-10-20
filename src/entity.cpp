@@ -47,6 +47,7 @@ See LICENSE for details.
 #include "apx/combat/impact.hpp" // [apx-hit] impact_uses
 #include "apx/tiers.hpp"
 #include "apx/spawn_fix.hpp" // apx floor-start death fixes
+#include "apx/wild_enmity.hpp" // apx load grace, wild enmity
 
 /*-------------------------------------------------------------------------------
 
@@ -18924,6 +18925,12 @@ bool Entity::checkEnemy(Entity* your)
 	{
 		return true;
 	}
+	// apx load grace (apx/wild_enmity.hpp): until the player has loaded in plus a short grace, no creature counts anything as an enemy
+	if ( behavior == &actMonster && apx::wild::graceOn() && !apx::spawnfix::legacy() && !apx::wild::G().ended )
+	{
+		++apx::wild::C().graceRefusals;
+		return false;
+	}
 
 	if ( (your->behavior == &actPlayer || your->behavior == &actPlayerLimb) && (behavior == &actPlayer || behavior == &actPlayerLimb) )
 	{
@@ -19093,6 +19100,34 @@ bool Entity::checkEnemy(Entity* your)
 		}
 	}
 
+	// apx shop defence (apx/wild_enmity.hpp): a shopkeeper turns on a wild creature only inside its shop (kShopRadius tiles of
+	// where it first stood) or when that creature provoked it. Before: the haven merchant, which has no shop area, hunted
+	// creatures 15+ tiles away and killed 8 of 22 on floor 1 in 90 s (seed 777). APX_WILD_ENMITY=vanilla: Barony's rule.
+	if ( behavior == &actMonster && myStats->type == SHOPKEEPER && your->behavior == &actMonster && !yourStats->leader_uid
+		&& apx::wild::wildRuleOn() && !apx::spawnfix::legacy() && multiplayer != CLIENT && swornenemies[myStats->type][yourStats->type < NUMMONSTERS ? yourStats->type : 0] )
+	{
+		if ( apx::wild::isProvoked(getUID(), your->getUID()) ) { ++apx::wild::C().provokedAllowed; return true; }
+		const auto home = apx::wild::home(getUID(), x, y);
+		if ( std::hypot(your->x - home.first, your->y - home.second) <= apx::wild::kShopRadius * 16.0 ) { ++apx::wild::C().shopDefence; return true; }
+		++apx::wild::C().shopIgnored;
+		return false;
+	}
+	// apx wild enmity (apx/wild_enmity.hpp): two wild creatures fight only when their pair is in the explicit hostility table
+	// (apx/wild_hostility.inc, a reason per pair), when provoked, or in a director event; the vanilla table made every rat and
+	// skeleton on the floor fight on sight. APX_WILD_ENMITY=vanilla: Barony's table (the control).
+	if ( behavior == &actMonster && your->behavior == &actMonster && !myStats->leader_uid && !yourStats->leader_uid
+		&& myStats->type != SHOPKEEPER && yourStats->type != SHOPKEEPER && myStats->type < NUMMONSTERS && yourStats->type < NUMMONSTERS
+		&& apx::wild::wildRuleOn() && !apx::spawnfix::legacy() && multiplayer != CLIENT )
+	{
+		if ( apx::wild::hostile(myStats->type, yourStats->type) ) { ++apx::wild::C().tableAllowed; return true; }
+		if ( apx::wild::isProvoked(getUID(), your->getUID()) ) { ++apx::wild::C().provokedAllowed; return true; }
+		apx::tiers::Source wm = apx::tiers::Source::NotMonster, wy = apx::tiers::Source::NotMonster;
+		apx::tiers::tierOf(this, &wm);
+		apx::tiers::tierOf(your, &wy);
+		if ( wm == apx::tiers::Source::Tag || wy == apx::tiers::Source::Tag ) { ++apx::wild::C().eventAllowed; return true; }
+		if ( swornenemies[myStats->type][yourStats->type] ) ++apx::wild::C().wildBlocked; // the vanilla table said enemy
+		return false;
+	}
 	// if you have a leader, check whether we are enemies instead
 	Entity* yourLeader = NULL;
 	if ( yourStats->leader_uid )

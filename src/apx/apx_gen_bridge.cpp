@@ -347,6 +347,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		return out;
 	};
 
+	std::vector<Placed> havenAt; // apx spawn fix 6
 	int nStarts = 0, nDoors = 0, nLocked = 0, nTorches = 0, nChests = 0, nKeys = 0, nBoss = 0, nMerchant = 0,
 		nMonsters = 0, nItems = 0, nGold = 0, nFixtures = 0, nUnmapped = 0;
 	std::vector<std::pair<int, Placed>> keyAt, lockAt; // (lock id, tile)
@@ -594,6 +595,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 			case apx::Kind::Haven:
 			{
 				Entity* m = at(35, p.x, p.y, map.creatures); // shopkeeper (merchant)
+				havenAt.push_back(p); // spawn fix 6: no creature group beside the haven (its shopkeeper kills intruders)
 				apx::tradeglue::markHaven(m);                // BT1: this one is the floor's one-trade haven merchant
 				m->skill[5] = nMonsters++;
 				++nMerchant;
@@ -960,19 +962,24 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	}
 	// place each group around its room's centre, members on free tiles of that room
 	int monsterNoType = 0;
-	struct PlacedSide { int cx, cy; std::vector<int> kinds; };
-	std::vector<PlacedSide> placedSides;
 	// spawn fix 6: a floor opens quiet. No group sits in a room whose centre is within D72_ARRIVAL_CLEAR tiles of the arrival
 	// tile (ASSUMED 18; the entrance room alone was excluded, and a rat pair 14 tiles away saw the player at load and hunted
 	// a character who had not moved, QA s1 seed 4242). Such a group moves to a room past the radius (picked by hash, so host
 	// and client agree); counted. APX_SPAWN_LEGACY=1: groups stay (the control).
-	constexpr int D72_ARRIVAL_CLEAR = 18;
+	// The haven merchant gets the same clearance (D72_HAVEN_CLEAR, ASSUMED 12): a shopkeeper kills creatures that come into its
+	// shop ("Begone from my shop"), and groups placed beside it were cut down before the player arrived (seed 777: 22 -> 15 in 90 s).
+	constexpr int D72_ARRIVAL_CLEAR = 18, D72_HAVEN_CLEAR = 12;
+	auto tooClose = [&](const apx::RoomRow& ro) {
+		const int cx = (ro.x0 + ro.x1) / 2, cy = (ro.z0 + ro.z1) / 2;
+		if ( (cx - start.x) * (cx - start.x) + (cy - start.y) * (cy - start.y) < D72_ARRIVAL_CLEAR * D72_ARRIVAL_CLEAR ) { return true; }
+		for ( auto& h : havenAt ) { if ( (cx - h.x) * (cx - h.x) + (cy - h.y) * (cy - h.y) < D72_HAVEN_CLEAR * D72_HAVEN_CLEAR ) { return true; } }
+		return false;
+	};
 	std::vector<int> farRooms;
 	for ( auto& ro : f.rooms )
 	{
 		if ( f.mission.nodes[ro.node].kind != apx::Kind::Room || ro.node == entranceNode ) { continue; }
-		const int dx = (ro.x0 + ro.x1) / 2 - start.x, dy = (ro.z0 + ro.z1) / 2 - start.y;
-		if ( dx * dx + dy * dy >= D72_ARRIVAL_CLEAR * D72_ARRIVAL_CLEAR ) { farRooms.push_back(ro.node); }
+		if ( !tooClose(ro) ) { farRooms.push_back(ro.node); }
 	}
 	if ( !apx::spawnfix::legacy() && !farRooms.empty() )
 	{
@@ -982,8 +989,8 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 			++gi;
 			const apx::RoomRow* ro = roomOf(g.room);
 			if ( !ro ) { continue; }
-			const int dx = (ro->x0 + ro->x1) / 2 - start.x, dy = (ro->z0 + ro->z1) / 2 - start.y;
-			if ( dx * dx + dy * dy >= D72_ARRIVAL_CLEAR * D72_ARRIVAL_CLEAR ) { continue; }
+			if ( !tooClose(*ro) ) { continue; }
+
 			g.room = farRooms[(size_t)(apx::hash_words({ (uint64_t)seed, 0xA77, (uint64_t)gi }) % farRooms.size())];
 			++apx::spawnfix::C().d72ArrivalMoves;
 		}
@@ -994,41 +1001,15 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 		if ( !ro ) { continue; }
 		auto spots = nearFree((ro->x0 + ro->x1) / 2, (ro->z0 + ro->z1) / 2, (int)g.tiers.size() * 3);
 		size_t si = 0;
-		// spawn fix 1, one faction per floor (apx-gen's own rule: site.cpp, "per floor a faction with dens"): a group takes only kinds
-		// that side with every group placed before it on the floor. Measured: sides by room alone (rooms within 24 tiles) still let a
-		// rat pack and a skeleton pack meet and 12 creatures brawl in 1 of 8 runs (headless, seeds 4242/777); the whole floor closes it.
-		// When no kind of any tier sides with every placed group, only the group's own side is kept (counted as a fallback).
-		constexpr int D72_TERRITORY = 256; // tiles: the whole 128x128 floor
-		const int gcx = (ro->x0 + ro->x1) / 2, gcy = (ro->z0 + ro->z1) / 2;
+		// spawn fix 1: a group is one side (typeFor). Groups of opposed kinds may share a floor: wild creatures fight only when
+		// provoked or in a director event (apx/wild_enmity.hpp), so mixed floors keep their variety without brawling.
 		std::vector<int> groupKinds;
-		if ( !apx::spawnfix::legacy() )
-		{
-			for ( auto& pg : placedSides )
-			{
-				const int dx = pg.cx - gcx, dy = pg.cy - gcy;
-				if ( dx * dx + dy * dy > D72_TERRITORY * D72_TERRITORY ) { continue; }
-				for ( int k : pg.kinds ) { if ( std::find(groupKinds.begin(), groupKinds.end(), k) == groupKinds.end() ) { groupKinds.push_back(k); } }
-			}
-			bool feasible = groupKinds.empty();
-			for ( int tt = 0; tt < 3 && !feasible; ++tt )
-			{
-				for ( int ty : tierTypes[tt] )
-				{
-					bool f = true;
-					for ( int k : groupKinds ) { if ( sworn(ty, k) ) { f = false; break; } }
-					if ( f ) { feasible = true; break; }
-				}
-			}
-			if ( !feasible ) { groupKinds.clear(); ++apx::spawnfix::C().d72Fallbacks; }
-			else if ( !groupKinds.empty() ) { ++apx::spawnfix::C().d72TerritoryGroups; }
-		}
-		std::vector<int> mine;
 		for ( int t : g.tiers )
 		{
 			while ( si < spots.size() && (!inRoom(ro, spots[si].x, spots[si].y) || used[(size_t)spots[si].y * W + spots[si].x]) ) { ++si; }
 			if ( si >= spots.size() ) { break; }
 			const int ty = typeFor(t, groupKinds);
-			if ( ty > NOTHING ) { groupKinds.push_back(ty); mine.push_back(ty); }
+			if ( ty > NOTHING ) { groupKinds.push_back(ty); }
 			const int sprite = ty >= 0 && typeSprite[ty] ? typeSprite[ty] : 10;
 			monsterNoType += sprite == 10;
 			Entity* m = at(sprite, spots[si].x, spots[si].y, map.creatures);
@@ -1036,7 +1017,6 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 			++g.placed;
 			++si;
 		}
-		if ( !mine.empty() ) { placedSides.push_back({ gcx, gcy, mine }); }
 	}
 	// D72 gate on what was placed (the same predicates as apx-gen's site_critic)
 	std::string d72why;
@@ -1060,8 +1040,8 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 	printlog("apxgen: D72 %s groups %d placed %d/%d spawned %d (%d%%) max-group %d elite-groups %d dens %d untyped %d control %d why %s\n",
 		d72why.empty() ? "PASS" : "FAIL", (int)groups.size(), d72Placed, total, d72Spawned, d72Placed ? d72Spawned * 100 / d72Placed : 0,
 		d72MaxGroup, d72EliteGroups, (int)dens.size(), monsterNoType, apxgen.control, d72why.empty() ? "-" : d72why.c_str());
-	printlog("[apx-spawnfix] d72 one side per group: redraws %lld territory-groups %lld arrival-moves %lld fallbacks %lld (cumulative) legacy %d", apx::spawnfix::C().d72Redraws,
-		apx::spawnfix::C().d72TerritoryGroups, apx::spawnfix::C().d72ArrivalMoves, apx::spawnfix::C().d72Fallbacks, (int)apx::spawnfix::legacy());
+	printlog("[apx-spawnfix] d72 one side per group: redraws %lld arrival-moves %lld fallbacks %lld (cumulative) legacy %d", apx::spawnfix::C().d72Redraws,
+		apx::spawnfix::C().d72ArrivalMoves, apx::spawnfix::C().d72Fallbacks, (int)apx::spawnfix::legacy());
 	for ( int i = 0; i < wantItems; ++i )
 	{
 		Placed p = take(); if ( p.x < 0 ) { break; }

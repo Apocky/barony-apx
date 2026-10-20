@@ -250,6 +250,8 @@ static bool apxHeadlessFlag = false; // apx: -apxheadless (src/apx/headless.hpp)
 
 #include "UnicodeDecoder.h"
 #include "apx/lua_layer.hpp"
+#include "apx/wild_enmity.hpp" // apx load grace, wild enmity
+#include "apx/spawn_fix.hpp"
 static bool apxLuaTestMode = false;
 #include "apx_stamina.hpp"
 
@@ -1374,6 +1376,33 @@ void gameLogic(void)
 	else
 	{
 		fadealpha = std::max(0, fadealpha - 10);
+	}
+
+	// apx load grace (apx/wild_enmity.hpp): a level load (the tick counter restarts) opens the grace; the fade-in ending with
+	// the player present marks "loaded"; kGraceTicks later the grace ends and creatures may act against anything
+	{
+		apx::wild::Grace& g = apx::wild::G();
+		if ( ticks < g.lastTicks || g.floor != currentlevel )
+		{
+			g = apx::wild::Grace();
+			g.floor = currentlevel;
+			apx::wild::provoked().clear();
+			apx::wild::homes().clear();
+			apx::wild::dumpTable();
+		}
+		g.lastTicks = ticks;
+		const bool playerIn = players[clientnum] && players[clientnum]->entity;
+		if ( !g.loaded && playerIn && !fadeout && fadealpha == 0 )
+		{
+			g.loaded = true; g.loadedAt = ticks;
+			printlog("[apx-loadgrace] player loaded in floor=%d tick=%u; grace %d ticks", currentlevel, ticks, apx::wild::kGraceTicks);
+		}
+		if ( g.loaded && !g.ended && ticks - g.loadedAt >= (Uint32)apx::wild::kGraceTicks )
+		{
+			g.ended = true; g.endedAt = ticks;
+			printlog("[apx-loadgrace] ended floor=%d tick=%u (%.1f s after the load; refused enemy checks %lld, on=%d)", currentlevel, ticks,
+				ticks / 50.0, apx::wild::C().graceRefusals, (int)(apx::wild::graceOn() && !apx::spawnfix::legacy()));
+		}
 	}
 
 	// handle safe packets

@@ -69,16 +69,29 @@ def parse(line):
     return out
 
 
-def run(exe, seed, seconds, legacy, timeout, fight=False):
+def run(exe, seed, seconds, legacy, timeout, fight=False, qa=False):
     cwd = Path(tempfile.mkdtemp(prefix=f"spawngate-{seed}-{'ctl' if legacy else 'fix'}-"))
     env = dict(os.environ, APX_SPAWN_GATE=str(seconds), BARONY_DATADIR=DATADIR)
-    if legacy:
+    if legacy is True:
         env["APX_SPAWN_LEGACY"] = "1"
+    if legacy in ("wild", "grace"):
+        env["APX_WILD_ENMITY"] = "vanilla"  # Barony's enmity table for wild creatures
+    if legacy == "grace":
+        env["APX_LOAD_GRACE"] = "0"  # and no load grace: fights start while the floor fades in
     if fight:
         env["APX_SPAWN_GATE_FIGHT"] = "1"
     if fight == "coop":
         env["APX_DOWNED_FORCE_COOP"] = "1"  # the co-op downed path: a bleed-out must name its killer
-    args = [str(exe), f"-datadir={DATADIR}", "-quickstart=barbarian", "-apxfloor=1", f"-apxmapseed={seed}", "-apxheadless"]
+    args = [str(exe), f"-datadir={DATADIR}", "-quickstart=barbarian", "-apxfloor=1", f"-apxmapseed={seed}"]
+    if qa:
+        # the real input path: the QA driver (src/apx/qadriver.hpp) runs windowed, never touches the OS mouse; the script only
+        # waits (the player stands still) and takes a shot at the start and near the end
+        qd = cwd / "qa"
+        qd.mkdir()
+        (qd / "cmd.txt").write_text(f"wait 2000\nshot start\nwait {max(1000, seconds * 1000 - 6000)}\nshot end\n", encoding="utf-8")
+        args += ["-windowed", "-size=1280x720", f"-apxqa={qd}"]
+    else:
+        args.append("-apxheadless")
     t0 = time.time()
     flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
     try:
@@ -91,10 +104,9 @@ def run(exe, seed, seconds, legacy, timeout, fight=False):
     text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
     m = RE_SUM.findall(text)
     row = parse(m[-1]) if m else {}
-    fx = re.findall(r"\[apx-spawngate\] fixes (.*)", text)
-    if fx:
-        row.update(parse(fx[-1]))
-    row.update(seed=seed, legacy=int(legacy), scenario=("fight-coop" if fight == "coop" else "fight") if fight else "stand", wall_s=round(time.time() - t0, 1), finish=finish, cwd=str(cwd),
+    for fx in re.findall(r"\[apx-spawngate\] (?:fixes|wild) (.*)", text):
+        row.update(parse(fx))
+    row.update(seed=seed, legacy=legacy if isinstance(legacy, str) else int(legacy), scenario=(("fight-coop" if fight == "coop" else "fight") if fight else "stand") + ("-qa" if qa else ""), wall_s=round(time.time() - t0, 1), finish=finish, cwd=str(cwd),
                shop_hits_lines=text.count("Begone from my shop"), dies_randomly=text.count("dies randomly"))
     return row
 
@@ -130,6 +142,10 @@ def verdict(r, a):
     if r.get("bleedouts", 0) > 0: bad.append("bled out")
     if r.get("locks", 0) > a.max_locks: bad.append(f"stagger locks {r.get('locks')}")
     if r.get("dies_randomly", 0) > 0: bad.append("dies randomly (no killer)")
+    if r.get("pre_grace_player_hits", 0) > 0: bad.append(f"player hit before the load grace ended ({r.get('pre_grace_player_hits')})")
+    if r.get("pre_grace_mm_hits", 0) > 0: bad.append(f"creature fights before the load grace ended ({r.get('pre_grace_mm_hits')} hits)")
+    ps, pe = r.get("population_start", -1), r.get("population_end", -1)
+    if ps > 0 and pe < ps * a.min_population: bad.append(f"population {pe} of {ps} at the end")
     return not bad, "; ".join(bad) or "ok"
 
 
@@ -140,9 +156,11 @@ def main():
     ap.add_argument("--seconds", type=int, default=90)
     ap.add_argument("--max-brawl", type=int, default=10)
     ap.add_argument("--max-locks", type=int, default=2)
+    ap.add_argument("--min-population", type=float, default=0.9, help="creatures alive at the end over the count at the start")
     ap.add_argument("--max-brawlers", type=int, default=10, help="distinct creatures in creature-on-creature fights, whole floor (the QA brawl: about 30)")
     ap.add_argument("--timeout", type=float, default=400.0)
     ap.add_argument("--no-control", action="store_true")
+    ap.add_argument("--qa", action="store_true", help="stand runs windowed through the -apxqa input driver instead of headless (no fight runs)")
     ap.add_argument("--trials", type=int, default=3, help="runs per seed (the game is not tick-deterministic headless)")
     a = ap.parse_args()
     slot = take_slot()
@@ -155,23 +173,25 @@ def main():
     ok_all = True
     try:
         seeds = [int(s) for s in a.seeds.split(",") if s]
-        plan = [(s, False, False) for s in seeds for _ in range(a.trials)] + [(s, False, True) for s in seeds] + [(seeds[0], False, "coop")]
+        plan = [(s, False, False) for s in seeds for _ in range(a.trials)]
+        if not a.qa:
+            plan += [(s, False, True) for s in seeds] + [(seeds[0], False, "coop")]
         if not a.no_control:
-            plan += [(seeds[0], True, False), (seeds[0], True, True)]
+            plan += [(seeds[0], True, False)] + ([] if a.qa else [(seeds[0], True, True)]) + [(seeds[0], "wild", False), (seeds[0], "grace", False)]
         with rows_path.open("w", encoding="utf-8") as f:
             for seed, legacy, fight in plan:
-                r = run(a.exe.resolve(), seed, a.seconds, legacy, a.timeout, fight)
+                r = run(a.exe.resolve(), seed, a.seconds, legacy, a.timeout, fight, a.qa)
                 ok, why = (verdict_fight if fight else verdict)(r, a)
                 r["pass"], r["reason"] = int(ok), why
                 f.write(json.dumps(r) + "\n")
                 f.flush()
-                tag = ("CONTROL" if legacy else "FIX") + ("-" + ("fight-coop" if fight == "coop" else "fight") if fight else "-stand")
+                tag = (("CONTROL-" + legacy) if isinstance(legacy, str) else "CONTROL" if legacy else "FIX") + ("-" + ("fight-coop" if fight == "coop" else "fight") if fight else "-stand")
                 expect = (not ok) if legacy else ok
                 ok_all &= expect
                 print(f"{tag} seed={seed} {'PASS' if ok else 'FAIL'} ({why}) expected={'FAIL' if legacy else 'PASS'} -> {'ok' if expect else 'GATE FAIL'}")
                 print("   " + " ".join(f"{k}={r.get(k)}" for k in ("why", "seconds", "alive", "hp", "min_hp", "player_hits", "player_dmg",
                       "shopkeeper_hits", "director_hits", "max_blow", "max_fodder_blow", "max_regular_blow", "dies_randomly", "mm_hits_near", "brawlers_near", "downs", "bleedouts", "solo_recovers", "staggers", "locks",
-                      "mm_hits_all", "brawlers_all", "by_type", "wall_s")))
+                      "mm_hits_all", "brawlers_all", "pre_grace_player_hits", "pre_grace_mm_hits", "population_start", "population_end", "grace_end_s", "mm_pairs", "by_type", "wall_s")))
     finally:
         slot.unlink(missing_ok=True)
     print(f"rows: {rows_path}")

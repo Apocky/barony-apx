@@ -24,6 +24,7 @@
 #include "apx/tiers.hpp"
 #include "apx/tier_rules.hpp"
 #include "apx/spawn_fix.hpp"
+#include "apx/wild_enmity.hpp"
 #include "apx/poise_rules.hpp"
 #include "apx_stamina.hpp"
 #include "items.hpp"
@@ -31,6 +32,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <map>
+#include <unordered_set>
 #include <string>
 
 namespace apx
@@ -93,7 +95,9 @@ namespace combat_glue
 		int playerHits = 0, playerDmg = 0, shopkeeperHits = 0, minHP = 1 << 30, startHP = 0;
 		int mmHitsNear = 0, mmHitsAll = 0, staggers = 0, directorHits = 0, maxBlow = 0, maxFodderBlow = 0, maxRegularBlow = 0;
 		Uint32 deathTick = 0;
-		int maxHP = 0;
+		int maxHP = 0, popStart = -1, preGracePlayerHits = 0, preGraceMM = 0;
+		std::unordered_set<Uint32> deadLogged;
+		std::map<std::string, int> mmPairs; // creature-on-creature hits by attacker>target kind
 		bool fight = false, fought = false; // APX_SPAWN_GATE_FIGHT=1: a pack is set on the player 5 s in (the damage, downed and killer fixes under load)
 		std::unordered_map<Uint32, int> brawlersAll; // every creature in a creature-on-creature hit
 		std::unordered_map<Uint32, int> brawlers; // creatures in a creature-on-creature hit near the start
@@ -296,6 +300,8 @@ namespace combat_glue
 			phys ? " physical" : "", (int)staggeredRec(target, r),
 			r.zones.hp[(int)Zone::Legs], r.zones.max[(int)Zone::Legs], r.zones.hp[(int)Zone::Arms], r.zones.max[(int)Zone::Arms]);
 		gateOnHit(attacker, atkStats, target, tStats, out);
+		// apx wild enmity: a blow between two creatures provokes the pair (friendly fire in a crowd): they may fight now
+		if ( attacker && attacker != target && attacker->behavior == &actMonster && target->behavior == &actMonster ) apx::wild::provoke(attacker->getUID(), target->getUID());
 		if ( attacker )
 		{
 			// who struck: type, uid, side, and why hostile (the attacker's target and whether the engine counts them friends)
@@ -379,9 +385,11 @@ namespace combat_glue
 	{
 		SpawnGate& g = gate();
 		if ( !g.seconds || !g.started || g.finished || !target ) return;
+		const bool preGrace = !apx::wild::G().ended;
 		if ( isPlayer(target) )
 		{
 			++g.playerHits; g.playerDmg += dmg;
+			if ( preGrace ) ++g.preGracePlayerHits;
 			if ( atkStats ) ++g.byType[(int)atkStats->type];
 			if ( atkStats && atkStats->type == SHOPKEEPER ) ++g.shopkeeperHits;
 			apx::tiers::Source why = apx::tiers::Source::NotMonster;
@@ -393,11 +401,24 @@ namespace combat_glue
 		else if ( attacker && attacker->behavior == &actMonster && target->behavior == &actMonster )
 		{
 			++g.mmHitsAll; ++g.brawlersAll[attacker->getUID()]; ++g.brawlersAll[target->getUID()];
+			if ( preGrace ) ++g.preGraceMM;
+			if ( atkStats && tStats ) ++g.mmPairs[std::string(monstertypename[atkStats->type]) + ">" + monstertypename[tStats->type]];
 			if ( std::hypot(target->x - g.sx, target->y - g.sy) <= 12 * 16.0 && (!tStats || tStats->type != SHOPKEEPER) && (!atkStats || atkStats->type != SHOPKEEPER) )
 			{
 				++g.mmHitsNear; ++g.brawlers[attacker->getUID()]; ++g.brawlers[target->getUID()];
 			}
 		}
+	}
+	inline int gatePopulation()
+	{
+		int n = 0;
+		for ( node_t* nd = map.creatures ? map.creatures->first : nullptr; nd; nd = nd->next )
+		{
+			Entity* m = (Entity*)nd->element;
+			Stat* ms = m && m->behavior == &actMonster ? m->getStats() : nullptr;
+			n += ms && ms->HP > 0 && ms->type != SHOPKEEPER;
+		}
+		return n;
 	}
 	inline void gateFinish(const char* why)
 	{
@@ -419,9 +440,15 @@ namespace combat_glue
 		std::string loss;
 		for ( auto& kv : gateLossHP() ) { char b[64]; snprintf(b, sizeof b, "%s%s:%d/%d", loss.empty() ? "" : ",", kv.first.c_str(), kv.second, gateLoss()[kv.first]); loss += b; }
 		printlog("[apx-spawngate] hp_loss_by_source %s", loss.empty() ? "-" : loss.c_str());
+		const apx::wild::Counters& W = apx::wild::C();
+		std::string pairs;
+		for ( auto& kv : g.mmPairs ) { pairs += (pairs.empty() ? "" : ",") + kv.first + ":" + std::to_string(kv.second); }
+		printlog("[apx-spawngate] wild pre_grace_player_hits=%d pre_grace_mm_hits=%d mm_pairs=%s", g.preGracePlayerHits, g.preGraceMM, pairs.empty() ? "-" : pairs.c_str());
+		printlog("[apx-spawngate] wild population_start=%d population_end=%d grace_ended=%d grace_end_s=%.1f grace_refusals=%lld wild_blocked=%lld provoked_allowed=%lld event_allowed=%lld table_allowed=%lld shop_defence=%lld shop_ignored=%lld provocations=%lld",
+			g.popStart, gatePopulation(), (int)apx::wild::G().ended, apx::wild::G().endedAt / 50.0, W.graceRefusals, W.wildBlocked, W.provokedAllowed, W.eventAllowed, W.tableAllowed, W.shopDefence, W.shopIgnored, W.provocations);
 		const spawnfix::Counters& F = spawnfix::C();
-		printlog("[apx-spawngate] fixes legacy=%d d72_redraws=%lld d72_territory=%lld d72_arrival_moves=%lld d72_fallbacks=%lld director_tags=%lld variant_before_tier=%lld fodder_cap_after_zone=%lld"
-			" player_blow_clamps=%lld solo_recovers=%lld killers_named=%lld obituaries_kept=%lld", (int)spawnfix::legacy(), F.d72Redraws, F.d72TerritoryGroups, F.d72ArrivalMoves, F.d72Fallbacks, F.directorTags,
+		printlog("[apx-spawngate] fixes legacy=%d d72_redraws=%lld d72_arrival_moves=%lld d72_fallbacks=%lld director_tags=%lld variant_before_tier=%lld fodder_cap_after_zone=%lld"
+			" player_blow_clamps=%lld solo_recovers=%lld killers_named=%lld obituaries_kept=%lld", (int)spawnfix::legacy(), F.d72Redraws, F.d72ArrivalMoves, F.d72Fallbacks, F.directorTags,
 			F.variantBeforeTier, F.fodderCapAfterZone, F.playerBlowClamps, F.soloRecovers, F.killersNamed, F.obituariesKept);
 		mainloop = 0;
 	}
@@ -455,12 +482,24 @@ namespace combat_glue
 			if ( dt <= 16 ) printlog("[apx-spawngate] near uid=%u type=%s dist=%.1f state=%d", m->getUID(), ms ? monstertypename[ms->type] : "?", dt, (int)m->monsterState);
 		}
 		printlog("[apx-spawngate] creatures within 8/16/24 tiles of the start: %d/%d/%d", n8, n16, n24);
+		g.popStart = gatePopulation();
 	}
 	inline void gateTick(Entity* e)
 	{
 		SpawnGate& g = gate();
 		if ( !g.seconds || g.finished ) return;
 		Entity* p = players[0] ? players[0]->entity : nullptr;
+		if ( g.started && e && e->behavior == &actMonster )
+		{
+			Stat* es = e->getStats();
+			if ( es && es->HP <= 0 && g.deadLogged.insert(e->getUID()).second )
+			{
+				Entity* k = es->killer_uid ? uidToEntity(es->killer_uid) : nullptr;
+				Stat* ks = k ? k->getStats() : nullptr;
+				printlog("[apx-spawngate] creature died uid=%u type=%s at %.0f,%.0f t=%.1f killer uid=%u type=%s killedby=%d", e->getUID(), monstertypename[es->type],
+					e->x / 16.0, e->y / 16.0, (::ticks - g.t0) / 50.0, es->killer_uid, ks ? monstertypename[ks->type] : (k ? "non-creature" : "gone"), (int)es->killer);
+			}
+		}
 		if ( !g.started )
 		{
 			if ( !p || !isPlayer(e) || e != p ) return;

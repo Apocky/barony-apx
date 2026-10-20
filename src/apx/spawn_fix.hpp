@@ -31,7 +31,6 @@ namespace spawnfix
 		long long d72Redraws = 0;      // a member's kind redrawn: the first draw was a sworn enemy of its group
 		long long d72Fallbacks = 0;    // no compatible kind in the tier: the group's anchor kind used
 		long long d72ArrivalMoves = 0;  // groups moved out of the arrival radius
-		long long d72TerritoryGroups = 0; // groups that sided with a placed group within D72_TERRITORY tiles
 		long long directorTags = 0;    // director spawns tagged with their cost tier
 		long long fodderCapAfterZone = 0, playerBlowClamps = 0, variantBeforeTier = 0;
 		long long soloRecovers = 0, killersNamed = 0, obituariesKept = 0;
