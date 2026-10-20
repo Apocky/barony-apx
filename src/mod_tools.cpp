@@ -10,6 +10,7 @@ See LICENSE for details.
 -------------------------------------------------------------------------------*/
 #include "items.hpp"
 #include "mod_tools.hpp"
+#include "apx/ui/ui.hpp" // apx D92: the one ImGui runtime
 #include "menu.hpp"
 #include "classdescriptions.hpp"
 #include "draw.hpp"
@@ -8628,24 +8629,12 @@ SDL_Rect ImGui_t::debugRect{ 0, 0, 0, 0 };
 
 void ImGui_t::init()
 {
-	if ( isInit )
+	// apx D92: one ImGui context per process, owned by apx::ui; this only shows the dev menu
+	apx::ui::ensureContext();
+	if ( !apx::ui::contextReady() )
 	{
 		return;
 	}
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-	ImGui::StyleColorsDark();
-
-	ImGui_ImplSDL2_InitForOpenGL(screen, renderer);
-	ImGui_ImplOpenGL3_Init();
-
-	colorBtnDefault = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-	colorBtnDefaultActive = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
-	colorBtnDefaultHovered = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-
 	isInit = true;
 	disablePlayerControl = false;
 }
@@ -8659,43 +8648,26 @@ void ImGui_t::deinit()
 	{
 		return;
 	}
-	isInit = false;
-	SDL_ShowCursor(SDL_FALSE);
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplSDL2_Shutdown();
-	ImGui::DestroyContext();
+	isInit = false; // apx D92: hide the dev menu; the context stays (apx::ui owns it)
 }
 
 void ImGui_t::render()
 {
-	if ( !ImGui_t::isInit )
-	{
-		return;
-	}
+	apx::ui::render();
+}
 
-	auto& io = ImGui_t::getIO();
-	ImGui::Render();
-    GL_CHECK_ERR(glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y));
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+bool ImGui_t::requestingMouse()
+{
+	return apx::ui::wantMouse();
 }
 
 void ImGui_t::update()
 {
-	if ( !ImGui_t::isInit )
-	{
-		return;
-	}
+	apx::ui::frame();
+}
 
-	auto& io = ImGui_t::getIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	io.DisplaySize.x = xres;
-	io.DisplaySize.y = yres;
-
-	// Start the Dear ImGui frame
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplSDL2_NewFrame();
-	ImGui::NewFrame();
-
+void ImGui_t::drawDevMenu()
+{
 	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
 	if ( ImGui_t::show_demo_window )
 		ImGui::ShowDemoWindow(&ImGui_t::show_demo_window);

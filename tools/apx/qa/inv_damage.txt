@@ -1,0 +1,30 @@
+# D92 damage warning + Barony item-effect lines: cheats on, spawn boots of speed, open, read details, take hits
+wait 15000
+console /enablecheats
+wait 300
+console /spawnitem leather boots of speed
+wait 500
+key Tab
+wait 900
+ui inv/bag/sort/newest
+wait 300
+ui inv/bag/index/0
+wait 600
+shot q01-boots-details
+uidump e01-boots
+ui inv/details/action/equip
+wait 800
+uidump e02-boots-worn
+shot q02-boots-worn
+# a small hit (12% of max HP): the window stays open and flashes
+console /damage 5
+wait 150
+shot q03-damage-flash
+uidump e03-after-small-hit
+wait 1500
+# a big hit (over 20% of max HP) closes the window in single player
+console /damage 12
+wait 600
+uidump e04-after-big-hit
+shot q04-closed-by-hit
+quit

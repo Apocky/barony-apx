@@ -14,6 +14,11 @@
 //   wait <ms>                pause the script
 //   shot <name>              screenshot to <dir>/<name>.png (the game's own back-buffer capture)
 //   console <text>           run a Barony console command (cheats allowed in QA, e.g. /spawnitem ...)
+//   ui <id> [right|double]   click the centre of a D92 stable id's rect (apx/ui), real SDL events
+//   type <text>              SDL_TEXTINPUT events, one per character (a focused text field)
+//   uikey <action>          drive player 0's window focus model: up down left right a b x y lb rb delete
+//   uidump [name]            write every visible id + rect and the window's view state to <dir>/<name>.txt
+//   uicost_reset             restart the frame-cost sample (CPU ms of apx::ui while the window is open)
 //   quit                     close the game
 // Status after every command: <dir>/status.txt (line done, frame, level, HP/MP, position, pointer, open UI).
 #pragma once
@@ -24,6 +29,7 @@ namespace apx
 namespace qa
 {
 	bool armed();
+	void noteAttack();             // Entity::attack by a player (status `attacks`: a UI click must never add one)
 	void arm(const char* dir);
 	void pump();                   // once per frame, before SDL_PollEvent: pushes due input events
 	const char* takeShot();        // a file path when a screenshot is wanted now, else nullptr

@@ -29252,7 +29252,6 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 		return;
 	}
 	const int player = this->player.playernum;
-	if ( prompt == PROMPT_APX_INSPECT ) { apx_inv::inspectOpen(player, item); return; } // apx U1
 	if ( prompt == PROMPT_APX_BREAK ) { apx_inv::breakItem(player, item); return; }
 	bool disableItemUsage = false;
 	if ( players[player] && players[player]->entity )
@@ -30957,8 +30956,6 @@ void Player::Inventory_t::processInventory()
 	bool tooltipWasDisabled = tooltipFrame->isDisabled();
 
 	updateInventory();
-	apx_inv::listUpdate(player.playernum, frame, playerInventoryFrames[player.playernum].invSlotsFrame,
-		playerInventoryFrames[player.playernum].backpackSlotsFrame); // apx: the list replaces the grid (U1)
 
 	player.shopGUI.updateShop();
 

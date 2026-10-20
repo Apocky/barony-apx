@@ -11397,8 +11397,6 @@ const char* getContextMenuLangEntry(const int player, const ItemContextMenuPromp
 			return Language::get(4040);
 		case PROMPT_SCEPTER_CHARGE:
 			return Language::get(6834);
-		case PROMPT_APX_INSPECT:
-			return "Inspect"; // apx U1 (lang entries come with the U1 text pass)
 		case PROMPT_APX_BREAK:
 			return "Break";
 		default:
@@ -11784,8 +11782,7 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 
 	if ( playerOwnedItem && !apx_inv::vanillaGrid() && itemCategory(item) != SPELL_CAT )
 	{
-		options.push_back(PROMPT_APX_INSPECT); // apx U1: our row actions
-		options.push_back(PROMPT_APX_BREAK);
+		options.push_back(PROMPT_APX_BREAK); // apx: Break (F6 bench provider); D92 removed the old U1 Inspect panel
 	}
 	return options;
 }

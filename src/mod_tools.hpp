@@ -3184,30 +3184,18 @@ public:
 	static bool disablePlayerControl;
 	static SDL_Rect debugRect;
 	ImGui_t() {};
-	~ImGui_t()
-	{
-		// Cleanup
-		ImGui_ImplOpenGL3_Shutdown();
-		ImGui_ImplSDL2_Shutdown();
-		ImGui::DestroyContext();
-	};
-	static void init();
+	~ImGui_t() {}; // apx D92: the one context belongs to apx::ui (src/apx/ui), never destroyed here
+	static void init();   // apx D92: shows the dev menu on apx::ui's context (created if needed)
 	static void deinit();
 	static ImGuiIO& getIO() { return ImGui::GetIO(); }
 	static bool show_demo_window;
 	static void showConsoleCommands();
 	static void showHUDTimers();
 	static void buttonConsoleCommandHighlight(const char* cmd, bool flag);
-	static void update();
-	static void render();
-	static bool requestingMouse() // if mouse is detected on a module (the game should not process the mouse clicks)
-	{
-		if ( isInit )
-		{
-			return getIO().WantCaptureMouse;
-		}
-		return false;
-	}
+	static void update();      // apx D92: apx::ui::frame() (new frame, dev menu when shown, our windows)
+	static void render();      // apx D92: apx::ui::render()
+	static void drawDevMenu(); // apx D92: the dev menu's widgets, inside apx::ui's frame
+	static bool requestingMouse(); // apx D92: apx::ui::wantMouse() -- the one input gate
 
 	static ImVec4 colorOn;
 	static ImVec4 colorOnHovered;

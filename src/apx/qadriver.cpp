@@ -6,6 +6,8 @@
 #include "../entity.hpp"
 #include "../player.hpp"
 #include "../interface/interface.hpp"
+#include "ui/ui.hpp"
+#include "ui/inventory.hpp"
 
 #include <SDL_syswm.h>
 #include <cstdio>
@@ -30,6 +32,8 @@ namespace qa
 		int g_x = 0, g_y = 0;             // the game's pointer as the driver last placed it
 		struct Timed { Uint32 at; SDL_Event ev; };
 		std::deque<Timed> g_timed;        // key-ups and button-ups due later
+		unsigned g_attacks = 0;           // player attacks started (Entity::attack), to prove UI clicks never attack
+		std::string g_lastUi;             // result of the last `ui` command
 
 		Uint32 windowId() { return screen ? SDL_GetWindowID(screen) : 0; }
 
@@ -74,6 +78,11 @@ namespace qa
 				me ? me->x / 16.0 : -1.0, me ? me->y / 16.0 : -1.0, me ? me->yaw : 0.0,
 				g_x, g_y, intro ? 1 : 0,
 				(players[0] && players[0]->shootmode == false) ? 1 : 0);
+			const auto c = apx::ui::costWhileOpen();
+			const auto& g = apx::ui::gateStats();
+			fprintf(f, "attacks %u\nui_last %s\nui_cost_frames %d p50_ms %.3f p99_ms %.3f max_ms %.3f\nui_gate mouse_swallowed %u keys_swallowed %u text_swallowed %u frames_open %u\n",
+				g_attacks, g_lastUi.c_str(), c.frames, c.p50, c.p99, c.max, g.mouseSwallowed, g.keysSwallowed, g.textSwallowed, g.framesOpen);
+			fputs(apx::ui::inv::status().c_str(), f);
 			fclose(f);
 		}
 
@@ -141,12 +150,75 @@ namespace qa
 				consoleCommand(rest.c_str());
 				g_waitUntil = SDL_GetTicks() + 100;
 			}
+			else if ( op == "ui" )
+			{
+				// click a stable id (spec 08b section 7): the centre of its rect from the last frame, real SDL events
+				std::string id, how; in >> id >> how;
+				apx::ui::IdRect r;
+				if ( !apx::ui::findRect(id, r) ) { g_lastUi = "missing " + id; printlog("[apx-qa] ui id '%s' not visible", id.c_str()); return; }
+				int w = 0, h = 0; if ( screen ) { SDL_GetWindowSize(screen, &w, &h); }
+				const float fx = (w > 0 && xres > 0) ? (float)w / xres : 1.f, fy = (h > 0 && yres > 0) ? (float)h / yres : 1.f;
+				g_x = (int)((r.x0 + r.x1) * 0.5f * fx); g_y = (int)((r.y0 + r.y1) * 0.5f * fy);
+				const Uint8 b = how == "right" ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT;
+				const int clicks = how == "double" ? 2 : 1;
+				pushMotion(g_x, g_y, 0, 0);
+				for ( int k = 0; k < clicks; ++k )
+				{
+					SDL_Event dn; SDL_zero(dn); dn.type = SDL_MOUSEBUTTONDOWN; dn.button.windowID = windowId(); dn.button.button = b; dn.button.state = SDL_PRESSED;
+					dn.button.clicks = (Uint8)(k + 1); dn.button.x = g_x; dn.button.y = g_y;
+					SDL_Event up = dn; up.type = SDL_MOUSEBUTTONUP; up.button.state = SDL_RELEASED;
+					later((Uint32)(40 + 120 * k), dn); later((Uint32)(100 + 120 * k), up);
+				}
+				g_lastUi = "clicked " + id;
+				g_waitUntil = SDL_GetTicks() + 180 + 120 * clicks;
+			}
+			else if ( op == "type" )
+			{
+				// text as SDL_TEXTINPUT events (what a real keyboard sends to a focused text field)
+				std::string rest; std::getline(in, rest);
+				while ( !rest.empty() && rest[0] == ' ' ) { rest.erase(0, 1); }
+				if ( !SDL_IsTextInputActive() ) { g_lastUi = "type: no text field is active"; printlog("[apx-qa] type: SDL text input is off (no focused field), nothing sent"); return; } // as SDL itself: no text events then
+				for ( size_t k = 0; k < rest.size(); ++k )
+				{
+					SDL_Event t; SDL_zero(t); t.type = SDL_TEXTINPUT; t.text.windowID = windowId();
+					t.text.text[0] = rest[k]; t.text.text[1] = 0;
+					later((Uint32)(30 * k + 10), t);
+				}
+				g_waitUntil = SDL_GetTicks() + 30 * (Uint32)rest.size() + 60;
+			}
+			else if ( op == "uikey" )
+			{
+				std::string a; in >> a;
+				g_lastUi = std::string(apx::ui::inv::padAction(0, a) ? "uikey ok " : "uikey ignored ") + a;
+				g_waitUntil = SDL_GetTicks() + 60;
+			}
+			else if ( op == "uidump" )
+			{
+				std::string n; in >> n;
+				FILE* f = fopen((g_dir + "/" + (n.empty() ? "uidump" : n) + ".txt").c_str(), "w");
+				if ( f )
+				{
+					for ( auto& r : apx::ui::lastRects() ) { fprintf(f, "id %s rect %.0f %.0f %.0f %.0f\n", r.id.c_str(), r.x0, r.y0, r.x1, r.y1); }
+					fputs(apx::ui::inv::dump().c_str(), f);
+					{
+						Stat* st = stats[0]; Entity* me = players[0] ? players[0]->entity : nullptr;
+						fprintf(f, "player hp %d/%d hunger %d pos %.2f %.2f shootmode %d\n", st ? st->HP : -1, st ? st->MAXHP : -1, st ? st->HUNGER : -1,
+							me ? me->x / 16.0 : -1.0, me ? me->y / 16.0 : -1.0, players[0] ? (int)players[0]->shootmode : -1);
+					}
+					const auto c = apx::ui::costWhileOpen();
+					fprintf(f, "cost frames %d p50_ms %.3f p99_ms %.3f max_ms %.3f last_ms %.3f build_p50_ms %.3f build_p99_ms %.3f\ncost_thread_cpu p50_ms %.3f p99_ms %.3f max_ms %.3f\nattacks %u\n", c.frames, c.p50, c.p99, c.max, c.last, c.buildP50, c.buildP99, c.cpuP50, c.cpuP99, c.cpuMax, g_attacks);
+					fclose(f);
+				}
+				g_waitUntil = SDL_GetTicks() + 50;
+			}
+			else if ( op == "uicost_reset" ) { apx::ui::resetCost(); }
 			else if ( op == "quit" ) { mainloop = 0; }
 			else { printlog("[apx-qa] unknown command '%s'", op.c_str()); }
 		}
 	}
 
 	bool armed() { return g_on; }
+	void noteAttack() { ++g_attacks; }
 
 	void arm(const char* dir)
 	{

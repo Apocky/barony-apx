@@ -1,0 +1,11 @@
+# D92 smoke: open the window with Tab, screenshot, dump ids, close
+wait 15000
+shot 00-closed
+key Tab
+wait 1000
+shot 01-open
+uidump dump-open
+key Tab
+wait 600
+shot 02-closed-again
+quit

@@ -99,6 +99,8 @@ static bool apxRunImpactSelfTest(std::string* fields = nullptr)
 #include "lobbies.hpp"
 #include "apx/headless.hpp"
 #include "apx/qadriver.hpp" // apx: -apxqa=<dir> interactive QA driver
+#include "apx/ui/ui.hpp" // apx D92: the ImGui runtime and input gate
+#include "apx/ui/inventory.hpp" // apx D92: the inventory window
 #include "apx/selftest_all.hpp"
 #include "apx/vox/heldmodel.hpp"
 #include "apx/vox/builder.hpp"
@@ -4535,18 +4537,9 @@ bool handleEvents(void)
 	{
 		if ( apx::bf3::swallowInput(event) ) { continue; } // apx BF3 trial: human input is dropped and counted
 #ifdef USE_IMGUI
-		if ( ImGui_t::isInit )
+		if ( apx::ui::processEvent(event) ) // apx D92: THE input gate -- ImGui first; true = Barony never sees this event
 		{
-			ImGui_ImplSDL2_ProcessEvent(&event);
-#ifdef DEBUG_EVENT_TIMERS
-			time2 = std::chrono::high_resolution_clock::now();
-			accum = 1000 * std::chrono::duration_cast<std::chrono::duration<double>>(time2 - time1).count();
-			if ( accum > 5 )
-			{
-				printlog("Large tick time: [4] %f", accum);
-			}
-			time1 = std::chrono::high_resolution_clock::now();
-#endif
+			continue;
 		}
 #endif
 		// Global events
@@ -4751,7 +4744,7 @@ bool handleEvents(void)
 				{
 					if ( (event.text.text[0] != 'v' && event.text.text[0] != 'V') || !(SDL_GetModState()&KMOD_CTRL) )
 					{
-						strncat(inputstr, event.text.text, std::max<size_t>(0, inputlen - strlen(inputstr)));
+						if ( inputstr ) { strncat(inputstr, event.text.text, std::max<size_t>(0, inputlen - strlen(inputstr))); } // apx D92: no text target = no write (was a null strncat)
 						cursorflash = ticks;
 					}
 				}
@@ -6392,11 +6385,24 @@ void ingameHud()
 		players[player]->messageZone.processChatbox();
 		updateSkillUpFrame(player);
 		updateLevelUpFrame(player);
-		players[player]->inventoryUI.updateSelectedItemAnimation();
-		players[player]->inventoryUI.updateInventoryItemTooltip();
-		players[player]->inventoryUI.updateInventoryMiscTooltip();
+		// apx D92: while our inventory window is open, Barony's inventory window, character sheet and item
+		// tooltip/context menu are not created, not updated and get no input (spec 08b section 2)
+		const bool apxInvOpen = apx::ui::inv::replacesVanilla(player);
+		if ( apxInvOpen )
+		{
+			apx::ui::inv::hideVanilla(player);
+		}
+		else
+		{
+			players[player]->inventoryUI.updateSelectedItemAnimation();
+			players[player]->inventoryUI.updateInventoryItemTooltip();
+			players[player]->inventoryUI.updateInventoryMiscTooltip();
+		}
 		players[player]->hotbar.processHotbar();
-		players[player]->inventoryUI.processInventory();
+		if ( !apxInvOpen )
+		{
+			players[player]->inventoryUI.processInventory();
+		}
 		GenericGUI[player].tinkerGUI.updateTinkerMenu();
 		GenericGUI[player].alchemyGUI.updateAlchemyMenu();
 		GenericGUI[player].assistShrineGUI.updateAssistShrine();
@@ -6404,7 +6410,10 @@ void ingameHud()
 		GenericGUI[player].featherGUI.updateFeatherMenu();
 		GenericGUI[player].itemfxGUI.updateItemEffectMenu();
 		players[player]->GUI.dropdownMenu.process();
-		players[player]->characterSheet.processCharacterSheet();
+		if ( !apxInvOpen )
+		{
+			players[player]->characterSheet.processCharacterSheet();
+		}
 		players[player]->hud.updateStatusEffectFocusedWindow();
 		players[player]->messageZone.processLogFrame();
 		players[player]->minimap.processMapFrame();
@@ -6412,9 +6421,12 @@ void ingameHud()
 		players[player]->signGUI.updateSignGUI();
 		players[player]->hud.updateStatusEffectTooltip(); // to create a tooltip in this order to draw over previous elements
 		CalloutRadialMenu::drawCallouts(player);
-		players[player]->inventoryUI.updateItemContextMenuClickFrame();
-		players[player]->GUI.handleModuleNavigation(false);
-		players[player]->inventoryUI.updateCursor();
+		if ( !apxInvOpen )
+		{
+			players[player]->inventoryUI.updateItemContextMenuClickFrame();
+			players[player]->GUI.handleModuleNavigation(false);
+			players[player]->inventoryUI.updateCursor();
+		}
 		players[player]->hotbar.updateCursor();
 		players[player]->hud.updateCursor();
 		players[player]->hud.updateMinotaurWarning();
@@ -7298,7 +7310,7 @@ static void doConsoleCommands() {
 		if (inputstr == command_str) {
 			inputstr = nullptr;
 		}
-		if (!inputstr && SDL_IsTextInputActive()) {
+		if (!inputstr && SDL_IsTextInputActive() && !apx::ui::ownsTextInput()) { // apx D92: our search field keeps text input on
 			SDL_StopTextInput();
 		}
 	}

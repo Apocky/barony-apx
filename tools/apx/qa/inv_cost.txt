@@ -1,0 +1,29 @@
+# D92 frame cost: window open, one item selected, 20 s of idle + hover (CPU ms of apx::ui per frame)
+wait 15000
+key Tab
+wait 1000
+ui inv/bag/type/10
+wait 1500
+uicost_reset
+move 600 300
+wait 2000
+move 700 200
+wait 2000
+move 300 400
+wait 2000
+move 1000 300
+wait 2000
+move 640 160
+wait 2000
+move 400 250
+wait 2000
+move 1100 400
+wait 2000
+move 800 450
+wait 2000
+move 500 170
+wait 2000
+move 900 220
+wait 2000
+uidump c01-cost-20s
+quit

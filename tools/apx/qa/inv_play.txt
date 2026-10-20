@@ -1,0 +1,145 @@
+# D92 P0/P1 real-play QA: every click is a real SDL event at a stable id's rect (ui <id>)
+wait 15000
+# CONTROL: with the window closed a left click must start an attack (proves the attack counter works)
+click 640 360
+wait 900
+uidump d00-control-click-closed
+# open with Tab
+key Tab
+wait 900
+shot p01-open
+uidump d01-open
+# clicks on the window must never attack
+ui inv/window
+wait 300
+ui inv/bag/grid
+wait 300
+ui inv/equip/feet
+wait 300
+ui inv/bag/sort/weight
+wait 300
+ui inv/bag/sort/name
+wait 300
+uidump d02-clicks
+# select the candy bar, see its details
+ui inv/bag/type/158
+wait 500
+shot p02-select-candy
+uidump d03-select-candy
+# reselect: second view of the same items (Barony's text cache)
+ui inv/bag/type/10
+wait 300
+ui inv/bag/type/158
+wait 300
+# hotbar assign by key 6 while selected
+key 6
+wait 400
+uidump d04-hotbar-key
+# hotbar assign by clicking strip slot 8 with the item selected
+ui inv/hotbar/8
+wait 400
+uidump d05-hotbar-click
+# unequip the iron hook, then equip it again (Barony's equip path)
+ui inv/bag/type/10
+wait 400
+ui inv/details/action/unequip
+wait 600
+uidump d06-unequip
+shot p03-unequipped
+ui inv/details/action/equip
+wait 600
+uidump d07-equip
+# eat the lollipop (use)
+ui inv/bag/type/154
+wait 400
+shot p04-select-lollipop
+ui inv/details/action/use
+wait 800
+uidump d08-eat
+# drop the booze
+ui inv/bag/type/54
+wait 400
+ui inv/details/action/drop
+wait 800
+uidump d09-drop
+shot p05-after-drop
+# right-click quick menu on the tomahawk
+ui inv/bag/type/191 right
+wait 500
+shot p06-quickmenu
+uidump d10-quick
+key Escape
+wait 300
+# keyboard arrows move the selection
+key Right
+wait 200
+key Right
+wait 200
+uidump d11-arrows
+# movement keys still walk while the window is open
+uidump d12-before-walk
+hold W 1200
+wait 300
+uidump d13-after-walk
+# steady frame cost with the window open: idle + hover for 4 s
+uicost_reset
+move 600 300
+wait 1000
+move 700 200
+wait 1000
+move 300 400
+wait 1000
+move 1000 300
+wait 1000
+move 640 160
+wait 1000
+move 400 250
+wait 1000
+move 1100 400
+wait 1000
+move 800 450
+wait 1000
+uidump d14-cost
+# drag and drop (rects from the stable-id dump at 1280x720)
+drag 599 168 190 519
+wait 500
+uidump d15-drag-to-hotbar
+drag 160 364 700 350
+wait 700
+uidump d16-drag-unequip
+drag 503 168 160 364
+wait 700
+uidump d17-drag-equip
+shot p07-after-drags
+# search: slash focuses the field, typed text filters the bag
+key /
+wait 300
+type can
+wait 400
+shot p08-search
+uidump d18-search
+key Escape
+wait 300
+uidump d19-search-escape
+# gamepad focus model (uikey drives the same handler a pad's buttons do)
+uikey rb
+wait 200
+uikey lb
+wait 200
+uikey down
+wait 200
+uikey y
+wait 200
+shot p09-padfocus
+uidump d20-pad
+uikey b
+wait 200
+uikey b
+wait 600
+uidump d21-closed-by-b
+shot p10-closed
+# CONTROL after close: a click attacks again
+click 640 360
+wait 900
+uidump d22-control-after
+quit

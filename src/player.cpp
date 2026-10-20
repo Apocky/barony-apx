@@ -2150,11 +2150,6 @@ bool Player::GUI_t::handleInventoryMovement()
 		return false;
 	}
 
-	if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY && apx_inv::listHandleMove(player) )
-	{
-		return true; // apx: the list frame takes Up/Down from the grid (U1)
-	}
-
 	bool rightStickMovement = 
 		!(this->player.inventoryUI.itemTooltipDisplay.expanded 
 			&& (players[player]->GUI.activeModule != Player::GUI_t::MODULE_INVENTORY

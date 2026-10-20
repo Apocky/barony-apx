@@ -435,10 +435,16 @@ void ImGui_ImplSDL2_Shutdown()
     IM_DELETE(bd);
 }
 
+// apx (D92): passive mode -- the game feeds mouse positions itself and never lets ImGui capture, warp or
+// read the OS mouse (automated launches must never touch the user's mouse; Barony owns the pointer).
+bool ImGui_ImplSDL2_Passive = false;
+
 static void ImGui_ImplSDL2_UpdateMouseData()
 {
     ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
     ImGuiIO& io = ImGui::GetIO();
+    if (ImGui_ImplSDL2_Passive)
+        return;
 
     // We forward mouse input when hovered or captured (via SDL_MOUSEMOTION) or when focused (below)
 #if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE

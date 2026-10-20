@@ -16,6 +16,7 @@ See LICENSE for details.
 #include "game.hpp"
 #include "stat.hpp"
 #include "entity.hpp"
+#include "apx/qadriver.hpp" // apx D92 QA: attack counter
 #include "apx/parts_engine.hpp"
 #include "items.hpp"
 #include "monster.hpp"
@@ -10148,6 +10149,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 	{
 		return;
 	}
+	if ( behavior == &actPlayer ) { apx::qa::noteAttack(); } // apx D92 QA: count player attacks (a UI click must never start one)
 
 	// get the player number, if applicable
 	if ( behavior == &actPlayer )

@@ -1,0 +1,10 @@
+# narrow view (< 900 px wide): two columns, Equipment as a tab
+wait 15000
+key Tab
+wait 1000
+shot n01-narrow
+ui inv/tab/equipment
+wait 400
+shot n02-narrow-equipment
+uidump n02
+quit

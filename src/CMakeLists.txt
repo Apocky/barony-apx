@@ -14,7 +14,6 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/files.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/items.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx_inventory.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/apx_inventory_ui.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx_bench.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/paths.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/charclass.cpp"
@@ -31,6 +30,8 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vox/looknet.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/selftest_all.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/qadriver.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/ui/ui.cpp" # apx D92: the one ImGui runtime + input gate
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/ui/inventory.cpp" # apx D92: the inventory window
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/visshots.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/vision.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/tactics.cpp"
