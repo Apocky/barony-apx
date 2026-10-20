@@ -394,9 +394,18 @@ namespace props
 			if ( w == "cage" || w == "1" )
 			{
 				int idx = EditorEntityData_t::getColliderIndexFromName("hanging_cage_skel");
-				real_t d = w == "cage" ? 32 : -20;
-				Entity* c = Entity::createBreakableCollider(idx, me->x + std::cos(me->yaw) * d, me->y + std::sin(me->yaw) * d, nullptr);
-				if ( c ) printlog("[apx-props] qa placed bone cage at %.0f,%.0f", c->x, c->y);
+				// the first free floor tile ahead (or behind for "1"), then beside it: the engine refuses occupied tiles
+				Entity* c = nullptr;
+				const real_t dir = w == "cage" ? 1 : -1;
+				for ( int k = 1; k <= 3 && !c; ++k )
+					for ( int side : { 0, 1, -1 } )
+					{
+						real_t a = me->yaw + side * PI / 2, dd = 16.0 * k;
+						real_t px = me->x + std::cos(me->yaw) * dir * dd + (side ? std::cos(a) * 16 : 0), py = me->y + std::sin(me->yaw) * dir * dd + (side ? std::sin(a) * 16 : 0);
+						if ( (c = Entity::createBreakableCollider(idx, px, py, nullptr)) ) break;
+					}
+				if ( c && w == "cage" ) me->yaw = std::atan2(c->y - me->y, c->x - me->x); // setup: face it, the tester only swings
+				if ( c ) printlog("[apx-props] qa placed bone cage at %.0f,%.0f, player faces it (yaw %.2f)", c->x, c->y, me->yaw);
 				else printlog("[apx-props] qa could not place a bone cage");
 			}
 		}

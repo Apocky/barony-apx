@@ -11364,6 +11364,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 			else
 			{
 				dist = lineTrace(this, x, y, yaw, strikeRange, LINETRACE_ATK_CHECK_FRIENDLYFIRE, false);
+				if ( behavior == &::actPlayer && std::getenv("APX_PROPS_QA") ) printlog("[apx-props] qa swing: dist %.1f range %d hit %s collider %d furniture %d", dist, strikeRange, hit.entity ? "entity" : "none", hit.entity && hit.entity->behavior == &::actColliderDecoration ? 1 : 0, hit.entity && hit.entity->behavior == &::actFurniture ? 1 : 0);
 				if ( sweepAttackTimer )
 				{
 					// already played the sound
