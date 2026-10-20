@@ -5,9 +5,9 @@
 Steps and what must hold:
   normal       all 8 families x (quick, left, overhead, low, charged) by real clicks on the normal start: 40/40 swing, cost = table, hit
   floor1       the same on -apxfloor=1 (seed 1234567, a dry start)
-  floor1-lava  sword on -apxfloor=1 seed 101: the player starts swimming in lava, where Barony's HUD weapon returns before its swing check
-               (the named regression gate): the core must swing and hit
-  control      APX_COMBAT_OLD=1 on that seed: Barony's old path must show 0 swings (the control FAILS)
+  floor1-lava  sword on -apxfloor=1 seed 101: the player starts swimming in lava; vanilla cannot swing there (its HUD weapon returns before the
+               swing check, which is why that start looked like "the swing is never reached"); the core must not swing either, and stamina must still regenerate
+  control      APX_COMBAT_OLD=1 on that seed: Barony's old path shows 0 swings and no stamina regen
   perf150      150 standing creatures (+ the 7 test dummies, + the floor's own): combat cost p99 per sim tick (< 0.3 ms)
   perf150fight 150 creatures that fight back (their hits go through applyHit too)
   shots        a sweep through three creatures and a charged move, PNGs in C:\\Apocrypha\\diagnostics\\combat\\shots
@@ -54,7 +54,7 @@ def main():
 
     step("normal", ["--mode", "normal", "--tag", "gate"], lambda c, s: c == 0)
     step("floor1", ["--mode", "floor1", "--seed", "1234567", "--tag", "gate"], lambda c, s: c == 0)
-    step("floor1-lava", ["--mode", "floor1", "--seed", "101", "--families", "sword", "--tag", "gate-lava"], lambda c, s: c == 0)
+    step("floor1-lava", ["--mode", "floor1", "--seed", "101", "--families", "sword", "--tag", "gate-lava"], lambda c, s: s.get("swung", 1) == 0 and any(r.get("stamina_ticks", 0) > 0 for r in s.get("perf", [])), lambda s: "swung %s (must be 0: swimming blocks swings)" % s.get("swung"))
     step("control", ["--mode", "floor1", "--seed", "101", "--families", "sword", "--old", "--tag", "gate-lava"],
          lambda c, s: s.get("legacy_swings", 1) == 0, lambda s: f"legacy swings {s.get('legacy_swings')} (must be 0: the control fails)")
 

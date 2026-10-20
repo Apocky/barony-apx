@@ -102,6 +102,27 @@ namespace combat
 	};
 	HitResult applyHit(const Hit& h);
 
+	// Barony's melee rule code that the old Entity::attack ran inline (artifact multipliers, weapon procs, poison, paralyze, slow,
+	// knockback, bleed, armour and weapon wear, shield and weapon skill gain, compendium and achievements), kept verbatim in
+	// procs_*.inc and run by the core through Entity::apxMeleePre1/2 and apxMeleeAftermath (procs.cpp). Fields carry the locals between them.
+	struct MeleeCtx
+	{
+		Entity* target = nullptr;
+		int pose = 1, charge = 0, weaponskill = -1;
+		int dmgType = 0;
+		int damage = 0, oldHP = 0, myAttack = 0, enemyAC = 0, attackAfterReductions = 0;
+		double weaponMultipliers = 1.0;
+		bool backstab = false, flanking = false, extraTarget = false;
+		int parriedDamage = 0;
+		int thornsEffect = 0;
+		bool dyrnwynSmite = false, zealSmite = false, gugnirProc = false, armorPierceProc = false, whipPierce = false, parashuProc = false;
+		int previousMonsterState = -1;
+		// out: what the aftermath inflicted (the hit messages read these)
+		bool paralyzeStatusInflicted = false, slowStatusInflicted = false, bleedStatusInflicted = false, swordExtraDamageInflicted = false;
+		bool knockbackInflicted = false, dyrnwynBurn = false, playerPoisonedTarget = false, envenomWeapon = false, skillIncreased = false;
+		int shillelaghDamage = 0, shillelaghDebuffs = 0;
+	};
+
 	// ---- control and hooks ---------------------------------------------------------------------------------
 	bool coreEnabled();                   // the core runs (APX_COMBAT_OLD=1 / APX_COMBAT=0 = control)
 	bool ownsMelee(int player);           // this player's melee goes through the core now

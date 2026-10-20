@@ -61,6 +61,7 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/entity.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/impact.cpp" # apx F4b
 	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/core.cpp" # apx D93 C1: the combat core
+	"${CMAKE_CURRENT_SOURCE_DIR}/apx/combat/procs.cpp" # apx D93 C1: Barony melee rule code run by the core
 	"${CMAKE_CURRENT_SOURCE_DIR}/messages.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actflame.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actcampfire.cpp"

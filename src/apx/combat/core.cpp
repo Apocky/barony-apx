@@ -57,7 +57,7 @@ namespace combat
 		constexpr int kMaxHoldTicks = 100;       // a charge held this long releases itself
 		constexpr float kBeamHalfWidth = 4.f;    // units: a line move's half width beyond the body radius
 		constexpr int kFizzleTicks = 12;
-		constexpr int kMaxHitsPerTick = 1;       // hits resolved in one sim tick (one hit costs ~0.12 ms in Barony's own stat code); swept targets left over follow on the next ticks, 20 ms each
+		constexpr int kMaxHitsPerTick = 64;      // hits resolved in one sim tick (one hit costs ~0.12 ms in Barony's own stat code); swept targets left over follow on the next ticks, 20 ms each
 
 		Counters gCount;
 		bool gObjectPass = false;
@@ -333,15 +333,37 @@ namespace combat
 		}
 
 		// player melee damage before the rule stages: Barony's attack value, AC, the move's impact rule, skill variance
-		int meleeDamage(Entity* me, Stat* ms, Entity* target, Stat* ts, const MoveRow* mv, const Hit& h, bool unaware, float& mult, bool& sneakOut)
+		int meleeDamage(Entity* me, Stat* ms, Entity* target, Stat* ts, const MoveRow* mv, const Hit& h, bool unaware, float& mult, bool& sneakOut, MeleeCtx& c)
 		{
 			const bool isPlayerAtk = me->behavior == &actPlayer;
 			const int maxCharge = Stat::getMaxAttackCharge(ms);
 			const int charge = (mv && mv->charged) ? maxCharge : 0;
+			// weapon skill and the damage-table class
+			int weaponskill = ms->weapon ? getWeaponSkill(ms->weapon) : PRO_UNARMED;
+			if ( weaponskill < 0 ) { weaponskill = PRO_UNARMED; }
+			DamageTableType dmgType = DAMAGE_TABLE_UNARMED;
+			if ( weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM ) { dmgType = (DamageTableType)(weaponskill - PRO_SWORD); }
+			c.target = target; c.pose = 1; c.charge = charge; c.weaponskill = weaponskill; c.dmgType = (int)dmgType; c.extraTarget = (h.flags & HF_EXTRA_TARGET) != 0;
+			c.previousMonsterState = target->monsterState;
 			Sec t5(5);
 			int myAttack = std::max(0, Entity::getAttack(me, ms, isPlayerAtk, charge) + me->getBonusAttackOnTarget(*ts));
 			myAttack += apxPartsAttackOnTarget(me, ms, ts, myAttack);
 			t5.end();
+			Sec t7(7);
+			real_t wm = Entity::getDamageTableMultiplier(target, *ts, dmgType); // class table (+ the class's impact rule when on) and Barony's bonuses
+			// D93: the impact rule for THIS move (kind, momentum, contact area) in place of the class's reference move
+			mult = 1.f;
+			if ( mv && apx::combat::enabled() && dmgType != DAMAGE_TABLE_MAGIC )
+			{
+				const float cls = apx::combat::multiplierFor((int)ts->type, (int)dmgType, -1.f);
+				combat::Move m{ (combat::Kind)(h.moveId ? mv->kind : h.kind), h.momentum > 0.f ? h.momentum : mv->momentum, h.area > 0.f ? h.area : mv->area };
+				const float mine = apx::combat::multiplierForMove((int)ts->type, m, -1.f);
+				if ( cls > 0.f && mine >= 0.f ) { mult = mine / cls; wm *= mult; apx::combat::countUse(); }
+			}
+			t7.end();
+			c.weaponMultipliers = wm;
+			me->apxMeleePre1(c); // Barony: thorns, whip pierce, effect multipliers, divine / artifact smites
+			wm = c.weaponMultipliers;
 			Sec t6(6);
 			int enemyAC = AC(ts);
 			if ( mv )
@@ -355,30 +377,15 @@ namespace combat
 				if ( mv->armourIgnore > 0.f ) { enemyAC = (int)(enemyAC * (1.0 - mv->armourIgnore)); }
 			}
 			t6.end();
+			c.enemyAC = enemyAC;
+			me->apxMeleePre2(c); // Barony: Gungnir, whip pierce, drum
+			enemyAC = c.enemyAC;
 			Sec t8b(8);
 			int numBlessings = 0;
 			const real_t eff = Entity::getACEffectiveness(target, ts, target->behavior == &actPlayer, me, ms, numBlessings);
 			t8b.end();
 			const int attackAfterReductions = (int)(std::max(0.0, (myAttack * eff - enemyAC)) + (1.0 - eff) * myAttack);
-
-			// weapon skill and the damage-table class
-			int weaponskill = ms->weapon ? getWeaponSkill(ms->weapon) : PRO_UNARMED;
-			if ( weaponskill < 0 ) { weaponskill = PRO_UNARMED; }
-			DamageTableType dmgType = DAMAGE_TABLE_UNARMED;
-			if ( weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM ) { dmgType = (DamageTableType)(weaponskill - PRO_SWORD); }
-			Sec t7(7);
-			real_t wm = Entity::getDamageTableMultiplier(target, *ts, dmgType); // class table (+ the class's impact rule when on) and Barony's bonuses
-			// D93: the impact rule for THIS move (kind, momentum, contact area) in place of the class's reference move
-			mult = 1.f;
-			if ( mv && apx::combat::enabled() && dmgType != DAMAGE_TABLE_MAGIC )
-			{
-				const float cls = apx::combat::multiplierFor((int)ts->type, (int)dmgType, -1.f);
-				combat::Move m{ (combat::Kind)(h.moveId ? mv->kind : h.kind), h.momentum > 0.f ? h.momentum : mv->momentum, h.area > 0.f ? h.area : mv->area };
-				const float mine = apx::combat::multiplierForMove((int)ts->type, m, -1.f);
-				if ( cls > 0.f && mine >= 0.f ) { mult = mine / cls; wm *= mult; apx::combat::countUse(); }
-			}
-			t7.end();
-			Entity::modifyDamageMultipliersFromEffects(target, me, wm, dmgType);
+			c.myAttack = myAttack; c.attackAfterReductions = attackAfterReductions;
 			int damage = (int)(attackAfterReductions * wm);
 			if ( eff < 0.99 ) { damage = std::max(1, damage); } else { damage = std::max(0, damage); }
 			if ( weaponskill == PRO_AXE ) { damage++; }
@@ -410,6 +417,12 @@ namespace combat
 			}
 			if ( mv && (mv->effects & EF_CRIT_BLEED) && !sneakOut && ts->getEffectActive(EFF_PARALYZED) ) { d *= mv->sneakMult; sneakOut = true; }
 			damage = (int)d;
+			if ( ms->weapon && ms->weapon->type == ARTIFACT_AXE ) // Parashu sometimes multiplies the blow
+			{
+				real_t amount = 0.0;
+				const real_t percent = getArtifactWeaponEffectChance(ms->weapon->type, *ms, &amount);
+				if ( local_rng.rand() % 100 < static_cast<int>(percent) ) { damage = (int)(damage * amount); c.parashuProc = true; }
+			}
 			if ( damage <= 0 && eff < 0.99 ) { damage = 1; }
 			return damage;
 		}
@@ -434,11 +447,12 @@ namespace combat
 
 		int damage = h.damage;
 		bool sneak = false;
+		MeleeCtx mctx;
 		if ( !(h.flags & HF_PRECOMPUTED) )
 		{
 			if ( !me || !ms ) { r.landed = false; return r; }
 			Sec sec(0);
-			damage = meleeDamage(me, ms, target, ts, mv, h, unaware, r.multiplier, sneak);
+			damage = meleeDamage(me, ms, target, ts, mv, h, unaware, r.multiplier, sneak, mctx);
 		}
 		r.sneak = sneak;
 
@@ -473,7 +487,13 @@ namespace combat
 		// ---- the swing's consequences (player melee) ----
 		Sec secCons(3);
 		{ Sec t10(10); if ( mv ) { afterEffects(me, target, ts, mv, damage, wasBlocking, stagBefore, unaware); }
-		if ( r.damage > 0 ) { wearArmour(target, ts, mv); } }
+		if ( me->behavior == &actPlayer )
+		{
+			// Barony's own rule code for the rest of the blow, kept verbatim (procs.cpp): skill gain, armour and shield wear, weapon wear,
+			// obituary, compendium, and the weapon's procs (poison, paralyze, slow, knockback, bleed, artifact effects)
+			mctx.damage = damage; mctx.oldHP = oldHP; mctx.backstab = sneak && unaware;
+			me->apxMeleeAftermath(mctx);
+		} }
 		if ( me->behavior == &actPlayer )
 		{
 			const int player = me->skill[2];
@@ -488,14 +508,14 @@ namespace combat
 			{
 				messagePlayerMonsterEvent(player, color, *ts, Language::get(692), Language::get(697), MSG_COMBAT);
 			}
-			// proficiency use: Barony's chances (1 in 10 on a hit, 1 in 8 on a kill), not on allies or other players
-			const bool ally = target->behavior == &actMonster && target->monsterAllyGetPlayerLeader();
-			int skill = ms->weapon ? getWeaponSkill(ms->weapon) : PRO_UNARMED;
-			if ( !ally && target->behavior != &actPlayer && ((skill >= PRO_SWORD && skill <= PRO_POLEARM) || skill == PRO_UNARMED) )
+			if ( ts->HP > 0 )
 			{
-				const int chance = ts->HP <= 0 ? 8 : 10;
-				const bool lowSkill = ts->type == DUMMYBOT;
-				if ( local_rng.rand() % chance == 0 && (!lowSkill || ms->getProficiency(skill) < SKILL_LEVEL_BASIC) ) { me->increaseSkill(skill, true); }
+				if ( mctx.playerPoisonedTarget ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(3478), Language::get(3479), MSG_COMBAT); }
+				if ( mctx.paralyzeStatusInflicted ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(3206), Language::get(3205), MSG_COMBAT); }
+				else if ( mctx.slowStatusInflicted ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(394), Language::get(393), MSG_COMBAT); }
+				else if ( mctx.swordExtraDamageInflicted ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(3211), Language::get(3210), MSG_COMBAT); }
+				else if ( mctx.knockbackInflicted ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(3215), Language::get(3214), MSG_COMBAT); }
+				else if ( mctx.envenomWeapon ) { messagePlayerMonsterEvent(player, color, *ts, Language::get(6533), Language::get(6534), MSG_COMBAT); }
 			}
 			// the HUD enemy bar
 			DamageGib gib = DMG_DEFAULT;
@@ -507,7 +527,6 @@ namespace combat
 		{ Sec t13(13); playSoundEntity(target, 28, 64); } // hit
 		if ( r.killed )
 		{
-			target->killedByMonsterObituary(me);
 			me->awardXP(target, true, true);
 			++gCount.kills;
 		}
@@ -841,7 +860,9 @@ namespace combat
 			return;
 		}
 		// stagger, paralysis or downed: the swing is lost
-		if ( !me->isMobile() || !apx::combat_glue::canAttack(me) )
+		// vanilla: the HUD weapon returns before its swing check while the player swims (water, lava): no attacking then
+		const bool swimming = players[p]->movement.isPlayerSwimming() || me->skill[13] != 0;
+		if ( swimming || !me->isMobile() || !apx::combat_glue::canAttack(me) )
 		{
 			if ( f.st == State::Windup || f.st == State::Active ) { row("{\"ev\":\"cancel\",\"tick\":%u,\"player\":%d,\"state\":\"%s\",\"mobile\":%d,\"can_attack\":%d,\"skill9\":%d,\"paralyzed\":%d,\"hp\":%d}", (unsigned)ticks, p, stateName(f.st), (int)me->isMobile(), (int)apx::combat_glue::canAttack(me), (int)me->skill[9], (int)stats[p]->getEffectActive(EFF_PARALYZED), (int)stats[p]->HP); }
 			if ( f.st != State::Idle ) { sta.swingWhileBlock = false; resetSwing(f); }
