@@ -4317,7 +4317,7 @@ int Player::PlayerMovement_t::getCharacterWeight()
 		}
 	}
 	weight += stats[player.playernum]->getGoldWeight();
-	if ( !apx_inv::vanillaGrid() ) { weight += (int)apx_bench::pouchUnits(player.playernum); } // apx D85: the material pouch is carried (U1 owns the rule; 100 g = 1 unit)
+	if ( !apx_inv::vanillaGrid() ) { weight += (int)apx_bench::pouchUnits(player.playernum); } // apx D85: the material pouch is carried; one source for weight and the list row (F6 fills pouchGrams from its ledger)
 	return weight;
 }
 
