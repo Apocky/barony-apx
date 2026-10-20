@@ -199,7 +199,10 @@ def run_net(name, exe, out, host_env, args):
                    formbook_sent=fb_sent[-1] if fb_sent else None, formbook_recv=fb_recv[-1] if fb_recv else None,
                    client_probe=(json.loads(cl_rows.read_text().splitlines()[-1]) if cl_rows.exists() else None))
         hp = [json.loads(l) for l in (dirs["host"] / "probe.jsonl").read_text().splitlines() if l.strip()] if (dirs["host"] / "probe.jsonl").exists() else []
-        equal = sum(1 for s, r in zip(sent, recv) if s[0] == r[0] and s[2] == r[2])
+        # matched by (type, blob) as a multiset: blob-less packets (the D85 bundle) interleave, so position proves nothing
+        from collections import Counter
+        rc = Counter((t, b) for t, _, b in recv if b != "none")
+        equal = sum((Counter((t, b) for t, _, b in sent) & rc).values())
         row.update(finish="ok", sent=len(sent), recv=len(recv), equal_blobs=equal, recv_none=sum(r[2] == "none" for r in recv),
                    recv_lens=sorted({int(r[1]) for r in recv}), host_probe=hp[-1] if hp else None,
                    seconds=round(time.monotonic() - t0, 1), run_dirs={k: str(v) for k, v in dirs.items()})
@@ -309,8 +312,8 @@ def main():
                     f"sent {r.get('sent')}, received {r.get('recv')}, equal {r.get('equal_blobs')}, lens {r.get('recv_lens')}, {r.get('error', '')}"):
             return 1
         cp = r.get("client_probe") or {}
-        if not gate("S5 client -> host parts (DROP x5, EQUI x1)", cp.get("dropped") == 5 and cp.get("equipped") == 1 and r.get("client_sent") == 6
-                    and r.get("client_sent_found_on_host") == 6,
+        if not gate("S5 client -> host parts (DROP x5, EQUI x1, D86 component DROP x1)", cp.get("dropped") == 5 and cp.get("equipped") == 1 and r.get("client_sent") == 7
+                    and r.get("client_sent_found_on_host") == 7,
                     f"client sent {r.get('client_sent')} blobs, found on host {r.get('client_sent_found_on_host')}, probe {cp}"):
             return 1
         hp_ = r.get("host_probe") or {}
