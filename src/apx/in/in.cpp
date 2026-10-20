@@ -56,7 +56,7 @@ namespace in
 			uint16_t pc[B_COUNT] = {}, rc[B_COUNT] = {};
 			uint32_t pms[B_COUNT] = {}, rms[B_COUNT] = {};
 			float padAxis[8] = {};
-			float lookDX = 0.f, lookDY = 0.f, swingDX = 0.f, swingDY = 0.f;
+			float lookDX = 0.f, lookDY = 0.f, swingDX = 0.f, swingDY = 0.f, rawDX = 0.f, rawDY = 0.f;
 			Owner own[DEV_COUNT] = { OWN_VANILLA, OWN_VANILLA, OWN_VANILLA };
 			TickRecord last;
 		};
@@ -396,7 +396,6 @@ namespace in
 			{
 				if ( r.pressCount[b] ) { sink.pulseWheel(b == B_HotbarPrev); }
 			}
-			if ( r.lookDX != 0.f || r.lookDY != 0.f ) { sink.addMouseRel(r.lookDX, r.lookDY); }
 			(void)p;
 		}
 
@@ -506,6 +505,7 @@ namespace in
 			float dy = S.mouseLook[1] ? e.dy * S.set.mouseSens * S.mouseLookScale[1] : 0.f;
 			if ( S.set.invertY ) { dy = -dy; }
 			lookAdd(P, dx, dy);
+			P.rawDX += e.dx; P.rawDY += e.dy;
 			break;
 		}
 		case R_PadDown: case R_PadUp:
@@ -584,7 +584,8 @@ namespace in
 		if ( S.set.invertY ) { ly = -ly; }
 		if ( lx != 0.f || ly != 0.f ) { lookAdd(P, lx, ly); }
 		r.lookDX = P.lookDX; r.lookDY = P.lookDY; r.swingDX = P.swingDX; r.swingDY = P.swingDY;
-		P.lookDX = P.lookDY = P.swingDX = P.swingDY = 0.f;
+		r.mouseDX = P.rawDX; r.mouseDY = P.rawDY;
+		P.lookDX = P.lookDY = P.swingDX = P.swingDY = P.rawDX = P.rawDY = 0.f;
 		S.cnt.takes++;
 		P.last = r;
 		return r;
@@ -619,13 +620,14 @@ namespace in
 			TickRecord r;
 			if ( S.replay )
 			{
-				if ( S.rowIdx[p] < S.rows[p].size() ) { r = S.rows[p][S.rowIdx[p]++]; }
-				else { r.tick = S.tick; }
+				if ( S.rowIdx[p] >= S.rows[p].size() ) { continue; } // this player's recording is over: nothing more to log or feed
+				r = S.rows[p][S.rowIdx[p]++];
 				S.pl[p].last = r;
 				replayCompat(sink, p, r);
 				S.cnt.takes++;
 			}
 			else { r = takeNow(p); }
+			if ( p == kbPlayer() && S.pl[p].own[DEV_MOUSE] == OWN_GAME ) { sink.setMouseRel(r.mouseDX, r.mouseDY); } // the legacy look, exactly once per record
 			if ( S.log )
 			{
 				double x = 0, y = 0, yaw = 0; bool have = false;
@@ -637,6 +639,7 @@ namespace in
 		++S.tick;
 	}
 
+	bool swallowsMouseLook() { return S.loaded && !S.old && (S.replay || (kbPlayer() >= 0 && kbPlayer() < kMaxPlayers && S.pl[kbPlayer()].own[DEV_MOUSE] == OWN_GAME)); }
 	bool uiOwnsMouse(int p) { return p >= 0 && p < kMaxPlayers && S.pl[p].own[DEV_MOUSE] != OWN_GAME; }
 	bool uiOwnsKeyboard(int p) { return p >= 0 && p < kMaxPlayers && S.pl[p].own[DEV_KEY] != OWN_GAME; }
 	Owner mouseOwner(int p) { return (p >= 0 && p < kMaxPlayers) ? S.pl[p].own[DEV_MOUSE] : OWN_VANILLA; }
@@ -704,7 +707,7 @@ namespace in
 		};
 		arr("pc", r.pressCount); arr("rc", r.releaseCount); tms("pt", r.lastPressMs, r.pressCount); tms("rt", r.lastReleaseMs, r.releaseCount);
 		auto f = [&](const char* k, float v) { if ( v != 0.f ) { s += std::string(",\"") + k + "\":" + fnum(v, false); } };
-		f("mx", r.moveX); f("my", r.moveY); f("lx", r.lookDX); f("ly", r.lookDY); f("sx", r.swingDX); f("sy", r.swingDY);
+		f("mx", r.moveX); f("my", r.moveY); f("lx", r.lookDX); f("ly", r.lookDY); f("sx", r.swingDX); f("sy", r.swingDY); f("rx", r.mouseDX); f("ry", r.mouseDY);
 		if ( have ) { s += ",\"pos\":[" + fnum(x, true) + "," + fnum(y, true) + "," + fnum(yaw, true) + "]"; }
 		s += "}";
 		return s;
@@ -729,7 +732,7 @@ namespace in
 		};
 		rd("pc", r.pressCount); rd("rc", r.releaseCount); rt("pt", r.lastPressMs); rt("rt", r.lastReleaseMs);
 		auto f = [&](const char* k, float* v) { if ( d.HasMember(k) && d[k].IsNumber() ) { *v = (float)d[k].GetDouble(); } };
-		f("mx", &r.moveX); f("my", &r.moveY); f("lx", &r.lookDX); f("ly", &r.lookDY); f("sx", &r.swingDX); f("sy", &r.swingDY);
+		f("mx", &r.moveX); f("my", &r.moveY); f("lx", &r.lookDX); f("ly", &r.lookDY); f("sx", &r.swingDX); f("sy", &r.swingDY); f("rx", &r.mouseDX); f("ry", &r.mouseDY);
 		*out = r;
 		return true;
 	}

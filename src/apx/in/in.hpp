@@ -46,6 +46,7 @@ namespace in
 		float moveX = 0.f, moveY = 0.f;     // -1..1 now (keys summed and clamped; stick analog)
 		float lookDX = 0.f, lookDY = 0.f;   // summed look (mouse px * sensitivity + stick per tick)
 		float swingDX = 0.f, swingDY = 0.f; // the part of look that happened while Attack was held (wind-up steering)
+		float mouseDX = 0.f, mouseDY = 0.f; // raw mouse motion in the window (px, before sensitivity; the compat feed's legacy look)
 		bool isHeld(int b) const { return (held >> b) & 1u; }
 		bool tapped(int b) const { return pressCount[b] && releaseCount[b] && !isHeld(b); }
 	};
@@ -88,7 +89,7 @@ namespace in
 		virtual void setKey(int sym, bool down) = 0;
 		virtual void setMouse(int button, bool down) = 0;     // 1..3 plus held state
 		virtual void pulseWheel(bool up) = 0;
-		virtual void addMouseRel(float dx, float dy) = 0;     // replay only
+		virtual void setMouseRel(float dx, float dy) = 0;     // the legacy look for this tick (mousexrel/mouseyrel), exactly once per record
 		virtual ~CompatSink() {}
 	};
 
@@ -123,6 +124,7 @@ namespace in
 	const TickRecord& take(int player);     // the record handed out by the last tickAll (or a fresh take)
 	TickRecord takeNow(int player);         // latch + hand out now (tests; tickAll uses it)
 
+	bool swallowsMouseLook();               // true: the vanilla motion handler must not accumulate mousexrel (the compat feed sets it per tick)
 	bool uiOwnsMouse(int player);
 	bool uiOwnsKeyboard(int player);
 	Owner mouseOwner(int player);

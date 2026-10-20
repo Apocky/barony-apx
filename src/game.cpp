@@ -4928,8 +4928,11 @@ bool handleEvents(void)
 					factorY = (float)h1 / h2;
 					mousex = event.motion.x * factorX;
 					mousey = event.motion.y * factorY;
-					mousexrel += event.motion.xrel;
-					mouseyrel += event.motion.yrel;
+					if ( !apx::in::glue::swallowLook() ) // apx D93 C0: owner GAME: apx::in latches the motion and the compat feed sets mousexrel once per tick
+					{
+						mousexrel += event.motion.xrel;
+						mouseyrel += event.motion.yrel;
+					}
 				}
 
 				//{

@@ -43,7 +43,7 @@ struct Sink : CompatSink
 	void setKey(int sym, bool d) override { key[sym] = d; log.push_back("k" + std::to_string(sym) + (d ? "1" : "0")); }
 	void setMouse(int b, bool d) override { mouse[b] = d; log.push_back("m" + std::to_string(b) + (d ? "1" : "0")); }
 	void pulseWheel(bool up) override { log.push_back(up ? "wu" : "wd"); }
-	void addMouseRel(float dx, float dy) override { log.push_back("rel" + std::to_string((int)dx) + "," + std::to_string((int)dy)); }
+	void setMouseRel(float dx, float dy) override { if ( dx == 0.f && dy == 0.f ) { return; } log.push_back("rel" + std::to_string((int)dx) + "," + std::to_string((int)dy)); }
 };
 
 static Raw key(bool down, const char* n, bool rep = false) { Raw r; r.type = down ? R_KeyDown : R_KeyUp; r.code = scan(n); r.sym = symOf(r.code); r.repeat = rep; return r; }
@@ -114,6 +114,7 @@ int main(int argc, char** argv)
 	event(move(3, -2)); event(mouse(true, 1)); event(move(5, 7)); r = takeNow(0);
 	CHECK(r.lookDX == 8.f && r.lookDY == 5.f, "look sum %g %g", r.lookDX, r.lookDY);
 	CHECK(r.swingDX == 5.f && r.swingDY == 7.f, "swing %g %g", r.swingDX, r.swingDY);
+	CHECK(r.mouseDX == 8.f && r.mouseDY == -2.f + 7.f, "raw mouse %g %g", r.mouseDX, r.mouseDY);
 	event(mouse(false, 1)); takeNow(0);
 
 	// ---- 6. owner gate: a UI that owns the pointer gets the clicks, the game gets none; counted as gated, not lost

@@ -171,7 +171,7 @@ def run_ui(exe, run, path, mode, rows):
         for i in range(6):
             L.send("act Attack 60", "wait 200")
         L.send("wait 300", "mark ui_open_ref")           # six clicks with the world owning the pointer
-        L.send("console /devmenu", "wait 1200", "move 260 70", "wait 600", "mark ui_hover_a")
+        L.send("console /enablecheats", "wait 300", "console /devmenu", "wait 1200", "move 260 70", "wait 600", "mark ui_hover_a")
         for i in range(6):
             L.send("act Attack 60", "wait 200")          # the pointer is over the Dev Menu window
         L.send("wait 300", "mark ui_hover_b", "move 900 500", "wait 600", "act Attack 60", "wait 300", "mark ui_away_b")
@@ -198,20 +198,25 @@ def run_ui(exe, run, path, mode, rows):
         L.close()
 
 
-def run_replay(exe, run, secs=60):
-    rec = Launch(exe, run, "floor", "new", extra_env={"APX_INPUT_LOG": "1", "APX_INPUT_LOG_FILE": str(run / "record.jsonl")}, tag="record")
+def run_replay(exe, run, secs=60, look=True):
+    name = "replay" if look else "replay_nolook"
+    recf, repf = run / f"record_{name}.jsonl", run / f"replay_{name}.jsonl"
+    rec = Launch(exe, run, "floor", "new", extra_env={"APX_INPUT_LOG": "1", "APX_INPUT_LOG_FILE": str(recf)}, tag="record_" + name)
     try:
         rec.wait_ingame()
-        rec.send("mark rec_start")
-        t_end = time.monotonic() + secs
-        i = 0
+        rec.send("console /enablecheats", "wait 300", "console /god", "wait 300", "mark rec_start")
         # a scripted 60 s: walk, turn, swing, sprint, with short and long presses
         cmds = []
         total_ms = 0
+        i = 0
         while total_ms < secs * 1000 - 3000:
-            cmds += [f"hold W {700 + (i * 37) % 400}", "wait 100", f"look {(i * 13) % 40 - 20} {(i * 7) % 10 - 5}", f"act Attack {5 + (i * 29) % 120}", "wait 150",
-                     f"act Sprint {20 + (i * 17) % 300}", "wait 200", f"hold D {200 + (i * 11) % 200}", "wait 120"]
-            total_ms += 700 + (i * 37) % 400 + 100 + 30 + 150 + 30 + 200 + 30 + 200 + (i * 11) % 200 + 120 + 30
+            hold = 700 + (i * 37) % 400
+            cmds += [f"hold W {hold}", "wait 100"]
+            if look:
+                cmds += [f"look {(i * 13) % 40 - 20} {(i * 7) % 10 - 5}"]
+            cmds += [f"act Attack {5 + (i * 29) % 120}", "wait 150", f"act Sprint {20 + (i * 17) % 300}", "wait 200",
+                     f"hold D {200 + (i * 11) % 200}", "wait 120"]
+            total_ms += hold + 100 + 30 + 150 + 30 + 200 + 30 + 200 + (i * 11) % 200 + 120 + 30
             i += 1
         rec.send(*cmds)
         rec.send("mark rec_end")
@@ -219,17 +224,21 @@ def run_replay(exe, run, secs=60):
         time.sleep(1.0)
     finally:
         rec.close()
-    rec_rows = (run / "record.jsonl").read_text().splitlines()
-    rep = Launch(exe, run, "floor", "new", extra_env={"APX_INPUT_LOG": "1", "APX_INPUT_LOG_FILE": str(run / "replay.jsonl")},
-                 extra_args=[f"-apxreplay={run / 'record.jsonl'}"], tag="replay")
+    rec_rows = recf.read_text().splitlines()
+    rep = Launch(exe, run, "floor", "new", extra_env={"APX_INPUT_LOG": "1", "APX_INPUT_LOG_FILE": str(repf)},
+                 extra_args=[f"-apxreplay={recf}"], tag="replay_" + name)
     try:
+        rep.wait_ingame()
+        rep.send("console /enablecheats", "wait 300", "console /god")
         t = time.monotonic()
         while rep.proc.poll() is None and time.monotonic() - t < secs + 120:
             time.sleep(1.0)
     finally:
         rep.close()
-    rep_rows = (run / "replay.jsonl").read_text().splitlines() if (run / "replay.jsonl").exists() else []
-    return compare_rows(rec_rows, rep_rows)
+    rep_rows = repf.read_text().splitlines() if repf.exists() else []
+    r = compare_rows(rec_rows, rep_rows)
+    r["gate"] = name
+    return r
 
 
 def strip_pos(line):
@@ -269,13 +278,13 @@ def verdict(rows):
         ok &= lost > 0
     for r in rows:
         if r["gate"] == "ui" and r["mode"] == "new":
-            good = (r["hover_clicks_taken"] == 0 and r["hover_clicks_legacy"] == 0 and r["hover_owner_mouse"] == "2" and r["away_taken"] == 1
+            good = (r["hover_clicks_taken"] == 0 and r["hover_clicks_legacy"] == 0 and r["hover_owner_mouse"] == 2 and r["text_owner_key_on"] == 1 and r["away_taken"] == 1
                     and r["world_clicks_seen"] == 6 and r["text_sprint_taken"] == 0 and r["text_off_sprint_taken"] == 1)
             ok &= good
             lines.append(f"{'PASS' if good else 'FAIL'} ui {r['path']}: {json.dumps(r)}")
-        if r["gate"] == "replay":
+        if r["gate"] in ("replay", "replay_nolook"):
             ok &= r["bit_exact_input"]
-            lines.append(f"{'PASS' if r['bit_exact_input'] else 'FAIL'} replay: {json.dumps(r)}")
+            lines.append(f"{'PASS' if r['bit_exact_input'] else 'FAIL'} {r['gate']}: {json.dumps(r)}")
     lines.append("C0 GATE: " + ("PASS" if ok else "FAIL"))
     return ok, lines
 
@@ -304,9 +313,10 @@ def main():
         for path in a.paths.split(","):
             run_ui(exe, run, path, "new", rows)
     if a.cmd in ("replay", "all"):
-        r = run_replay(exe, run)
-        rows.append(r)
-        print("  replay:", json.dumps(r), flush=True)
+        for look in (True, False):
+            r = run_replay(exe, run, look=look)
+            rows.append(r)
+            print("  replay:", json.dumps(r), flush=True)
     ok, lines = verdict(rows)
     (run / "verdict.txt").write_text("\n".join(lines) + "\n")
     (run / "baseline.json").write_text(json.dumps({"exe": str(exe), "when": datetime.datetime.now().astimezone().isoformat(timespec="seconds"), "rows": rows}, indent=1))

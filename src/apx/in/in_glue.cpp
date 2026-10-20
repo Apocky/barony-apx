@@ -47,7 +47,7 @@ namespace in
 					mousestatus[up ? SDL_BUTTON_WHEELUP : SDL_BUTTON_WHEELDOWN] = 1;
 					Input::mouseButtons[up ? Input::MOUSE_WHEEL_UP : Input::MOUSE_WHEEL_DOWN] = 1;
 				}
-				void addMouseRel(float dx, float dy) override { mousexrel += (Sint32)dx; mouseyrel += (Sint32)dy; }
+				void setMouseRel(float dx, float dy) override { mousexrel = (Sint32)dx; mouseyrel = (Sint32)dy; }
 			} g_sink;
 
 			// ---- the host facts apx::in asks for
@@ -111,6 +111,7 @@ namespace in
 
 		bool active() { return g_active; }
 		bool vanillaWrites() { return !g_active; }
+		bool swallowLook() { return g_active && swallowsMouseLook(); }
 
 		void init(const char* replayFile)
 		{
@@ -194,12 +195,12 @@ namespace in
 				const std::string kv = countersJson() + ",\"ev_s\":" + std::to_string(ev - g_secEvents) + ",\"owner_mouse\":" + std::to_string((int)mouseOwner(clientnum)) + ",\"owner_key\":" + std::to_string((int)keyboardOwner(clientnum));
 				g_secEvents = ev;
 				apxdiag::event("input", kv.c_str());
-				if ( replaying() && replayDone() )
-				{
-					printlog("[apx-in] replay finished (%u ticks); closing", tickCounter());
-					logClose();
-					mainloop = 0;
-				}
+			}
+			if ( replaying() && replayDone() )
+			{
+				printlog("[apx-in] replay finished (%u ticks); closing", tickCounter());
+				logClose();
+				mainloop = 0;
 			}
 		}
 

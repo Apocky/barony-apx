@@ -11,6 +11,7 @@ namespace in
 		void init(const char* replayFile);      // after the command line and SDL are up; loads the data, opens log/replay
 		void shutdown();
 		bool active();                           // apx::in feeds play (loaded and not APX_INPUT_OLD=1)
+		bool swallowLook();                      // true: the motion handler leaves mousexrel/mouseyrel to the compat feed (once per tick)
 		bool vanillaWrites();                    // true: the old code writes keystatus/mousestatus/Input from raw events (the control, or load failed)
 		void frameBegin();                       // before the QA pump and the event loop: the owner gate
 		void observe(const SDL_Event& e);        // every SDL event, first
