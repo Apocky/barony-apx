@@ -7,5 +7,9 @@ static const std::vector<PropRow> kPropTable = {
 	{ "podium", "furniture", 4, "", "read", "Read", 0, 0, 0, 0, 0, 0, {  } },
 	{ "cage_bones", "collider", -2, "hanging_cage_skel", "break", "", 0, 0, 0, 0, 0, 0, { { 250, "SKELETON", 1, "fodder", {  }, "" }, { 450, "", 0, "", { "GEM_ROCK", "GEM_GLASS", "RING_ADORNMENT" }, "" } } },
 	{ "cage_empty", "collider", -2, "hanging_cage_empty", "break", "", 0, 0, 0, 0, 0, 0, { { 400, "", 0, "", { "TOOL_METAL_SCRAP" }, "" } } },
-	{ "furniture_wood", "furniture", -1, "", "destroyed", "", 0, 0, 0, 0, 0, 0, { { 1000, "", 0, "", {  }, "stub:F6:wood" } } },
+	{ "wood_table", "furniture", 0, "", "destroyed", "", 0, 0, 0, 0, 0, 0, { { 1000, "", 0, "", {  }, "pouch:oak:3000" } } },
+	{ "wood_chair", "furniture", 1, "", "destroyed", "", 0, 0, 0, 0, 0, 0, { { 1000, "", 0, "", {  }, "pouch:oak:1200" } } },
+	{ "wood_bed", "furniture", 2, "", "destroyed", "", 0, 0, 0, 0, 0, 0, { { 1000, "", 0, "", {  }, "pouch:oak:4000" } } },
+	{ "wood_bunkbed", "furniture", 3, "", "destroyed", "", 0, 0, 0, 0, 0, 0, { { 1000, "", 0, "", {  }, "pouch:oak:5000" } } },
+	{ "wood_podium", "furniture", 4, "", "destroyed", "", 0, 0, 0, 0, 0, 0, { { 1000, "", 0, "", {  }, "pouch:oak:2000" } } },
 };

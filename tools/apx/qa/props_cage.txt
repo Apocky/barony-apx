@@ -1,0 +1,28 @@
+# the bone cage straight ahead: attack it with the axe (left click) until it breaks
+wait 6000
+look 0 -40
+wait 500
+shot a_aim
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+shot b_hit
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 1500
+shot c_after
+quit

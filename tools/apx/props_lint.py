@@ -65,7 +65,7 @@ def lint(path):
                 if it not in items:
                     f(f"item {it!r} does not resolve")
             y = o.get("yield", "")
-            if y and not re.fullmatch(r"stub:F[67]:[a-z_]+", y) and y not in items:
+            if y and not re.fullmatch(r"stub:F[67]:[a-z_]+", y) and not re.fullmatch(r"pouch:[a-z_]+:[1-9][0-9]{0,5}", y) and y not in items:
                 f(f"yield {y!r}")
             s = o.get("spawn")
             if s:
