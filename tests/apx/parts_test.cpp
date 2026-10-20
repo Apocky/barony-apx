@@ -555,6 +555,39 @@ int main(int argc, char** argv)
 			join({ kv("infused", ok), kv("full_refused", fullRefused) + "/" + std::to_string(full), kv("dup_refused", dupRefused) + "/" + std::to_string(dup),
 				kv("foreign_refused", foreignRefused) + "/" + std::to_string(foreign), kv("crystals_hold_their_affix", (int)crystalsOk) + "/" + std::to_string(crystals) }));
 	}
+	{
+		// C7: grafts from Rare+ only (no affixes, Graft slot, best rarity, maker kept); derived sockets follow the components
+		Counters c; ApxItemData it; int rare = 0, rareOk = 0, low = 0, lowRefused = 0, sock = 0, sockOk = 0, mount = 0, mountOk = 0;
+		const int gs = graftSlot(db);
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 41, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts == 0 ) { continue; }
+			int best = 0; for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
+			ApxPart g; std::string why;
+			const bool ok = extractGraft(db, it, g, why);
+			if ( it.parts[best].rarity >= 2 ) { ++rare; rareOk += ok && g.slot == gs && g.nAffix == 0 && g.rarity == it.parts[best].rarity && g.maker == it.parts[0].maker && g.material == it.parts[0].material; }
+			else { ++low; lowRefused += !ok; }
+			// a refreshed assembly's sockets equal min(4, best rarity)
+			ApxItemData t = it; t.flags &= (FLAG_CRAFTED | FLAG_LOOTED); refreshDerived(db, t);
+			++sock; sockOk += (t.flags & 7) == std::min(4, (int)it.parts[best].rarity) && t.power == itemPower(db, it);
+			// the graft mounts in a Form's Graft slot when the required parts reach its gate
+			if ( ok && (int)it.form < (int)db.families.size() )
+			{
+				const Family& f = db.families[it.form];
+				int gate = -1; for ( auto& o : f.optional ) { if ( o.slot == gs ) { gate = o.q; } }
+				if ( gate < 0 ) { continue; }
+				std::vector<ApxPart> parts;
+				for ( int r : f.required ) { for ( int k = 0; k < it.nParts; ++k ) { if ( it.parts[k].slot == r ) { ApxPart q = it.parts[k]; q.quality = 10; parts.push_back(q); break; } } }
+				if ( parts.size() != f.required.size() ) { continue; }
+				parts.push_back(g);
+				ApxItemData a; std::string w;
+				++mount; mountOk += assemble(db, (int)it.form, parts, 1, 1 << 30, a, w) && (a.flags & 7) == std::min(4, std::max<int>(g.rarity, 0) > 0 ? (int)std::max<uint8_t>(g.rarity, a.parts[0].rarity) : 0) ? 1 : 0;
+			}
+		}
+		gate("C7_graft_sockets", rare > 0 && rareOk == rare && low > 0 && lowRefused == low && sockOk == sock && mount > 0 && mountOk == mount,
+			join({ kv("grafts", rareOk) + "/" + std::to_string(rare), kv("below_rare_refused", lowRefused) + "/" + std::to_string(low), kv("sockets_follow", sockOk) + "/" + std::to_string(sock), kv("graft_mounted", mountOk) + "/" + std::to_string(mount) }));
+	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;
 }

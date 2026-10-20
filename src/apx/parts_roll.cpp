@@ -453,7 +453,7 @@ bool assemble(const DB& db, int family, const std::vector<ApxPart>& parts, uint3
 	// required slots first, in the Form's order (the main part is parts[0], as a roll makes it)
 	for ( int req : f.required ) { for ( auto& p : parts ) { if ( p.slot == req ) { a.parts[a.nParts++] = p; } } }
 	for ( auto& p : parts ) { bool req = false; for ( int r : f.required ) { req = req || p.slot == r; } if ( !req ) { a.parts[a.nParts++] = p; } }
-	a.power = (uint16_t)itemPower(db, a);
+	refreshDerived(db, a); // sockets, element, power from the components (C7)
 	if ( a.power > ipCapValue ) { why = "Item Power " + std::to_string(a.power) + " over this depth's cap " + std::to_string(ipCapValue); return false; }
 	out = a;
 	return true;
@@ -472,7 +472,7 @@ bool swapPart(const DB& db, ApxItemData& it, int k, const ApxPart& c, int ipCapV
 	if ( c.slot != it.parts[k].slot ) { why = "the component does not fit that slot"; return false; }
 	ApxItemData t = it;
 	t.parts[k] = c;
-	t.power = (uint16_t)itemPower(db, t);
+	refreshDerived(db, t);
 	if ( t.power > ipCapValue ) { why = "Item Power " + std::to_string(t.power) + " over this depth's cap " + std::to_string(ipCapValue); return false; }
 	old = it.parts[k];
 	it = t;
@@ -572,7 +572,7 @@ bool stripParts(const DB& db, ApxItemData& it, std::vector<ApxPart>& removed, bo
 	}
 	for ( int k = t.nParts; k < APX_MAX_PARTS; ++k ) { memset(&t.parts[k], 0, sizeof(ApxPart)); }
 	if ( removed.empty() ) { why = "a looted item strips only its optional quick slots; it has none: break it instead"; return false; }
-	t.power = (uint16_t)itemPower(db, t);
+	refreshDerived(db, t);
 	it = t;
 	return true;
 }
@@ -600,6 +600,42 @@ bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why)
 	for ( int a = 0; a < p.nAffix; ++a ) { if ( p.affix[a] == affix ) { why = "that affix is already on the part"; return false; } }
 	if ( !affixFitsSlot(db, p.slot, affix) ) { why = "that affix does not take on a " + (p.slot < db.slots.size() ? db.slots[p.slot].id : std::string("?")); return false; }
 	p.affix[p.nAffix++] = affix;
+	return true;
+}
+
+} // namespace apxparts
+
+namespace apxparts {
+
+void refreshDerived(const DB& db, ApxItemData& it)
+{
+	if ( it.nParts == 0 ) { return; }
+	int best = 0;
+	for ( int k = 1; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } }
+	const int sockets = isComponent(it) ? 0 : std::min(4, (int)it.parts[best].rarity);
+	const int element = it.parts[best].material < db.materials.size() ? (db.materials[it.parts[best].material].element & 7) : 0;
+	it.flags = (uint8_t)((it.flags & (FLAG_CRAFTED | FLAG_LOOTED)) | sockets | (element << 3));
+	it.power = (uint16_t)itemPower(db, it);
+}
+
+int graftSlot(const DB& db) { return db.slot("Graft"); }
+
+bool extractGraft(const DB& db, const ApxItemData& it, ApxPart& g, std::string& why)
+{
+	if ( it.nParts == 0 || isComponent(it) ) { why = "extract a graft from an assembly"; return false; }
+	int best = 0, q = 0;
+	for ( int k = 0; k < it.nParts; ++k ) { if ( it.parts[k].rarity > it.parts[best].rarity ) { best = k; } q += it.parts[k].quality; }
+	if ( it.parts[best].rarity < 2 ) { why = "only a Rare or better item yields a graft"; return false; }
+	const int gs = graftSlot(db);
+	if ( gs < 0 ) { why = "no Graft slot in forms.json"; return false; }
+	g = ApxPart{};
+	g.slot = (uint8_t)gs;
+	g.material = it.parts[0].material;
+	g.quality = (uint8_t)std::max(1, q / it.nParts);
+	g.rarity = it.parts[best].rarity;
+	g.integrity = 255;
+	g.maker = it.parts[0].maker;
+	g.nAffix = 0; // a graft carries a maker's gimmick, not affixes (invariant 7: affixes only by roll or infuse)
 	return true;
 }
 

@@ -532,7 +532,7 @@ bool apxPartsInfuse(int player, Item* item, int part, Uint32 crystalUid, int sta
 	if ( !apxparts::infuse(db(), p, (uint16_t)apxPartsAuraAffix(crystal), why) ) { ++apxPartsCounters.infuse_refused; return false; }
 	ApxItemData t = item->apx;
 	t.parts[part] = p;
-	t.power = (uint16_t)apxparts::itemPower(db(), t);
+	apxparts::refreshDerived(db(), t);
 	if ( !apxparts::isComponent(t) && t.power > apxparts::ipCap(std::max(1, (int)currentlevel)) ) { why = "Item Power over this depth's cap"; ++apxPartsCounters.infuse_refused; return false; }
 	item->apx = t;
 	Item* gone = crystal;
@@ -583,11 +583,30 @@ bool apxPartsRepairPart(int player, Item* item, int part, std::string& why)
 	ledger[player][p.material] -= (uint32_t)g;
 	if ( p.integrity < db().salvage.lowIntegrityByte && p.quality > 1 ) { --p.quality; }
 	p.integrity = 255;
-	item->apx.power = (uint16_t)apxparts::itemPower(db(), item->apx);
+	apxparts::refreshDerived(db(), item->apx);
 	++apxPartsCounters.parts_repaired;
 	printlog("apxparts: repair part player %d part %d (%s) %lld g pouch %lld g\n", player, part, apxPartsSlotName(p.slot), g, apxPartsLedgerGrams(player));
 	return true;
 }
+
+// C7 graft extraction (05b 5.10): the assembly is destroyed; the graft comes back as a component item
+Item* apxPartsExtractGraft(int player, Item* item, int station, std::string& why)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { why = "no player"; return nullptr; }
+	if ( station == 0 ) { why = "extract a graft at a bench"; return nullptr; }
+	if ( !item ) { why = "no item"; return nullptr; }
+	ApxPart g{};
+	if ( !apxparts::extractGraft(db(), item->apx, g, why) ) { ++apxPartsCounters.graft_refused; return nullptr; }
+	const ApxItemData src = item->apx;
+	const bool known = item->identified;
+	Item* gone = item;
+	consumeItem(gone, player);
+	Item* got = apxPartsGiveComponent(player, apxparts::componentOf(db(), g, src.rollKey ^ 0x6A2Fu, apxparts::FLAG_CRAFTED), known);
+	++apxPartsCounters.grafts;
+	printlog("apxparts: graft extracted player %d from form %s rarity %d -> %s\n", player, apxPartsFamilyName(src.form), (int)g.rarity, got ? got->getName() : "?");
+	return got;
+}
+int apxPartsSockets(const Item* item) { return item && item->apx.nParts && !apxparts::isComponent(item->apx) ? (item->apx.flags & 7) : 0; }
 
 // trade lane (D73/D85): the pouch as a store of grams
 int apxPartsMaterialIndex(const char* id) { return id ? db().material(id) : -1; }
@@ -1350,6 +1369,26 @@ void apxPartsProbeTick()
 				}
 			}
 			const bool infuseOk = infused == 2 && refusedStation && refusedDup && refusedFull && crystalsUsed == 2;
+			// C7: a graft from a Rare+ item (the item is destroyed), refused below Rare; the assembly's sockets = its rarity
+			bool graftOk = false;
+			char graftName[160] = "";
+			{
+				auto gi = rollProbeItems(1, &stats[0]->inventory, "Blades", 40);
+				auto lo = rollProbeItems(1, &stats[0]->inventory, "Blades", 1);
+				if ( !gi.empty() && !lo.empty() )
+				{
+					for ( int k = 0; k < gi[0]->apx.nParts; ++k ) { gi[0]->apx.parts[k].rarity = std::max<uint8_t>(gi[0]->apx.parts[k].rarity, 2); }
+					for ( int k = 0; k < lo[0]->apx.nParts; ++k ) { lo[0]->apx.parts[k].rarity = 0; }
+					const Uint32 giUid = gi[0]->uid;
+					std::string w1, w2;
+					Item* g = apxPartsExtractGraft(0, gi[0], 4, w1);
+					bool giGone = true;
+					for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { if ( ((Item*)nd->element)->uid == giUid ) { giGone = false; } }
+					const bool loRefused = !apxPartsExtractGraft(0, lo[0], 4, w2) && w2.find("Rare") != std::string::npos;
+					if ( g ) { snprintf(graftName, sizeof(graftName), "%s", g->getName()); }
+					graftOk = g && giGone && loRefused && g->apx.parts[0].slot == (uint8_t)db().slot("Graft") && a && apxPartsSockets(a) == std::min(4, (int)[&]() { int r = 0; for ( int k = 0; k < a->apx.nParts; ++k ) { r = std::max<int>(r, a->apx.parts[k].rarity); } return r; }());
+				}
+			}
 			// U1h provider wiring, called through apx_bench::provider() as the bench does
 			bool provOk = false;
 			std::string provNote;
@@ -1414,10 +1453,10 @@ void apxPartsProbeTick()
 				}
 			}
 			const bool hideOk = hiddenName[0] && shownName[0] && strlen(hiddenName) < strlen(shownName) && !strstr(hiddenName, " of ");
-			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk && provOk;
-			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"provider\":\"%s\",\"provider_ok\":%d,\"pass\":%s}",
+			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk && provOk && graftOk;
+			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"provider\":\"%s\",\"provider_ok\":%d,\"graft_ok\":%d,\"graft\":\"%s\",\"pass\":%s}",
 				fam >= 0 ? apxPartsFamilyName((uint32_t)fam) : "?", req, made, spent, costs, asmOk ? 1 : 0, asmName, asmPower, craftWhy.c_str(),
-				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, provNote.c_str(), provOk ? 1 : 0, craftPass ? "true" : "false");
+				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, provNote.c_str(), provOk ? 1 : 0, graftOk ? 1 : 0, graftName, craftPass ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("bundle") != std::string::npos && on )

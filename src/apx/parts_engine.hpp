@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0, pouch_scrap_spent = 0, parts_repaired = 0, grafts = 0, graft_refused = 0, stripped = 0, aura_given = 0, infused = 0, infuse_refused = 0, assembled = 0, assemble_refused = 0, swapped = 0, swap_refused = 0, made = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -69,7 +69,9 @@ Item* apxPartsMakeComponent(const ApxItemData& data, bool identified = true);
 Item* apxPartsMakeBundle(int material, int grams);
 // D85: Barony tinkering reads the pouch: cls 0 = metal, 1 = magic (salvage.json grams per unit)
 int apxPartsPouchScrapUnits(int player, int cls);
-bool apxPartsRepairPart(int player, Item* item, int part, std::string& why); // 05b s5.8b, pouch grams of the part's material
+bool apxPartsRepairPart(int player, Item* item, int part, std::string& why);
+Item* apxPartsExtractGraft(int player, Item* item, int station, std::string& why); // C7: Rare+ assembly -> graft component (item destroyed)
+int apxPartsSockets(const Item* item);                                             // C7: 0-4 = the assembly's rarity // 05b s5.8b, pouch grams of the part's material
 bool apxPartsPouchTakeScrap(int player, int cls, int units);
 // C6 aura crystals (05b 5.9): GEM_GLASS stand-in, appearance 0xA tag | affix id; same-affix crystals stack.
 bool apxPartsIsAura(const Item* item);
