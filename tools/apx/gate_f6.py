@@ -98,7 +98,7 @@ def run_save(name, exe, out, env_extra, args):
     finally:
         lock.unlink(missing_ok=True)
     text = log_text(d)
-    probe, salvage, bundle = None, None, None
+    probe, salvage, bundle, comps = None, None, None, None
     if rows.exists():
         for l in rows.read_text().splitlines():
             if l.strip():
@@ -109,9 +109,11 @@ def run_save(name, exe, out, env_extra, args):
                     salvage = j
                 elif j.get("probe") == "bundle":
                     bundle = j
+                elif j.get("probe") == "components":
+                    comps = j
     gen = re.findall(r"successfully generated a dungeon with [^\n]*", text)
     sidecars = sorted(str(x) for x in d.rglob("*.apxparts"))
-    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage, "bundle": bundle,
+    return {"name": name, "env": env_extra, "exit": code, "seconds": round(time.monotonic() - t0, 1), "probe": probe, "salvage": salvage, "bundle": bundle, "components": comps,
             "generated": gen[-1] if gen else None, "sidecars": sidecars, "run_dir": str(d),
             "data_line": (re.findall(r"apxparts: data [^\n]*", text) or [None])[-1]}
 
@@ -187,11 +189,12 @@ def run_net(name, exe, out, host_env, args):
         c_sent = re.findall(r"apxparts: net sent type (\d+) len (\d+) blob ([0-9a-f]+)", log_text(dirs["client"]))
         h_recv = re.findall(r"apxparts: net recv type (\d+) len (\d+) blob ([0-9a-f]+|none)", log_text(dirs["host"]))
         b_absorbed = re.findall(r"apxparts: bundle absorbed player \d+ \S+ \d+ g appearance ([0-9a-f]+)", log_text(dirs["client"]))
+        c_floor = re.findall(r"apxparts: component on floor \"[^\"]*\" blob ([0-9a-f]+)", log_text(dirs["host"]))
         b_floor = re.findall(r"apxparts: bundle on floor \S+ \d+ g appearance ([0-9a-f]+)", log_text(dirs["host"]))
         fb_sent = re.findall(r"apxparts: formbook sent player \d+ forms \d+ hash ([0-9a-f]+)", log_text(dirs["client"]))
         fb_recv = re.findall(r"apxparts: formbook recv player \d+ forms \d+ hash ([0-9a-f]+)", log_text(dirs["host"]))
         hr = {(t, b) for t, _, b in h_recv}
-        row.update(bundles_absorbed_on_client=b_absorbed, bundles_on_host_floor=b_floor,
+        row.update(bundles_absorbed_on_client=b_absorbed, bundles_on_host_floor=b_floor, components_on_host_floor=c_floor,
                    client_sent=len(c_sent), client_sent_found_on_host=sum(1 for t, _, b in c_sent if (t, b) in hr),
                    formbook_sent=fb_sent[-1] if fb_sent else None, formbook_recv=fb_recv[-1] if fb_recv else None,
                    client_probe=(json.loads(cl_rows.read_text().splitlines()[-1]) if cl_rows.exists() else None))
@@ -252,6 +255,11 @@ def main():
                     f"station {sv.get('station_ok')}/10, bench {sv.get('bench_ok')}/10, kept one part {sv.get('bench_kept_one_part')}, metal {sv.get('metal_scrap')}, "
                     f"magic {sv.get('magic_scrap')}, aura gems {sv.get('aura_gems')} (counted {sv.get('aura_counted')}), pouch {sv.get('pouch_before')} g -> {sv.get('pouch_after')} g after save/load, carry weight {sv.get('carry_weight')} = items {sv.get('item_weight')} + gold + pouch {sv.get('pouch_units')} ({'ok' if sv.get('weight_ok') else 'WRONG'}), inventory {sv.get('inventory_before')} -> {sv.get('inventory_after')}, grams out {sv.get('grams_out')} = paid {sv.get('grams_paid')} + ledger {sv.get('ledger_gain')} ({'conserved' if sv.get('conserved') else 'LOST'})"):
             return 1
+        cm = r.get("components") or {}
+        if not gate("D86 components: salvage hands the chosen part over as an item; crafted = every part; save/load keeps them", cm.get("pass") is True,
+                    f"expected {cm.get('expected')}, gained {cm.get('gained')}, given {cm.get('given')}, crafted {cm.get('crafted_components')}/{cm.get('crafted_parts')} parts, "
+                    f"kept after load {cm.get('kept_after_load')}/{cm.get('before_load')}, e.g. \"{cm.get('name')}\""):
+            return 1
         bd = r.get("bundle") or {}
         if not gate("D85 bundles: draw from pouch, survive save/load, pickup returns to pouch", bd.get("pass") is True,
                     f"drawn {bd.get('drawn')} {bd.get('names')}, pouch -{bd.get('pouch_drop')} g (= {bd.get('drawn_grams')}), kept after load {bd.get('kept_after_load')}/2, "
@@ -297,7 +305,7 @@ def main():
     if "net" in only:
         r = results["net"] = run_net("net", args.exe, args.out, {}, args)
         emit(r)
-        if not gate("S5 host -> client parts (40 items)", r.get("finish") == "ok" and r.get("sent") == 40 and r.get("equal_blobs") == 40,
+        if not gate("S5 host -> client parts (40 items + 1 D86 component)", r.get("finish") == "ok" and r.get("sent") == 41 and r.get("equal_blobs") == 41,
                     f"sent {r.get('sent')}, received {r.get('recv')}, equal {r.get('equal_blobs')}, lens {r.get('recv_lens')}, {r.get('error', '')}"):
             return 1
         cp = r.get("client_probe") or {}
@@ -312,14 +320,20 @@ def main():
         if not gate("D85 bundle client -> host (dropped bundle on the host's floor)", cp.get("bundle_dropped") not in (None, "00000000") and cp.get("bundle_dropped") in r.get("bundles_on_host_floor", []),
                     f"client dropped {cp.get('bundle_dropped')}, host floor {r.get('bundles_on_host_floor')}"):
             return 1
+        if not gate("D86 component host -> client (byte-equal blob)", hp_.get("component_sent") not in (None, "0" * 16) and hp_.get("component_sent") == cp.get("component_received"),
+                    f"host sent {hp_.get('component_sent')}, client holds {cp.get('component_received')} \"{cp.get('component_name')}\""):
+            return 1
+        if not gate("D86 component client -> host (dropped, on the host floor byte-equal)", cp.get("component_dropped") not in (None, "0" * 16) and cp.get("component_dropped") in r.get("components_on_host_floor", []),
+                    f"client dropped {cp.get('component_dropped')}, host floor {r.get('components_on_host_floor')}"):
+            return 1
         if not gate("Formbook client -> host (FBOK)", cp.get("broke") == 3 and r.get("formbook_sent") and r.get("formbook_sent") == r.get("formbook_recv"),
                     f"broke {cp.get('broke')}, client hash {r.get('formbook_sent')}, host hash {r.get('formbook_recv')}"):
             return 1
     if "net-strip" in only:
         r = results["net-strip"] = run_net("net-strip", args.exe, args.out, {"APX_NET_STRIP": "1"}, args)
         emit(r)
-        if not gate("S5 control APX_NET_STRIP=1 (client gets no blob)", r.get("finish") == "ok" and r.get("recv") == 41 and r.get("recv_none") == 41,
-                    f"received {r.get('recv')} (40 items + the D85 bundle), without blob {r.get('recv_none')}, {r.get('error', '')}"):
+        if not gate("S5 control APX_NET_STRIP=1 (client gets no blob)", r.get("finish") == "ok" and r.get("recv") == 42 and r.get("recv_none") == 42,
+                    f"received {r.get('recv')} (40 items + the D85 bundle + the D86 component), without blob {r.get('recv_none')}, {r.get('error', '')}"):
             return 1
     if "net-vanilla" in only:
         r = results["net-vanilla"] = run_net("net-vanilla", args.exe, args.out, {"APX_PARTS": "0"}, args)

@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -53,6 +53,15 @@ const char* apxPartsBundleName(const Item* item);            // "bundle of iron 
 int apxPartsLedgerMaterialGrams(int player, int material);
 int apxPartsBundleValue(const Item* item);                    // gold: grams x material value_per_kg / 1000
 void apxPartsLedgerCredit(int player, int material, int grams); // selftest seed for the pouch (logged)
+// D86 components: one part as its own item (stand-in type GEM_GLASS, apx.form = COMPONENT_FORM, nParts 1;
+// appearance 0xC tag | slot << 8 | material, cosmetic only). Saves, packets and floor items carry it like
+// any item with parts; it never stacks. Name from its affixes ("Keen Steel Blade of Embers").
+bool apxPartsIsComponent(const Item* item);
+const char* apxPartsComponentName(const Item* item);
+int apxPartsComponentGrams(const Item* item);
+int apxPartsComponentValue(const Item* item);
+struct ApxItemData;
+Item* apxPartsGiveComponent(int player, const ApxItemData& data); // into the player's inventory (itemPickup)
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);
