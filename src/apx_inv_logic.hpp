@@ -29,11 +29,17 @@ namespace apx_logic
 		int slot = -1;           // equipment slot for compare-to-equipped (engine's own numbering)
 		std::string material, kinds;
 		std::string icon;        // sprite path at runtime (Barony art, never committed)
+		int rarity = -1;         // D86: a component item (0 common .. 4 legendary, 5 unique), -1 otherwise
 	};
 	struct Entry { bool header = false; Row row; };
 
 	// ---------------------------------------------------------------- D81: columns, tabs, compare
 	enum Column : int { COL_NAME, COL_WEIGHT, COL_VALUE, COL_POWER, COL_CONDITION, COL_MAX };
+	inline const char* rarityName(int r)
+	{
+		static const char* n[] = { "common", "uncommon", "rare", "epic", "legendary", "unique" };
+		return r >= 0 && r <= 5 ? n[r] : "";
+	}
 	inline const char* conditionShort(int status)
 	{
 		static const char* w[] = { "Broken", "Decrepit", "Worn", "Fine", "Excellent" };

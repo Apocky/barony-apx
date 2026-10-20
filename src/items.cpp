@@ -9,6 +9,7 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/trade_glue.hpp"
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "game.hpp"
@@ -1152,6 +1153,16 @@ Category itemCategory(const Item* const item)
 
 char* Item::getName() const
 {
+	if ( apxPartsIsComponent(this) ) // apx F6 D86
+	{
+		snprintf(tempstr, sizeof(tempstr), "%s", apxPartsComponentName(this));
+		return tempstr;
+	}
+	if ( apxPartsIsBundle(this) ) // apx F6 D85
+	{
+		snprintf(tempstr, sizeof(tempstr), "%s", apxPartsBundleName(this));
+		return tempstr;
+	}
 	if ( type >= 0 && type < NUMITEMS )
 	{
 		if ( identified )
@@ -1444,7 +1455,7 @@ Sint32 itemModelFirstperson(const Item* const item)
 
 int itemCompare(const Item* const item1, const Item* const item2, bool checkAppearance, bool comparisonUsedForStacking)
 {
-	if ( item1 && item2 && (item1->apx.nParts > 0 || item2->apx.nParts > 0) && item1->uid != item2->uid )
+	if ( item1 && item2 && (item1->apx.nParts > 0 || item2->apx.nParts > 0 || apxPartsIsBundle(item1) || apxPartsIsBundle(item2)) && item1->uid != item2->uid )
 	{
 		return 1; // apx F6: an item with parts is one of a kind (never stacks)
 	}
@@ -3879,6 +3890,7 @@ Item* itemPickup(const int player, Item* const item, Item* addToSpecificInventor
 		return nullptr;
 	}
 	apxLuaItemPicked(player, (int)item->type, (int)item->count);
+	apxPartsBundlePickedUp(player, item); // apx F6 D85: a bundle goes back to the pouch next frame
 	Item* item2;
 
 	/*if ( stats[player]->getProficiency(PRO_APPRAISAL) >= CAPSTONE_UNLOCK_LEVEL[PRO_APPRAISAL] )
@@ -5386,6 +5398,8 @@ Sint32 Item::potionGetCursedEffectDurationRandom(Entity* my, Stat* myStats) cons
 
 Sint32 Item::getGoldValue() const
 {
+	if ( apxPartsIsBundle(this) ) { return apxPartsBundleValue(this); } // apx F6 D85
+	if ( apxPartsIsComponent(this) ) { return apxPartsComponentValue(this); } // apx F6 D86
 	if ( type >= 0 && type < NUMITEMS )
 	{
 		if ( items[type].category == TOME_SPELL )
@@ -5450,6 +5464,8 @@ Sint32 Item::getGoldValue() const
 
 Sint32 Item::getWeight() const
 {
+	if ( apxPartsIsBundle(this) ) { return std::max(1, apxPartsBundleGrams(this) / 100); } // apx F6 D85: 1 unit = 100 g
+	if ( apxPartsIsComponent(this) ) { return std::max(1, apxPartsComponentGrams(this) / 100); } // apx F6 D86
 	if ( type >= 0 && type < NUMITEMS )
 	{
 		if ( itemTypeIsQuiver(type) )
@@ -6029,10 +6045,10 @@ int Item::buyValue(const int player) const
 
 	if ( itemTypeIsQuiver(type) )
 	{
-		return std::max(value, this->getGoldValue()) * count;
+		return apx::tradeglue::buyValue(this, player, std::max(value, this->getGoldValue()) * count);
 	}
 
-	return std::max(value, this->getGoldValue());
+	return apx::tradeglue::buyValue(this, player, std::max(value, this->getGoldValue()));
 }
 
 /*-------------------------------------------------------------------------------
@@ -6082,10 +6098,10 @@ int Item::sellValue(const int player) const
 
 	if ( itemTypeIsQuiver(type) )
 	{
-		return std::min(value, this->getGoldValue()) * count;
+		return apx::tradeglue::sellValue(this, player, std::min(value, this->getGoldValue()) * count);
 	}
 
-	return std::min(value, this->getGoldValue());
+	return apx::tradeglue::sellValue(this, player, std::min(value, this->getGoldValue()));
 }
 
 /*-------------------------------------------------------------------------------

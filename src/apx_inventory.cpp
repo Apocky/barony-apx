@@ -78,6 +78,14 @@ std::vector<Row> rows(int player)
 		r.y = item->y;
 		out.push_back(r);
 	}
+	if ( !vanillaGrid() && apx_bench::pouchUnits(player) > 0 )
+	{
+		Row p;
+		p.kind = MATERIALS;
+		p.type = -2;           // the pouch row (D85)
+		p.mass = (Sint32)apx_bench::pouchUnits(player);
+		out.push_back(p);
+	}
 	if ( stats[player]->GOLD > 0 )
 	{
 		Row g;
@@ -92,6 +100,7 @@ std::vector<Row> rows(int player)
 Sint32 carriedMass(int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { return 0; }
+	// includes the D85 material pouch: getCharacterWeight adds it (actplayer.cpp), so movement sees it too
 	return players[player]->movement.getCharacterWeight();
 }
 
@@ -414,7 +423,7 @@ static void runF6Bench(int dt)
 		parts = (int)apx_bench::provider().parts(a).size();
 		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
 	}
-	else if ( dt == 344 ) { selectOwn(IRON_SWORD); benchTab(0, 1); } // Salvage
+	else if ( dt == 344 ) { selectOwn(IRON_SWORD); setBenchTab(0, 3); } // Salvage
 	else if ( dt == 348 )
 	{
 		auto e = benchRowsForTest(0);
@@ -435,12 +444,12 @@ static void runF6Bench(int dt)
 		succBefore = apxPartsFormSuccesses(0, breakForm);
 		pl.inventoryUI.activateItemContextMenuOption(uidToItem(breakUid), PROMPT_APX_BREAK);
 	}
-	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); benchTab(0, 1); } // Formbook
+	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); setBenchTab(0, 4); } // Formbook
 	else if ( dt == 360 )
 	{
 		fbRows = viewState(0).benchRows;
 		for ( auto& f : apx_bench::provider().formbook(0) ) { if ( f.form == breakForm && f.successes >= 1 ) { fbHasForm = 1; } }
-		benchTab(0, 1); // Craft
+		setBenchTab(0, 0); // Craft
 	}
 	else if ( dt == 364 )
 	{
@@ -464,6 +473,163 @@ static void runF6Bench(int dt)
 			fclose(f);
 		}
 		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+	}
+}
+
+// D85 pouch: a fixed test pouch (iron 2500 g, oak 800 g) and a recording Draw-out, installed over the
+// live provider for these ticks only, so the UI mechanics are checked whatever F6 fills; the live
+// provider's own pouch total is recorded beside it. Run once.
+static int g_drawCalls = 0, g_drawMaterial = -1;
+static long long g_drawGrams = 0;
+static std::vector<apx_bench::PouchRow> testPouch(int) { return { { 3, "iron", 2500 }, { 11, "oak", 800 } }; }
+static long long testPouchGrams(int) { return 3300; }
+static bool testDraw(int, int material, long long grams, std::string&) { ++g_drawCalls; g_drawMaterial = material; g_drawGrams = grams; return true; }
+
+static void runPouch(int dt)
+{
+	auto& pl = *players[0];
+	static apx_bench::Provider live;
+	static Entity* bench = nullptr;
+	static long long liveGrams = -1;
+	static int carried0 = 0, carried1 = 0, rowsOk = 0, pouchRow = 0, matRows = 0, bundleRow = -1, tab = -1;
+	static std::string drawMsg;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	if ( dt == 370 )
+	{
+		live = apx_bench::provider();
+		liveGrams = live.pouchGrams(0);
+		carried0 = carriedMass(0) - (int)apx_bench::pouchUnits(0);
+		apx_bench::Provider t = live;
+		t.name = "self-test pouch";
+		t.pouch = testPouch; t.pouchGrams = testPouchGrams; t.drawBundle = testDraw;
+		apx_bench::setProvider(t);
+		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
+	}
+	else if ( dt == 372 )
+	{
+		carried1 = carriedMass(0);
+		rowsOk = checkRows(rows(0), carriedMass(0)).empty();
+		for ( auto& e : ownRowsForTest(0) ) { if ( !e.header && e.row.name == "Material pouch" && e.row.mass == 33 ) { pouchRow = 1; } }
+		setBenchTab(0, 5); tab = 5; // Materials
+	}
+	else if ( dt == 375 )
+	{
+		auto e = benchRowsForTest(0);
+		matRows = (int)e.size();
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 5 ) { bundleRow = (int)i; break; } }
+		if ( bundleRow >= 0 ) { setFocus(0, 2, bundleRow); activateSelected(0); drawMsg = viewState(0).lastBenchMsg; }
+	}
+	else if ( dt == 378 )
+	{
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"pouch\",\"mode\":\"%s\",\"headless\":%d,\"carried_without_with\":[%d,%d],\"pouch_units\":33,\"carry_counts_pouch\":%d,"
+				"\"rows_sum_ok\":%d,\"pouch_row\":%d,\"materials_tab\":%d,\"materials_rows\":%d,\"bundle_row\":%d,\"draw_calls\":%d,\"draw\":[%d,%lld],\"draw_msg\":\"%s\","
+				"\"live_provider\":\"%s\",\"live_pouch_grams\":%lld,\"live_draw_bundle\":%d}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, carried0, carried1, carried1 - carried0 == 33 ? 1 : 0, rowsOk, pouchRow,
+				viewState(0).benchTab == 5 ? 1 : 0, matRows, bundleRow, g_drawCalls, g_drawMaterial, g_drawGrams, drawMsg.c_str(),
+				live.name, liveGrams, live.drawBundle ? 1 : 0);
+			fclose(f);
+		}
+		apx_bench::setProvider(live);
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+	}
+}
+
+// D86 components: a test provider (component items marked by appearance 7786; a sword with two parts
+// of rarity 1 and 3 and affixes; one swap slot; one make option) over the live provider, recording
+// calls, so the list colours, tooltip, Swap and Make views are checked whatever F6 fills. Run once.
+static int g_swapCalls = 0, g_swapPart = -1, g_makeCalls = 0, g_makeId = -1;
+static Uint32 g_swapUid = 0, g_compUid = 0;
+static int tComponentOf(const Item* it, apx_bench::PartRow& out)
+{
+	if ( !it || it->appearance != 7786 ) { return 0; }
+	out.name = "keen steel blade"; out.material = "steel"; out.rarity = 2; out.affixes = { "keen (+2 cut)" };
+	return 1;
+}
+static std::vector<apx_bench::PartRow> tParts(const Item* it)
+{
+	if ( !it || it->type != IRON_SWORD ) { return {}; }
+	apx_bench::PartRow a; a.slotName = "Blade"; a.name = "iron blade"; a.material = "iron"; a.quality = 3; a.rarity = 1; a.affixes = { "sturdy" };
+	apx_bench::PartRow b; b.slotName = "Hilt"; b.name = "oak hilt of speed"; b.material = "oak"; b.quality = 2; b.rarity = 3; b.affixes = { "of speed (+5%)" };
+	return { a, b };
+}
+static std::vector<apx_bench::SwapSlot> tSwapSlots(int, const Item* it, int)
+{
+	if ( !it || it->type != IRON_SWORD ) { return {}; }
+	apx_bench::SwapSlot s; s.partIndex = 0; s.name = "Blade"; s.candidateUids = { g_compUid };
+	return { s };
+}
+static bool tSwap(int, Item*, int partIndex, uint32_t uid, std::string&) { ++g_swapCalls; g_swapPart = partIndex; g_swapUid = uid; return true; }
+static std::vector<apx_bench::MakeOption> tMakeOptions(int, int)
+{
+	apx_bench::MakeOption o; o.id = 4; o.name = "steel blade"; o.cost = { { 3, "iron", 500 } }; o.affordable = true;
+	return { o };
+}
+static bool tMake(int, int id, std::string&) { ++g_makeCalls; g_makeId = id; return true; }
+
+static void runComponents(int dt)
+{
+	auto& pl = *players[0];
+	static apx_bench::Provider live;
+	static Entity* bench = nullptr;
+	static Uint32 swordUid = 0;
+	static int compRarity = -1, tipParts = 0, tipAffix = 0, swapRows = 0, makeRows = 0;
+	static std::string swapMsg, makeMsg;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	auto selectUid = [](Uint32 uid) {
+		auto e = ownRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.uid == uid ) { setFocus(0, 0, (int)i); return; } }
+	};
+	if ( dt == 380 )
+	{
+		live = apx_bench::provider();
+		apx_bench::Provider t = live;
+		t.name = "self-test components";
+		t.componentOf = tComponentOf; t.parts = tParts; t.swapSlots = tSwapSlots; t.swapPart = tSwap; t.makeOptions = tMakeOptions; t.make = tMake;
+		apx_bench::setProvider(t);
+		emptyInventory(0);
+		Item* sword = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
+		Item* comp = newItem(TOOL_METAL_SCRAP, EXCELLENT, 0, 1, 7786, true, &stats[0]->inventory);
+		swordUid = sword->uid; g_compUid = comp->uid;
+		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
+	}
+	else if ( dt == 382 )
+	{
+		for ( auto& e : ownRowsForTest(0) ) { if ( !e.header && e.row.uid == g_compUid ) { compRarity = e.row.rarity; } }
+		selectUid(swordUid);
+	}
+	else if ( dt == 384 ) { tipParts = viewState(0).tipParts; tipAffix = viewState(0).tipAffixLines; shotWhen("tip", "apx-u1f-components.png"); setBenchTab(0, 1); } // Swap
+	else if ( dt == 387 )
+	{
+		auto e = benchRowsForTest(0);
+		swapRows = (int)e.size();
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 7 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
+		swapMsg = viewState(0).lastBenchMsg;
+		setBenchTab(0, 2); // Make
+	}
+	else if ( dt == 390 )
+	{
+		auto e = benchRowsForTest(0);
+		makeRows = (int)e.size();
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 8 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
+		makeMsg = viewState(0).lastBenchMsg;
+	}
+	else if ( dt == 393 )
+	{
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"components\",\"mode\":\"%s\",\"headless\":%d,\"component_row_rarity\":%d,\"tip_parts\":%d,\"tip_affix_lines\":%d,"
+				"\"swap_rows\":%d,\"swap_calls\":%d,\"swap\":[%d,%d],\"swap_uid_right\":%d,\"swap_msg\":\"%s\",\"make_rows\":%d,\"make_calls\":%d,\"make_id\":%d,\"make_msg\":\"%s\",\"live_provider\":\"%s\"}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, compRarity, tipParts, tipAffix, swapRows, g_swapCalls, g_swapPart, (int)g_swapUid,
+				g_swapUid == g_compUid ? 1 : 0, swapMsg.c_str(), makeRows, g_makeCalls, g_makeId, makeMsg.c_str(), live.name);
+			fclose(f);
+		}
+		apx_bench::setProvider(live);
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+		setBenchTab(0, 0);
 	}
 }
 
@@ -712,7 +878,9 @@ static void runUiPhases()
 	else if ( dt >= 141 && dt < 331 ) { runSteps345(dt); }
 	else if ( dt >= 331 && dt < 340 ) { runD81(dt); }
 	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
-	else if ( dt == 380 )
+	else if ( dt >= 370 && dt < 380 ) { runPouch(dt); }
+	else if ( dt >= 380 && dt < 395 ) { runComponents(dt); }
+	else if ( dt == 400 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -724,8 +892,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 450 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 490 )
+	else if ( dt == 470 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 510 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )

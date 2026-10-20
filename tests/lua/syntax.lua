@@ -2,7 +2,7 @@
 local files = {
   "scripts/apx/hello.lua", "scripts/apx/director_core.lua", "scripts/apx/director.lua",
   "scripts/apx-test/control_error.lua", "scripts/apx-test/selftest.lua", "scripts/apx-test/director_test.lua",
-  "scripts/apx-test/director_acting_test.lua", "scripts/apx-test/spawn_budget_test.lua",
+  "scripts/apx-test/director_acting_test.lua", "scripts/apx-test/spawn_budget_test.lua", "scripts/apx-test/trade_test.lua",
 }
 local bad = 0
 for _, f in ipairs(files) do

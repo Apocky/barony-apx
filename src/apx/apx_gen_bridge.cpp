@@ -7,6 +7,7 @@
 //  4. create the entity rows the vanilla generator would create (player starts, ladder, doors,
 //     torches, monsters, items, gold, chests, keys, boss, merchant, table/chair fixtures);
 //  5. in-engine W2 check on Barony's own tiles and door entities, and a floor hash (W5).
+#include "trade_glue.hpp"
 #include "../main.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
@@ -592,6 +593,7 @@ int apxgenGenerateDungeon(const char* levelset, uint32_t seed)
 			case apx::Kind::Haven:
 			{
 				Entity* m = at(35, p.x, p.y, map.creatures); // shopkeeper (merchant)
+				apx::tradeglue::markHaven(m);                // BT1: this one is the floor's one-trade haven merchant
 				m->skill[5] = nMonsters++;
 				++nMerchant;
 				break;

@@ -10,7 +10,7 @@ struct ApxPartsCounters
 {
 	long long bound = 0, parts_overflow = 0, ip_clamped = 0, ip_rerolls = 0, forms_unmapped = 0, model_fallback = 0,
 		net_blob_sent = 0, net_blob_dropped = 0, net_blob_mismatch = 0, save_blob_dropped = 0, salvaged = 0, aura_stand_in = 0,
-		salvage_grams_out = 0, salvage_grams_paid = 0;
+		salvage_grams_out = 0, salvage_grams_paid = 0, components_given = 0;
 };
 extern ApxPartsCounters apxPartsCounters;
 
@@ -36,7 +36,32 @@ const std::string& apxPartsSidecarGet(int player, int inventoryIndex);
 // give (GEM_ROCK stand-in). v1 has no keep-one-part choice (that needs the BU1 bench UI): every part
 // returns. False = a vanilla item, the caller keeps its vanilla numbers.
 bool apxPartsSalvageValue(int player, const Item* item, int* metal, int* magic, int* auraCrystals);
-long long apxPartsLedgerGrams(int player); // salvaged material grams held for the player (not yet items)
+long long apxPartsLedgerGrams(int player); // the material pouch (D85): salvaged grams held for the player
+int apxPartsPouchWeight(int player);
+// D85 bundles: material drawn out of the pouch as one real item (stand-in type GEM_GLASS; Item::appearance
+// = 0xB tag in bits 28-31, material id bits 20-27, grams bits 0-19, up to 1,048,575 g). Barony's own
+// appearance paths (floor entities, ITEM/DROP/CITM packets, saves) carry it unchanged. A local player's
+// pickup of a bundle returns it to the pouch on the next frame; bundles the player drew stay items.
+bool apxPartsIsBundle(const Item* item);
+int apxPartsBundleMaterial(const Item* item);
+int apxPartsBundleGrams(const Item* item);
+Item* apxPartsDrawBundle(int player, int material, int grams, std::string& why); // debits the pouch
+void apxPartsBundlePickedUp(int player, const Item* item);   // itemPickup: a bundle arrived for player
+void apxPartsBundlesRegister(int player);                    // loadGame: bundles in the inventory stay items
+void apxPartsTick();                                         // game loop: absorb picked-up bundles
+const char* apxPartsBundleName(const Item* item);            // "bundle of iron (0.6 kg)"
+int apxPartsLedgerMaterialGrams(int player, int material);
+int apxPartsBundleValue(const Item* item);                    // gold: grams x material value_per_kg / 1000
+void apxPartsLedgerCredit(int player, int material, int grams); // selftest seed for the pouch (logged)
+// D86 components: one part as its own item (stand-in type GEM_GLASS, apx.form = COMPONENT_FORM, nParts 1;
+// appearance 0xC tag | slot << 8 | material, cosmetic only). Saves, packets and floor items carry it like
+// any item with parts; it never stacks. Name from its affixes ("Keen Steel Blade of Embers").
+bool apxPartsIsComponent(const Item* item);
+const char* apxPartsComponentName(const Item* item);
+int apxPartsComponentGrams(const Item* item);
+int apxPartsComponentValue(const Item* item);
+struct ApxItemData;
+Item* apxPartsGiveComponent(int player, const ApxItemData& data); // into the player's inventory (itemPickup)
 // Palette tint (D79 stand-in until the procedural voxel tool): the held weapon takes its main part's
 // material tint (materials.json "tint") through Entity::lightBonus; APX_PARTS_VIS=0 = vanilla look.
 void apxPartsApplyTint(Entity* entity, const Item* item);

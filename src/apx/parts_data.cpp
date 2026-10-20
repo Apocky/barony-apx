@@ -1,4 +1,5 @@
 // F6 data loader: a small hand JSON parser (no new dependency, card BF6-1) and the DB lookups.
+#include <cctype>
 #include "parts_model.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -187,7 +188,25 @@ std::string loadDB(const std::string& dir, DB& db)
 	for ( auto& p : af.arr("pools") )
 	{
 		AffixPool ap; ap.key = p.str("id"); ap.firstId = (int)db.affixPct.size();
-		for ( auto& a : p.arr("affixes") ) { db.affixPct.push_back({ a.str("name"), a.num("pct") }); }
+		for ( auto& a : p.arr("affixes") )
+		{
+			db.affixPct.push_back({ a.str("name"), a.num("pct") });
+			AffixInfo ai;
+			ai.name = a.str("name"); ai.pct = a.num("pct"); ai.stat = a.str("stat", ai.name.c_str());
+			ai.weight = std::max(1, a.num("weight", 1));
+			const std::string pos = a.str("position");
+			ai.label = a.str("label");
+			if ( pos.empty() || ai.label.empty() ) { ++db.affixDefaults; }
+			if ( pos == "prefix" ) { ai.position = AFFIX_PREFIX; }
+			else if ( pos.empty() || pos == "suffix" ) { ai.position = AFFIX_SUFFIX; }
+			else { return "affixes.json: affix " + ai.name + " position must be prefix or suffix, not " + pos; }
+			if ( ai.label.empty() )
+			{
+				bool up = true;
+				for ( char ch : ai.name ) { ai.label += up ? (char)toupper((unsigned char)ch) : ch; up = ch == ' '; }
+			}
+			db.affixes.push_back(ai);
+		}
 		ap.count = (int)db.affixPct.size() - ap.firstId;
 		if ( ap.count < 4 ) { return "affixes.json: pool " + ap.key + " has under 4 affixes (Legendary takes 4)"; }
 		db.pools.push_back(ap);

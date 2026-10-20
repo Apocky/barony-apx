@@ -9,6 +9,7 @@ See LICENSE for details.
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/trade_glue.hpp"
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "apx/tactics.hpp"
@@ -18881,6 +18882,12 @@ bool Entity::checkEnemy(Entity* your)
 	if ( everybodyfriendly || intro )   // friendly monsters mode
 	{
 		return false;
+	}
+
+	// apx BT1 (D73 rule 4): a peddler can be attacked by wild monsters (not by shopkeepers or a player's followers)
+	if ( behavior == &actMonster && myStats->type != SHOPKEEPER && myStats->leader_uid == 0 && apx::tradeglue::isPeddler(your) )
+	{
+		return true;
 	}
 
 	if ( (your->behavior == &actPlayer || your->behavior == &actPlayerLimb) && (behavior == &actPlayer || behavior == &actPlayerLimb) )

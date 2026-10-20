@@ -311,7 +311,8 @@ namespace tactics
 				serverUpdateEntitySkill(my, 0);
 				++C.promoted;
 			}
-			if ( d <= 3 * TILE && inBackArc(my, target) ) // goal 2.25-2.75 tiles out: outside reach until it holds a slot
+			const bool there = s.loopFlank ? hypot(my->x - s.flankGX, my->y - s.flankGY) <= 1.5 * TILE : inBackArc(my, target);
+			if ( d <= 3 * TILE && there ) // goal 2.25-2.75 tiles out: outside reach until it holds a slot
 			{
 				s.flank = 2;
 				++C.flank_arrived;
@@ -321,7 +322,9 @@ namespace tactics
 			}
 			if ( hypot(my->x - s.progressX, my->y - s.progressY) > 8 || ticks - s.workingTick < (Uint32)(2 * DECIDE) ) { s.progressX = my->x; s.progressY = my->y; s.progressTick = ticks; } // bashing a breakable in the way is progress
 			else if ( ticks - s.progressTick > 75 ) { flankFail(s, C.flank_fail_progress); return; }
-			if ( ticks - s.flankStart > (s.loopFlank ? 40 : 10) * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
+			// a loop walk takes longer: with APX_LOOP_FLANK every flank may take 40 s (d80b-s2: the pack's flanker timed out
+			// at 10 s 13 tiles into a 19-tile loop route)
+			if ( ticks - s.flankStart > ((s.loopFlank || K.loopflank) ? 40 : 10) * TICKS_PER_SECOND ) { flankFail(s, C.flank_fail_time); }
 			return;
 		}
 		if ( s.flank != 0 && s.flankTarget == tuid ) { return; } // one try per target
@@ -343,7 +346,10 @@ namespace tactics
 		// goal: an open tile in the back arc, 1.5 to 2.5 tiles out, in clear sight of the target
 		static const double offs[] = { 0, 0.35, -0.35, 0.7, -0.7, 0.95, -0.95 };
 		static const double rads[] = { 2.5, 2.25, 2.75 };   // outside reach (trace 24 + body): no overflow on arrival
-		double back = target->yaw + PI;
+		// D80: a loop flank goes to the target's far side from where the flanker stands (through the target, on the
+		// corridor's other end), not to the back arc of the target's facing, which half the time is the flanker's own side
+		// (d80b-s2: loop flanks with 4-tile routes, failing on progress)
+		double back = queued ? atan2(target->y - my->y, target->x - my->x) : target->yaw + PI;
 		int gx = -1, gy = -1;
 		for ( double r : rads )
 		{
@@ -356,6 +362,7 @@ namespace tactics
 			if ( gx >= 0 ) { break; }
 		}
 		if ( gx < 0 ) { flankFail(s, C.flank_fail_nogoal); return; }
+		s.flankGX = gx * 16 + 8; s.flankGY = gy * 16 + 8;
 		HitSave hs;
 		int mx = (int)floor(my->x / 16), my_ = (int)floor(my->y / 16);
 		list_t* a = generatePath(mx, my_, (int)floor(target->x / 16), (int)floor(target->y / 16), my, target, GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
