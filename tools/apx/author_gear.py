@@ -146,6 +146,33 @@ SALVAGE_OF = {
     "shard": ["glass", "obsidian", "flint", "quartz", "ice"], "other": ["salt", "sulfur", "coal", "water"],
 }
 
+# ---- D86: affix metadata. Every affix gets pos (prefix|suffix), word (shown in the component name), stat (id below) and weight.
+STATS = [  # id, unit, note
+    ("dmg", "pct", "damage dealt"), ("speed", "pct", "attack and move speed"), ("reach", "pct", "weapon reach"), ("bleed", "pct", "chance to cause bleeding"),
+    ("stagger", "pct", "poise damage dealt"), ("stun", "pct", "chance to stun on a heavy hit"), ("edge", "pct", "edge holding"),
+    ("durability", "pct", "integrity lost per use, less"), ("mass", "pct", "mass, less"), ("block", "pct", "damage blocked"), ("armor", "pct", "armour value"),
+    ("poise", "pct", "poise gained"), ("pierce_armor", "pct", "armour ignored"), ("resist_crush", "pct", "crushing resistance"), ("resist_slash", "pct", "slashing resistance"),
+    ("resist_pierce", "pct", "piercing resistance"), ("resist_fire", "pct", "fire resistance"), ("resist_frost", "pct", "frost resistance"), ("resist_storm", "pct", "storm resistance"),
+    ("resist_arcane", "pct", "arcane resistance"), ("resist_death", "pct", "death resistance"), ("resist_life", "pct", "life resistance"),
+    ("dmg_fire", "pct", "fire damage added"), ("dmg_frost", "pct", "frost damage added"), ("dmg_storm", "pct", "storm damage added"),
+    ("dmg_arcane", "pct", "arcane damage added"), ("dmg_death", "pct", "death damage added"), ("dmg_life", "pct", "life damage added"),
+    ("stamina", "pct", "stamina cost, less"), ("range", "pct", "ranged distance"), ("accuracy", "pct", "aim accuracy"), ("quiet", "pct", "noise made, less"),
+    ("light", "pct", "light radius or glint"), ("regen_hp", "pct", "health regeneration"), ("regen_mp", "pct", "mana regeneration"), ("luck", "pct", "luck"),
+    ("grip", "pct", "resistance to being disarmed"), ("carry", "pct", "carry mass"), ("trade", "pct", "barter prices"), ("sockets", "count", "extra sockets"),
+]
+ELEMENTAL_PCT = {"dmg_": 12, "resist_": 15}
+
+
+def load_affix_meta():
+    meta = {}
+    for line in (ROOT / "tools" / "apx" / "affix_meta.txt").read_text(encoding="ascii").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        pool, name, pos, word, stat = [x.strip() for x in line.split("|")]
+        meta[(pool, name)] = (pos, word, stat)
+    return meta
+
 
 def dump(path, obj):
     path.write_text(json.dumps(obj, indent=1, sort_keys=True, ensure_ascii=True) + "\n", encoding="ascii")
@@ -183,6 +210,22 @@ def main():
     for pid, lst in NEW_POOLS.items():
         if pid not in have_p:
             aff["pools"].append({"id": pid, "affixes": [{"name": n, "pct": pc} for (n, pc) in lst]})
+    # D86 metadata on every entry (keys only; ids and order untouched), plus the appended "elemental" pool and the stats catalog
+    meta = load_affix_meta()
+    if "elemental" not in {p["id"] for p in aff["pools"]}:
+        ents = []
+        for (pool, name), (pos, word, stat) in meta.items():
+            if pool == "elemental":
+                ents.append({"name": name, "pct": ELEMENTAL_PCT["dmg_" if stat.startswith("dmg_") else "resist_"]})
+        aff["pools"].append({"id": "elemental", "affixes": ents})
+    for pool in aff["pools"]:
+        for a in pool["affixes"]:
+            m = meta.get((pool["id"], a["name"]))
+            if m is None:
+                raise SystemExit("affix_meta.txt has no line for %s | %s" % (pool["id"], a["name"]))
+            a["pos"], a["word"], a["stat"] = m
+            a["weight"] = 15 if pool["id"] == "elemental" else max(5, 100 - 6 * a["pct"])
+    aff["stats"] = [{"id": i, "unit": u, "note": n} for (i, u, n) in STATS]
     dump(D / "affixes.json", aff)
 
     # kinds

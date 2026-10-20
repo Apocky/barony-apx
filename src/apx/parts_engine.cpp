@@ -8,8 +8,10 @@
 #include "../scores.hpp"
 #include "../interface/interface.hpp"
 #include "parts_engine.hpp"
+#include "props_rules.hpp"
 #include "parts_model.hpp"
 #include "../apx_bench_api.hpp"
+#include "variants_glue.hpp" // apx BV1
 
 #include <algorithm>
 #include <cctype>
@@ -81,6 +83,7 @@ bool apxPartsEnabled()
 void apxPartsLevelStart()
 {
 	floorIndex = 0;
+	::apx::vglue::floorChanged(); // BV1: the variant spawn index restarts with the floor
 	apxPartsBenchRegister();
 	floorParts.clear();
 }
@@ -299,6 +302,16 @@ const char* apxPartsFamilyName(uint32_t form) { return form < db().families.size
 const char* apxPartsMaterialName(int m) { return m >= 0 && m < (int)db().materials.size() ? db().materials[m].id.c_str() : "?"; }
 const char* apxPartsSlotName(int s) { return s >= 0 && s < (int)db().slots.size() ? db().slots[s].id.c_str() : "?"; }
 int apxPartsPartMassGrams(const Item* item, int part) { return item && part >= 0 && part < item->apx.nParts ? apxparts::partMassGrams(db(), item->apx.parts[part]) : 0; }
+
+bool apxPartsLedgerGive(int player, const char* material, int grams)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !material || grams <= 0 ) { return false; }
+	for ( int m = 0; m < (int)db().materials.size() && m < MAX_MATS; ++m )
+	{
+		if ( db().materials[m].id == material ) { ledger[player][m] += (uint32_t)grams; return true; }
+	}
+	return false;
+}
 
 int apxPartsFormSuccesses(int player, uint32_t form)
 {
@@ -673,6 +686,51 @@ long long apxPartsLedgerGrams(int player)
 	if ( player >= 0 && player < MAXPLAYERS ) { for ( int m = 0; m < MAX_MATS; ++m ) { g += ledger[player][m]; } }
 	return g;
 }
+
+int apxPartsRepairCost(int player, const Item* item, std::string& why, std::string& material)
+{
+	if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item has no parts to mend (use a repair scroll)"; return -1; }
+	if ( player < 0 || player >= MAXPLAYERS ) { why = "no player"; return -1; }
+	const int g = apx::props::repairCostGrams(apxPartsPartMassGrams(item, 0), (int)item->status);
+	if ( g < 0 ) { why = "already in excellent condition"; return -1; }
+	const int mat = item->apx.parts[0].material;
+	material = apxPartsMaterialName(mat);
+	if ( mat < 0 || mat >= MAX_MATS || (long long)ledger[player][mat] < g )
+	{
+		why = "need " + std::to_string(g) + " g of " + material + " (salvage some first; have " + std::to_string(mat >= 0 && mat < MAX_MATS ? ledger[player][mat] : 0) + ")";
+		return -1;
+	}
+	return g;
+}
+
+int apxPartsRepairGrams(const Item* item, std::string& why, std::string& material)
+{
+	if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item has no parts to mend (use a repair scroll)"; return -1; }
+	const int g = apx::props::repairCostGrams(apxPartsPartMassGrams(item, 0), (int)item->status);
+	if ( g < 0 ) { why = "already in excellent condition"; return -1; }
+	material = apxPartsMaterialName(item->apx.parts[0].material);
+	return g;
+}
+
+static bool repairStep(int player, Item* item, std::string& why, bool fromLedger)
+{
+	std::string mat;
+	int g = -1;
+	if ( fromLedger ) { g = apxPartsRepairCost(player, item, why, mat); if ( g < 0 ) { return false; } }
+	else
+	{
+		// a merchant: the same checks except the ledger (the shop charged gold for the grams)
+		g = apxPartsRepairGrams(item, why, mat);
+		if ( g < 0 ) { return false; }
+	}
+	if ( fromLedger ) { ledger[player][item->apx.parts[0].material] -= (uint32_t)g; }
+	item->status = (Status)std::min((int)EXCELLENT, (int)item->status + 1);
+	for ( int k = 0; k < item->apx.nParts; ++k ) { item->apx.parts[k].integrity = (uint8_t)std::min(255, item->apx.parts[k].integrity + 64); }
+	printlog("apxparts: repair%s player %d %s -> status %d, %d g of %s", fromLedger ? "" : " (paid)", player, item->getName(), (int)item->status, g, mat.c_str());
+	return true;
+}
+bool apxPartsRepair(int player, Item* item, std::string& why) { return repairStep(player, item, why, true); }
+bool apxPartsRepairPaid(int player, Item* item, std::string& why) { return repairStep(player, item, why, false); }
 
 bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 {

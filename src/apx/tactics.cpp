@@ -407,10 +407,32 @@ namespace tactics
 		ts.valid.assign(ts.n, 0);
 		ts.ringValid.assign(ts.k, 0);
 		ts.validN = ts.ringValidN = 0;
+		// D80: a slot that a wall blocks is nudged, within half the slot spacing, to the nearest angle where a body fits
+		// and the target is in clear reach; a nudged slot too close to another valid slot is dropped. In the open every
+		// slot fits as before; in a 1-tile corridor the slot behind the target fits again (d80b-s2: 1 reach slot in the
+		// looped corridor, so creatures on the far side, and loop flankers, could never strike).
+		ts.ang.assign(ts.n, 0.0);
 		for ( int i = 0; i < ts.n; ++i )
 		{
-			double a = ts.base + i * 2 * PI / ts.n, px = target->x + ts.R * cos(a), py = target->y + ts.R * sin(a);
-			if ( bodyFits(px, py, rA) && wallClear(target, target->x, target->y, px, py) ) { ts.valid[i] = 1; ++ts.validN; }
+			const double a0 = ts.base + i * 2 * PI / ts.n, half = PI / ts.n;
+			ts.ang[i] = a0;
+			for ( int step = 0; step <= 12; ++step )
+			{
+				const double off = (step + 1) / 2 * (half / 6) * (step % 2 ? 1.0 : -1.0);
+				const double a = a0 + off, px = target->x + ts.R * cos(a), py = target->y + ts.R * sin(a);
+				if ( bodyFits(px, py, rA) && wallClear(target, target->x, target->y, px, py) )
+				{
+					bool clash = false;
+					for ( int j = 0; j < i && step > 0; ++j )
+					{
+						clash = clash || (ts.valid[j] && fabs(angDiff(ts.ang[j], a)) * ts.R < w);
+					}
+					if ( clash ) { break; }
+					ts.valid[i] = 1; ++ts.validN; ts.ang[i] = a;
+					if ( step > 0 ) { ++C.slots_nudged; }
+					break;
+				}
+			}
 		}
 		for ( int j = 0; j < ts.k; ++j )
 		{
@@ -488,7 +510,7 @@ namespace tactics
 			for ( int i = 0; i < ts.n; ++i )
 			{
 				if ( !ts.valid[i] || holder[i] || (s.wantReposition && i == s.reachIdx) ) { continue; }
-				double a = angDiff(ts.base + i * 2 * PI / ts.n, bear);
+				double a = angDiff(slotAng(ts, i), bear);
 				if ( a < bestA ) { bestA = a; best = i; }
 			}
 			if ( s.wantReposition )
@@ -562,7 +584,7 @@ namespace tactics
 		TargetSlots& ts = it->second;
 		if ( s.reachIdx >= 0 && s.reachIdx < ts.n )
 		{
-			double a = ts.base + s.reachIdx * 2 * PI / ts.n;
+			double a = slotAng(ts, s.reachIdx);
 			gx = target->x + ts.R * cos(a); gy = target->y + ts.R * sin(a);
 			ownSlot = true;
 			return true;
@@ -579,14 +601,14 @@ namespace tactics
 		for ( int i = 0; i < ts.n; ++i )
 		{
 			if ( !ts.valid[i] ) { continue; }
-			double ai = ts.base + i * 2 * PI / ts.n, da = angDiff(ai, bear);
+			double ai = slotAng(ts, i), da = angDiff(ai, bear);
 			if ( da >= bestA ) { continue; }
 			double qx = target->x + cos(ai) * waitR, qy = target->y + sin(ai) * waitR;
 			if ( !bodyFits(qx, qy, rA) || !wallClear(nullptr, target->x, target->y, qx, qy) ) { continue; } // a queue point in a wall
 			bestA = da; best = i;
 		}
 		if ( best < 0 ) { gx = my->x; gy = my->y; return true; } // no queue point with room: it waits where it stands
-		double a = ts.base + best * 2 * PI / ts.n;
+		double a = slotAng(ts, best);
 		gx = target->x + cos(a) * waitR; gy = target->y + sin(a) * waitR;
 		return true;
 	}

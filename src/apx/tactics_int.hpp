@@ -66,6 +66,7 @@ namespace tactics
 		Uint32 flankTarget = 0, flankStart = 0, progressTick = 0;
 		Uint32 queueSince = 0;     // D80: holding in a queue behind a packmate's body since (0 = not queued)
 		bool loopFlank = false;    // D80: this flank goes round a loop (APX_LOOP_FLANK): longer limits
+		double flankGX = 0, flankGY = 0; // D80: a loop flank's goal: the target's far side from where the flanker stood
 		double progressX = 0, progressY = 0;
 		uint8_t routeKind = ROUTE_NONE; std::vector<int> route; size_t routeAt = 0;
 		bool routeOk = false; int routeGoal = -1; Uint32 routeBuilt = 0;   // ROUTE_GOAL: a path was found, its goal tile, when planned
@@ -86,7 +87,12 @@ namespace tactics
 		double R = 0, ringR = 0, base = 0;
 		int n = 0, k = 0, validN = 0, ringValidN = 0;
 		std::vector<char> valid, ringValid;
+		std::vector<double> ang;   // D80: each reach slot's angle (a slot a wall blocks is nudged to where a body fits)
 	};
+	inline double slotAng(const TargetSlots& ts, int i)
+	{
+		return (i >= 0 && i < (int)ts.ang.size()) ? ts.ang[i] : ts.base + i * 2 * PI / std::max(1, ts.n);
+	}
 	extern std::unordered_map<Uint32, TargetSlots> T;    // by target uid
 
 	struct Timer

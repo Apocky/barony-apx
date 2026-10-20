@@ -9,6 +9,7 @@ See LICENSE for details.
 
 -------------------------------------------------------------------------------*/
 
+#include "apx/trade_glue.hpp"
 #include "apx/lua_layer.hpp"
 #include "main.hpp"
 #include "apx/tactics.hpp"
@@ -39,6 +40,7 @@ See LICENSE for details.
 #include "ui/MainMenu.hpp"
 #include "ui/GameUI.hpp"
 #include "apx_stamina.hpp"
+#include "apx/variants_glue.hpp" // apx BV1
 #include "apx_combat.hpp"
 #include "apx/combat/impact.hpp" // [apx-hit] impact_uses
 #include "apx/tiers.hpp"
@@ -13198,6 +13200,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 						damage = apx::fam::beforeHit(player, this, hit.entity, hitstats, damage, previousMonsterState); // apx F4d: sneak and critical moves
 					}
 					damage = apx::tierdmg::onCreatureHit(this, hit.entity, damage, apx::tierdmg::MELEE); // apx D74: a creature's hit by its tier (before zones)
+					damage = apx::vglue::scaleDamage(this, damage); // apx BV1: a variant creature's damage multiple
 					damage = apx::combat_glue::onMeleeHit(this, myStats, hit.entity, hitstats, damage); // apx F4c: zone, poise, stagger
 					hit.entity->modHP(-damage); // do the damage
 					if ( player >= 0 )
@@ -18881,6 +18884,12 @@ bool Entity::checkEnemy(Entity* your)
 	if ( everybodyfriendly || intro )   // friendly monsters mode
 	{
 		return false;
+	}
+
+	// apx BT1 (D73 rule 4): a peddler can be attacked by wild monsters (not by shopkeepers or a player's followers)
+	if ( behavior == &actMonster && myStats->type != SHOPKEEPER && myStats->leader_uid == 0 && apx::tradeglue::isPeddler(your) )
+	{
+		return true;
 	}
 
 	if ( (your->behavior == &actPlayer || your->behavior == &actPlayerLimb) && (behavior == &actPlayer || behavior == &actPlayerLimb) )

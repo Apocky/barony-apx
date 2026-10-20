@@ -1,0 +1,66 @@
+{
+ "_note": "BT1 trade data (D73). All numbers ASSUMED until the gold-per-floor gate (BT1-6). Materials/slots must exist in materials.json/forms.json (tests/apx/test_trade_data.py). buys = item classes the trade accepts: metal wood hide fibre bone stone shard other (gear by main material, via form_map) plus provision reagent paper gem for non-gear types.",
+ "lot_markup": 6,
+ "component_workmanship_pct": 150,
+ "purse_base": 40,
+ "purse_per_depth": 25,
+ "offer_pct": 33,
+ "rare_markup": 6,
+ "rare_chance_pct": 25,
+ "rare_items": ["STEEL_SWORD", "IRON_SHIELD", "BRONZE_AXE", "CHAIN_BOOTS", "CLOAK_PROTECTION", "HAT_PHRYGIAN"],
+ "services": [
+  {"id": "repair", "price": 25}, {"id": "appraise", "price": 20}, {"id": "cure_curse", "price": 80}, {"id": "heal", "price": 40},
+  {"id": "hire_follower", "price": 150}, {"id": "map", "price": 60}, {"id": "rumour", "price": 15}
+ ],
+ "provisions": [
+  {"item": "FOOD_BREAD", "price": 6}, {"item": "FOOD_CHEESE", "price": 8}, {"item": "FOOD_APPLE", "price": 3}, {"item": "FOOD_MEAT", "price": 12},
+  {"item": "FOOD_FISH", "price": 10}, {"item": "FOOD_RATION", "price": 15}
+ ],
+ "lights": [{"item": "TOOL_TORCH", "price": 5}, {"item": "TOOL_LANTERN", "price": 30}],
+ "trades": [
+  {"id": "smith", "name": "Smith", "store_type": 0, "purse_factor": 1.0,
+   "buys": ["metal", "stone"],
+   "sells": [
+    {"cls": "material", "ids": ["iron", "steel", "bronze", "copper", "tin", "lead", "brass", "pewter", "coal", "flint"], "picks": [3, 5]},
+    {"cls": "component", "roles": ["strike", "structural"], "materials": ["iron", "steel", "bronze", "copper", "brass"], "picks": [2, 4]},
+    {"cls": "service", "ids": ["repair", "appraise"], "picks": [2, 2]}
+   ]},
+  {"id": "alchemist", "name": "Alchemist", "store_type": 4, "purse_factor": 0.9,
+   "buys": ["reagent", "shard", "gem"],
+   "sells": [
+    {"cls": "reagent", "ids": ["sulfur", "salt", "quartz", "coal", "water", "lead", "glass"], "picks": [4, 6]},
+    {"cls": "material", "ids": ["glass", "quartz", "silver", "copper"], "picks": [1, 2]},
+    {"cls": "service", "ids": ["cure_curse", "heal", "appraise"], "picks": [2, 3]}
+   ]},
+  {"id": "scribe", "name": "Scribe", "store_type": 3, "purse_factor": 0.8,
+   "buys": ["paper", "fibre"],
+   "sells": [
+    {"cls": "material", "ids": ["linen", "silk", "wool", "sinew", "hide"], "picks": [3, 4]},
+    {"cls": "reagent", "ids": ["salt", "sulfur", "coal"], "picks": [1, 2]},
+    {"cls": "service", "ids": ["appraise", "map", "rumour", "cure_curse"], "picks": [3, 4]}
+   ]},
+  {"id": "provisioner", "name": "Provisioner", "store_type": 6, "purse_factor": 1.0,
+   "buys": ["provision", "wood", "hide", "fibre", "bone"],
+   "sells": [
+    {"cls": "provision", "picks": [3, 4]},
+    {"cls": "light", "picks": [1, 2]},
+    {"cls": "material", "ids": ["wood", "oak", "ash", "yew", "hide", "scale", "linen", "wool", "sinew", "horn"], "picks": [3, 4]},
+    {"cls": "component", "roles": ["grip", "other"], "materials": ["wood", "oak", "hide", "sinew", "linen"], "picks": [1, 2]}
+   ]},
+  {"id": "fence", "name": "Fence", "store_type": 2, "purse_factor": 1.2,
+   "buys": ["gem", "shard", "other"],
+   "sells": [
+    {"cls": "material", "ids": ["silver", "gold", "ivory", "obsidian", "quartz", "bone", "chitin", "horn"], "picks": [3, 4]},
+    {"cls": "service", "ids": ["appraise", "rumour", "hire_follower"], "picks": [2, 3]},
+    {"cls": "rare", "picks": [0, 1]}
+   ]},
+  {"id": "general", "name": "General store", "store_type": 7, "purse_factor": 0.8,
+   "buys": ["provision", "wood", "hide"],
+   "sells": [
+    {"cls": "provision", "picks": [2, 3]},
+    {"cls": "light", "picks": [1, 1]},
+    {"cls": "material", "ids": ["iron", "wood", "hide", "linen", "coal", "salt", "stone"], "picks": [3, 4]},
+    {"cls": "service", "ids": ["rumour", "repair"], "picks": [1, 1]}
+   ]}
+ ]
+}

@@ -115,13 +115,36 @@ do
   local st = { now_s = 1000, ewma = 0.1, banked = 100, total = 20, temper = "story", last = {},
     available = { ambush = true, den = true, patrol = true } }
   local _, _, _, c = C.choose_event(st, C.rng_new(3))
-  check("4 stubs counted as event_unavailable", c.event_unavailable == 4, "got " .. c.event_unavailable)
+  check("3 stubs and the unavailable peddler counted as event_unavailable", c.event_unavailable == 4, "got " .. c.event_unavailable)
   st.ewma = 0.8
   local ev, _, _, c2 = C.choose_event(st, C.rng_new(3))
   check("ewma 0.8: silence, and all 3 implemented events counted as gate-blocked", ev == "silence" and c2.tension_gate == 3, "gate=" .. c2.tension_gate)
   st.ewma = 0.1; st.banked = 0
   local _, _, _, c3 = C.choose_event(st, C.rng_new(3))
   check("zero banked: budget_zero counted for all three", c3.budget_zero == 3, "budget_zero=" .. c3.budget_zero)
+end
+
+-- 6. the peddler relief event: only when its precondition says so, rarely, never repeated inside its cooldown
+do
+  local rng = C.rng_new(5)
+  local st = { now_s = 0, ewma = 0.1, banked = 1e9, total = 10, temper = "story", last = {}, available = { ambush = true, den = true, patrol = true, peddler = false } }
+  local seenWhenOff = 0
+  for i = 1, 3000 do st.now_s = i * 100; local e = C.choose_event(st, rng); if e == "peddler" then seenWhenOff = seenWhenOff + 1 end end
+  check("peddler is never chosen while its precondition is off", seenWhenOff == 0)
+  st.available.peddler = true
+  local n, tooSoon, lastT = 0, 0, -1e9
+  for i = 1, 3000 do
+    st.now_s = i * 10; st.last_event = nil
+    local e = C.choose_event(st, rng)
+    if e == "peddler" then n = n + 1; if st.now_s - lastT < C.COOLDOWN_S.peddler then tooSoon = tooSoon + 1 end; lastT = st.now_s; st.last.peddler = st.now_s end
+    if e ~= "silence" and e ~= "peddler" then st.last[e] = st.now_s end
+  end
+  check("peddler is chosen sometimes when available", n > 5, "chosen " .. n .. " in 30,000 s")
+  check("peddler never repeats inside its 400 s cooldown", tooSoon == 0, tostring(tooSoon))
+  st.ewma = 0.9
+  local hot = 0
+  for i = 1, 500 do st.now_s = 1e6 + i * 1000; if C.choose_event(st, rng) == "peddler" then hot = hot + 1 end end
+  check("no peddler while tension is above 0.6 (it is a relief event)", hot == 0, tostring(hot))
 end
 
 print(string.format("RESULT %s %d passed, %d failed", fails == 0 and "PASS" or "FAIL", passes, fails))

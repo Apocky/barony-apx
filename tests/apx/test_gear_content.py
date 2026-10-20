@@ -20,6 +20,18 @@ def load():
     return {n: json.loads((D / (n + ".json")).read_text(encoding="ascii")) for n in names}
 
 
+def name_of(d, pool_hint, material, slot, prefix_names, suffix_names):
+    """component name: prefix words in order (at most 2) + Material + Slot + suffix words (at most 2); None when a name is unknown"""
+    by = {}
+    for pool in d["affixes"]["pools"]:
+        for a in pool["affixes"]:
+            by.setdefault(a["name"], a)
+    pre = [by[n]["word"] for n in prefix_names if n in by and by[n]["pos"] == "prefix"][:2]
+    suf = [by[n]["word"] for n in suffix_names if n in by and by[n]["pos"] == "suffix"][:2]
+    if len(pre) != len(prefix_names) or len(suf) != len(suffix_names): return None
+    return " ".join(pre + [material.capitalize(), slot] + suf)
+
+
 def lint(d):
     """returns a list of error strings"""
     e = []
@@ -45,6 +57,25 @@ def lint(d):
     for f, v in d["kinds"]["families"].items():
         if f not in fams: e.append("kinds family unknown: " + f)
         if v["crush"] + v["slash"] + v["pierce"] != 100: e.append("kinds family does not sum to 100: " + f)
+    # D86 affixes: position, display word, a stat from the catalog, a rarity weight; pools keep >= 4 entries; names compose
+    stats = {x["id"] for x in d["affixes"].get("stats", [])}
+    if len(stats) < 30: e.append("affixes.json stats catalog missing or too small")
+    for pool in d["affixes"]["pools"]:
+        if len(pool["affixes"]) < 4: e.append("affix pool under 4: " + pool["id"])
+        for a in pool["affixes"]:
+            tag = "%s/%s" % (pool["id"], a["name"])
+            if a.get("pos") not in ("prefix", "suffix"): e.append("affix pos: " + tag)
+            if not a.get("word"): e.append("affix word: " + tag)
+            elif a.get("pos") == "suffix" and not a["word"].startswith("of "): e.append("suffix word must start with 'of ': " + tag)
+            elif a.get("pos") == "prefix" and a["word"].startswith("of "): e.append("prefix word starts with 'of': " + tag)
+            if a.get("stat") not in stats: e.append("affix stat not in catalog: " + tag)
+            if not (1 <= a.get("weight", 0) <= 100): e.append("affix weight: " + tag)
+            if not (1 <= a.get("pct", 0) <= 100): e.append("affix pct: " + tag)
+        if not any(a.get("pos") == "prefix" for a in pool["affixes"]): e.append("pool has no prefix: " + pool["id"])
+    if "elemental" not in {p["id"] for p in d["affixes"]["pools"]}: e.append("elemental pool missing")
+    # a composed name reads "Keen Steel Blade of Embers"
+    sample = name_of(d, "Blade", "steel", "Blade", ["keenness", "bleed"], ["embers"])
+    if sample != "Keen Gory Steel Blade of Embers" and sample is not None: e.append("name rule gave: " + str(sample))
     # families reference real slots; slot pools exist or fall back to "*"
     if "*" not in pools: e.append("affix pool * missing")
     for f in fams.values():
@@ -111,6 +142,11 @@ def main():
     broken("family references an unknown slot", lambda c: c["forms"]["families"][0]["required"].append("Nonexistent"))
     broken("form_map points at a removed family", lambda c: c["form_map"].__setitem__("IRON_SWORD", {"family": "Ghost", "materials": ["iron"]}))
     broken("recipe lacks a required slot", lambda c: c["recipes"]["recipes"][0]["slots"].pop("Grip"))
+    broken("an affix loses its stat", lambda c: c["affixes"]["pools"][0]["affixes"][0].pop("stat"))
+    broken("an affix has an unknown stat", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(stat="nonsense"))
+    broken("an affix has a bad position", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(pos="middle"))
+    broken("a suffix word without 'of'", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(pos="suffix", word="Lasting"))
+    broken("an affix weight out of range", lambda c: c["affixes"]["pools"][0]["affixes"][0].update(weight=0))
     broken("salvage yield missing for a material", lambda c: c["salvage_materials"]["materials"].pop("oak"))
     missed = [l for l, n in ctrl if n == 0]
     ok = not errs and not missed

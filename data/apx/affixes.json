@@ -5,27 +5,51 @@
    "affixes": [
     {
      "name": "edge keeping",
-     "pct": 10
+     "pct": 10,
+     "pos": "suffix",
+     "stat": "edge",
+     "weight": 40,
+     "word": "of Lasting Edge"
     },
     {
      "name": "bleed",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "bleed",
+     "weight": 52,
+     "word": "Gory"
     },
     {
      "name": "reach",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "reach",
+     "weight": 64,
+     "word": "Long"
     },
     {
      "name": "keenness",
-     "pct": 12
+     "pct": 12,
+     "pos": "prefix",
+     "stat": "dmg",
+     "weight": 28,
+     "word": "Keen"
     },
     {
      "name": "heft",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "stagger",
+     "weight": 52,
+     "word": "Heavy"
     },
     {
      "name": "balance",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "of Balance"
     }
    ],
    "id": "Blade"
@@ -34,27 +58,51 @@
    "affixes": [
     {
      "name": "serration",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "bleed",
+     "weight": 52,
+     "word": "Serrated"
     },
     {
      "name": "temper",
-     "pct": 10
+     "pct": 10,
+     "pos": "suffix",
+     "stat": "durability",
+     "weight": 40,
+     "word": "of Tempering"
     },
     {
      "name": "bite",
-     "pct": 12
+     "pct": 12,
+     "pos": "prefix",
+     "stat": "dmg",
+     "weight": 28,
+     "word": "Biting"
     },
     {
      "name": "glint",
-     "pct": 4
+     "pct": 4,
+     "pos": "suffix",
+     "stat": "light",
+     "weight": 76,
+     "word": "of Glinting"
     },
     {
      "name": "rending",
-     "pct": 9
+     "pct": 9,
+     "pos": "prefix",
+     "stat": "pierce_armor",
+     "weight": 46,
+     "word": "Rending"
     },
     {
      "name": "hone",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "edge",
+     "weight": 64,
+     "word": "Honed"
     }
    ],
    "id": "Edge"
@@ -63,27 +111,51 @@
    "affixes": [
     {
      "name": "crushing",
-     "pct": 12
+     "pct": 12,
+     "pos": "prefix",
+     "stat": "dmg",
+     "weight": 28,
+     "word": "Crushing"
     },
     {
      "name": "stagger",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "stagger",
+     "weight": 52,
+     "word": "of Staggering"
     },
     {
      "name": "breach",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "pierce_armor",
+     "weight": 40,
+     "word": "Breaching"
     },
     {
      "name": "heft",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "stagger",
+     "weight": 52,
+     "word": "Heavy"
     },
     {
      "name": "spikes",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "bleed",
+     "weight": 64,
+     "word": "Spiked"
     },
     {
      "name": "ring",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "stun",
+     "weight": 70,
+     "word": "of Ringing"
     }
    ],
    "id": "Head"
@@ -92,27 +164,51 @@
    "affixes": [
     {
      "name": "draw weight",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "dmg",
+     "weight": 40,
+     "word": "Stout"
     },
     {
      "name": "precision",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 52,
+     "word": "Precise"
     },
     {
      "name": "range",
-     "pct": 12
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "range",
+     "weight": 28,
+     "word": "of Reaching"
     },
     {
      "name": "snap",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "Snappy"
     },
     {
      "name": "flex",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "durability",
+     "weight": 64,
+     "word": "of Flexing"
     },
     {
      "name": "quiet",
-     "pct": 5
+     "pct": 5,
+     "pos": "prefix",
+     "stat": "quiet",
+     "weight": 70,
+     "word": "Hushed"
     }
    ],
    "id": "Limb"
@@ -121,27 +217,51 @@
    "affixes": [
     {
      "name": "deflection",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 40,
+     "word": "Deflecting"
     },
     {
      "name": "lightness",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "mass",
+     "weight": 52,
+     "word": "Light"
     },
     {
      "name": "insulation",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "resist_storm",
+     "weight": 52,
+     "word": "of Insulation"
     },
     {
      "name": "bulwark",
-     "pct": 12
+     "pct": 12,
+     "pos": "prefix",
+     "stat": "armor",
+     "weight": 28,
+     "word": "Bulwark"
     },
     {
      "name": "sheen",
-     "pct": 4
+     "pct": 4,
+     "pos": "suffix",
+     "stat": "light",
+     "weight": 76,
+     "word": "of Sheen"
     },
     {
      "name": "rivets",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 64,
+     "word": "Riveted"
     }
    ],
    "id": "Plate"
@@ -150,27 +270,51 @@
    "affixes": [
     {
      "name": "cushion",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "poise",
+     "weight": 40,
+     "word": "Cushioned"
     },
     {
      "name": "warmth",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "resist_frost",
+     "weight": 52,
+     "word": "of Warmth"
     },
     {
      "name": "breathing",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "stamina",
+     "weight": 64,
+     "word": "Airy"
     },
     {
      "name": "quilting",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "armor",
+     "weight": 52,
+     "word": "Quilted"
     },
     {
      "name": "absorb",
-     "pct": 10
+     "pct": 10,
+     "pos": "suffix",
+     "stat": "resist_crush",
+     "weight": 40,
+     "word": "of Absorbing"
     },
     {
      "name": "comfort",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "regen_hp",
+     "weight": 70,
+     "word": "of Comfort"
     }
    ],
    "id": "Padding"
@@ -179,27 +323,51 @@
    "affixes": [
     {
      "name": "sure grip",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "grip",
+     "weight": 52,
+     "word": "Sure"
     },
     {
      "name": "quick hands",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "Nimble"
     },
     {
      "name": "wrap",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "grip",
+     "weight": 70,
+     "word": "of Wrapping"
     },
     {
      "name": "control",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 52,
+     "word": "Steady"
     },
     {
      "name": "sweat-proof",
-     "pct": 4
+     "pct": 4,
+     "pos": "suffix",
+     "stat": "grip",
+     "weight": 76,
+     "word": "of Dryness"
     },
     {
      "name": "leverage",
-     "pct": 7
+     "pct": 7,
+     "pos": "suffix",
+     "stat": "dmg",
+     "weight": 58,
+     "word": "of Leverage"
     }
    ],
    "id": "Grip"
@@ -208,27 +376,51 @@
    "affixes": [
     {
      "name": "weave",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 52,
+     "word": "Woven"
     },
     {
      "name": "ward",
-     "pct": 10
+     "pct": 10,
+     "pos": "suffix",
+     "stat": "resist_arcane",
+     "weight": 40,
+     "word": "of Warding"
     },
     {
      "name": "drape",
-     "pct": 5
+     "pct": 5,
+     "pos": "prefix",
+     "stat": "quiet",
+     "weight": 70,
+     "word": "Flowing"
     },
     {
      "name": "hush",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "quiet",
+     "weight": 64,
+     "word": "of Hush"
     },
     {
      "name": "dye",
-     "pct": 3
+     "pct": 3,
+     "pos": "suffix",
+     "stat": "trade",
+     "weight": 82,
+     "word": "of Colour"
     },
     {
      "name": "toughness",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "armor",
+     "weight": 52,
+     "word": "Tough"
     }
    ],
    "id": "Body"
@@ -237,27 +429,51 @@
    "affixes": [
     {
      "name": "durable",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 52,
+     "word": "Durable"
     },
     {
      "name": "light",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "mass",
+     "weight": 64,
+     "word": "Light"
     },
     {
      "name": "fine",
-     "pct": 5
+     "pct": 5,
+     "pos": "prefix",
+     "stat": "trade",
+     "weight": 70,
+     "word": "Fine"
     },
     {
      "name": "sturdy",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 52,
+     "word": "Sturdy"
     },
     {
      "name": "gleaming",
-     "pct": 3
+     "pct": 3,
+     "pos": "prefix",
+     "stat": "light",
+     "weight": 82,
+     "word": "Gleaming"
     },
     {
      "name": "attuned",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "regen_mp",
+     "weight": 64,
+     "word": "of Attunement"
     }
    ],
    "id": "*"
@@ -266,23 +482,43 @@
    "affixes": [
     {
      "name": "piercing",
-     "pct": 12
+     "pct": 12,
+     "pos": "prefix",
+     "stat": "pierce_armor",
+     "weight": 28,
+     "word": "Piercing"
     },
     {
      "name": "needle",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 52,
+     "word": "Needle"
     },
     {
      "name": "slip",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "of Slipping"
     },
     {
      "name": "poise",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "poise",
+     "weight": 70,
+     "word": "of Poise"
     },
     {
      "name": "anchor",
-     "pct": 4
+     "pct": 4,
+     "pos": "suffix",
+     "stat": "grip",
+     "weight": 76,
+     "word": "of Anchoring"
     }
    ],
    "id": "Point"
@@ -291,23 +527,43 @@
    "affixes": [
     {
      "name": "reach",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "reach",
+     "weight": 40,
+     "word": "Long"
     },
     {
      "name": "straight",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 52,
+     "word": "True"
     },
     {
      "name": "spring",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "of Spring"
     },
     {
      "name": "flex",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "durability",
+     "weight": 70,
+     "word": "of Flexing"
     },
     {
      "name": "long",
-     "pct": 7
+     "pct": 7,
+     "pos": "prefix",
+     "stat": "reach",
+     "weight": 58,
+     "word": "Lengthy"
     }
    ],
    "id": "Shaft"
@@ -316,23 +572,43 @@
    "affixes": [
     {
      "name": "draw weight",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "dmg",
+     "weight": 40,
+     "word": "Stout"
     },
     {
      "name": "snap",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "speed",
+     "weight": 52,
+     "word": "Snappy"
     },
     {
      "name": "range",
-     "pct": 10
+     "pct": 10,
+     "pos": "suffix",
+     "stat": "range",
+     "weight": 40,
+     "word": "of Reaching"
     },
     {
      "name": "steady",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 64,
+     "word": "Steady"
     },
     {
      "name": "quiet",
-     "pct": 5
+     "pct": 5,
+     "pos": "prefix",
+     "stat": "quiet",
+     "weight": 70,
+     "word": "Hushed"
     }
    ],
    "id": "Prod"
@@ -341,19 +617,35 @@
    "affixes": [
     {
      "name": "steady aim",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 52,
+     "word": "Steady"
     },
     {
      "name": "recoil",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "stamina",
+     "weight": 64,
+     "word": "of Calm Recoil"
     },
     {
      "name": "light",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "mass",
+     "weight": 64,
+     "word": "Light"
     },
     {
      "name": "sturdy",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 52,
+     "word": "Sturdy"
     }
    ],
    "id": "Stock"
@@ -362,23 +654,43 @@
    "affixes": [
     {
      "name": "deflection",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 40,
+     "word": "Deflecting"
     },
     {
      "name": "lightness",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "mass",
+     "weight": 52,
+     "word": "Light"
     },
     {
      "name": "bulwark",
-     "pct": 12
+     "pct": 12,
+     "pos": "prefix",
+     "stat": "armor",
+     "weight": 28,
+     "word": "Bulwark"
     },
     {
      "name": "padded",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "poise",
+     "weight": 64,
+     "word": "Padded"
     },
     {
      "name": "sheen",
-     "pct": 4
+     "pct": 4,
+     "pos": "suffix",
+     "stat": "light",
+     "weight": 76,
+     "word": "of Sheen"
     }
    ],
    "id": "Shell"
@@ -387,19 +699,35 @@
    "affixes": [
     {
      "name": "cushion",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "poise",
+     "weight": 40,
+     "word": "Cushioned"
     },
     {
      "name": "warmth",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "resist_frost",
+     "weight": 52,
+     "word": "of Warmth"
     },
     {
      "name": "breathing",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "stamina",
+     "weight": 64,
+     "word": "Airy"
     },
     {
      "name": "absorb",
-     "pct": 10
+     "pct": 10,
+     "pos": "suffix",
+     "stat": "resist_crush",
+     "weight": 40,
+     "word": "of Absorbing"
     }
    ],
    "id": "Liner"
@@ -408,19 +736,35 @@
    "affixes": [
     {
      "name": "grip",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "grip",
+     "weight": 52,
+     "word": "Gripping"
     },
     {
      "name": "quiet step",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "quiet",
+     "weight": 52,
+     "word": "of Quiet Steps"
     },
     {
      "name": "warmth",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "resist_frost",
+     "weight": 64,
+     "word": "of Warmth"
     },
     {
      "name": "water-shedding",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "resist_storm",
+     "weight": 64,
+     "word": "of Dryness"
     }
    ],
    "id": "Upper"
@@ -429,19 +773,35 @@
    "affixes": [
     {
      "name": "traction",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "grip",
+     "weight": 40,
+     "word": "Surefooted"
     },
     {
      "name": "quiet step",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "quiet",
+     "weight": 52,
+     "word": "of Quiet Steps"
     },
     {
      "name": "spring",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "of Spring"
     },
     {
      "name": "long wear",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 52,
+     "word": "Hardwearing"
     }
    ],
    "id": "Sole"
@@ -450,19 +810,35 @@
    "affixes": [
     {
      "name": "sure grip",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "grip",
+     "weight": 52,
+     "word": "Sure"
     },
     {
      "name": "quick hands",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "Nimble"
     },
     {
      "name": "padding",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "poise",
+     "weight": 64,
+     "word": "Padded"
     },
     {
      "name": "feel",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "accuracy",
+     "weight": 70,
+     "word": "of Feeling"
     }
    ],
    "id": "Palm"
@@ -471,19 +847,35 @@
    "affixes": [
     {
      "name": "seal",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "resist_frost",
+     "weight": 64,
+     "word": "of Sealing"
     },
     {
      "name": "wrap",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "grip",
+     "weight": 70,
+     "word": "of Wrapping"
     },
     {
      "name": "guard",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 52,
+     "word": "Guarding"
     },
     {
      "name": "flex",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "durability",
+     "weight": 70,
+     "word": "of Flexing"
     }
    ],
    "id": "Cuff"
@@ -492,19 +884,35 @@
    "affixes": [
     {
      "name": "catch",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 52,
+     "word": "Catching"
     },
     {
      "name": "deflect",
-     "pct": 10
+     "pct": 10,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 40,
+     "word": "Deflecting"
     },
     {
      "name": "balance",
-     "pct": 6
+     "pct": 6,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "of Balance"
     },
     {
      "name": "wide",
-     "pct": 5
+     "pct": 5,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 70,
+     "word": "Wide"
     }
    ],
    "id": "Guard"
@@ -513,19 +921,35 @@
    "affixes": [
     {
      "name": "counterweight",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 52,
+     "word": "of Counterweight"
     },
     {
      "name": "bash",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "stagger",
+     "weight": 64,
+     "word": "Bashing"
     },
     {
      "name": "balance",
-     "pct": 8
+     "pct": 8,
+     "pos": "suffix",
+     "stat": "speed",
+     "weight": 52,
+     "word": "of Balance"
     },
     {
      "name": "charm",
-     "pct": 3
+     "pct": 3,
+     "pos": "suffix",
+     "stat": "luck",
+     "weight": 82,
+     "word": "of Charm"
     }
    ],
    "id": "Pommel"
@@ -534,19 +958,35 @@
    "affixes": [
     {
      "name": "tight",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "dmg",
+     "weight": 52,
+     "word": "Taut"
     },
     {
      "name": "silent",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "quiet",
+     "weight": 64,
+     "word": "Silent"
     },
     {
      "name": "durable",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "durability",
+     "weight": 52,
+     "word": "Durable"
     },
     {
      "name": "fast",
-     "pct": 6
+     "pct": 6,
+     "pos": "prefix",
+     "stat": "speed",
+     "weight": 64,
+     "word": "Quick"
     }
    ],
    "id": "String"
@@ -555,22 +995,309 @@
    "affixes": [
     {
      "name": "clear sight",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "accuracy",
+     "weight": 52,
+     "word": "Clear"
     },
     {
      "name": "deflection",
-     "pct": 8
+     "pct": 8,
+     "pos": "prefix",
+     "stat": "block",
+     "weight": 52,
+     "word": "Deflecting"
     },
     {
      "name": "hush",
-     "pct": 4
+     "pct": 4,
+     "pos": "suffix",
+     "stat": "quiet",
+     "weight": 76,
+     "word": "of Hush"
     },
     {
      "name": "shade",
-     "pct": 5
+     "pct": 5,
+     "pos": "suffix",
+     "stat": "quiet",
+     "weight": 70,
+     "word": "of Shade"
     }
    ],
    "id": "Visor"
+  },
+  {
+   "affixes": [
+    {
+     "name": "embers",
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "dmg_fire",
+     "weight": 15,
+     "word": "of Embers"
+    },
+    {
+     "name": "rime",
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "dmg_frost",
+     "weight": 15,
+     "word": "of Rime"
+    },
+    {
+     "name": "sparks",
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "dmg_storm",
+     "weight": 15,
+     "word": "of Sparks"
+    },
+    {
+     "name": "runes",
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "dmg_arcane",
+     "weight": 15,
+     "word": "of Runes"
+    },
+    {
+     "name": "gloom",
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "dmg_death",
+     "weight": 15,
+     "word": "of Gloom"
+    },
+    {
+     "name": "bloom",
+     "pct": 12,
+     "pos": "suffix",
+     "stat": "dmg_life",
+     "weight": 15,
+     "word": "of Bloom"
+    },
+    {
+     "name": "ash",
+     "pct": 15,
+     "pos": "prefix",
+     "stat": "resist_fire",
+     "weight": 15,
+     "word": "Ashen"
+    },
+    {
+     "name": "frostward",
+     "pct": 15,
+     "pos": "prefix",
+     "stat": "resist_frost",
+     "weight": 15,
+     "word": "Frostward"
+    }
+   ],
+   "id": "elemental"
+  }
+ ],
+ "stats": [
+  {
+   "id": "dmg",
+   "note": "damage dealt",
+   "unit": "pct"
+  },
+  {
+   "id": "speed",
+   "note": "attack and move speed",
+   "unit": "pct"
+  },
+  {
+   "id": "reach",
+   "note": "weapon reach",
+   "unit": "pct"
+  },
+  {
+   "id": "bleed",
+   "note": "chance to cause bleeding",
+   "unit": "pct"
+  },
+  {
+   "id": "stagger",
+   "note": "poise damage dealt",
+   "unit": "pct"
+  },
+  {
+   "id": "stun",
+   "note": "chance to stun on a heavy hit",
+   "unit": "pct"
+  },
+  {
+   "id": "edge",
+   "note": "edge holding",
+   "unit": "pct"
+  },
+  {
+   "id": "durability",
+   "note": "integrity lost per use, less",
+   "unit": "pct"
+  },
+  {
+   "id": "mass",
+   "note": "mass, less",
+   "unit": "pct"
+  },
+  {
+   "id": "block",
+   "note": "damage blocked",
+   "unit": "pct"
+  },
+  {
+   "id": "armor",
+   "note": "armour value",
+   "unit": "pct"
+  },
+  {
+   "id": "poise",
+   "note": "poise gained",
+   "unit": "pct"
+  },
+  {
+   "id": "pierce_armor",
+   "note": "armour ignored",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_crush",
+   "note": "crushing resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_slash",
+   "note": "slashing resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_pierce",
+   "note": "piercing resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_fire",
+   "note": "fire resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_frost",
+   "note": "frost resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_storm",
+   "note": "storm resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_arcane",
+   "note": "arcane resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_death",
+   "note": "death resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "resist_life",
+   "note": "life resistance",
+   "unit": "pct"
+  },
+  {
+   "id": "dmg_fire",
+   "note": "fire damage added",
+   "unit": "pct"
+  },
+  {
+   "id": "dmg_frost",
+   "note": "frost damage added",
+   "unit": "pct"
+  },
+  {
+   "id": "dmg_storm",
+   "note": "storm damage added",
+   "unit": "pct"
+  },
+  {
+   "id": "dmg_arcane",
+   "note": "arcane damage added",
+   "unit": "pct"
+  },
+  {
+   "id": "dmg_death",
+   "note": "death damage added",
+   "unit": "pct"
+  },
+  {
+   "id": "dmg_life",
+   "note": "life damage added",
+   "unit": "pct"
+  },
+  {
+   "id": "stamina",
+   "note": "stamina cost, less",
+   "unit": "pct"
+  },
+  {
+   "id": "range",
+   "note": "ranged distance",
+   "unit": "pct"
+  },
+  {
+   "id": "accuracy",
+   "note": "aim accuracy",
+   "unit": "pct"
+  },
+  {
+   "id": "quiet",
+   "note": "noise made, less",
+   "unit": "pct"
+  },
+  {
+   "id": "light",
+   "note": "light radius or glint",
+   "unit": "pct"
+  },
+  {
+   "id": "regen_hp",
+   "note": "health regeneration",
+   "unit": "pct"
+  },
+  {
+   "id": "regen_mp",
+   "note": "mana regeneration",
+   "unit": "pct"
+  },
+  {
+   "id": "luck",
+   "note": "luck",
+   "unit": "pct"
+  },
+  {
+   "id": "grip",
+   "note": "resistance to being disarmed",
+   "unit": "pct"
+  },
+  {
+   "id": "carry",
+   "note": "carry mass",
+   "unit": "pct"
+  },
+  {
+   "id": "trade",
+   "note": "barter prices",
+   "unit": "pct"
+  },
+  {
+   "id": "sockets",
+   "note": "extra sockets",
+   "unit": "count"
   }
  ]
 }

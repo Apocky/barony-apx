@@ -5,8 +5,12 @@ param([string[]]$Branches = @(), [switch]$Push, [string]$Tag = 'train')
 $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot '..\..'))
 git fetch -q origin
+$Branches = @($Branches | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 foreach ($b in $Branches) {
-    git merge --no-edit -q "origin/$b" 2>&1 | Out-Null
+    $before = git rev-parse HEAD
+    $out = git merge --no-edit -q "origin/$b" 2>&1
+    if ($LASTEXITCODE -ne 0 -and -not (git diff --name-only --diff-filter=U)) { "MERGE FAILED for $b : $out"; exit 5 }
+    if ((git rev-parse HEAD) -eq $before -and -not (git diff --name-only --diff-filter=U)) { "already in: $b"; continue }
     $u = git diff --name-only --diff-filter=U
     if ($u) { "CONFLICT in $b : $($u -join ', ')"; exit 2 }
     "merged $b -> $(git log --oneline -1)"
