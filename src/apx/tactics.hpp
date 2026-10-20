@@ -90,6 +90,7 @@ namespace tactics
 		long long body_sidesteps = 0, body_goal_holds = 0;   // D80: slid round a packmate's body; waited for a place it holds
 		long long body_queue_holds = 0;                     // D80: no room to slide round a body (corridor): waited in line
 		long long wall_holds = 0;                           // D80: a make-room move (out, arc) a wall blocks: held in place
+		long long body_unstacks = 0;                        // D80: overlapping bodies allowed to move apart (collision.cpp)
 		long long loop_flanks = 0;                          // D80: queued creatures sent round a loop (APX_LOOP_FLANK)
 		long long ring_holds = 0, ring_assign = 0, ring_slot_fail = 0, feints = 0, stuck = 0, stuck_episodes = 0, steer_ticks = 0;
 		long long flank_started = 0, flank_arrived = 0, flank_failed = 0;

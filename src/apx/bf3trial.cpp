@@ -1176,7 +1176,7 @@ namespace bf3
 			.i("target_dropped_by_tactics", C.target_dropped_by_tactics).i("target_lost_ticks", A.targetLostTicks)
 			.i("ring_holds", C.ring_holds).i("ring_assign", C.ring_assign).i("ring_slot_fail", C.ring_slot_fail).i("feints", C.feints)
 			.i("stuck", C.stuck).i("stuck_episodes", C.stuck_episodes).i("steer_ticks", C.steer_ticks).i("steer_holds", C.steer_holds)
-			.i("body_sidesteps", C.body_sidesteps).i("body_goal_holds", C.body_goal_holds).i("body_queue_holds", C.body_queue_holds).i("wall_holds", C.wall_holds).i("loop_flanks", C.loop_flanks).i("flank_arrived_n", C.flank_arrived).i("collide_on", tactics::collideOn() ? 1 : 0).i("apx_vanilla", apxVanillaMode ? 1 : 0)
+			.i("body_sidesteps", C.body_sidesteps).i("body_goal_holds", C.body_goal_holds).i("body_queue_holds", C.body_queue_holds).i("wall_holds", C.wall_holds).i("loop_flanks", C.loop_flanks).i("body_unstacks", C.body_unstacks).i("flank_arrived_n", C.flank_arrived).i("collide_on", tactics::collideOn() ? 1 : 0).i("apx_vanilla", apxVanillaMode ? 1 : 0)
 			.d("waiters_pair_dist_mean", A.waitPairN ? A.waitPairSum / A.waitPairN : 0)
 			.d("waiters_nn_mean", A.nnN ? A.nnSum / A.nnN : 0).d("waiters_overlap_share", A.waiterSamples ? (double)A.waiterOverlaps / A.waiterSamples : 0)
 			.i("contact_attackers", contactAttackers()).d("blocked_share", A.attempts ? (double)(A.thin + A.wide) / A.attempts : 0)
