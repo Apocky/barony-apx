@@ -653,7 +653,7 @@ namespace apxdiag
 		{
 			gPlantStallTick = -1;
 			APX_SCOPE(S_TACTICS);
-			SDL_Delay(120); // planted stall inside a named scope: the spike row must name tactics
+			SDL_Delay(500); // planted stall inside a named scope (well above any load-time threshold): the spike row must name tactics
 		}
 		if ( gPlantErrTick >= 0 && (int)t >= gPlantErrTick )
 		{
