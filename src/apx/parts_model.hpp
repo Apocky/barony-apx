@@ -107,6 +107,7 @@ struct SalvageResult
 	bool discharged = false, looted = false, crafted = false;
 	std::vector<ApxItemData> components;    // the component items handed over (D86)
 	int loosePart = -1;                     // quick salvage (keepPart -1, looted): the part that dropped loose, or -1
+	std::vector<uint16_t> auraAffixes;      // C6: the affix each aura crystal holds (auraCrystals == its size)
 };
 // 05b section 5 step 5, QUICK SALVAGE (no choice): the highest-rarity part (lowest index on a tie) drops
 // loose as a component with the chance by its rarity: Common 0, Uncommon 10, Rare 25, Epic 50,
@@ -131,6 +132,13 @@ bool swapPart(const DB& db, ApxItemData& it, int partIndex, const ApxPart& c, in
 // Masterwork (70+) (D87); affix slots empty; integrity full; model = modelId.
 int makeCostGrams(const DB& db, int slot, int material);
 ApxPart makePart(const DB& db, int slot, int material, int stationPts, int toolPts, uint32_t look, int* quality100 = nullptr);
+
+// C6 INFUSE (05b 5.9): an aura crystal's affix into an empty affix slot of a part. Slots = the part's
+// rarity (Common 0 .. Legendary 4; Unique 4 until the 5th affix lands). The affix must be one a part of
+// this slot can roll (any family's pool for the slot; ASSUMED) and not already on the part.
+int affixSlots(const ApxPart& p);
+bool affixFitsSlot(const DB& db, int slot, uint16_t affix);
+bool infuse(const DB& db, ApxPart& p, uint16_t affix, std::string& why);
 
 // One part as a component item's data (D86).
 ApxItemData componentOf(const DB& db, const ApxPart& p, uint32_t rollKey, uint8_t flags);

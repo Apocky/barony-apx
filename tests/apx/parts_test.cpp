@@ -517,6 +517,44 @@ int main(int argc, char** argv)
 		gate("C4_strip", crN > 0 && crOk == crN && ltN > 0 && ltOk == ltN, join({ kv("crafted_all_parts", crOk) + "/" + std::to_string(crN), kv("looted_ok", ltOk) + "/" + std::to_string(ltN), kv("looted_refused_no_quick", ltRefused) }));
 		gate("C_assembly_name", plain > 0 && plainOk == plain && proper > 0 && properOk == proper, join({ kv("plain_ok", plainOk) + "/" + std::to_string(plain), kv("proper_ok", properOk) + "/" + std::to_string(proper), "\"examples\":[\"" + ex1 + "\",\"" + ex2 + "\"]" }));
 	}
+	{
+		// C6 infuse (05b 5.9): free slots = rarity; no duplicate; only an affix the slot can roll; aura crystals hold their affix
+		int tried = 0, ok = 0, full = 0, fullRefused = 0, dup = 0, dupRefused = 0, foreign = 0, foreignRefused = 0;
+		for ( size_t sl = 0; sl < db.slots.size(); ++sl )
+		{
+			for ( int rar = 0; rar <= 5; ++rar )
+			{
+				ApxPart p{}; p.slot = (uint8_t)sl; p.rarity = (uint8_t)rar;
+				std::vector<uint16_t> fit, other;
+				for ( size_t a = 0; a < db.affixes.size(); ++a ) { (affixFitsSlot(db, (int)sl, (uint16_t)a) ? fit : other).push_back((uint16_t)a); }
+				std::string why;
+				for ( size_t k = 0; k < fit.size() && k < 6; ++k )
+				{
+					const bool room = p.nAffix < std::min(4, rar);
+					++tried;
+					const bool r = infuse(db, p, fit[k], why);
+					if ( room ) { ok += r; } else { ++full; fullRefused += !r; }
+				}
+				if ( p.nAffix > 0 ) { ++dup; ApxPart q = p; if ( q.nAffix < std::min(4, rar) ) { dupRefused += !infuse(db, q, p.affix[0], why); } else { dupRefused += 1; } }
+				if ( !other.empty() ) { ++foreign; ApxPart q{}; q.slot = (uint8_t)sl; q.rarity = 4; foreignRefused += !infuse(db, q, other[0], why); }
+			}
+		}
+		// salvage: crystals carry the affixes of the parts that became material
+		Counters c; ApxItemData it; long long crystals = 0, crystalsOk = 0;
+		for ( uint32_t i = 0; i < 20000; ++i )
+		{
+			roll(db, *gearForms[i % gearForms.size()], 37, 1 + i % 40, 0, i, it, c);
+			if ( it.nParts < 2 ) { continue; }
+			it.flags = (uint8_t)((it.flags & 0x3f) | FLAG_LOOTED);
+			const SalvageResult r = salvage(db, it, 0, i);
+			crystals += r.auraCrystals;
+			for ( uint16_t a : r.auraAffixes ) { bool from = false; for ( int k = 1; k < it.nParts; ++k ) { for ( int j = 0; j < it.parts[k].nAffix; ++j ) { from = from || it.parts[k].affix[j] == a; } } crystalsOk += from; }
+			crystalsOk += (long long)r.auraAffixes.size() == r.auraCrystals ? 0 : -1000000;
+		}
+		gate("C6_infuse", tried > 0 && ok > 0 && fullRefused == full && dupRefused == dup && foreignRefused == foreign && crystals > 0 && crystalsOk == crystals,
+			join({ kv("infused", ok), kv("full_refused", fullRefused) + "/" + std::to_string(full), kv("dup_refused", dupRefused) + "/" + std::to_string(dup),
+				kv("foreign_refused", foreignRefused) + "/" + std::to_string(foreign), kv("crystals_hold_their_affix", (int)crystalsOk) + "/" + std::to_string(crystals) }));
+	}
 	printf("{\"summary\":true,\"failures\":%d}\n", failures);
 	return failures ? 1 : 0;
 }

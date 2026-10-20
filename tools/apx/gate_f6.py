@@ -266,9 +266,9 @@ def main():
                     f"kept after load {cm.get('kept_after_load')}/{cm.get('before_load')}, e.g. \"{cm.get('name')}\""):
             return 1
         cf = r.get("craft") or {}
-        if not gate("C4/C5 live: make from the pouch, assemble a known Form, swap a part (old back intact), looted non-quick refused", cf.get("pass") is True,
+        if not gate("C4/C5/C6 live: make, assemble, swap, strip, infuse at a crucible; looted non-quick refused; unidentified names hide affixes", cf.get("pass") is True,
                     f"form {cf.get('form')}: made {cf.get('made')}/{cf.get('required')}, pouch spent {cf.get('pouch_spent')} g = cost {cf.get('cost')} g, "
-                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}, strip {cf.get('strip')}, unidentified \"{cf.get('unidentified_name')}\" vs \"{cf.get('identified_name')}\""):
+                    f"assembled {cf.get('assembled')} \"{cf.get('assembled_name')}\" IP {cf.get('power')} {cf.get('why') or ''}, swap {cf.get('swap_ok')}, looted refused {cf.get('looted_non_quick_refused')}, strip {cf.get('strip')}, unidentified \"{cf.get('unidentified_name')}\" vs \"{cf.get('identified_name')}\", infused {cf.get('infused')}/2 (refused station/dup/full {cf.get('infuse_refused_station_dup_full')}), crystals used {cf.get('crystals_used')}"):
             return 1
         bd = r.get("bundle") or {}
         if not gate("D85 bundles: draw from pouch, survive save/load, pickup returns to pouch", bd.get("pass") is True,
