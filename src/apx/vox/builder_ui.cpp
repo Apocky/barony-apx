@@ -34,6 +34,7 @@ namespace builderui
 		const char* kName = "apx_vox_builder";
 		const char* kFont = "fonts/pixel_maz.ttf#32#2";
 		std::string g_msg[MAXPLAYERS];
+		Frame* g_panel[MAXPLAYERS] = {}; // the open panel; no per-tick findFrame over the whole GUI tree (lag fix)
 
 		int ownerOf(Button& b) { const int p = b.getOwner(); return p >= 0 && p < MAXPLAYERS ? p : 0; }
 
@@ -90,9 +91,9 @@ namespace builderui
 			if ( !players[p] || !players[p]->isLocalPlayer() ) { continue; }
 			char fname[48];
 			snprintf(fname, sizeof fname, "%s_%d", kName, p);
-			Frame* f = gui->findFrame(fname);
 			bx1::BuildSession* s = builder::session(p);
-			if ( !s ) { if ( f ) { f->removeSelf(); } continue; }
+			Frame*& f = g_panel[p];
+			if ( !s ) { if ( f ) { f->removeSelf(); f = nullptr; } continue; } // nothing open: no GUI search at all
 
 			const int sx = s->model.sx, sz = s->model.sz;
 			const int cell = std::max(8, std::min(16, 560 / std::max(sz, 1)));
