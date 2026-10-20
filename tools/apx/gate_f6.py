@@ -71,6 +71,7 @@ def launch(exe, run_dir, args, env_extra, datadir):
             env.pop(k)
     env["BARONY_DATADIR"] = str(datadir)
     env.update(env_extra)
+    env.setdefault("APX_HEADLESS", "1")  # parent 2026-10-19: headless only (hidden window, never focused)
     return subprocess.Popen([str(exe)] + args, cwd=run_dir, env=env)
 
 

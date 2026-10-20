@@ -605,7 +605,9 @@ void apxPartsProbeTick()
 			const int metal0 = countType(0, TOOL_METAL_SCRAP), magic0 = countType(0, TOOL_MAGIC_SCRAP), gem0 = countType(0, GEM_ROCK);
 			const long long salv0 = apxPartsCounters.salvaged, aura0 = apxPartsCounters.aura_stand_in;
 			const long long out0 = apxPartsCounters.salvage_grams_out, paid0 = apxPartsCounters.salvage_grams_paid, ledger0 = apxPartsLedgerGrams(0);
+			auto countInv = [&]() { int n = 0; for ( node_t* nd = stats[0]->inventory.first; nd; nd = nd->next ) { ++n; } return n; };
 			auto items = rollProbeItems(20, &stats[0]->inventory);
+			const int invBefore = countInv();
 			int station = 0, bench = 0, keptOne = 0;
 			for ( size_t k = 0; k < items.size(); ++k )
 			{
@@ -621,10 +623,12 @@ void apxPartsProbeTick()
 			const long long salvaged = apxPartsCounters.salvaged - salv0, aura = apxPartsCounters.aura_stand_in - aura0;
 			const long long gramsOut = apxPartsCounters.salvage_grams_out - out0, gramsPaid = apxPartsCounters.salvage_grams_paid - paid0, ledgerGain = apxPartsLedgerGrams(0) - ledger0;
 			const bool conserved = gramsOut == gramsPaid + ledgerGain; // no salvaged gram is lost
-			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 20 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0);
+			const int invAfter = countInv(); // 10 kept items stay; station items are consumed; scrap/gem stacks may appear
+			const bool invOk = invAfter >= invBefore - 10 + ((metal > 0) || (magic > 0) || (gems > 0) ? 1 : 0);
+			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 20 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0 && invOk);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"salvage\",\"parts_on\":%d,\"station_ok\":%d,\"bench_ok\":%d,\"bench_kept_one_part\":%d,\"parts_salvaged\":%lld,"
-				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"pass\":%s}",
-				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, salvageOk ? "true" : "false");
+				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pass\":%s}",
+				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, salvageOk ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("net") == std::string::npos ) { exit(pass && salvageOk ? 0 : 3); }
