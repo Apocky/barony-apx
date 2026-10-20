@@ -5620,10 +5620,10 @@ void pauseGame(int mode /* 0 == toggle, 1 == force unpause, 2 == force pause */,
                 SDL_GetWindowSize(screen, &w, &h);
                 if (mouse_x < x || mouse_x >= x + w ||
                     mouse_y < y || mouse_y >= y + h) {
-                    SDL_WarpMouseInWindow(screen, w/2, h/2);
+                    if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, w/2, h/2); } // apx
                 }
             }
-			SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
+			SDL_SetRelativeMouseMode(apx::noInputGrab ? SDL_FALSE : EnableMouseCapture); // apx: automated launches never grab the user's mouse
 		}
 		if (keystatus[SDLK_ESCAPE]) {
 			keystatus[SDLK_ESCAPE] = 0;
@@ -6289,10 +6289,10 @@ void ingameHud()
                         SDL_GetWindowSize(screen, &w, &h);
                         if (mouse_x < x || mouse_x >= x + w ||
                             mouse_y < y || mouse_y >= y + h) {
-                            SDL_WarpMouseInWindow(screen, w/2, h/2);
+                            if ( !apx::noInputGrab ) { SDL_WarpMouseInWindow(screen, w/2, h/2); } // apx
                         }
                     }
-				    SDL_SetRelativeMouseMode(apx::headlessOn ? SDL_FALSE : EnableMouseCapture); // apx headless: never grab the user's mouse
+				    SDL_SetRelativeMouseMode(apx::noInputGrab ? SDL_FALSE : EnableMouseCapture); // apx: automated launches never grab the user's mouse
 				}
 			}
 
@@ -7526,6 +7526,9 @@ int main(int argc, char** argv)
 		printlog("Data path is %s", datadir);
 		printlog("Output path is %s", outputdir);
 		apx::headlessInit(apxHeadlessFlag);
+		// apx: automated launches (headless, test floor, quickstart, self-tests) must never move or grab the user's mouse
+		apx::noInputGrab = apx::headlessOn || apxFloor > 0 || strlen(classtoquickstart) > 0 || getenv("APX_SELFTEST") != nullptr || getenv("APX_F4C_SELFTEST") != nullptr;
+		if ( apx::noInputGrab ) { printlog("[apx] input: automated launch, the mouse is never warped or grabbed"); }
 		if ( apx::headlessOn ) { no_sound = true; } // apx headless: no audio device at all
 
         // init sdl
