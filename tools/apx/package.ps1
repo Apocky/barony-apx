@@ -13,6 +13,7 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
 
 Copy-Item $exePath $stage
+if (Test-Path (Join-Path $bin 'steam_appid.txt')) { Copy-Item (Join-Path $bin 'steam_appid.txt') $stage }   # Steam build: Barony's app id, read from the working folder
 Get-ChildItem $bin -Filter *.dll | Copy-Item -Destination $stage
 New-Item -ItemType Directory -Force "$stage\data" | Out-Null
 Copy-Item data\apx "$stage\data\apx" -Recurse
