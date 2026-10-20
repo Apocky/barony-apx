@@ -403,8 +403,9 @@ static void runF6Bench(int dt)
 	static Uint32 salvUid = 0, breakUid = 0;
 	static uint32_t breakForm = 0;
 	static int parts = 0, salvRows = 0, keepRow = -1, itemsBefore = 0, salvOk = 0, succBefore = -1, succAfter = -1, fbRows = 0, fbHasForm = 0;
-	static std::string craftMsg, salvMsg;
-	static int partsAfter = -1, itemsAfter = 0;
+	static std::string craftMsg, salvMsg, asmDump;
+	static int partsAfter = -1, itemsAfter = 0, keepChosen = -2, carriedL0 = 0, carriedL1 = 0, weightFollows = 0;
+	static long long ledger0 = -1, ledger1 = -1;
 	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
 	auto selectOwn = [](ItemType t) {
 		auto e = ownRowsForTest(0);
@@ -423,14 +424,22 @@ static void runF6Bench(int dt)
 		parts = (int)apx_bench::provider().parts(a).size();
 		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
 	}
-	else if ( dt == 344 ) { selectOwn(IRON_SWORD); setBenchTab(0, 3); } // Salvage
+	else if ( dt == 344 ) { selectOwn(IRON_SWORD); setBenchTab(0, 4); } // Salvage
 	else if ( dt == 348 )
 	{
 		auto e = benchRowsForTest(0);
 		salvRows = (int)e.size();
 		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 3 ) { keepRow = (int)i; break; } } // part index 0
 		itemsBefore = (int)list_Size(&stats[0]->inventory);
-		if ( keepRow >= 0 ) { setFocus(0, 2, keepRow); activateSelected(0); }
+		ledger0 = apx_bench::provider().pouchGrams(0);
+		carriedL0 = carriedMass(0);
+		if ( keepRow >= 0 ) { setFocus(0, 2, keepRow); activateSelected(0); } // choose the keep
+	}
+	else if ( dt == 350 )
+	{
+		keepChosen = benchKeep(0);
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 4 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } } // Break, keeping it
 	}
 	else if ( dt == 352 )
 	{
@@ -441,10 +450,18 @@ static void runF6Bench(int dt)
 		itemsAfter = (int)list_Size(&stats[0]->inventory);
 		salvMsg = viewState(0).lastBenchMsg;
 		salvOk = salvMsg.rfind("Salvaged", 0) == 0 && (left == nullptr || partsAfter <= 1) && itemsAfter > itemsBefore - 1;
+		// live D85: the salvage grew F6's ledger and carry weight followed it by the same whole units
+		ledger1 = apx_bench::provider().pouchGrams(0);
+		carriedL1 = carriedMass(0);
+		int pouchRowMass = -1;
+		for ( auto& r : rows(0) ) { if ( r.type == -2 ) { pouchRowMass = r.mass; } }
+		// the ledger grew; the list rows (with the pouch row when it holds a whole unit) sum to carried mass
+		const int expectRow = ledger1 >= 100 ? (int)(ledger1 / 100) : -1;
+		weightFollows = ledger1 > ledger0 && checkRows(rows(0), carriedMass(0)).empty() && pouchRowMass == expectRow ? 1 : 0;
 		succBefore = apxPartsFormSuccesses(0, breakForm);
 		pl.inventoryUI.activateItemContextMenuOption(uidToItem(breakUid), PROMPT_APX_BREAK);
 	}
-	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); setBenchTab(0, 4); } // Formbook
+	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); setBenchTab(0, 5); } // Formbook
 	else if ( dt == 360 )
 	{
 		fbRows = viewState(0).benchRows;
@@ -456,20 +473,28 @@ static void runF6Bench(int dt)
 		auto e = benchRowsForTest(0);
 		for ( size_t i = 0; i < e.size(); ++i )
 		{
-			if ( !e[i].header && e[i].row.kind == 1 ) { setFocus(0, 2, (int)i); activateSelected(0); activateSelected(0); break; } // pick, then craft
+			if ( !e[i].header && e[i].row.kind == 1 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } // pick the Form
 		}
-		craftMsg = viewState(0).lastBenchMsg;
+	}
+	else if ( dt == 366 )
+	{
+		// the Assemble view shows the reason it cannot assemble yet (no preview / crafting slice from F6)
+		for ( auto& x : benchRowsForTest(0) ) { if ( !x.header && x.row.kind == 0 && x.row.name.find("   ") == 0 ) { craftMsg = x.row.name.substr(3); } }
+		for ( auto& x : benchRowsForTest(0) ) { asmDump += (x.header ? "#" : "-") + x.row.name + "|"; }
+		asmDump += " tab=" + std::to_string(viewState(0).benchTab) + " bench=" + std::to_string((int)viewState(0).benchShown);
 	}
 	else if ( dt == 368 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
 		{
-			fprintf(f, "{\"test\":\"f6bench\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"parts\":%d,\"salvage_rows\":%d,\"keep_row\":%d,\"salvage_ok\":%d,\"salvage_msg\":\"%s\",\"items_before_after\":[%d,%d],\"parts_left_on_item\":%d,"
-				"\"form\":%u,\"form_successes\":[%d,%d],\"break_teaches\":%d,\"formbook_rows\":%d,\"formbook_has_form\":%d,\"craft_msg\":\"%s\",\"craft_next_slice\":%d}\n",
-				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, parts, salvRows, keepRow, salvOk, salvMsg.c_str(), itemsBefore, itemsAfter, partsAfter,
+			fprintf(f, "{\"test\":\"f6bench\",\"mode\":\"%s\",\"headless\":%d,\"provider\":\"%s\",\"parts\":%d,\"salvage_rows\":%d,\"keep_row\":%d,\"salvage_ok\":%d,\"salvage_msg\":\"%s\",\"keep_chosen\":%d,\"ledger_g\":[%lld,%lld],\"carried\":[%d,%d],\"weight_follows_ledger\":%d,\"items_before_after\":[%d,%d],\"parts_left_on_item\":%d,"
+				"\"form\":%u,\"form_successes\":[%d,%d],\"break_teaches\":%d,\"formbook_rows\":%d,\"formbook_has_form\":%d,\"craft_msg\":\"%s\",\"assemble_reason_shown\":%d,\"asm_dump\":\"%s\"}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, apx_bench::provider().name, parts, salvRows, keepRow, salvOk, salvMsg.c_str(), keepChosen, ledger0, ledger1, carriedL0, carriedL1,
+				weightFollows,
+				itemsBefore, itemsAfter, partsAfter,
 				breakForm, succBefore, succAfter, succAfter == succBefore + 1 ? 1 : 0, fbRows, fbHasForm, craftMsg.c_str(),
-				craftMsg.find("crafting: next slice") != std::string::npos ? 1 : 0);
+				!craftMsg.empty() ? 1 : 0, asmDump.c_str());
 			fclose(f);
 		}
 		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
@@ -510,7 +535,7 @@ static void runPouch(int dt)
 		carried1 = carriedMass(0);
 		rowsOk = checkRows(rows(0), carriedMass(0)).empty();
 		for ( auto& e : ownRowsForTest(0) ) { if ( !e.header && e.row.name == "Material pouch" && e.row.mass == 33 ) { pouchRow = 1; } }
-		setBenchTab(0, 5); tab = 5; // Materials
+		setBenchTab(0, 6); tab = 6; // Materials
 	}
 	else if ( dt == 375 )
 	{
@@ -528,7 +553,7 @@ static void runPouch(int dt)
 				"\"rows_sum_ok\":%d,\"pouch_row\":%d,\"materials_tab\":%d,\"materials_rows\":%d,\"bundle_row\":%d,\"draw_calls\":%d,\"draw\":[%d,%lld],\"draw_msg\":\"%s\","
 				"\"live_provider\":\"%s\",\"live_pouch_grams\":%lld,\"live_draw_bundle\":%d}\n",
 				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, carried0, carried1, carried1 - carried0 == 33 ? 1 : 0, rowsOk, pouchRow,
-				viewState(0).benchTab == 5 ? 1 : 0, matRows, bundleRow, g_drawCalls, g_drawMaterial, g_drawGrams, drawMsg.c_str(),
+				viewState(0).benchTab == 6 ? 1 : 0, matRows, bundleRow, g_drawCalls, g_drawMaterial, g_drawGrams, drawMsg.c_str(),
 				live.name, liveGrams, live.drawBundle ? 1 : 0);
 			fclose(f);
 		}
@@ -552,13 +577,13 @@ static std::vector<apx_bench::PartRow> tParts(const Item* it)
 {
 	if ( !it || it->type != IRON_SWORD ) { return {}; }
 	apx_bench::PartRow a; a.slotName = "Blade"; a.name = "iron blade"; a.material = "iron"; a.quality = 3; a.rarity = 1; a.affixes = { "sturdy" };
-	apx_bench::PartRow b; b.slotName = "Hilt"; b.name = "oak hilt of speed"; b.material = "oak"; b.quality = 2; b.rarity = 3; b.affixes = { "of speed (+5%)" };
+	apx_bench::PartRow b; b.slotName = "Hilt"; b.name = "oak hilt of speed"; b.material = "oak"; b.quality = 2; b.rarity = 3; b.affixes = { "of speed (+5%)" }; b.affixesKnown = false; b.integrity = 0.4f;
 	return { a, b };
 }
 static std::vector<apx_bench::SwapSlot> tSwapSlots(int, const Item* it, int)
 {
 	if ( !it || it->type != IRON_SWORD ) { return {}; }
-	apx_bench::SwapSlot s; s.partIndex = 0; s.name = "Blade"; s.candidateUids = { g_compUid };
+	apx_bench::SwapSlot s; s.partIndex = 0; s.name = "Blade"; s.candidateUids = { g_compUid }; s.quick = true;
 	return { s };
 }
 static bool tSwap(int, Item*, int partIndex, uint32_t uid, std::string&) { ++g_swapCalls; g_swapPart = partIndex; g_swapUid = uid; return true; }
@@ -568,6 +593,36 @@ static std::vector<apx_bench::MakeOption> tMakeOptions(int, int)
 	return { o };
 }
 static bool tMake(int, int id, std::string&) { ++g_makeCalls; g_makeId = id; return true; }
+// C3/C4 additions
+static int g_craftCalls = 0, g_craftPicks = 0, g_repairCalls = 0, g_repairPart = -1;
+static Uint32 g_craftPickUid = 0;
+static std::string tDisplayName(const Item* it)
+{
+	if ( it && it->appearance == 7786 ) { return "Keen Steel Blade of Embers"; }  // Common..Rare: [prefix] [material] [slot] [suffix]
+	if ( it && it->type == IRON_SWORD ) { return "Vey's Ember-Tongue"; }          // Epic and up: a generated proper name
+	return "";
+}
+static std::vector<apx_bench::FormRow> tFormbook(int) { apx_bench::FormRow f; f.form = 1; f.name = "Blades"; f.successes = 2; return { f }; }
+static std::vector<apx_bench::SlotNeed> tCraftSlots(int, uint32_t, int)
+{
+	apx_bench::SlotNeed a; a.slot = 0; a.name = "Blade"; a.required = true; a.candidateUids = { g_compUid };
+	return { a };
+}
+static bool tAssemblePreview(int, uint32_t, int, const std::vector<std::pair<int, uint32_t>>& picks, int& power, int& cap, std::string& why)
+{
+	power = 40 + 10 * (int)picks.size(); cap = 120; why = picks.empty() ? "nothing chosen" : ""; return !picks.empty();
+}
+static bool tCraft(int, uint32_t, int, const std::vector<std::pair<int, uint32_t>>& picks, std::string&)
+{
+	++g_craftCalls; g_craftPicks = (int)picks.size(); g_craftPickUid = picks.empty() ? 0 : picks[0].second; return true;
+}
+static std::vector<apx_bench::RepairOption> tRepairOptions(int, const Item* it, int)
+{
+	if ( !it || it->type != IRON_SWORD ) { return {}; }
+	apx_bench::RepairOption o; o.partIndex = 1; o.name = "Hilt"; o.integrity = 0.4f; o.cost = { { 11, "oak", 120 } }; o.affordable = true;
+	return { o };
+}
+static bool tRepair(int, Item*, int part, std::string&) { ++g_repairCalls; g_repairPart = part; return true; }
 
 static void runComponents(int dt)
 {
@@ -575,7 +630,8 @@ static void runComponents(int dt)
 	static apx_bench::Provider live;
 	static Entity* bench = nullptr;
 	static Uint32 swordUid = 0;
-	static int compRarity = -1, tipParts = 0, tipAffix = 0, swapRows = 0, makeRows = 0;
+	static int compRarity = -1, tipParts = 0, tipAffix = 0, swapRows = 0, makeRows = 0, swordRarity = -1, compNameOk = 0, tipUnknown = 0, quickLabel = 0, asmRows = 0, asmPowerRow = 0, repRows = 0;
+	static std::string tipName;
 	static std::string swapMsg, makeMsg;
 	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
 	auto selectUid = [](Uint32 uid) {
@@ -588,6 +644,8 @@ static void runComponents(int dt)
 		apx_bench::Provider t = live;
 		t.name = "self-test components";
 		t.componentOf = tComponentOf; t.parts = tParts; t.swapSlots = tSwapSlots; t.swapPart = tSwap; t.makeOptions = tMakeOptions; t.make = tMake;
+		t.displayName = tDisplayName; t.formbook = tFormbook; t.craftSlots = tCraftSlots; t.assemblePreview = tAssemblePreview; t.craft = tCraft;
+		t.repairOptions = tRepairOptions; t.repair = tRepair;
 		apx_bench::setProvider(t);
 		emptyInventory(0);
 		Item* sword = newItem(IRON_SWORD, SERVICABLE, 0, 1, 0, true, &stats[0]->inventory);
@@ -597,14 +655,23 @@ static void runComponents(int dt)
 	}
 	else if ( dt == 382 )
 	{
-		for ( auto& e : ownRowsForTest(0) ) { if ( !e.header && e.row.uid == g_compUid ) { compRarity = e.row.rarity; } }
+		for ( auto& e : ownRowsForTest(0) )
+		{
+			if ( !e.header && e.row.uid == g_compUid ) { compRarity = e.row.rarity; compNameOk = e.row.name == "Keen Steel Blade of Embers"; }
+			if ( !e.header && e.row.uid == swordUid ) { swordRarity = e.row.rarity; }
+		}
 		selectUid(swordUid);
 	}
-	else if ( dt == 384 ) { tipParts = viewState(0).tipParts; tipAffix = viewState(0).tipAffixLines; shotWhen("tip", "apx-u1f-components.png"); setBenchTab(0, 1); } // Swap
+	else if ( dt == 384 )
+	{
+		tipParts = viewState(0).tipParts; tipAffix = viewState(0).tipAffixLines; tipUnknown = viewState(0).tipUnknownLines; tipName = viewState(0).tipName;
+		shotWhen("tip", "apx-u1g-components.png"); setBenchTab(0, 1); // Swap
+	}
 	else if ( dt == 387 )
 	{
 		auto e = benchRowsForTest(0);
 		swapRows = (int)e.size();
+		for ( auto& x : e ) { if ( x.header && x.row.name.find("(quick slot)") != std::string::npos ) { quickLabel = 1; } }
 		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 7 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
 		swapMsg = viewState(0).lastBenchMsg;
 		setBenchTab(0, 2); // Make
@@ -615,15 +682,44 @@ static void runComponents(int dt)
 		makeRows = (int)e.size();
 		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 8 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
 		makeMsg = viewState(0).lastBenchMsg;
+		setBenchTab(0, 3); // Repair
 	}
 	else if ( dt == 393 )
+	{
+		auto e = benchRowsForTest(0);
+		repRows = (int)e.size();
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 12 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } }
+		setBenchTab(0, 0); // Assemble
+	}
+	else if ( dt == 396 )
+	{
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 1 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } } // the Form
+	}
+	else if ( dt == 399 )
+	{
+		auto e = benchRowsForTest(0);
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 10 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } } // a component for the Blade
+	}
+	else if ( dt == 402 )
+	{
+		auto e = benchRowsForTest(0);
+		asmRows = (int)e.size();
+		for ( auto& x : e ) { if ( x.header && x.row.name == "Item power 50 / cap 120" ) { asmPowerRow = 1; } }
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 11 ) { setFocus(0, 2, (int)i); activateSelected(0); break; } } // Assemble
+	}
+	else if ( dt == 405 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
 		{
 			fprintf(f, "{\"test\":\"components\",\"mode\":\"%s\",\"headless\":%d,\"component_row_rarity\":%d,\"tip_parts\":%d,\"tip_affix_lines\":%d,"
+				"\"comp_name_ok\":%d,\"assembly_rarity_best\":%d,\"tip_name\":\"%s\",\"tip_unknown_lines\":%d,\"quick_label\":%d,\"repair\":[%d,%d,%d],"
+				"\"assemble\":{\"rows\":%d,\"power_row\":%d,\"calls\":%d,\"picks\":%d,\"pick_right\":%d},"
 				"\"swap_rows\":%d,\"swap_calls\":%d,\"swap\":[%d,%d],\"swap_uid_right\":%d,\"swap_msg\":\"%s\",\"make_rows\":%d,\"make_calls\":%d,\"make_id\":%d,\"make_msg\":\"%s\",\"live_provider\":\"%s\"}\n",
-				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, compRarity, tipParts, tipAffix, swapRows, g_swapCalls, g_swapPart, (int)g_swapUid,
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, compRarity, tipParts, tipAffix,
+				compNameOk, swordRarity, tipName.c_str(), tipUnknown, quickLabel, repRows, g_repairCalls, g_repairPart,
+				asmRows, asmPowerRow, g_craftCalls, g_craftPicks, g_craftPickUid == g_compUid ? 1 : 0, swapRows, g_swapCalls, g_swapPart, (int)g_swapUid,
 				g_swapUid == g_compUid ? 1 : 0, swapMsg.c_str(), makeRows, g_makeCalls, g_makeId, makeMsg.c_str(), live.name);
 			fclose(f);
 		}
@@ -879,8 +975,8 @@ static void runUiPhases()
 	else if ( dt >= 331 && dt < 340 ) { runD81(dt); }
 	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
 	else if ( dt >= 370 && dt < 380 ) { runPouch(dt); }
-	else if ( dt >= 380 && dt < 395 ) { runComponents(dt); }
-	else if ( dt == 400 )
+	else if ( dt >= 380 && dt < 410 ) { runComponents(dt); }
+	else if ( dt == 420 )
 	{
 		splitscreen = true;
 		pl.bSplitscreen = true;
@@ -892,8 +988,8 @@ static void runUiPhases()
 		pl.shootmode = false;
 		pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
 	}
-	else if ( dt == 470 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
-	else if ( dt == 510 )
+	else if ( dt == 490 ) { D = listState(0); g_shot = "apx-u1-quarter.png"; }
+	else if ( dt == 530 )
 	{
 		FILE* f = fopen(diagPath().c_str(), "a");
 		if ( f )
