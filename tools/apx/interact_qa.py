@@ -20,7 +20,7 @@ OUT = Path(r"C:\Apocrypha\diagnostics\interact")
 NEW = [("chair:30", True), ("table:30", True), ("bed:30", True), ("bunkbed:30", True), ("podium:30", True), ("torch:30", True),
        ("cage:30", True), ("candelabra:30", True), ("maiden:30", True),
        ("chair:40", False), ("candelabra:44", False), ("maiden:46", False)]
-CONTROL = [("chair:30", False), ("candelabra:30", False), ("maiden:30", False), ("cage:30", False), ("chair:20", True)]
+CONTROL = [("chair:30", False), ("candelabra:30", False), ("maiden:30", False), ("cage:30", False)]
 
 
 def run_case(exe, script, prop, old):

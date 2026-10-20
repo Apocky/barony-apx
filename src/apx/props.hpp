@@ -376,6 +376,18 @@ namespace props
 			// APX_PROPS_QA=name[:d]: that prop straight ahead, centre distance d units (default per prop). Names: chair table bed
 			// bunkbed podium torch (dark sconce) cage candelabra maiden; 1 = chair, table, bed in an arc and the cage behind.
 			// Colliders sit on tile centres, so the player is moved along the line to the prop to make the centre distance d.
+			if ( std::getenv("APX_PROPS_QA_AXE") ) // setup for swing tests: an iron axe in hand (the combat core needs a weapon family)
+			{
+				st->weapon = nullptr; st->shield = nullptr;
+				Item* axe = newItem(IRON_AXE, SERVICABLE, 0, 1, 0, true, &st->inventory);
+				equipItem(axe, &st->weapon, pn, false);
+				printlog("[apx-props] qa equipped iron axe, family %d", (int)apx::familyOf(st));
+			}
+			{
+				const int tx = std::min(std::max((int)(me->x / 16), 0), (int)map.width - 1), ty = std::min(std::max((int)(me->y / 16), 0), (int)map.height - 1);
+				const int ti = map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height];
+				printlog("[apx-props] qa floor under the player: tile %d at %d,%d swimming=%d lava=%d player_swimming=%d (a swim tile blocks swings)", ti, tx, ty, (int)swimmingtiles[ti], (int)lavatiles[ti], (int)players[pn]->movement.isPlayerSwimming());
+			}
 			std::string w = qa;
 			real_t wantD = -1;
 			if ( size_t c = w.find(':'); c != std::string::npos ) { wantD = std::atof(w.c_str() + c + 1); w = w.substr(0, c); }
@@ -399,12 +411,27 @@ namespace props
 			else if ( w == "podium" ) at(0, FURNITURE_PODIUM, wantD);
 			else if ( w == "torch" )
 			{
-				Entity* f = newEntity(3, 1, map.entities, nullptr);
-				f->behavior = &actTorch; f->z = -1; f->flags[PASSABLE] = true;
-				const real_t r = wantD > 0 ? wantD : 20;
-				f->x = me->x + std::cos(me->yaw) * r; f->y = me->y + std::sin(me->yaw) * r;
-				darkTorches().insert(f->getUID());
-				printlog("[apx-props] qa placed dark sconce uid=%u at %.0f,%.0f centre distance %.1f", f->getUID(), f->x, f->y, r);
+				// a sconce sits on a wall (actTorch removes itself without one): the first wall along the view, the torch
+				// 2 units off it facing the player; the player is then moved along that line to centre distance wantD
+				const real_t cx = std::cos(me->yaw), cy = std::sin(me->yaw);
+				real_t hit = -1;
+				for ( real_t s = 4; s < 200 && hit < 0; s += 1 )
+				{
+					int tx = (int)((me->x + cx * s)) >> 4, ty = (int)((me->y + cy * s)) >> 4;
+					if ( tx < 0 || ty < 0 || tx >= (int)map.width || ty >= (int)map.height ) break;
+					if ( map.tiles[OBSTACLELAYER + ty * MAPLAYERS + tx * MAPLAYERS * map.height] ) hit = s;
+				}
+				if ( hit < 0 ) printlog("[apx-props] qa found no wall ahead for the sconce");
+				else
+				{
+					Entity* f = newEntity(3, 1, map.entities, nullptr);
+					f->behavior = &actTorch; f->z = -1; f->flags[PASSABLE] = true; f->yaw = me->yaw + PI;
+					f->x = me->x + cx * (hit - 2); f->y = me->y + cy * (hit - 2);
+					const real_t r = wantD > 0 ? wantD : hit - 2;
+					me->x = f->x - cx * r; me->y = f->y - cy * r;
+					darkTorches().insert(f->getUID());
+					printlog("[apx-props] qa placed dark sconce uid=%u at %.0f,%.0f centre distance %.1f", f->getUID(), f->x, f->y, r);
+				}
 			}
 			else if ( w == "1" ) { at(-50, FURNITURE_CHAIR, -1); at(0, FURNITURE_TABLE, -1); at(50, FURNITURE_BED, -1); }
 			const char* cname = w == "cage" || w == "1" ? "hanging_cage_skel" : w == "candelabra" ? "candelabra" : w == "maiden" ? "iron_maiden" : nullptr;

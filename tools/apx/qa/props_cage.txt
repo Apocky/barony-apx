@@ -1,5 +1,7 @@
 # the bone cage straight ahead: attack it with the axe (left click) until it breaks
 wait 6000
+console /enablecheats
+wait 300
 console /killmonsters
 wait 800
 console /killmonsters
