@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "../apx/parts_engine.hpp"
+#include "../apx/diag.hpp"
 #include "../main.hpp"
 #include "../files.hpp"
 #include "../game.hpp"
@@ -7214,6 +7215,7 @@ void GenericGUIMenu::enchantItem(Item* item)
 
 void GenericGUIMenu::repairItem(Item* item)
 {
+	apxdiag::event("bench_action", "\"fn\":\"repairItem\"");
 	if ( !item )
 	{
 		return;
@@ -7373,6 +7375,7 @@ void GenericGUIMenu::repairItem(Item* item)
 
 void GenericGUIMenu::closeGUI()
 {
+	apxdiag::event("bench_close");
 	bool wasOpen = guiActive;
 	tinkeringFreeLists();
 	scribingFreeLists();
@@ -7540,6 +7543,7 @@ void GenericGUIMenu::closeGUI()
 
 void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, int effectItemType, int usingSpellID)
 {
+	apxdiag::eventf("bench_open", "\"type\":%d", type);
 	this->closeGUI();
 
 	if ( !effectItem && usingSpellID != SPELL_NONE && effectItemType == SPELL_ITEM )
@@ -7727,6 +7731,7 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 
 void GenericGUIMenu::openGUI(int type, bool experimenting, Item* itemOpenedWith)
 {
+	apxdiag::eventf("bench_open", "\"type\":%d", type);
 	this->closeGUI();
 	if ( players[gui_player] && players[gui_player]->entity )
 	{
@@ -7773,6 +7778,7 @@ void GenericGUIMenu::openGUI(int type, bool experimenting, Item* itemOpenedWith)
 
 void GenericGUIMenu::openGUI(int type, Item* itemOpenedWith)
 {
+	apxdiag::eventf("bench_open", "\"type\":%d", type);
 	this->closeGUI();
 	if ( players[gui_player] && players[gui_player]->entity )
 	{
@@ -7882,6 +7888,7 @@ void stationOpenSound(int player, int type)
 
 void GenericGUIMenu::openGUI(int type, Entity* shrine)
 {
+	apxdiag::eventf("bench_open", "\"type\":%d", type);
 	// close existing guis
 	if ( guiType == GUI_TYPE_ASSIST )
 	{
@@ -9085,6 +9092,7 @@ bool alchemyAddRecipe(int player, int basePotion, int secondaryPotion, int resul
 
 void GenericGUIMenu::alchemyCookCombination()
 {
+	apxdiag::event("bench_action", "\"fn\":\"alchemyCookCombination\"");
 	if ( !basePotion || !secondaryPotion )
 	{
 		return;
@@ -9505,6 +9513,7 @@ void GenericGUIMenu::alchemyCookCombination()
 
 void GenericGUIMenu::alchemyCombinePotions()
 {
+	apxdiag::event("bench_action", "\"fn\":\"alchemyCombinePotions\"");
 	if ( !basePotion || !secondaryPotion )
 	{
 		return;

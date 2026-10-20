@@ -1,6 +1,7 @@
 // GameUI.cpp
 
 #include "GameUI.hpp"
+#include "../apx/diag.hpp"
 #include "../apx/headless.hpp"
 #include "MainMenu.hpp"
 #include "Frame.hpp"
@@ -28809,6 +28810,16 @@ void Player::Inventory_t::updateItemContextMenu()
 {
 	Uint32& itemMenuItem = inputs.getUIInteraction(player.playernum)->itemMenuItem;
 	bool& itemMenuOpen = inputs.getUIInteraction(player.playernum)->itemMenuOpen;
+	{
+		// D90: context-menu open/close transitions (an unselectable menu leaves open with no select)
+		static bool prevOpen[MAXPLAYERS] = {};
+		if ( itemMenuOpen != prevOpen[player.playernum] )
+		{
+			prevOpen[player.playernum] = itemMenuOpen;
+			Item* it0 = uidToItem(itemMenuItem);
+			apxdiag::eventf(itemMenuOpen ? "ctxmenu_open" : "ctxmenu_close", "\"player\":%d,\"item_type\":%d,\"item_uid\":%u", player.playernum, it0 ? (int)it0->type : -1, (unsigned)itemMenuItem);
+		}
+	}
 	int& itemMenuSelected = inputs.getUIInteraction(player.playernum)->itemMenuSelected;
 	bool& itemMenuFromHotbar = inputs.getUIInteraction(player.playernum)->itemMenuFromHotbar;
 
@@ -29247,6 +29258,7 @@ void Player::Inventory_t::updateItemContextMenu()
 
 void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextMenuPrompts prompt)
 {
+	apxdiag::eventf("ctxmenu_select", "\"player\":%d,\"prompt\":%d,\"item_type\":%d", player.playernum, (int)prompt, item ? (int)item->type : -1);
 	if ( !item )
 	{
 		return;

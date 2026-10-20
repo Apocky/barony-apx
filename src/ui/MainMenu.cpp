@@ -1,4 +1,5 @@
 #include "../main.hpp"
+#include "../apx/diag.hpp"
 #include "MainMenu.hpp"
 #include "../apx/telemetry.hpp"
 #include "../apx/apx_gen_bridge.hpp"
@@ -28445,6 +28446,37 @@ failed:
         soundError();
     }
 
+    // ---- D91: first-launch opt-in for the diagnostics upload. Nothing is sent before the player answers Yes.
+    static void diagConsentPrompt() {
+        if (apxdiag::upload::state() != 0) { return; }
+        if (!main_menu_frame || !intro || loading || isCutsceneActive()) { return; }
+        if (gui && (gui->findFrame("binary_prompt") || gui->findFrame("trinary_prompt"))) { return; }
+        binaryPromptXL(
+            "Help improve the game?\n\n"
+            "If you say Yes, the game sends performance numbers, error messages and crash reports to the developer, "
+            "labelled only with an anonymous random id.\n\n"
+            "Never sent: your name, your files, or any account data.\n"
+            "You can change this later with the console command /diag_upload on|off.",
+            "Yes, send", "No thanks",
+            [](Button&) { soundActivate(); closeBinary(); apxdiag::upload::setConsent(true); },
+            [](Button&) { soundCancel(); closeBinary(); apxdiag::upload::setConsent(false); },
+            false, false);
+    }
+    static struct DiagHookRegistrar { DiagHookRegistrar() { apxdiag::consentPromptHook = &diagConsentPrompt; } } diagHookRegistrar;
+
+    static ConsoleCommand ccmd_diag_upload(
+        "/diag_upload", "diagnostics upload: on | off | status (nothing is sent unless on)",
+        [](int argc, const char** argv) {
+            if (argc >= 2 && !strcmp(argv[1], "on")) { apxdiag::upload::setConsent(true); }
+            else if (argc >= 2 && !strcmp(argv[1], "off")) { apxdiag::upload::setConsent(false); }
+            uint64_t ok = 0, fail = 0, drop = 0;
+            size_t queued = 0;
+            apxdiag::upload::stats(ok, fail, drop, queued);
+            const int s = apxdiag::upload::state();
+            messagePlayer(clientnum, MESSAGE_MISC, "Diagnostics upload: %s (sent %llu, failed %llu, queued %zu, dropped %llu). Install id %s",
+                s == 1 ? "ON" : (s == 2 ? "OFF" : "not asked yet (nothing is sent)"), (unsigned long long)ok, (unsigned long long)fail, queued, (unsigned long long)drop,
+                apxdiag::upload::installIdStr());
+        });
     void crossplayPrompt() {
 #ifdef USE_EOS
 #if defined(STEAMWORKS)

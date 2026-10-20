@@ -19,6 +19,7 @@
 #include "entity.hpp"
 #include "files.hpp"
 #include "apx/telemetry.hpp"
+#include "apx/diag.hpp"
 #include "apx/tactics.hpp"
 #include "apx/flow.hpp"
 static std::string apxOutDir;
@@ -414,6 +415,7 @@ void make_minidump(EXCEPTION_POINTERS* e)
 
 LONG CALLBACK unhandled_handler(EXCEPTION_POINTERS* e)
 {
+	apxdiag::crash(e, "unhandled SEH exception"); // D90: symbolised stack + last events before the dump
 	make_minidump(e);
 	return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -1480,7 +1482,11 @@ void gameLogic(void)
 				entity->ticks++;
 				if ( entity->behavior != nullptr )
 				{
-					(*entity->behavior)(entity);
+					{
+						// D90: per-category entity timing, sampled on every 8th tick
+						apxdiag::Scope apxCat(entity->behavior == &actMonster ? apxdiag::S_AI_MONSTER : (entity->behavior == &actPlayer ? apxdiag::S_AI_PLAYER : apxdiag::S_ENT_OTHER), apxdiag::sampleTick);
+						(*entity->behavior)(entity);
+					}
 					if ( entitiesdeleted.first != nullptr )
 					{
 						entitydeletedself = false;
@@ -2441,6 +2447,7 @@ void gameLogic(void)
 		                loading_done = true;
 		                return result;
 		            });
+	                apxdiag::Scope apxLoadScope(apxdiag::S_LOAD);
 	                while (!loading_done)
 	                {
 		                doLoadingScreen();
@@ -2451,6 +2458,7 @@ void gameLogic(void)
                     createChunks();
 		            loading = false;
 	                int result = loading_task.get();
+	                apxdiag::eventf("level", "\"level\":%d,\"secret\":%d,\"seed\":%u,\"load_ms\":%.0f,\"gen_ms\":%.0f", (int)currentlevel, (int)secretlevel, (unsigned)mapseed, apxLoadMs, apxGenMs);
 	                apx::onFloorLoaded();
 	                apx::tactics::onLevelChange();
 
@@ -5530,7 +5538,8 @@ bool handleEvents(void)
 	{
 		if (!loading && initialized)
 		{
-			gameLogic();
+			apxdiag::sampleTick = ((ticks & 7) == 0);
+			{ APX_SCOPE(S_LOGIC); gameLogic(); }
 			++ticks;
 			if ( apx::enabled ) { apx::onTick(); }
 			if ( apx::bf3::on ) { apx::bf3::onGameTick(); }
@@ -7312,8 +7321,10 @@ static void doConsoleCommands() {
 #include <mach-o/dyld.h>
 #endif
 
+static bool apxLimiter() { APX_SCOPE(S_LIMITER); return frameRateLimit(fpsLimit, true, true); } // D90: the pacing sleep, timed on its own
 int main(int argc, char** argv)
 {
+	apxdiag::init(argc, argv); // D90: always-on local diagnostics, before anything else can fail
 #ifdef WINDOWS
 	SetUnhandledExceptionFilter(unhandled_handler);
 #ifdef _DEBUG
@@ -7745,6 +7756,7 @@ int main(int argc, char** argv)
 		printlog("running main loop.\n");
 		while (mainloop)
 		{
+			apxdiag::frame();
 			Frame::numFindFrameCalls = 0;
 			// record the time at the start of this cycle
 			lastGameTickCount = SDL_GetPerformanceCounter();
@@ -7782,11 +7794,11 @@ int main(int argc, char** argv)
 				}
 				if ( multiplayer == CLIENT )
 				{
-					clientHandleMessages(fpsLimit * networkTickrate);
+					{ APX_SCOPE(S_NET); clientHandleMessages(fpsLimit * networkTickrate); }
 				}
 				else if ( multiplayer == SERVER )
 				{
-					serverHandleMessages(fpsLimit * networkTickrate);
+					{ APX_SCOPE(S_NET); serverHandleMessages(fpsLimit * networkTickrate); }
 				}
 			}
 			DebugStats.t21PostHandleMessages = std::chrono::high_resolution_clock::now();
@@ -7805,7 +7817,7 @@ int main(int argc, char** argv)
 			{
 				g_SteamLeaderboards->ProcessLeaderboardUpload();
 			}
-			SteamAPI_RunCallbacks();
+			{ APX_SCOPE(S_STEAM); SteamAPI_RunCallbacks(); }
 #endif
 #ifdef USE_PLAYFAB
 			PlayFab::PlayFabClientAPI::Update();
@@ -8298,7 +8310,7 @@ int main(int argc, char** argv)
 
 				if ( !MainMenu::isCutsceneActive() && fadealpha < 255 )
 				{
-					drawAllPlayerCameras();
+					{ APX_SCOPE(S_RENDER); drawAllPlayerCameras(); }
 				}
 
 				if ( TimerExperiments::bUseTimerInterpolation )
@@ -8333,9 +8345,9 @@ int main(int argc, char** argv)
 				}
 
 				DebugStats.t5MainDraw = std::chrono::high_resolution_clock::now();
-				framesProcResult = doFrames();
+				{ APX_SCOPE(S_UI); framesProcResult = doFrames(); }
 				DebugStats.t6Messages = std::chrono::high_resolution_clock::now();
-				ingameHud();
+				{ APX_SCOPE(S_UI); ingameHud(); }
 				Compendium_t::updateTooltip();
 
                 static ConsoleVariable<bool> showConsumeMouseInputs("/debug_consume_mouse", false);
@@ -8516,7 +8528,7 @@ int main(int argc, char** argv)
 #endif
 
 			// update screen
-			GO_SwapBuffers(screen);
+			{ APX_SCOPE(S_SWAP); GO_SwapBuffers(screen); }
 
 			// apx: the U1 self-test's screenshots, from the back buffer like the Screenshot key
 			if ( const char* f6Shot = apxPartsShotRequest() ) // apx F6 visual probe: the back buffer, as the Screenshot key
@@ -8550,18 +8562,18 @@ int main(int argc, char** argv)
 			}
 
 			// frame rate limiter (apx headless: none)
-			while ( !apx::headlessOn && frameRateLimit(fpsLimit, true, true) )
+			while ( !apx::headlessOn && apxLimiter() )
 			{
 				if ( !intro )
 				{
 					// handle network messages
 					if ( multiplayer == CLIENT )
 					{
-						clientHandleMessages(fpsLimit);
+						{ APX_SCOPE(S_NET); clientHandleMessages(fpsLimit); }
 					}
 					else if ( multiplayer == SERVER )
 					{
-						serverHandleMessages(fpsLimit);
+						{ APX_SCOPE(S_NET); serverHandleMessages(fpsLimit); }
 					}
 				}
 			}
@@ -8630,6 +8642,7 @@ int main(int argc, char** argv)
 		(void)MainMenu::settingsSave();
 
 		// deinit
+		apxdiag::shutdown();
 		apx::close();
 		apxLuaShutdown();
 		deinitGame();
