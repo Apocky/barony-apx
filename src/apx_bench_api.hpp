@@ -47,6 +47,8 @@ namespace apx_bench
 		// BP1-2: Repair at a FIELD bench or an ANVIL: the cost in grams (-1 = cannot, why says), then repair
 		int  (*repairCost)(int player, const Item* item, std::string& why, std::string& material) = nullptr;
 		bool (*repair)(int player, Item* item, std::string& why) = nullptr;
+		// the same checks and one-step rule, the ledger untouched: a merchant service charges gold first (trade lane)
+		bool (*repairPaid)(int player, Item* item, std::string& why) = nullptr;
 	};
 	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub

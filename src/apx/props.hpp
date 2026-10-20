@@ -340,7 +340,7 @@ namespace props
 	}
 
 	// ---------------------------------------------------------------- the headless check (card BP1-1)
-	struct Probe { int phase = 0; Uint32 t0 = 0; Entity* bed = nullptr; Entity* chair = nullptr; Entity* table = nullptr; Entity* podium = nullptr; Entity* table2 = nullptr; int hp0 = 0; int cages = 0; std::string labels; int encKindsFodder = 0, encKinds = 0, fodderBand = 0; std::string flipLabel; int losBefore = -1, losAfter = -1; int torchFound = 0, torchKept = 0, torchDarkAfterTake = 0, gotTorch = 0, relit = 0; int repairRow = 0, repairOk = 0, statusBefore = -1, statusAfter = -1, repairGrams = -1; std::string repairWhy; };
+	struct Probe { int phase = 0; Uint32 t0 = 0; Entity* bed = nullptr; Entity* chair = nullptr; Entity* table = nullptr; Entity* podium = nullptr; Entity* table2 = nullptr; int hp0 = 0; int cages = 0; std::string labels; int encKindsFodder = 0, encKinds = 0, fodderBand = 0; std::string flipLabel; int losBefore = -1, losAfter = -1; int torchFound = 0, torchKept = 0, torchDarkAfterTake = 0, gotTorch = 0, relit = 0; int paidOk = 0, paidStatus = -1, paidLedgerDelta = -1, repairRow = 0, repairOk = 0, statusBefore = -1, statusAfter = -1, repairGrams = -1; std::string repairWhy; };
 	inline Probe& PR() { static Probe p; return p; }
 	inline Entity* makeFurniture(int type, Entity* near, int dx)
 	{
@@ -465,6 +465,11 @@ namespace props
 				for ( auto& row : rows )
 					if ( !row.header && row.row.kind == 9 ) { P.repairRow = 1; P.repairOk = apx_inv::benchActivate(0, 3, apx_logic::FIELD, sw, row, form, msg); P.repairWhy = msg; break; }
 				P.statusAfter = (int)sw->status;
+				long long l0 = apxPartsLedgerGrams(0);
+				std::string w3;
+				P.paidOk = apx_bench::provider().repairPaid(0, sw, w3);
+				P.paidStatus = (int)sw->status;
+				P.paidLedgerDelta = (int)(apxPartsLedgerGrams(0) - l0);
 				free(sw);
 			}
 			// 200 bone cages through the real destroy path
@@ -489,11 +494,11 @@ namespace props
 				"\"sits\":%d,\"sit_ticks\":%d,\"stamina_after_sit\":%.1f,\"benches\":%d,\"field_bench_near\":%d,\"reads\":%d,\"read_id\":\"%s\",\"cages\":%d,\"breaks\":%d,"
 				"\"skeletons\":%d,\"skeletons_fodder\":%d,\"trinkets\":%d,\"nothing\":%d,\"encounters\":%d,\"enc_creatures\":%d,\"enc_fodder_band\":%d,\"fodder_band_kinds\":%d,"
 				"\"flip_label\":\"%s\",\"flips\":%d,\"los_before\":%d,\"los_after\":%d,\"torch_found\":%d,\"torch_kept\":%d,\"torch_dark\":%d,\"got_torch\":%d,\"relit\":%d,"
-				"\"repair_row\":%d,\"repair_ok\":%d,\"repair_grams\":%d,\"status_before\":%d,\"status_after\":%d,\"repair_why\":\"%s\"}",
+				"\"paid_ok\":%d,\"paid_status\":%d,\"paid_ledger_delta\":%d,\"repair_row\":%d,\"repair_ok\":%d,\"repair_grams\":%d,\"status_before\":%d,\"status_after\":%d,\"repair_why\":\"%s\"}",
 				(int)enabled(), P.labels.c_str(), c.rests, c.restsDone, c.restsBroken, c.healed, P.hp0, st->HP, c.sits, c.sitTicks, (double)apx::get(0).value,
 				c.benches, (int)nearFieldBench(0), c.reads, lastReadId().c_str(), P.cages, c.breaks, c.skeletons, c.skeletonsFodder, c.trinkets, c.nothing, c.encounters,
 				P.encKinds, P.encKindsFodder, P.fodderBand, P.flipLabel.c_str(), c.flips, P.losBefore, P.losAfter, P.torchFound, P.torchKept, P.torchDarkAfterTake, P.gotTorch, P.relit,
-				P.repairRow, P.repairOk, P.repairGrams, P.statusBefore, P.statusAfter, P.repairWhy.c_str());
+				P.paidOk, P.paidStatus, P.paidLedgerDelta, P.repairRow, P.repairOk, P.repairGrams, P.statusBefore, P.statusAfter, P.repairWhy.c_str());
 			printlog("[apx-props] %s", row);
 			if ( const char* o = std::getenv("APX_PROPS_OUT") ) if ( FILE* f = std::fopen(o, "ab") ) { std::fprintf(f, "%s\n", row); std::fclose(f); }
 			std::exit(0);

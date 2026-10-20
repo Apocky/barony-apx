@@ -533,17 +533,27 @@ int apxPartsRepairCost(int player, const Item* item, std::string& why, std::stri
 	return g;
 }
 
-bool apxPartsRepair(int player, Item* item, std::string& why)
+static bool repairStep(int player, Item* item, std::string& why, bool fromLedger)
 {
 	std::string mat;
-	const int g = apxPartsRepairCost(player, item, why, mat);
-	if ( g < 0 ) { return false; }
-	ledger[player][item->apx.parts[0].material] -= (uint32_t)g;
+	int g = -1;
+	if ( fromLedger ) { g = apxPartsRepairCost(player, item, why, mat); if ( g < 0 ) { return false; } }
+	else
+	{
+		// a merchant: the same checks except the ledger (the shop charged gold for the grams)
+		if ( !item || item->apx.nParts == 0 ) { why = "a vanilla item has no parts to mend (use a repair scroll)"; return false; }
+		g = apx::props::repairCostGrams(apxPartsPartMassGrams(item, 0), (int)item->status);
+		if ( g < 0 ) { why = "already in excellent condition"; return false; }
+		mat = apxPartsMaterialName(item->apx.parts[0].material);
+	}
+	if ( fromLedger ) { ledger[player][item->apx.parts[0].material] -= (uint32_t)g; }
 	item->status = (Status)std::min((int)EXCELLENT, (int)item->status + 1);
 	for ( int k = 0; k < item->apx.nParts; ++k ) { item->apx.parts[k].integrity = (uint8_t)std::min(255, item->apx.parts[k].integrity + 64); }
-	printlog("apxparts: repair player %d %s -> status %d, %d g of %s", player, item->getName(), (int)item->status, g, mat.c_str());
+	printlog("apxparts: repair%s player %d %s -> status %d, %d g of %s", fromLedger ? "" : " (paid)", player, item->getName(), (int)item->status, g, mat.c_str());
 	return true;
 }
+bool apxPartsRepair(int player, Item* item, std::string& why) { return repairStep(player, item, why, true); }
+bool apxPartsRepairPaid(int player, Item* item, std::string& why) { return repairStep(player, item, why, false); }
 
 bool apxPartsSalvageItem(int player, Item* item, int keepPart, std::string& why)
 {
