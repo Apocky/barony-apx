@@ -159,7 +159,10 @@ int main(int argc, char** argv)
 	tickAll(sink); CHECK(sink.log.size() == 1, "first tick still sees it");
 	tickAll(sink); CHECK(sink.log.size() == 2 && sink.log[1] == "m10", "second tick clears it");
 	sink = Sink(); event(key(true, "Space")); endFrame(sink); event(key(false, "Space")); endFrame(sink);
-	CHECK(sink.log.size() == 2 && sink.log[0] == "k10441" && sink.log[1] == "k10440", "long press: set then clear on the release frame");
+	CHECK(sink.log.size() == 1 && sink.log[0] == "k10441", "released before any tick sampled it: stays set (%zu)", sink.log.size());
+	tickAll(sink); tickAll(sink); CHECK(sink.log.size() == 2 && sink.log[1] == "k10440", "cleared after one tick");
+	sink = Sink(); event(key(true, "Space")); endFrame(sink); tickAll(sink); event(key(false, "Space")); endFrame(sink);
+	CHECK(sink.log.size() == 2 && sink.log[1] == "k10440", "a tick sampled it: the release goes through at once");
 	sink = Sink(); event(key(true, "Q")); endFrame(sink); event(key(true, "Q", true)); endFrame(sink);
 	CHECK(sink.log.size() == 2, "key repeat re-sets the legacy state (vanilla did); no action press");
 	event(key(false, "Q")); endFrame(sink);

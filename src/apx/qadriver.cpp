@@ -114,9 +114,7 @@ namespace qa
 				(players[0] && players[0]->shootmode == false) ? 1 : 0);
 			char ib[1200]; apx::in::glue::statusLines(ib, (int)sizeof(ib));
 			fputs(ib, f);
-			fprintf(f, "frames %u
-wall_ms %u
-", (unsigned)g_frames, (unsigned)SDL_GetTicks());
+			fprintf(f, "frames %u\nwall_ms %u\n", (unsigned)g_frames, (unsigned)SDL_GetTicks());
 			fclose(f);
 		}
 
@@ -137,6 +135,13 @@ wall_ms %u
 				up.key.keysym.scancode = sc; up.key.keysym.sym = SDL_GetKeyFromScancode(sc);
 				later((Uint32)ms, up);
 				g_waitUntil = SDL_GetTicks() + (Uint32)ms + 30;
+			}
+			else if ( op == "mark" )
+			{
+				std::string label; in >> label;
+				char kv[900]; apx::in::glue::markJson(kv, (int)sizeof(kv));
+				FILE* mf = fopen((g_dir + "/marks.jsonl").c_str(), "a");
+				if ( mf ) { fprintf(mf, "{\"label\":\"%s\",\"frames\":%u,\"wall_ms\":%u,%s}\n", label.c_str(), (unsigned)g_frames, (unsigned)SDL_GetTicks(), kv); fclose(mf); }
 			}
 			else if ( op == "act" ) { runAct(in, false); }
 			else if ( op == "sdlact" ) { runAct(in, true); }

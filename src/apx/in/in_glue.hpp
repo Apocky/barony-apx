@@ -19,6 +19,7 @@ namespace in
 		void afterInputUpdate();                 // after Input::update: the legacy-consumer probe
 		unsigned long long legacyEdges(int which); // 0 = mouse1 (Attack), 1 = Left Shift: rising edges the old consumers saw
 		void statusLines(char* buf, int n);      // for the QA status file
+		void markJson(char* buf, int n);         // one JSON object of the counters (QA `mark <label>`)
 	}
 }
 }

@@ -224,12 +224,22 @@ namespace in
 
 		unsigned long long legacyEdges(int which) { return (which >= 0 && which < 2) ? g_legacy[which] : 0; }
 
+		void markJson(char* buf, int n)
+		{
+			const Counters& c = counters();
+			const int p = clientnum;
+			snprintf(buf, (size_t)n, "\"mode\":\"%s\",\"ingame\":%d,\"tick\":%u,\"press\":%llu,\"taken\":%llu,\"taken_attack\":%llu,\"taken_sprint\":%llu,\"gated\":%llu,\"lost\":%llu,\"switch\":%llu,\"switch_rel\":%llu,\"legacy_attack\":%llu,\"legacy_lshift\":%llu,\"owner_mouse\":%d,\"owner_key\":%d",
+				g_active ? "new" : "old", envInGame(p) ? 1 : 0, (unsigned)ticks, (unsigned long long)c.pressesLatched, (unsigned long long)c.pressesDelivered,
+				(unsigned long long)c.takenPress[B_Attack], (unsigned long long)c.takenPress[B_Sprint], (unsigned long long)c.gatedPresses, (unsigned long long)c.lost(),
+				(unsigned long long)c.ownerSwitches, (unsigned long long)c.switchReleases, g_legacy[0], g_legacy[1], (int)mouseOwner(p), (int)keyboardOwner(p));
+		}
+
 		void statusLines(char* buf, int n)
 		{
 			const Counters& c = counters();
 			const int p = clientnum;
-			snprintf(buf, (size_t)n, "input_mode %s\nin_press %llu\nin_taken %llu\nin_taken_attack %llu\nin_taken_sprint %llu\nin_taken_use %llu\nin_gated %llu\nin_lost %llu\nin_switch %llu\nin_switch_rel %llu\nlegacy_attack %llu\nlegacy_lshift %llu\nowner_mouse %d\nowner_key %d\n",
-				g_active ? "new" : "old", (unsigned long long)c.pressesLatched, (unsigned long long)c.pressesDelivered,
+			snprintf(buf, (size_t)n, "ingame %d\ninput_mode %s\nin_press %llu\nin_taken %llu\nin_taken_attack %llu\nin_taken_sprint %llu\nin_taken_use %llu\nin_gated %llu\nin_lost %llu\nin_switch %llu\nin_switch_rel %llu\nlegacy_attack %llu\nlegacy_lshift %llu\nowner_mouse %d\nowner_key %d\n",
+				envInGame(p) ? 1 : 0, g_active ? "new" : "old", (unsigned long long)c.pressesLatched, (unsigned long long)c.pressesDelivered,
 				(unsigned long long)c.takenPress[B_Attack], (unsigned long long)c.takenPress[B_Sprint], (unsigned long long)c.takenPress[B_Use],
 				(unsigned long long)c.gatedPresses, (unsigned long long)c.lost(), (unsigned long long)c.ownerSwitches, (unsigned long long)c.switchReleases,
 				g_legacy[0], g_legacy[1], (int)mouseOwner(p), (int)keyboardOwner(p));

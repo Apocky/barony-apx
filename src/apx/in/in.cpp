@@ -61,7 +61,8 @@ namespace in
 			TickRecord last;
 		};
 
-		struct Cs { bool held = false, needSet = false, needClear = false, tap = false, phys = false, blocked = false; int seen = 0; int sym = 0; };
+		// ticks: sim ticks that ran while the legacy state was 1; a release waits until it is >= 1 (old consumers sample once per tick)
+		struct Cs { bool held = false, needSet = false, needClear = false, tap = false, phys = false, blocked = false; int seen = 0; int ticks = 0; int sym = 0; };
 
 		struct State
 		{
@@ -262,7 +263,7 @@ namespace in
 			if ( apxuiOwns ) { c.blocked = true; return; }
 			if ( c.blocked ) { return; }
 			if ( repeat ) { c.needSet = true; return; }
-			c.held = true; c.needSet = true; c.needClear = false; c.tap = false;
+			c.held = true; c.needSet = true; c.needClear = false; c.tap = false; c.ticks = 0;
 		}
 		void cRelease(Cs& c)
 		{
@@ -271,7 +272,7 @@ namespace in
 			if ( wasBlocked ) { return; }
 			if ( !c.held && !c.needSet ) { return; }
 			c.held = false;
-			if ( c.needSet ) { c.tap = true; c.seen = 0; }   // down not fed yet: hold it visible for a tick
+			if ( c.needSet || c.ticks == 0 ) { c.tap = true; c.seen = 0; } // no sim tick has sampled the 1 yet: keep it visible until one has
 			else { c.needClear = true; }
 		}
 		void cDrop(Cs& c) // owner switch to APXUI: the vanilla side gets a release
@@ -600,8 +601,18 @@ namespace in
 	{
 		if ( !S.loaded || S.old ) { return; }
 		// compat: taps that were visible for one tick end now
-		for ( auto& kv : S.ckey ) { Cs& c = kv.second; if ( c.tap ) { if ( c.seen >= 1 ) { sink.setKey(c.sym, false); c.tap = false; } else { c.seen++; } } }
-		for ( int b = 1; b < 8; ++b ) { Cs& c = S.cmouse[b]; if ( c.tap ) { if ( c.seen >= 1 ) { sink.setMouse(b, false); c.tap = false; } else { c.seen++; } } }
+		for ( auto& kv : S.ckey )
+		{
+			Cs& c = kv.second;
+			if ( c.tap ) { if ( c.seen >= 1 ) { sink.setKey(c.sym, false); c.tap = false; } else { c.seen++; } }
+			else if ( c.held ) { c.ticks = 1; }
+		}
+		for ( int b = 1; b < 8; ++b )
+		{
+			Cs& c = S.cmouse[b];
+			if ( c.tap ) { if ( c.seen >= 1 ) { sink.setMouse(b, false); c.tap = false; } else { c.seen++; } }
+			else if ( c.held ) { c.ticks = 1; }
+		}
 		for ( int p = 0; p < kMaxPlayers; ++p )
 		{
 			if ( !inGame(p) ) { S.pl[p].last = TickRecord(); S.pl[p].last.tick = S.tick; continue; }
