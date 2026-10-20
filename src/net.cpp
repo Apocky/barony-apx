@@ -6955,6 +6955,7 @@ void clientHandleMessages(Uint32 framerateBreakInterval)
 static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 	// apx BX1: a client's player-built voxel model (stored, then relayed to the other clients)
 	{'LOOK', [](){ apx::vox::looknet::serverRecv(); }},
+	{'LKRQ', [](){ apx::vox::looknet::serverRecvRequest(); }},
 
 	// apx F6: an owner client's Formbook
 	{'FBOK', [](){ apxPartsFormbookRecv(net_packet->data, net_packet->len); }},

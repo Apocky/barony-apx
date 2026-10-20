@@ -101,6 +101,44 @@ namespace vis
 			}
 			if ( t == connectedAt + 600 ) { done = true; printlog("[apx-vox] looktest host done"); mainloop = 0; }
 		}
+		else if ( !strcmp(role, "latehost") ) // the clients miss the announce (APX_LOOK_NOANNOUNCE=1, as a later joiner does), then one is handed the sword
+		{
+			static Item* made = nullptr;
+			static int connectedAt = -1;
+			if ( t == 60 )
+			{
+				int blade = -1, iron = -1;
+				for ( int i = 0; i < 64 && blade < 0; ++i ) { const char* n = apxPartsSlotName(i); if ( n && !strcmp(n, "Blade") ) { blade = i; } }
+				for ( int i = 0; i < 64 && iron < 0; ++i ) { const char* n = apxPartsMaterialName(i); if ( n && !strcmp(n, "iron") ) { iron = i; } }
+				apxPartsLedgerCredit(0, iron, 100000);
+				apx::vox::builder::open(0, blade << 8 | iron);
+				if ( auto* s = apx::vox::builder::session(0) ) { for ( int z = 9; z < s->model.sz; ++z ) { s->add(3, z); if ( z < s->model.sz - 2 ) { s->add(2, z); s->add(4, z); } } }
+				std::string why;
+				made = apx::vox::builder::build(0, why);
+				printlog("[apx-vox] looktest latehost: build %s, look %08x, announced %d", made ? "made" : why.c_str(), made && made->apx.nParts ? made->apx.parts[0].look : 0u, apx::vox::looknet::stats().announced);
+			}
+			if ( connectedAt < 0 ) { if ( multiplayer == SERVER && !client_disconnected[1] && players[1] && players[1]->entity ) { connectedAt = t; } return; }
+			if ( t == connectedAt + 150 && made ) { serverSendItemToPickupAndEquip(1, made); printlog("[apx-vox] looktest latehost: sword handed to player 1"); }
+			if ( t == connectedAt + 900 ) { done = true; const auto& st = apx::vox::looknet::stats(); printlog("[apx-vox] looktest latehost done: served %d, unknown %d", st.served, st.unknown); mainloop = 0; }
+		}
+		else if ( !strcmp(role, "lateclient") )
+		{
+			// the weapon draw asks for the look; call it here too so the test does not depend on a rendered frame
+			if ( stats[clientnum]->weapon ) { apx::vox::heldModel(stats[clientnum]->weapon, true, itemModel(stats[clientnum]->weapon)); }
+			const auto& st = apx::vox::looknet::stats();
+			const auto& hs = apx::vox::stats();
+			static int armedAt = -1; // the tick the handed sword (a weapon with a look) is equipped
+			const Item* w = stats[clientnum]->weapon;
+			if ( armedAt < 0 && w && w->apx.nParts && w->apx.parts[0].look ) { armedAt = t; }
+			if ( (armedAt >= 0 && (st.received > 0 || st.rejected > 0 || t > armedAt + 2000)) || t > 6000 )
+			{
+				const int after = stats[clientnum]->weapon ? apx::vox::heldModel(stats[clientnum]->weapon, true, itemModel(stats[clientnum]->weapon)) : -1;
+				done = true;
+				printlog("[apx-vox] looktest lateclient: weapon %s (type %d, parts %d, look0 %08x), requested %d, received %d, rejected %d, missing %d, recomposed %d, usedAfter %d, model %d, after %d ticks",
+					stats[clientnum]->weapon ? "yes" : "no", stats[clientnum]->weapon ? (int)stats[clientnum]->weapon->type : -1, stats[clientnum]->weapon ? (int)stats[clientnum]->weapon->apx.nParts : 0, stats[clientnum]->weapon && stats[clientnum]->weapon->apx.nParts ? stats[clientnum]->weapon->apx.parts[0].look : 0u, st.requested, st.received, st.rejected, hs.looksMissing, hs.recomposed, apx::vox::stats().looksUsed, after, t);
+				mainloop = 0;
+			}
+		}
 		else if ( !strcmp(role, "client") )
 		{
 			const auto& st = apx::vox::looknet::stats();
