@@ -103,7 +103,14 @@ static apx_logic::Row logicRow(const Item& it, int player, int priceMode)
 	r.kinds = kindsOf(it);
 	r.icon = getItemSpritePath(player, const_cast<Item&>(it));
 	apx_bench::PartRow comp;
-	if ( apx_bench::provider().componentOf(&it, comp) ) { r.rarity = std::max(0, std::min(5, comp.rarity)); }
+	const auto& pv = apx_bench::provider();
+	if ( pv.componentOf(&it, comp) ) { r.rarity = std::max(0, std::min(5, comp.rarity)); }
+	else
+	{
+		for ( auto& p : pv.parts(&it) ) { r.rarity = std::max(r.rarity, std::max(0, std::min(5, p.rarity))); } // an assembly: its best component
+	}
+	std::string gen = pv.displayName(&it);
+	if ( !gen.empty() ) { r.name = gen + (it.count > 1 ? " x" + std::to_string(it.count) : ""); }
 	return r;
 }
 
@@ -404,13 +411,13 @@ bool activateSelected(int player)
 
 void setBenchTab(int player, int tab)
 {
-	g_benchTab[player] = ((tab % 6) + 6) % 6;
+	g_benchTab[player] = ((tab % 7) + 7) % 7;
 	g_benchSel[player] = 0; g_benchScroll[player] = 0;
 }
 
 void benchTab(int player, int d)
 {
-	g_benchTab[player] = (g_benchTab[player] + 6 + d) % 6;
+	g_benchTab[player] = (g_benchTab[player] + 7 + d) % 7;
 	g_benchSel[player] = 0; g_benchScroll[player] = 0;
 	++g_view[player].benchTabSwitches;
 }
@@ -507,7 +514,7 @@ static Frame* makeTip(Frame* parent, int player)
 	tip->setOwner(player);
 	tip->setColor(makeColor(20, 16, 12, 240));
 	tip->addImage(SDL_Rect{ 8, 8, 64, 64 }, makeColor(255, 255, 255, 255), "", "big");
-	for ( int i = 0; i < 14; ++i ) { char n[16]; snprintf(n, sizeof(n), "line %d", i); label(tip, n, 128, Field::justify_t::LEFT); }
+	for ( int i = 0; i < 18; ++i ) { char n[16]; snprintf(n, sizeof(n), "line %d", i); label(tip, n, 128, Field::justify_t::LEFT); }
 	return tip;
 }
 
@@ -724,7 +731,7 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 	auto r = logicRow(*it, player, openedChest[player] || !players[player]->shopGUI.bOpen ? 0 : 0);
 	std::vector<std::pair<std::string, Uint32>> L;
 	const Uint32 W = makeColor(235, 235, 235, 255), G = makeColor(170, 160, 140, 255);
-	L.push_back({ r.name, makeColor(255, 220, 120, 255) });
+	L.push_back({ r.name, r.rarity >= 0 ? rarityColor(r.rarity) : makeColor(255, 220, 120, 255) });
 	L.push_back({ std::string(kindName(r.kind)) + (r.equipped ? "  (equipped)" : ""), G });
 	L.push_back({ "Weight " + massText(r.mass) + (r.value >= 0 ? "   Value " + std::to_string(r.value) + " g" : ""), W });
 	std::string delta;
@@ -744,11 +751,19 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 	if ( !r.kinds.empty() ) { L.push_back({ "Damage kinds: " + r.kinds, W }); }
 	// D86: a component item shows its own rarity and affixes; an assembled item lists its components
 	apx_bench::PartRow self;
-	int affixLines = 0;
+	int affixLines = 0, unknownLines = 0;
 	if ( apx_bench::provider().componentOf(it, self) )
 	{
-		L.push_back({ std::string("Component, ") + apx_logic::rarityName(self.rarity) + (self.material.empty() ? "" : " " + self.material), rarityColor(self.rarity) });
-		for ( auto& a : self.affixes ) { L.push_back({ "  " + a, makeColor(180, 200, 255, 255) }); ++affixLines; }
+		L.push_back({ std::string("Component, ") + apx_logic::rarityName(self.rarity) + (self.material.empty() ? "" : " " + self.material)
+			+ (self.maker.empty() ? "" : ", " + self.maker), rarityColor(self.rarity) });
+		if ( !self.affixesKnown && !self.affixes.empty() ) { L.push_back({ "  affixes: unknown", G }); ++unknownLines; }
+		else { for ( auto& a : self.affixes ) { L.push_back({ "  " + a, makeColor(180, 200, 255, 255) }); ++affixLines; } }
+		if ( !self.fits.empty() )
+		{
+			std::string f;
+			for ( auto& x : self.fits ) { f += (f.empty() ? "" : ", ") + x; }
+			L.push_back({ "  fits: " + f, G });
+		}
 	}
 	auto parts = apx_bench::provider().parts(it);
 	if ( !parts.empty() )
@@ -757,8 +772,10 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 		for ( auto& p : parts )
 		{
 			std::string nm = p.name.empty() ? p.material : p.name;
-			L.push_back({ "  " + p.slotName + ": " + nm + "  q" + std::to_string(p.quality), rarityColor(p.rarity) });
-			if ( !p.affixes.empty() )
+			int integ = (int)(p.integrity * 100.f + 0.5f);
+			L.push_back({ "  " + p.slotName + ": " + nm + "  q" + std::to_string(p.quality) + (integ < 100 ? "  " + std::to_string(integ) + "%" : ""), rarityColor(p.rarity) });
+			if ( !p.affixes.empty() && !p.affixesKnown ) { L.push_back({ "    affixes: unknown", G }); ++unknownLines; }
+			else if ( !p.affixes.empty() )
 			{
 				std::string ax;
 				for ( auto& a : p.affixes ) { ax += (ax.empty() ? "" : ", ") + a; }
@@ -768,11 +785,11 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 		}
 	}
 	const int w = TIP_W, top = 80;
-	int h = top + (int)std::min<size_t>(L.size() - 2, 12) * ROW_H + 10;
+	int h = top + (int)std::min<size_t>(L.size() - 2, 16) * ROW_H + 10;
 	tip->setDisabled(false);
 	tip->setSize(SDL_Rect{ x, y, w, h });
 	if ( auto* big = tip->findImage("big") ) { big->path = r.icon; big->disabled = r.icon.empty(); big->pos = SDL_Rect{ 8, 8, 64, 64 }; }
-	for ( int i = 0; i < 14; ++i )
+	for ( int i = 0; i < 18; ++i )
 	{
 		char n[16]; snprintf(n, sizeof(n), "line %d", i);
 		Field* f = tip->findField(n);
@@ -788,6 +805,9 @@ static int drawTip(int player, Frame* tip, Item* it, int x, int y)
 	vs.tipLines = (int)L.size();
 	vs.tipDelta = delta;
 	vs.tipAffixLines = affixLines;
+	vs.tipUnknownLines = unknownLines;
+	vs.tipName = r.name;
+	vs.tipRarity = r.rarity;
 	vs.tipParts = (int)parts.size();
 	{
 		Item* eqw = r.power >= 0 ? equippedFor(player, *it, r.slot) : nullptr;
