@@ -27,7 +27,7 @@ def main():
             outs.append(f"{{ {o['pm']}, {q(s.get('kind', ''))}, {s.get('n', 0)}, {q(s.get('tier', ''))}, {{ {items} }}, {q(o.get('yield', ''))} }}")
         out.append(f"\t{{ {q(p['id'])}, {q(m['behavior'])}, {ftype}, {q(coll)}, {q(p['verb'])}, {q(p.get('label', ''))}, "
                    f"{par.get('ticks', 0)}, {par.get('heal_every', 0)}, {par.get('hunger', 0)}, {par.get('encounter_pm', 0)}, "
-                   f"{par.get('encounter_max', 0)}, {par.get('regen_mult', 0)}, {{ {', '.join(outs)} }} }},")
+                   f"{par.get('encounter_max', 0)}, {par.get('regen_mult', 0)}, {par.get('reach', 28)}, {{ {', '.join(outs)} }} }},")
     out.append("};")
     (ROOT / "src/apx/props_table.inc").write_text("\n".join(out) + "\n", encoding="ascii", newline="\n")
     print(f"{len(doc['props'])} props")

@@ -25,6 +25,7 @@ namespace props
 		int furnitureType;          // -1 any furniture (on destroy), -2 not furniture
 		std::string collider, verb, label;
 		int ticks, healEvery, hunger, encounterPm, encounterMax, regenMult;
+		int reach;                  // apx::interact: max distance from the player's centre to the prop's edge (units, 16 per tile)
 		std::vector<Outcome> outcomes;
 	};
 

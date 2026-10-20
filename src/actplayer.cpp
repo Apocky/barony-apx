@@ -40,6 +40,7 @@
 #endif
 #include "apx_combat.hpp"
 #include "apx/props.hpp"
+#include "apx/interact/interact.hpp" // apx D93: what Use acts on
 #include "apx/hollow_probe.hpp"
 #include "apx/move/move.hpp" // apx M1: our own player movement (D93)
 
@@ -9774,6 +9775,7 @@ void actPlayer(Entity* my)
 					}
 
 					selectedEntity[PLAYER_NUM] = entityClicked(&clickedOnGUI, false, PLAYER_NUM, clickType); // using objects
+					if ( !clickedOnGUI ) { apx::interact::afterOldClick(PLAYER_NUM, selectedEntity[PLAYER_NUM]); } // apx D93: props are apx::interact's (reach, colliders, our prompt)
 					if ( !selectedEntity[PLAYER_NUM] && !clickedOnGUI )
 					{
 						if ( clickType == ENTITY_CLICK_USE )

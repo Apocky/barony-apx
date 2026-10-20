@@ -1205,6 +1205,16 @@ namespace combat
 		if ( gEnabled && players[p]->isLocalPlayer() ) { apx::tick(p, 0, false, stats[p]->defending); } // stamina: regen, block drain, net (was the HUD's)
 		if ( blockOwned(p) && stats[p]->HP > 0 && !players[p]->movement.isPlayerSwimming() && me->isMobile() ) { defenseTick(p, f, rec, me); } else { f.blocking = false; f.blockT = -1; f.dodgeLeft = 0; }
 		const bool own = ownsMelee(p) && stats[p]->HP > 0;
+		if ( rec.pressCount[in::B_Attack] > 0 && f.st == State::Idle ) // D90: a swing press that the core will not act on says why
+		{
+			const bool swimming = players[p]->movement.isPlayerSwimming() || me->skill[13] != 0;
+			if ( !own || swimming || !me->isMobile() || !apx::combat_glue::canAttack(me) )
+			{
+				printlog("[apx-combat] attack press ignored player=%d own=%d (local=%d shapeshift=%d cast=%d family=%d hp=%d) swimming=%d (pool=%d skill13=%d) mobile=%d can_attack=%d",
+					p, (int)own, (int)players[p]->isLocalPlayer(), (int)(me->effectShapeshift != NOTHING), (int)cast_animation[p].active, (int)famOf(stats[p]), (int)stats[p]->HP,
+					(int)swimming, (int)players[p]->movement.isPlayerSwimming(), (int)me->skill[13], (int)me->isMobile(), (int)apx::combat_glue::canAttack(me));
+			}
+		}
 		if ( !own )
 		{
 			if ( f.st != State::Idle ) { sta.swingWhileBlock = false; resetSwing(f); }

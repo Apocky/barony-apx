@@ -1,0 +1,34 @@
+# the chair straight ahead (APX_PROPS_QA=chair): real swings (left click through apx::in and the combat core) until it breaks; the oak lands in the F6 pouch
+wait 6000
+console /enablecheats
+wait 300
+console /killmonsters
+wait 800
+console /killmonsters
+wait 500
+look 0 -60
+wait 500
+shot a_aim_prompt
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+shot b_hit
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 900
+click 640 360
+wait 1500
+shot c_after
+quit

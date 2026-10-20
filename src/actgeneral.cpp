@@ -25,6 +25,7 @@
 #include "mod_tools.hpp"
 #include "paths.hpp"
 #include "apx/props.hpp"
+#include "apx/interact/interact.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -1944,6 +1945,7 @@ void actColliderDecoration(Entity* my)
 	}
 
 	my->removeLightField();
+	apx::interact::colliderLight(my); // apx D93: a lit candelabra glows, a snuffed one is dark
 	if ( my->flags[BURNABLE] && my->flags[BURNING] )
 	{
 		my->light = addLight(my->x / 16, my->y / 16, "object_burning");

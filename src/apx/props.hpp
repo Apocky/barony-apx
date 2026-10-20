@@ -69,9 +69,11 @@ namespace props
 				if ( forUse && !destroyRow && p.furnitureType == e->furnitureType ) return &p;
 				if ( !forUse && destroyRow && (p.furnitureType == e->furnitureType || p.furnitureType == -1) ) return &p;
 			}
-			else if ( p.behavior == "collider" && e->behavior == &actColliderDecoration && !forUse )
+			else if ( p.behavior == "collider" && e->behavior == &actColliderDecoration )
 			{
-				if ( EditorEntityData_t::getColliderIndexFromName(p.collider) == e->colliderDamageTypes && e->colliderDamageTypes != 0 ) return &p;
+				// destroy: the "break" row of this collider; use (apx::interact): the row with a label
+				if ( (forUse ? !p.label.empty() : p.verb == "break")
+					&& EditorEntityData_t::getColliderIndexFromName(p.collider) == e->colliderDamageTypes && e->colliderDamageTypes != 0 ) return &p;
 			}
 		}
 		return nullptr;
@@ -108,7 +110,7 @@ namespace props
 		int encounterPm = 0, encounterMax = 0, hunger = 0;
 	};
 	inline PlayerState& ps(int pn) { static PlayerState s[MAXPLAYERS]; return s[std::max(0, std::min(MAXPLAYERS - 1, pn))]; }
-	struct Counters { int rests = 0, restsDone = 0, restsBroken = 0, healed = 0, sits = 0, sitTicks = 0, benches = 0, reads = 0, breaks = 0, skeletons = 0, skeletonsFodder = 0, trinkets = 0, scrap = 0, nothing = 0, yields = 0, encounters = 0, yieldGrams = 0, flips = 0, torchesTaken = 0, torchesRelit = 0, encounterKinds = 0; };
+	struct Counters { int rests = 0, restsDone = 0, restsBroken = 0, healed = 0, sits = 0, sitTicks = 0, benches = 0, reads = 0, breaks = 0, skeletons = 0, skeletonsFodder = 0, trinkets = 0, scrap = 0, nothing = 0, yields = 0, encounters = 0, yieldGrams = 0, flips = 0, torchesTaken = 0, torchesRelit = 0, encounterKinds = 0, searches = 0, snuffs = 0, rattles = 0; };
 	inline Counters& C() { static Counters c; return c; }
 	inline int& fieldBenchUntil(int pn) { static int t[MAXPLAYERS] = {}; return t[std::max(0, std::min(MAXPLAYERS - 1, pn))]; }
 
@@ -209,10 +211,10 @@ namespace props
 		return false;
 	}
 
-	inline void giveOutcome(const PropRow& p, Entity* e)
+	inline void giveOutcome(const PropRow& p, Entity* e, bool asBreak = true)
 	{
 		int k = rollOutcome(p.outcomes, (int)(local_rng.rand() % 1000));
-		C().breaks++;
+		if ( asBreak ) C().breaks++;
 		if ( k < 0 ) { C().nothing++; return; }
 		const Outcome& o = p.outcomes[k];
 		if ( !o.spawnKind.empty() )
@@ -371,7 +373,25 @@ namespace props
 			qaDone = currentlevel;
 			// an arc 24 units away: chair at -50 deg, table straight ahead, bed at +50 deg (relative to the view),
 			// the bone cage behind; the tester turns to each without walking into furniture
-			auto at = [&](real_t deg, int type) {
+			// APX_PROPS_QA=name[:d]: that prop straight ahead, centre distance d units (default per prop). Names: chair table bed
+			// bunkbed podium torch (dark sconce) cage candelabra maiden; 1 = chair, table, bed in an arc and the cage behind.
+			// Colliders sit on tile centres, so the player is moved along the line to the prop to make the centre distance d.
+			if ( std::getenv("APX_PROPS_QA_AXE") ) // setup for swing tests: an iron axe in hand (the combat core needs a weapon family)
+			{
+				st->weapon = nullptr; st->shield = nullptr;
+				Item* axe = newItem(IRON_AXE, SERVICABLE, 0, 1, 0, true, &st->inventory);
+				equipItem(axe, &st->weapon, pn, false);
+				printlog("[apx-props] qa equipped iron axe, family %d", (int)apx::familyOf(st));
+			}
+			{
+				const int tx = std::min(std::max((int)(me->x / 16), 0), (int)map.width - 1), ty = std::min(std::max((int)(me->y / 16), 0), (int)map.height - 1);
+				const int ti = map.tiles[ty * MAPLAYERS + tx * MAPLAYERS * map.height];
+				printlog("[apx-props] qa floor under the player: tile %d at %d,%d swimming=%d lava=%d player_swimming=%d (a swim tile blocks swings)", ti, tx, ty, (int)swimmingtiles[ti], (int)lavatiles[ti], (int)players[pn]->movement.isPlayerSwimming());
+			}
+			std::string w = qa;
+			real_t wantD = -1;
+			if ( size_t c = w.find(':'); c != std::string::npos ) { wantD = std::atof(w.c_str() + c + 1); w = w.substr(0, c); }
+			auto at = [&](real_t deg, int type, real_t d) {
 				real_t a = me->yaw + deg * PI / 180.0, fx = std::cos(a), fy = std::sin(a);
 				Entity* f = newEntity(0, 1, map.entities, nullptr);
 				// as maps.cpp builds them (table 271 5x4 focalz -3, chair 272 2x2 -5, bed 627 5x4); z 8 = on the floor
@@ -379,25 +399,64 @@ namespace props
 				f->sprite = type == FURNITURE_TABLE ? 271 : type == FURNITURE_CHAIR ? 272 : 627;
 				f->focalz = type == FURNITURE_CHAIR ? -5 : -3;
 				f->sizex = type == FURNITURE_CHAIR ? 2 : 5; f->sizey = type == FURNITURE_CHAIR ? 2 : 4;
-				const real_t r = type == FURNITURE_CHAIR ? 14 : 18; // inside Barony's 24-unit tooltip reach (player.cpp tooltipInRange)
+				const real_t r = d > 0 ? d : type == FURNITURE_CHAIR ? 14 : 18;
 				f->x = me->x + fx * r; f->y = me->y + fy * r;
-				if ( type == FURNITURE_BED ) f->z = 4;
-				printlog("[apx-props] qa placed furniture type %d at %.0f,%.0f", type, f->x, f->y);
+				if ( type == FURNITURE_BED || type == FURNITURE_BUNKBED ) f->z = 4;
+				printlog("[apx-props] qa placed furniture type %d at %.0f,%.0f centre distance %.1f", type, f->x, f->y, r);
 			};
-			// APX_PROPS_QA=chair|table|bed|cage: that one prop straight ahead (a tester aims ahead and uses it);
-			// APX_PROPS_QA=1: chair, table, bed in an arc and the cage behind
-			const std::string w = qa;
-			if ( w == "chair" ) at(0, FURNITURE_CHAIR);
-			else if ( w == "table" ) at(0, FURNITURE_TABLE);
-			else if ( w == "bed" ) at(0, FURNITURE_BED);
-			else if ( w != "cage" ) { at(-50, FURNITURE_CHAIR); at(0, FURNITURE_TABLE); at(50, FURNITURE_BED); }
-			if ( w == "cage" || w == "1" )
+			if ( w == "chair" ) at(0, FURNITURE_CHAIR, wantD);
+			else if ( w == "table" ) at(0, FURNITURE_TABLE, wantD);
+			else if ( w == "bed" ) at(0, FURNITURE_BED, wantD);
+			else if ( w == "bunkbed" ) at(0, FURNITURE_BUNKBED, wantD);
+			else if ( w == "podium" ) at(0, FURNITURE_PODIUM, wantD);
+			else if ( w == "torch" )
 			{
-				int idx = EditorEntityData_t::getColliderIndexFromName("hanging_cage_skel");
-				real_t d = w == "cage" ? 32 : -20;
-				Entity* c = Entity::createBreakableCollider(idx, me->x + std::cos(me->yaw) * d, me->y + std::sin(me->yaw) * d, nullptr);
-				if ( c ) printlog("[apx-props] qa placed bone cage at %.0f,%.0f", c->x, c->y);
-				else printlog("[apx-props] qa could not place a bone cage");
+				// a sconce sits on a wall (actTorch removes itself without one): the first wall along the view, the torch
+				// 2 units off it facing the player; the player is then moved along that line to centre distance wantD
+				const real_t cx = std::cos(me->yaw), cy = std::sin(me->yaw);
+				real_t hit = -1;
+				for ( real_t s = 4; s < 200 && hit < 0; s += 1 )
+				{
+					int tx = (int)((me->x + cx * s)) >> 4, ty = (int)((me->y + cy * s)) >> 4;
+					if ( tx < 0 || ty < 0 || tx >= (int)map.width || ty >= (int)map.height ) break;
+					if ( map.tiles[OBSTACLELAYER + ty * MAPLAYERS + tx * MAPLAYERS * map.height] ) hit = s;
+				}
+				if ( hit < 0 ) printlog("[apx-props] qa found no wall ahead for the sconce");
+				else
+				{
+					Entity* f = newEntity(3, 1, map.entities, nullptr);
+					f->behavior = &actTorch; f->z = -1; f->flags[PASSABLE] = true; f->yaw = me->yaw + PI;
+					f->x = me->x + cx * (hit - 2); f->y = me->y + cy * (hit - 2);
+					const real_t r = wantD > 0 ? wantD : hit - 2;
+					me->x = f->x - cx * r; me->y = f->y - cy * r;
+					darkTorches().insert(f->getUID());
+					printlog("[apx-props] qa placed dark sconce uid=%u at %.0f,%.0f centre distance %.1f", f->getUID(), f->x, f->y, r);
+				}
+			}
+			else if ( w == "1" ) { at(-50, FURNITURE_CHAIR, -1); at(0, FURNITURE_TABLE, -1); at(50, FURNITURE_BED, -1); }
+			const char* cname = w == "cage" || w == "1" ? "hanging_cage_skel" : w == "candelabra" ? "candelabra" : w == "maiden" ? "iron_maiden" : nullptr;
+			if ( cname )
+			{
+				int idx = EditorEntityData_t::getColliderIndexFromName(cname);
+				// the first free floor tile ahead (farthest first when a distance is wanted; behind for "1"), then beside it
+				Entity* c = nullptr;
+				const real_t dir = w == "1" ? -1 : 1;
+				const int k0 = wantD > 0 ? 3 : 1, k1 = wantD > 0 ? 1 : 3, ks = wantD > 0 ? -1 : 1;
+				for ( int k = k0; k != k1 + ks && !c; k += ks )
+					for ( int side : { 0, 1, -1 } )
+					{
+						real_t a = me->yaw + side * PI / 2, dd = 16.0 * k;
+						real_t px = me->x + std::cos(me->yaw) * dir * dd + (side ? std::cos(a) * 16 : 0), py = me->y + std::sin(me->yaw) * dir * dd + (side ? std::sin(a) * 16 : 0);
+						if ( (c = Entity::createBreakableCollider(idx, px, py, nullptr)) ) break;
+					}
+				if ( c && w != "1" )
+				{
+					const real_t ang = std::atan2(c->y - me->y, c->x - me->x), d0 = std::hypot(c->x - me->x, c->y - me->y);
+					if ( wantD > 0 && wantD < d0 ) { me->x = c->x - std::cos(ang) * wantD; me->y = c->y - std::sin(ang) * wantD; } // setup: stand wantD from its centre on the same line
+					me->yaw = ang; // setup: face it, the tester only uses or swings
+				}
+				if ( c ) printlog("[apx-props] qa placed %s uid=%u at %.0f,%.0f centre distance %.1f, player faces it (yaw %.2f)", cname, c->getUID(), c->x, c->y, std::hypot(c->x - me->x, c->y - me->y), me->yaw);
+				else printlog("[apx-props] qa could not place %s", cname);
 			}
 		}
 		static const char* probe = std::getenv("APX_PROPS_PROBE");
