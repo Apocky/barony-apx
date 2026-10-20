@@ -33,8 +33,12 @@ std::vector<apx_bench::PartRow> benchParts(const Item* item)
 		r.rarity = p.rarity;
 		r.massUnits = (int32_t)(apxPartsPartMassGrams(item, k) / 100);
 		r.integrity = p.integrity / 255.f;
-		r.name = apxPartsPartName(item, k);
-		for ( int a = 0; a < apxPartsAffixCount(item, k); ++a ) { r.affixes.push_back(apxPartsAffixWord(item, k, a)); }
+		r.affixesKnown = item->identified; // 05b s4: "unknown" until identified
+		r.name = r.affixesKnown || !apxPartsIsComponent(item) ? apxPartsPartName(item, k) : apxPartsComponentName(item);
+		if ( !r.affixesKnown ) { r.name = std::string(apxPartsMaterialName(p.material)) + " " + apxPartsSlotName(p.slot); }
+		for ( int a = 0; a < apxPartsAffixCount(item, k); ++a ) { r.affixes.push_back(r.affixesKnown ? apxPartsAffixWord(item, k, a) : "unknown"); }
+		r.maker = p.maker ? "maker " + std::to_string((int)p.maker) : ""; // C9: makers' names arrive with their tendencies
+		if ( apxPartsIsComponent(item) ) { r.fits = apxPartsFits(item); }
 		rows.push_back(r);
 	}
 	return rows;
@@ -82,6 +86,7 @@ std::vector<apx_bench::SwapSlot> benchSwapSlots(int player, const Item* item, in
 		if ( !apxPartsSwapAllowed(item, k) ) { continue; }
 		apx_bench::SwapSlot s;
 		s.partIndex = k; s.name = apxPartsSlotName(item->apx.parts[k].slot);
+		s.quick = apxPartsIsQuickSlot(item->apx.parts[k].slot);
 		s.candidateUids = apxPartsComponentsForSlot(player, item->apx.parts[k].slot);
 		rows.push_back(s);
 	}
@@ -89,6 +94,33 @@ std::vector<apx_bench::SwapSlot> benchSwapSlots(int player, const Item* item, in
 }
 bool benchSwapPart(int player, Item* item, int part, uint32_t uid, std::string& why) { return apxPartsSwap(player, item, part, uid, why); }
 
+std::string benchDisplayName(const Item* item) { return apxPartsDisplayName(item); }
+bool benchAssemblePreview(int player, uint32_t form, int, const std::vector<std::pair<int, uint32_t>>& slotUid, int& power, int& cap, std::string& why)
+{
+	return apxPartsAssemblePreview(player, (int)form, slotUid, power, cap, why);
+}
+// 05b s5.8b per-component repair: one row per worn part; cost = grams of its own material for the lost
+// integrity (part mass x lost fraction, ASSUMED until BP1's per-part rule), from the pouch
+std::vector<apx_bench::RepairOption> benchRepairOptions(int player, const Item* item, int)
+{
+	std::vector<apx_bench::RepairOption> rows;
+	if ( !item ) { return rows; }
+	for ( int k = 0; k < item->apx.nParts; ++k )
+	{
+		const ApxPart& p = item->apx.parts[k];
+		if ( p.integrity >= 255 ) { continue; }
+		apx_bench::RepairOption o;
+		o.partIndex = k;
+		o.name = apxPartsPartName(item, k);
+		o.integrity = p.integrity / 255.f;
+		const long long g = std::max(1LL, (long long)apxPartsPartMassGrams(item, k) * (255 - p.integrity) / 255);
+		o.cost.push_back({ p.material, apxPartsMaterialName(p.material), g });
+		o.affordable = apxPartsLedgerMaterialGrams(player, p.material) >= g;
+		rows.push_back(o);
+	}
+	return rows;
+}
+bool benchRepairPart(int player, Item* item, int part, std::string& why) { return apxPartsRepairPart(player, item, part, why); }
 int benchStation = 4; // the station of the last makeOptions call (make carries no station); ASSUMED workbench
 // C5 Make (05b 5.8): option id = slot << 8 | material; slots of the known Forms x materials in the pouch
 std::vector<apx_bench::MakeOption> benchMakeOptions(int player, int station)
@@ -188,6 +220,10 @@ void apxPartsBenchRegister()
 	p.swapPart = &benchSwapPart;
 	p.makeOptions = &benchMakeOptions;
 	p.make = &benchMake;
+	p.displayName = &benchDisplayName;
+	p.assemblePreview = &benchAssemblePreview;
+	p.repairOptions = &benchRepairOptions;
+	p.repairPart = &benchRepairPart;
 	p.repairCost = &apxPartsRepairCost;
 	p.repair = &apxPartsRepair;
 	p.repairPaid = &apxPartsRepairPaid;

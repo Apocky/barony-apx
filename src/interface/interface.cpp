@@ -10752,7 +10752,7 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	int magic = 0;
 	tinkeringGetItemValue(item, &metal, &magic);
 	int apxAura = 0;
-	apxPartsSalvageValue(player, item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5)
+	const bool apxHandled = apxPartsSalvageValue(player, item, &metal, &magic, &apxAura); // apx F6: an item with parts yields by its parts (05 section 5); D85: grams to the pouch, no scrap items
 	bool didCraft = false;
 	int skillLVL = 0;
 	int bonusMetalScrap = 0;
@@ -10915,6 +10915,7 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 		}
 	}
 
+	if ( apxHandled ) { didCraft = true; } // apx F6 D85: salvaged into the pouch (metal/magic are 0)
 	if ( didCraft && apxAura > 0 ) // apx F6 C6: aura crystals, each holding its affix (05b 5.9)
 	{
 		apxPartsGivePendingAura(player);
@@ -11275,6 +11276,7 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 0, 1); } // apx F6 D85: then the pouch
 		}
 		for ( int c = 0; c < magic; ++c )
 		{
@@ -11283,6 +11285,7 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 1, 1); } // apx F6 D85: then the pouch
 		}
 		if ( tinkeringKitRollIfShouldBreak() )
 		{
@@ -11365,6 +11368,7 @@ int GenericGUIMenu::tinkeringCountScrapTotal(int type)
 			}
 		}
 	}
+	count += apxPartsPouchScrapUnits(gui_player, type == TOOL_METAL_SCRAP ? 0 : 1); // apx F6 D85: pouch grams count as scrap
 	return count;
 }
 
@@ -12927,6 +12931,7 @@ bool GenericGUIMenu::tinkeringConsumeMaterialsForRepair(Item* item, bool upgradi
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 0, 1); } // apx F6 D85: then the pouch
 		}
 		for ( int c = 0; c < magic; ++c )
 		{
@@ -12935,6 +12940,7 @@ bool GenericGUIMenu::tinkeringConsumeMaterialsForRepair(Item* item, bool upgradi
 			{
 				consumeItem(item, gui_player);
 			}
+			else { apxPartsPouchTakeScrap(gui_player, 1, 1); } // apx F6 D85: then the pouch
 		}
 		if ( tinkeringKitRollIfShouldBreak() && item != tinkeringKitItem )
 		{

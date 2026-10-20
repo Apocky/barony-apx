@@ -360,10 +360,17 @@ void apxPartsFormbookRecv(const uint8_t* d, int len)
 	printlog("apxparts: formbook recv player %d forms %d hash %016llx\n", player, n, (unsigned long long)apxPartsFormbookHash(player));
 }
 
-// Salvage settlement: every returned gram goes into the player's material ledger (no mass is lost to
-// rounding or to materials without a Barony stand-in); whole stand-in units (metal scrap, magic scrap,
-// salvage.json grams each) are paid out of it. The ledger is saved in the sidecar ("ml" rows).
+// Salvage settlement (D85): every returned gram goes into the player's material pouch and stays there as
+// grams; salvage never pays scrap items out (APX_POUCH_SCRAP_PAYOUT=1 = the old payout, a control that
+// must fail the pouch gate). Barony's tinkering spends pouch metal/magic grams as scrap units instead
+// (apxPartsPouchScrapUnits / apxPartsPouchTakeScrap, salvage.json grams per unit). Saved in "ml" rows.
 namespace {
+int scrapGramsPer(int cls)
+{
+	int per[2] = { 400, 200 };
+	for ( auto& s : db().salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
+	return per[cls & 1];
+}
 void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& magicUnits)
 {
 	const apxparts::DB& d = db();
@@ -371,6 +378,7 @@ void settle(int player, const apxparts::SalvageResult& r, int& metalUnits, int& 
 	if ( player < 0 || player >= MAXPLAYERS ) { return; }
 	for ( auto& mg : r.grams ) { if ( mg.first >= 0 && mg.first < MAX_MATS ) { ledger[player][mg.first] += (uint32_t)std::max(0, mg.second); } }
 	apxPartsCounters.salvage_grams_out += r.massOut;
+	if ( !(getenv("APX_POUCH_SCRAP_PAYOUT") && *getenv("APX_POUCH_SCRAP_PAYOUT") == '1') ) { return; }
 	int per[2] = { 400, 200 };
 	for ( auto& s : d.salvage.standIns ) { if ( s.cls == "metal" ) { per[0] = std::max(1, s.grams); } else if ( s.cls == "magic" ) { per[1] = std::max(1, s.grams); } }
 	for ( int k = 0; k < 2; ++k )
@@ -532,6 +540,52 @@ bool apxPartsInfuse(int player, Item* item, int part, Uint32 crystalUid, int sta
 	++apxPartsCounters.infused;
 	printlog("apxparts: infuse player %d part %d affix %d -> %d affixes blob %016llx\n", player, part, (int)p.affix[p.nAffix - 1], (int)p.nAffix,
 		(unsigned long long)apxparts::fnv1a64(&item->apx, sizeof(item->apx)));
+	return true;
+}
+
+// Barony tinkering on the pouch (D85): metal/magic class grams count as scrap units and are spent first
+// from real scrap items, then from the pouch (interface.cpp tinkeringCountScrapTotal / the consume loops)
+int apxPartsPouchScrapUnits(int player, int cls)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !apxPartsEnabled() ) { return 0; }
+	const char* name = cls == 0 ? "metal" : "magic";
+	long long g = 0;
+	for ( size_t m = 0; m < db().materials.size() && m < (size_t)MAX_MATS; ++m ) { if ( db().materials[m].salvageClass == name ) { g += ledger[player][m]; } }
+	return (int)(g / scrapGramsPer(cls));
+}
+bool apxPartsPouchTakeScrap(int player, int cls, int units)
+{
+	if ( units <= 0 ) { return true; }
+	if ( apxPartsPouchScrapUnits(player, cls) < units ) { return false; }
+	const char* name = cls == 0 ? "metal" : "magic";
+	long long owe = (long long)units * scrapGramsPer(cls);
+	for ( size_t m = 0; m < db().materials.size() && m < (size_t)MAX_MATS && owe > 0; ++m )
+	{
+		if ( db().materials[m].salvageClass != name ) { continue; }
+		const long long take = std::min<long long>(owe, ledger[player][m]);
+		ledger[player][m] -= (uint32_t)take;
+		owe -= take;
+	}
+	apxPartsCounters.pouch_scrap_spent += units;
+	printlog("apxparts: tinkering spent %d %s scrap units from the pouch (pouch %lld g)\n", units, name, apxPartsLedgerGrams(player));
+	return true;
+}
+
+// 05b s5.8b: repair one component to full integrity for grams of its own material (mass x lost fraction;
+// ASSUMED until BP1 sets a per-part rule); low integrity (< 0.3) costs a quality step (D87 "small loss")
+bool apxPartsRepairPart(int player, Item* item, int part, std::string& why)
+{
+	if ( player < 0 || player >= MAXPLAYERS || !item || part < 0 || part >= item->apx.nParts ) { why = "no such part"; return false; }
+	ApxPart& p = item->apx.parts[part];
+	if ( p.integrity >= 255 ) { why = "that part is not worn"; return false; }
+	const long long g = std::max(1LL, (long long)apxparts::partMassGrams(db(), p) * (255 - p.integrity) / 255);
+	if ( (long long)ledger[player][p.material] < g ) { why = std::string("the pouch is short of ") + apxPartsMaterialName(p.material); return false; }
+	ledger[player][p.material] -= (uint32_t)g;
+	if ( p.integrity < db().salvage.lowIntegrityByte && p.quality > 1 ) { --p.quality; }
+	p.integrity = 255;
+	item->apx.power = (uint16_t)apxparts::itemPower(db(), item->apx);
+	++apxPartsCounters.parts_repaired;
+	printlog("apxparts: repair part player %d part %d (%s) %lld g pouch %lld g\n", player, part, apxPartsSlotName(p.slot), g, apxPartsLedgerGrams(player));
 	return true;
 }
 
@@ -978,7 +1032,7 @@ const char* apxPartsShotRequest()
 	return handed.c_str();
 }
 
-namespace { bool craftPass = true; }
+namespace { bool craftPass = true, tinkerOk = false, pouchOnlyOk = false; }
 namespace { bool bundlePass = false, bundleDrawOk = false; long long bundlePouchBeforePickup = 0; char bundleRow[512] = ""; }
 
 void apxPartsProbeTick()
@@ -1182,13 +1236,22 @@ void apxPartsProbeTick()
 				&& compsKept == (int)compsBefore.size() && !compsBefore.empty() && compName[0]);
 			const int invAfter = countInv(); // 20 items consumed (+1 crafted); components are new items; scrap/gem stacks may appear
 			const bool invOk = invAfter >= invBefore - 21 + expectComps + craftedComps;
-			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 21 && gems == aura && metal + magic > 0 && conserved && gramsOut > 0 && invOk && weightOk && pouchOk && compsOk);
+			// D85: salvage only adds grams to the pouch; no scrap items appear; tinkering counts and spends pouch grams
+			const int tinkerBefore = GenericGUI[0].tinkeringCountScrapTotal(TOOL_METAL_SCRAP);
+			apxPartsLedgerCredit(0, db().material("iron"), 800);
+			const int tinkerAfter = GenericGUI[0].tinkeringCountScrapTotal(TOOL_METAL_SCRAP);
+			const long long pouchT0 = apxPartsLedgerGrams(0);
+			const bool took = apxPartsPouchTakeScrap(0, 0, 2);
+			const long long pouchT1 = apxPartsLedgerGrams(0);
+			tinkerOk = tinkerAfter - tinkerBefore == 2 && took && pouchT0 - pouchT1 == 800;
+			pouchOnlyOk = metal == 0 && magic == 0 && ledgerGain == gramsOut && gramsPaid == 0;
+			salvageOk = !on || (station == 10 && bench == 10 && keptOne == 10 && salvaged == 21 && gems == aura && pouchOnlyOk && tinkerOk && conserved && gramsOut > 0 && invOk && weightOk && pouchOk && compsOk);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"components\",\"station_loose\":%d,\"expected\":%d,\"gained\":%d,\"given\":%lld,\"crafted_parts\":%d,\"crafted_components\":%d,\"kept_after_load\":%d,\"before_load\":%d,\"name\":\"%s\",\"pass\":%s}",
 				stationLoose, expectComps, compsGained, compsGiven, craftedParts, craftedComps, compsKept, (int)compsBefore.size(), compName, compsOk ? "true" : "false");
 			probeRow(buf);
 			snprintf(buf, sizeof(buf), "{\"probe\":\"salvage\",\"parts_on\":%d,\"station_ok\":%d,\"bench_ok\":%d,\"bench_kept_one_part\":%d,\"parts_salvaged\":%lld,"
-				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pouch_units\":%d,\"carry_weight\":%d,\"item_weight\":%d,\"weight_ok\":%d,\"pouch_before\":%lld,\"pouch_after\":%lld,\"pouch_saved\":%d,\"pass\":%s}",
-				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, pouchUnits, charWeight, itemWeight, weightOk ? 1 : 0, pouchBefore, pouchAfter, pouchOk ? 1 : 0, salvageOk ? "true" : "false");
+				"\"metal_scrap\":%d,\"magic_scrap\":%d,\"aura_gems\":%d,\"aura_counted\":%lld,\"grams_out\":%lld,\"grams_paid\":%lld,\"ledger_gain\":%lld,\"conserved\":%d,\"inventory_before\":%d,\"inventory_after\":%d,\"pouch_units\":%d,\"carry_weight\":%d,\"item_weight\":%d,\"weight_ok\":%d,\"pouch_before\":%lld,\"pouch_after\":%lld,\"pouch_saved\":%d,\"pouch_only\":%d,\"tinker_reads_pouch\":%d,\"pass\":%s}",
+				on ? 1 : 0, station, bench, keptOne, salvaged, metal, magic, gems, aura, gramsOut, gramsPaid, ledgerGain, conserved ? 1 : 0, invBefore, invAfter, pouchUnits, charWeight, itemWeight, weightOk ? 1 : 0, pouchBefore, pouchAfter, pouchOk ? 1 : 0, pouchOnlyOk ? 1 : 0, tinkerOk ? 1 : 0, salvageOk ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("craft") != std::string::npos && on )
@@ -1287,6 +1350,48 @@ void apxPartsProbeTick()
 				}
 			}
 			const bool infuseOk = infused == 2 && refusedStation && refusedDup && refusedFull && crystalsUsed == 2;
+			// U1h provider wiring, called through apx_bench::provider() as the bench does
+			bool provOk = false;
+			std::string provNote;
+			{
+				const apx_bench::Provider& pv = apx_bench::provider();
+				int pw = 0, cp = 0; std::string pwhy;
+				const bool prevOk = a && pv.assemblePreview && pv.displayName && pv.repairOptions && pv.repairPart && pv.swapSlots;
+				std::string dn = prevOk ? pv.displayName(a) : "";
+				// a worn component: repairOptions lists it; repairPart restores it for pouch grams of its material
+				ApxPart wq = a ? a->apx.parts[0] : ApxPart{};
+				wq.integrity = 100;
+				Item* worn = a ? apxPartsGiveComponent(0, apxparts::componentOf(db(), wq, 55, apxparts::FLAG_CRAFTED), true) : nullptr;
+				bool repOk = false;
+				long long cost = 0;
+				if ( worn && prevOk )
+				{
+					const auto opts = pv.repairOptions(0, worn, 2);
+					cost = opts.size() == 1 && !opts[0].cost.empty() ? opts[0].cost[0].grams : 0;
+					apxPartsLedgerCredit(0, wq.material, (int)cost);
+					const long long g0 = apxPartsLedgerGrams(0);
+					std::string rw;
+					repOk = cost > 0 && pv.repairPart(0, worn, 0, rw) && worn->apx.parts[0].integrity == 255 && g0 - apxPartsLedgerGrams(0) == cost;
+				}
+				// assemblePreview on the required components of the same Form (made fresh)
+				bool pvOk = false;
+				if ( prevOk && fam >= 0 )
+				{
+					std::vector<std::pair<int, Uint32>> picks;
+					for ( int k = 0; k < req; ++k )
+					{
+						apxPartsLedgerCredit(0, iron, apxPartsMakeCost(slots[(size_t)k], iron));
+						if ( Item* c = apxPartsMake(0, slots[(size_t)k], iron, 1, 0, why) ) { picks.push_back({ slots[(size_t)k], c->uid }); }
+					}
+					pvOk = (int)picks.size() == req && pv.assemblePreview(0, (uint32_t)fam, 4, picks, pw, cp, pwhy) && pw > 0 && cp == apxparts::ipCap(std::max(1, (int)currentlevel));
+				}
+				bool quickOk = false;
+				if ( prevOk ) { const auto ss = pv.swapSlots(0, a, 4); quickOk = !ss.empty(); for ( auto& x : ss ) { quickOk = quickOk && x.quick == apxPartsIsQuickSlot(a->apx.parts[x.partIndex].slot); } }
+				provOk = prevOk && !dn.empty() && repOk && pvOk && quickOk;
+				char nb[256];
+				snprintf(nb, sizeof(nb), "displayName '%s', repair %lld g ok %d, preview IP %d cap %d ok %d, quick ok %d", dn.c_str(), cost, repOk ? 1 : 0, pw, cp, pvOk ? 1 : 0, quickOk ? 1 : 0);
+				provNote = nb;
+			}
 			// STRIP the crafted assembly: every part back as a component, the item gone (05b 5.4)
 			int stripGot = -1, stripWant = a ? a->apx.nParts : 0;
 			if ( a ) { std::string w3; stripGot = apxPartsStrip(0, a, w3); a = nullptr; }
@@ -1309,10 +1414,10 @@ void apxPartsProbeTick()
 				}
 			}
 			const bool hideOk = hiddenName[0] && shownName[0] && strlen(hiddenName) < strlen(shownName) && !strstr(hiddenName, " of ");
-			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk;
-			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"pass\":%s}",
+			craftPass = asmOk && swapOk && lootRefused && spent == costs && costs > 0 && stripOk && hideOk && infuseOk && provOk;
+			snprintf(buf, sizeof(buf), "{\"probe\":\"craft\",\"form\":\"%s\",\"required\":%d,\"made\":%d,\"pouch_spent\":%lld,\"cost\":%lld,\"assembled\":%d,\"assembled_name\":\"%s\",\"power\":%d,\"why\":\"%s\",\"swap_ok\":%d,\"looted_non_quick_refused\":%d,\"strip\":\"%d/%d\",\"unidentified_name\":\"%s\",\"identified_name\":\"%s\",\"infused\":%d,\"infuse_refused_station_dup_full\":\"%d%d%d\",\"crystals_used\":%d,\"provider\":\"%s\",\"provider_ok\":%d,\"pass\":%s}",
 				fam >= 0 ? apxPartsFamilyName((uint32_t)fam) : "?", req, made, spent, costs, asmOk ? 1 : 0, asmName, asmPower, craftWhy.c_str(),
-				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, craftPass ? "true" : "false");
+				swapOk ? 1 : 0, lootRefused ? 1 : 0, stripGot, stripWant, hiddenName, shownName, infused, refusedStation, refusedDup, refusedFull, crystalsUsed, provNote.c_str(), provOk ? 1 : 0, craftPass ? "true" : "false");
 			probeRow(buf);
 		}
 		if ( probes.find("bundle") != std::string::npos && on )
