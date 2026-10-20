@@ -134,7 +134,8 @@ static std::vector<Entry> ownEntries(int player)
 	for ( auto& r : rows(player) )
 	{
 		apx_logic::Row x;
-		if ( r.type < 0 ) { x.kind = GOLD; x.count = r.count; x.mass = r.mass; x.value = r.count; x.name = std::to_string(r.count) + " gold"; }
+		if ( r.type == -2 ) { x.kind = MATERIALS; x.mass = r.mass; x.name = "Material pouch"; x.status = 4; }
+		else if ( r.type < 0 ) { x.kind = GOLD; x.count = r.count; x.mass = r.mass; x.value = r.count; x.name = std::to_string(r.count) + " gold"; }
 		else if ( Item* it = uidToItem(r.uid) ) { x = logicRow(*it, player, 0); }
 		else { continue; }
 		lr.push_back(x);
@@ -399,9 +400,15 @@ bool activateSelected(int player)
 	return openRowMenu(player, it);
 }
 
+void setBenchTab(int player, int tab)
+{
+	g_benchTab[player] = ((tab % 4) + 4) % 4;
+	g_benchSel[player] = 0; g_benchScroll[player] = 0;
+}
+
 void benchTab(int player, int d)
 {
-	g_benchTab[player] = (g_benchTab[player] + 3 + d) % 3;
+	g_benchTab[player] = (g_benchTab[player] + 4 + d) % 4;
 	g_benchSel[player] = 0; g_benchScroll[player] = 0;
 	++g_view[player].benchTabSwitches;
 }

@@ -78,6 +78,14 @@ std::vector<Row> rows(int player)
 		r.y = item->y;
 		out.push_back(r);
 	}
+	if ( !vanillaGrid() && apx_bench::pouchUnits(player) > 0 )
+	{
+		Row p;
+		p.kind = MATERIALS;
+		p.type = -2;           // the pouch row (D85)
+		p.mass = (Sint32)apx_bench::pouchUnits(player);
+		out.push_back(p);
+	}
 	if ( stats[player]->GOLD > 0 )
 	{
 		Row g;
@@ -92,7 +100,8 @@ std::vector<Row> rows(int player)
 Sint32 carriedMass(int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS || !stats[player] ) { return 0; }
-	return players[player]->movement.getCharacterWeight();
+	// D85: the material pouch counts against carry mass (vanilla grid: no pouch)
+	return players[player]->movement.getCharacterWeight() + (vanillaGrid() ? 0 : (Sint32)apx_bench::pouchUnits(player));
 }
 
 Sint32 massLimit(int player)
@@ -414,7 +423,7 @@ static void runF6Bench(int dt)
 		parts = (int)apx_bench::provider().parts(a).size();
 		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
 	}
-	else if ( dt == 344 ) { selectOwn(IRON_SWORD); benchTab(0, 1); } // Salvage
+	else if ( dt == 344 ) { selectOwn(IRON_SWORD); setBenchTab(0, 1); } // Salvage
 	else if ( dt == 348 )
 	{
 		auto e = benchRowsForTest(0);
@@ -435,12 +444,12 @@ static void runF6Bench(int dt)
 		succBefore = apxPartsFormSuccesses(0, breakForm);
 		pl.inventoryUI.activateItemContextMenuOption(uidToItem(breakUid), PROMPT_APX_BREAK);
 	}
-	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); benchTab(0, 1); } // Formbook
+	else if ( dt == 356 ) { succAfter = apxPartsFormSuccesses(0, breakForm); setBenchTab(0, 2); } // Formbook
 	else if ( dt == 360 )
 	{
 		fbRows = viewState(0).benchRows;
 		for ( auto& f : apx_bench::provider().formbook(0) ) { if ( f.form == breakForm && f.successes >= 1 ) { fbHasForm = 1; } }
-		benchTab(0, 1); // Craft
+		setBenchTab(0, 0); // Craft
 	}
 	else if ( dt == 364 )
 	{
@@ -463,6 +472,67 @@ static void runF6Bench(int dt)
 				craftMsg.find("crafting: next slice") != std::string::npos ? 1 : 0);
 			fclose(f);
 		}
+		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
+	}
+}
+
+// D85 pouch: a fixed test pouch (iron 2500 g, oak 800 g) and a recording Draw-out, installed over the
+// live provider for these ticks only, so the UI mechanics are checked whatever F6 fills; the live
+// provider's own pouch total is recorded beside it. Run once.
+static int g_drawCalls = 0, g_drawMaterial = -1;
+static long long g_drawGrams = 0;
+static std::vector<apx_bench::PouchRow> testPouch(int) { return { { 3, "iron", 2500 }, { 11, "oak", 800 } }; }
+static long long testPouchGrams(int) { return 3300; }
+static bool testDraw(int, int material, long long grams, std::string&) { ++g_drawCalls; g_drawMaterial = material; g_drawGrams = grams; return true; }
+
+static void runPouch(int dt)
+{
+	auto& pl = *players[0];
+	static apx_bench::Provider live;
+	static Entity* bench = nullptr;
+	static long long liveGrams = -1;
+	static int carried0 = 0, carried1 = 0, rowsOk = 0, pouchRow = 0, matRows = 0, bundleRow = -1, tab = -1;
+	static std::string drawMsg;
+	if ( pl.shootmode || pl.gui_mode != GUI_MODE_INVENTORY ) { pl.shootmode = false; pl.openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); }
+	if ( dt == 370 )
+	{
+		live = apx_bench::provider();
+		liveGrams = live.pouchGrams(0);
+		carried0 = carriedMass(0) - (int)apx_bench::pouchUnits(0);
+		apx_bench::Provider t = live;
+		t.name = "self-test pouch";
+		t.pouch = testPouch; t.pouchGrams = testPouchGrams; t.drawBundle = testDraw;
+		apx_bench::setProvider(t);
+		bench = spawnProp(1617, &actWorkbench, pl.entity->x + 16, pl.entity->y);
+	}
+	else if ( dt == 372 )
+	{
+		carried1 = carriedMass(0);
+		rowsOk = checkRows(rows(0), carriedMass(0)).empty();
+		for ( auto& e : ownRowsForTest(0) ) { if ( !e.header && e.row.name == "Material pouch" && e.row.mass == 33 ) { pouchRow = 1; } }
+		setBenchTab(0, 3); tab = 3; // Materials
+	}
+	else if ( dt == 375 )
+	{
+		auto e = benchRowsForTest(0);
+		matRows = (int)e.size();
+		for ( size_t i = 0; i < e.size(); ++i ) { if ( !e[i].header && e[i].row.kind == 5 ) { bundleRow = (int)i; break; } }
+		if ( bundleRow >= 0 ) { setFocus(0, 2, bundleRow); activateSelected(0); drawMsg = viewState(0).lastBenchMsg; }
+	}
+	else if ( dt == 378 )
+	{
+		FILE* f = fopen(diagPath().c_str(), "a");
+		if ( f )
+		{
+			fprintf(f, "{\"test\":\"pouch\",\"mode\":\"%s\",\"headless\":%d,\"carried_without_with\":[%d,%d],\"pouch_units\":33,\"carry_counts_pouch\":%d,"
+				"\"rows_sum_ok\":%d,\"pouch_row\":%d,\"materials_tab\":%d,\"materials_rows\":%d,\"bundle_row\":%d,\"draw_calls\":%d,\"draw\":[%d,%lld],\"draw_msg\":\"%s\","
+				"\"live_provider\":\"%s\",\"live_pouch_grams\":%lld,\"live_draw_bundle\":%d}\n",
+				vanillaGrid() ? "vanilla" : "apx", (int)apx::headlessOn, carried0, carried1, carried1 - carried0 == 33 ? 1 : 0, rowsOk, pouchRow,
+				viewState(0).benchTab == 3 ? 1 : 0, matRows, bundleRow, g_drawCalls, g_drawMaterial, g_drawGrams, drawMsg.c_str(),
+				live.name, liveGrams, live.drawBundle ? 1 : 0);
+			fclose(f);
+		}
+		apx_bench::setProvider(live);
 		if ( bench ) { list_RemoveNode(bench->mynode); bench = nullptr; }
 	}
 }
@@ -712,6 +782,7 @@ static void runUiPhases()
 	else if ( dt >= 141 && dt < 331 ) { runSteps345(dt); }
 	else if ( dt >= 331 && dt < 340 ) { runD81(dt); }
 	else if ( dt >= 340 && dt < 370 ) { runF6Bench(dt); }
+	else if ( dt >= 370 && dt < 380 ) { runPouch(dt); }
 	else if ( dt == 380 )
 	{
 		splitscreen = true;

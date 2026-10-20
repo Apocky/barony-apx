@@ -17,6 +17,7 @@ namespace apx_bench
 	struct FormRow  { uint32_t form = 0; std::string name, family; int successes = 0; };        // known >= 1, mastered at 5
 	struct SlotNeed { int slot = 0; std::string name; bool required = true; int qgate = 0; std::vector<uint32_t> candidateUids; };
 	struct YieldRow { std::string material; int32_t massUnits = 0; };
+	struct PouchRow { int material = -1; std::string name; long long grams = 0; };   // D85: the material pouch (F6 ledger)
 	struct SalvagePreview { std::vector<PartRow> parts; std::vector<YieldRow> yield; int dischargePct = 0, auraPct = 0; bool looted = false; };
 
 	struct Provider
@@ -30,7 +31,12 @@ namespace apx_bench
 		bool (*salvagePreview)(int player, const Item* item, int keepSlot, SalvagePreview& out) = nullptr;
 		bool (*salvage)(int player, Item* item, int keepSlot, std::string& why) = nullptr;
 		bool (*breakItem)(int player, Item* item, std::string& why) = nullptr;   // teaches the Form (BU1 "Break")
+		// D85 hybrid pouch: salvaged materials held as grams (counted against carry mass, 100 g = 1 unit)
+		std::vector<PouchRow> (*pouch)(int player) = nullptr;          // per material, grams > 0 only
+		long long (*pouchGrams)(int player) = nullptr;                 // the total
+		bool (*drawBundle)(int player, int material, long long grams, std::string& why) = nullptr; // a real item; null = no button
 	};
+	long long pouchUnits(int player);      // the pouch in Barony weight units (rounded), 0 without a pouch
 	void setProvider(const Provider& p);   // F6: register at init; fields left null fall back to the stub
 	const Provider& provider();            // always complete (stub fills the gaps)
 	const Provider& stubProvider();
