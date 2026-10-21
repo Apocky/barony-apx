@@ -1,0 +1,4120 @@
+{
+ "version": 1,
+ "source": "items/items.json (Barony 5.0.2), 223 spells",
+ "verbs": [
+  "bolt",
+  "wall",
+  "pit",
+  "burst",
+  "beam",
+  "ward",
+  "lift",
+  "pull",
+  "bind",
+  "mend",
+  "sense",
+  "veil"
+ ],
+ "shapes": [
+  "point",
+  "line",
+  "cone",
+  "sphere",
+  "ring",
+  "plane",
+  "trail"
+ ],
+ "elements": [
+  "fire",
+  "ice",
+  "stone",
+  "iron",
+  "acid",
+  "lightning",
+  "light",
+  "shadow",
+  "void",
+  "life"
+ ],
+ "modifiers": [
+  "none",
+  "trigger",
+  "timer",
+  "chain",
+  "echo",
+  "silent",
+  "anchored",
+  "inverted"
+ ],
+ "spells": [
+  {
+   "id": 1,
+   "key": "spell_forcebolt",
+   "name": "Forcebolt",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "push",
+   "damage": 15
+  },
+  {
+   "id": 2,
+   "key": "spell_magicmissile",
+   "name": "Magic Missile",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "line",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 60,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "",
+   "damage": 30
+  },
+  {
+   "id": 3,
+   "key": "spell_cold",
+   "name": "Cold",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 60,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "slow",
+   "damage": 20
+  },
+  {
+   "id": 4,
+   "key": "spell_fireball",
+   "name": "Fireball",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "sphere",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "burn",
+   "damage": 25
+  },
+  {
+   "id": 5,
+   "key": "spell_lightning",
+   "name": "Lightning",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "line",
+    "element": "lightning",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "shock",
+   "damage": 15
+  },
+  {
+   "id": 6,
+   "key": "spell_removecurse",
+   "name": "Remove Curse",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 7,
+   "key": "spell_light",
+   "name": "Light",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "anchored"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 8,
+   "key": "spell_identify",
+   "name": "Identify",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 9,
+   "key": "spell_magicmapping",
+   "name": "Magic Mapping",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 10,
+   "key": "spell_sleep",
+   "name": "Sleep",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "STATUS"
+   ],
+   "on_hit": "sleep",
+   "damage": 0
+  },
+  {
+   "id": 11,
+   "key": "spell_confuse",
+   "name": "Confuse",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 0,
+   "tags": [
+    "STATUS"
+   ],
+   "on_hit": "confuse",
+   "damage": 0
+  },
+  {
+   "id": 12,
+   "key": "spell_slow",
+   "name": "Slow",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 0,
+   "tags": [
+    "STATUS"
+   ],
+   "on_hit": "slow",
+   "damage": 0
+  },
+  {
+   "id": 13,
+   "key": "spell_opening",
+   "name": "Opening",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 14,
+   "key": "spell_locking",
+   "name": "Locking",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 15,
+   "key": "spell_levitation",
+   "name": "Levitation",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "lift",
+    "shape": "point",
+    "element": "light",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 16,
+   "key": "spell_invisibility",
+   "name": "Invisibility",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 17,
+   "key": "spell_teleportation",
+   "name": "Teleportation",
+   "type": "SELF",
+   "school": "sorcery",
+   "picks": {
+    "verb": "lift",
+    "shape": "point",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 18,
+   "key": "spell_healing",
+   "name": "Healing",
+   "type": "AREA",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "HEALING"
+   ]
+  },
+  {
+   "id": 19,
+   "key": "spell_extrahealing",
+   "name": "Extra Healing",
+   "type": "AREA",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "HEALING"
+   ]
+  },
+  {
+   "id": 20,
+   "key": "spell_cureailment",
+   "name": "Cure Ailment",
+   "type": "AREA",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "CURE"
+   ]
+  },
+  {
+   "id": 21,
+   "key": "spell_dig",
+   "name": "Dig",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "line",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 22,
+   "key": "spell_summon",
+   "name": "Conjure Skeleton",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 23,
+   "key": "spell_stoneblood",
+   "name": "Stone Blood",
+   "type": "PROJECTILE_SHORT_X3",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 24,
+   "key": "spell_bleed",
+   "name": "Bloodletting",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "bleed",
+   "damage": 18
+  },
+  {
+   "id": 25,
+   "key": "spell_dominate",
+   "name": "Dominate",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 100,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 26,
+   "key": "spell_reflect_magic",
+   "name": "Reflect Magic",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 27,
+   "key": "spell_acid_spray",
+   "name": "Spray Acid",
+   "type": "PROJECTILE_SHORT_X3",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "cone",
+    "element": "acid",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 28,
+   "key": "spell_steal_weapon",
+   "name": "Steal Weapon",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 100,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 29,
+   "key": "spell_drain_soul",
+   "name": "Drain Soul",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 30,
+   "key": "spell_vampiric_aura",
+   "name": "Vampiric Aura",
+   "type": "SELF_SUSTAIN",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "shadow",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 31,
+   "key": "spell_charm",
+   "name": "Charm Monster",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 32,
+   "key": "spell_revert_form",
+   "name": "Revert Form",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 33,
+   "key": "spell_rat_form",
+   "name": "Rat Form",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 34,
+   "key": "spell_spider_form",
+   "name": "Arthropod Form",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 35,
+   "key": "spell_troll_form",
+   "name": "Troll Form",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "mend",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 36,
+   "key": "spell_imp_form",
+   "name": "Imp Form",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 37,
+   "key": "spell_spray_web",
+   "name": "Spray Web",
+   "type": "PROJECTILE_SHORT_X3",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bind",
+    "shape": "cone",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 38,
+   "key": "spell_poison",
+   "name": "Poison",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "acid",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "poison",
+   "damage": 10
+  },
+  {
+   "id": 39,
+   "key": "spell_speed",
+   "name": "Speed",
+   "type": "AREA",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 40,
+   "key": "spell_fear",
+   "name": "Fear",
+   "type": "AREA",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "sphere",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 41,
+   "key": "spell_strike",
+   "name": "Power Strike",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 42,
+   "key": "spell_detect_food",
+   "name": "Detect Food",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 43,
+   "key": "spell_weakness",
+   "name": "Weakness",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "timer"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ],
+   "on_hit": "weakness",
+   "damage": 1
+  },
+  {
+   "id": 44,
+   "key": "spell_amplify_magic",
+   "name": "Elemental Focus",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 45,
+   "key": "spell_shadow_tag",
+   "name": "Arcane Mark",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 46,
+   "key": "spell_telepull",
+   "name": "Teleport Other",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pull",
+    "shape": "line",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 47,
+   "key": "spell_demon_illu",
+   "name": "Inner Demon",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 48,
+   "key": "spell_trolls_blood",
+   "name": "Troll's Blood",
+   "type": "AREA",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 49,
+   "key": "spell_salvage",
+   "name": "Salvage",
+   "type": "AREA",
+   "school": "sorcery",
+   "picks": {
+    "verb": "mend",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 50,
+   "key": "spell_flutter",
+   "name": "Flutter",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 51,
+   "key": "spell_dash",
+   "name": "Dash",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "lift",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 52,
+   "key": "spell_self_polymorph",
+   "name": "Polymorph",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 53,
+   "key": "spell_crab_form",
+   "name": "Arthropod Form",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 54,
+   "key": "spell_crab_web",
+   "name": "Spray Web",
+   "type": "PROJECTILE_SHORT_X3",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bind",
+    "shape": "cone",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 55,
+   "key": "spell_ghost_bolt",
+   "name": "Ghost Bolt",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 100,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 56,
+   "key": "spell_slime_acid",
+   "name": "Slime Spray (Acid)",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "acid",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 100,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "corrode",
+   "damage": 2
+  },
+  {
+   "id": 57,
+   "key": "spell_slime_water",
+   "name": "Slime Spray (Water)",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 100,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 58,
+   "key": "spell_slime_fire",
+   "name": "Slime Spray (Magma)",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 100,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "burn",
+   "damage": 2
+  },
+  {
+   "id": 59,
+   "key": "spell_slime_tar",
+   "name": "Slime Spray (Tar)",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 100,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "slow",
+   "damage": 2
+  },
+  {
+   "id": 60,
+   "key": "spell_slime_metal",
+   "name": "Slime Spray (Metal)",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 100,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "",
+   "damage": 2
+  },
+  {
+   "id": 61,
+   "key": "spell_foci_fire",
+   "name": "Focus of Flames",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "burn",
+   "damage": 3
+  },
+  {
+   "id": 62,
+   "key": "spell_foci_snow",
+   "name": "Focus of Snow",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "slow",
+   "damage": 2
+  },
+  {
+   "id": 63,
+   "key": "spell_foci_needles",
+   "name": "Focus of Needles",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "bleed",
+   "damage": 5
+  },
+  {
+   "id": 64,
+   "key": "spell_foci_arcs",
+   "name": "Focus of Arcs",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "lightning",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "shock",
+   "damage": 2
+  },
+  {
+   "id": 65,
+   "key": "spell_foci_sandblast",
+   "name": "Focus of Sandblast",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "point",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "blind",
+   "damage": 3
+  },
+  {
+   "id": 66,
+   "key": "spell_meteor",
+   "name": "Meteor",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "fire",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 67,
+   "key": "spell_flames",
+   "name": "SPELL_FLAMES",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 68,
+   "key": "spell_ice_wave",
+   "name": "SPELL_ICE_WAVE",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "cone",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 69,
+   "key": "spell_conjure_food",
+   "name": "SPELL_CONJURE_FOOD",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 70,
+   "key": "spell_guard_body",
+   "name": "SPELL_GUARD_BODY",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 71,
+   "key": "spell_guard_spirit",
+   "name": "SPELL_GUARD_SPIRIT",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 72,
+   "key": "spell_divine_guard",
+   "name": "SPELL_DIVINE_GUARD",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 73,
+   "key": "spell_prof_nimbleness",
+   "name": "SPELL_PROF_NIMBLENESS",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 74,
+   "key": "spell_prof_greater_might",
+   "name": "SPELL_PROF_GREATER_MIGHT",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 75,
+   "key": "spell_prof_counsel",
+   "name": "SPELL_PROF_COUNSEL",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 76,
+   "key": "spell_prof_sturdiness",
+   "name": "SPELL_PROF_STURDINESS",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 77,
+   "key": "spell_bless_food",
+   "name": "SPELL_BLESS_FOOD",
+   "type": "AREA",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 78,
+   "key": "spell_pinpoint",
+   "name": "SPELL_PINPOINT",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 79,
+   "key": "spell_donation",
+   "name": "SPELL_DONATION",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 80,
+   "key": "spell_scry_allies",
+   "name": "SPELL_SCRY_ALLIES",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 81,
+   "key": "spell_scry_shrines",
+   "name": "SPELL_SCRY_SHRINES",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 82,
+   "key": "spell_scry_traps",
+   "name": "SPELL_SCRY_TRAPS",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 83,
+   "key": "spell_scry_treasures",
+   "name": "SPELL_SCRY_TREASURES",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 84,
+   "key": "spell_penance",
+   "name": "SPELL_PENANCE",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 85,
+   "key": "spell_call_allies",
+   "name": "SPELL_CALL_ALLIES",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 86,
+   "key": "spell_sacred_path",
+   "name": "SPELL_SACRED_PATH",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 87,
+   "key": "spell_manifest_destiny",
+   "name": "SPELL_MANIFEST_DESTINY",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 88,
+   "key": "spell_detect_enemy",
+   "name": "SPELL_DETECT_ENEMY",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 89,
+   "key": "spell_detect_enemies",
+   "name": "SPELL_DETECT_ENEMIES",
+   "type": "DIVINE_TARGET",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 90,
+   "key": "spell_turn_undead",
+   "name": "SPELL_TURN_UNDEAD",
+   "type": "TOUCH_FLOOR",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 91,
+   "key": "spell_heal_other",
+   "name": "SPELL_HEAL_OTHER",
+   "type": "TOUCH_ALLY",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "HEALING"
+   ]
+  },
+  {
+   "id": 92,
+   "key": "spell_blood_ward",
+   "name": "SPELL_BLOOD_WARD",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 93,
+   "key": "spell_true_blood",
+   "name": "SPELL_TRUE_BLOOD",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 94,
+   "key": "spell_divine_zeal",
+   "name": "SPELL_DIVINE_ZEAL",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 95,
+   "key": "spell_alter_instrument",
+   "name": "SPELL_ALTER_INSTRUMENT",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 96,
+   "key": "spell_maximise",
+   "name": "SPELL_MAXIMISE",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 97,
+   "key": "spell_minimise",
+   "name": "SPELL_MINIMISE",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 98,
+   "key": "spell_jump",
+   "name": "SPELL_JUMP",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "lift",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 99,
+   "key": "spell_incoherence",
+   "name": "SPELL_INCOHERENCE",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "STATUS"
+   ]
+  },
+  {
+   "id": 100,
+   "key": "spell_overcharge",
+   "name": "SPELL_OVERCHARGE",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 101,
+   "key": "spell_envenom_weapon",
+   "name": "SPELL_ENVENOM_WEAPON",
+   "type": "SELF_SUSTAIN",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "iron",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 102,
+   "key": "spell_psychic_spear",
+   "name": "SPELL_PSYCHIC_SPEAR",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "proj",
+   "difficulty": 60,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "",
+   "damage": 20
+  },
+  {
+   "id": 103,
+   "key": "spell_defy_flesh",
+   "name": "SPELL_DEFY_FLESH",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 104,
+   "key": "spell_grease_spray",
+   "name": "SPELL_GREASE_SPRAY",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "beam",
+    "shape": "line",
+    "element": "acid",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 105,
+   "key": "spell_blood_waves",
+   "name": "SPELL_BLOOD_WAVES",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "burst",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "bleed",
+   "damage": 15
+  },
+  {
+   "id": 106,
+   "key": "spell_booby_trap",
+   "name": "SPELL_BOOBY_TRAP",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pit",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 107,
+   "key": "spell_command",
+   "name": "Compel",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 108,
+   "key": "spell_metallurgy",
+   "name": "SPELL_METALLURGY",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 109,
+   "key": "spell_geomancy",
+   "name": "SPELL_GEOMANCY",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 110,
+   "key": "spell_forge_key",
+   "name": "SPELL_FORGE_KEY",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 111,
+   "key": "spell_forge_jewel",
+   "name": "SPELL_FORGE_JEWEL",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 112,
+   "key": "spell_enhance_weapon",
+   "name": "SPELL_ENHANCE_WEAPON",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 113,
+   "key": "spell_reshape_weapon",
+   "name": "SPELL_RESHAPE_WEAPON",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 114,
+   "key": "spell_alter_arrow",
+   "name": "SPELL_ALTER_ARROW",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 115,
+   "key": "spell_void_chest",
+   "name": "SPELL_VOID_CHEST",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 116,
+   "key": "spell_puncture_void",
+   "name": "SPELL_PUNCTURE_VOID",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 117,
+   "key": "spell_lead_bolt",
+   "name": "SPELL_LEAD_BOLT",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "",
+   "damage": 15
+  },
+  {
+   "id": 118,
+   "key": "spell_mercury_bolt",
+   "name": "SPELL_MERCURY_BOLT",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "poison",
+   "damage": 25
+  },
+  {
+   "id": 119,
+   "key": "spell_numbing_bolt",
+   "name": "SPELL_NUMBING_BOLT",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "void",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 120,
+   "key": "spell_delay_pain",
+   "name": "SPELL_DELAY_PAIN",
+   "type": "AREA",
+   "school": "mysticism",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 121,
+   "key": "spell_curse_flesh",
+   "name": "SPELL_CURSE_FLESH",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 122,
+   "key": "spell_revenant_curse",
+   "name": "SPELL_REVENANT_CURSE",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 123,
+   "key": "spell_cowardice",
+   "name": "SPELL_COWARDICE",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 124,
+   "key": "spell_courage",
+   "name": "SPELL_COURAGE",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 125,
+   "key": "spell_seek_ally",
+   "name": "SPELL_SEEK_ALLY",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "sense",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 126,
+   "key": "spell_seek_foe",
+   "name": "SPELL_SEEK_FOE",
+   "type": "TOUCH_ENEMY",
+   "school": "mysticism",
+   "picks": {
+    "verb": "sense",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 127,
+   "key": "spell_deep_shade",
+   "name": "SPELL_DEEP_SHADE",
+   "type": "SELF_SUSTAIN",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "sphere",
+    "element": "shadow",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 128,
+   "key": "spell_shade_bolt",
+   "name": "SPELL_SHADE_BOLT",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "veil",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 129,
+   "key": "spell_spirit_weapon",
+   "name": "SPELL_SPIRIT_WEAPON",
+   "type": "TOUCH_FLOOR",
+   "school": "mysticism",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "iron",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 130,
+   "key": "spell_adorcism",
+   "name": "SPELL_ADORCISM",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 131,
+   "key": "spell_taboo",
+   "name": "SPELL_TABOO",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 132,
+   "key": "spell_wonderlight",
+   "name": "SPELL_WONDERLIGHT",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "sense",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 133,
+   "key": "spell_spores",
+   "name": "SPELL_SPORES",
+   "type": "SELF_SUSTAIN",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 134,
+   "key": "spell_spore_bomb",
+   "name": "SPELL_SPORE_BOMB",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "burst",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 135,
+   "key": "spell_windgate",
+   "name": "SPELL_WINDGATE",
+   "type": "TOUCH_WALL",
+   "school": "sorcery",
+   "picks": {
+    "verb": "wall",
+    "shape": "plane",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 136,
+   "key": "spell_vortex",
+   "name": "SPELL_VORTEX",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "pull",
+    "shape": "sphere",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 137,
+   "key": "spell_telekinesis",
+   "name": "SPELL_TELEKINESIS",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "lift",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 138,
+   "key": "spell_kinetic_push",
+   "name": "SPELL_KINETIC_PUSH",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "lift",
+    "shape": "cone",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 139,
+   "key": "spell_disarm",
+   "name": "SPELL_DISARM",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 140,
+   "key": "spell_strip",
+   "name": "SPELL_STRIP",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 141,
+   "key": "spell_abundance",
+   "name": "SPELL_ABUNDANCE",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 142,
+   "key": "spell_greater_abundance",
+   "name": "SPELL_GREATER_ABUNDANCE",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 143,
+   "key": "spell_preserve",
+   "name": "SPELL_PRESERVE",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 144,
+   "key": "spell_restore",
+   "name": "SPELL_RESTORE",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "mend",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 145,
+   "key": "spell_sabotage",
+   "name": "SPELL_SABOTAGE",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pit",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 146,
+   "key": "spell_harvest_trap",
+   "name": "SPELL_HARVEST_TRAP",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pit",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 147,
+   "key": "spell_mist_form",
+   "name": "SPELL_MIST_FORM",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "veil",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 148,
+   "key": "spell_hologram",
+   "name": "SPELL_HOLOGRAM",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "veil",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 100,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 149,
+   "key": "spell_force_shield",
+   "name": "SPELL_FORCE_SHIELD",
+   "type": "SELF",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 150,
+   "key": "spell_reflector",
+   "name": "SPELL_REFLECTOR",
+   "type": "SELF",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "iron",
+    "modifier": "inverted"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 151,
+   "key": "spell_splinter_gear",
+   "name": "Splinter Armor",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "bleed",
+   "damage": 5
+  },
+  {
+   "id": 152,
+   "key": "spell_lighten_load",
+   "name": "SPELL_LIGHTEN_LOAD",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 153,
+   "key": "spell_attract_items",
+   "name": "SPELL_ATTRACT_ITEMS",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pull",
+    "shape": "sphere",
+    "element": "light",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 154,
+   "key": "spell_return_items",
+   "name": "SPELL_RETURN_ITEMS",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pull",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 155,
+   "key": "spell_absorb_magic",
+   "name": "SPELL_ABSORB_MAGIC",
+   "type": "SELF",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 156,
+   "key": "spell_seize_magic",
+   "name": "SPELL_SEIZE_MAGIC",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 157,
+   "key": "spell_deface",
+   "name": "SPELL_DEFACE",
+   "type": "TOUCH_ENEMY",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 158,
+   "key": "spell_sunder_monument",
+   "name": "SPELL_SUNDER_MONUMENT",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 159,
+   "key": "spell_demesne_door",
+   "name": "SPELL_DEMESNE_DOOR",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "wall",
+    "shape": "plane",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 160,
+   "key": "spell_tunnel",
+   "name": "SPELL_TUNNEL",
+   "type": "TOUCH_WALL",
+   "school": "sorcery",
+   "picks": {
+    "verb": "wall",
+    "shape": "plane",
+    "element": "stone",
+    "modifier": "inverted"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 161,
+   "key": "spell_null_area",
+   "name": "SPELL_NULL_AREA",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "void",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 162,
+   "key": "spell_sphere_silence",
+   "name": "SPELL_SPHERE_SILENCE",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 163,
+   "key": "spell_forge_metal_scrap",
+   "name": "SPELL_FORGE_METAL_SCRAP",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 164,
+   "key": "spell_forge_magic_scrap",
+   "name": "SPELL_FORGE_MAGIC_SCRAP",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 165,
+   "key": "spell_fire_sprite",
+   "name": "SPELL_FIRE_SPRITE",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "fire",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 166,
+   "key": "spell_flame_elemental",
+   "name": "SPELL_FLAME_ELEMENTAL",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "fire",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 167,
+   "key": "spell_spin",
+   "name": "SPELL_SPIN",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 168,
+   "key": "spell_dizzy",
+   "name": "SPELL_DIZZY",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 169,
+   "key": "spell_vandalise",
+   "name": "SPELL_VANDALISE",
+   "type": "SELF",
+   "school": "innate",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 170,
+   "key": "spell_desecrate",
+   "name": "SPELL_DESECRATE",
+   "type": "SELF",
+   "school": "innate",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 171,
+   "key": "spell_sanctify",
+   "name": "SPELL_SANCTIFY",
+   "type": "SELF",
+   "school": "innate",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 172,
+   "key": "spell_sanctify_water",
+   "name": "SPELL_SANCTIFY_WATER",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 173,
+   "key": "spell_cleanse_food",
+   "name": "SPELL_CLEANSE_FOOD",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 174,
+   "key": "spell_adorcise_instrument",
+   "name": "SPELL_ADORCISE_INSTRUMENT",
+   "type": "SELF",
+   "school": "innate",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 175,
+   "key": "spell_flame_cloak",
+   "name": "SPELL_FLAME_CLOAK",
+   "type": "SELF_SUSTAIN",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "fire",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 176,
+   "key": "spell_critical_spell",
+   "name": "SPELL_CRITICAL_SPELL",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 177,
+   "key": "spell_magic_well",
+   "name": "SPELL_MAGIC_WELL",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 178,
+   "key": "spell_flame_shield",
+   "name": "SPELL_FLAME_SHIELD",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 179,
+   "key": "spell_lightning_bolt",
+   "name": "SPELL_LIGHTNING_BOLT",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "line",
+    "element": "lightning",
+    "modifier": "trigger"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 180,
+   "key": "spell_disrupt_earth",
+   "name": "SPELL_DISRUPT_EARTH",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pit",
+    "shape": "sphere",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 181,
+   "key": "spell_earth_spines",
+   "name": "SPELL_EARTH_SPINES",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pit",
+    "shape": "line",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 182,
+   "key": "spell_lightning_nexus",
+   "name": "SPELL_LIGHTNING_NEXUS",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "lightning",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 183,
+   "key": "spell_fire_wall",
+   "name": "SPELL_FIRE_WALL",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "wall",
+    "shape": "plane",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 184,
+   "key": "spell_lift",
+   "name": "SPELL_LIFT",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "lift",
+    "shape": "point",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 185,
+   "key": "spell_slam",
+   "name": "SPELL_SLAM",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "ring",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 186,
+   "key": "spell_ignite",
+   "name": "SPELL_IGNITE",
+   "type": "AREA",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 187,
+   "key": "spell_shatter_objects",
+   "name": "SPELL_SHATTER_OBJECTS",
+   "type": "AREA",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 188,
+   "key": "spell_kinetic_field",
+   "name": "SPELL_KINETIC_FIELD",
+   "type": "TOUCH_FLOOR",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "iron",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 60,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 189,
+   "key": "spell_ice_block",
+   "name": "SPELL_ICE_BLOCK",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 190,
+   "key": "spell_meteor_shower",
+   "name": "Meteor Shower",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "ring",
+    "element": "fire",
+    "modifier": "chain"
+   },
+   "deliver": "legacy",
+   "difficulty": 100,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 191,
+   "key": "spell_chronomic_field",
+   "name": "SPELL_CHRONOMIC_FIELD",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 192,
+   "key": "spell_eternals_gaze",
+   "name": "SPELL_ETERNALS_GAZE",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "sense",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 193,
+   "key": "spell_shatter_earth",
+   "name": "SPELL_SHATTER_EARTH",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "pit",
+    "shape": "sphere",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 194,
+   "key": "spell_earth_elemental",
+   "name": "SPELL_EARTH_ELEMENTAL",
+   "type": "TOUCH_FLOOR",
+   "school": "mysticism",
+   "picks": {
+    "verb": "pit",
+    "shape": "sphere",
+    "element": "stone",
+    "modifier": "echo"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 195,
+   "key": "spell_roots",
+   "name": "SPELL_ROOTS",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 196,
+   "key": "spell_mushroom",
+   "name": "SPELL_MUSHROOM",
+   "type": "TOUCH_FLOOR",
+   "school": "mysticism",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 197,
+   "key": "spell_mycelium_bomb",
+   "name": "SPELL_MYCELIUM_BOMB",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "burst",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 198,
+   "key": "spell_mycelium_spores",
+   "name": "SPELL_MYCELIUM_SPORES",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 199,
+   "key": "spell_heal_pulse",
+   "name": "SPELL_HEAL_PULSE",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "ring",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "HEALING"
+   ]
+  },
+  {
+   "id": 200,
+   "key": "spell_shrub",
+   "name": "SPELL_SHRUB",
+   "type": "TOUCH_FLOOR",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "burst",
+    "shape": "sphere",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "HEALING"
+   ]
+  },
+  {
+   "id": 201,
+   "key": "spell_thorns",
+   "name": "SPELL_THORNS",
+   "type": "SELF_SUSTAIN",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "sphere",
+    "element": "life",
+    "modifier": "timer"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 202,
+   "key": "spell_bladevines",
+   "name": "SPELL_BLADEVINES",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 203,
+   "key": "spell_bastion_mushroom",
+   "name": "SPELL_BASTION_MUSHROOM",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "wall",
+    "shape": "plane",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 204,
+   "key": "spell_bastion_roots",
+   "name": "SPELL_BASTION_ROOTS",
+   "type": "PROJECTILE",
+   "school": "innate",
+   "picks": {
+    "verb": "bind",
+    "shape": "point",
+    "element": "stone",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 205,
+   "key": "spell_foci_dark_claim_life",
+   "name": "Icon of Claim Life",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 206,
+   "key": "spell_foci_dark_rift",
+   "name": "Icon of Void Rift",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 207,
+   "key": "spell_foci_dark_silence",
+   "name": "Icon of Silence",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 208,
+   "key": "spell_foci_dark_vengeance",
+   "name": "Icon of Vengeance",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 209,
+   "key": "spell_foci_dark_suppress",
+   "name": "Icon of Suppress",
+   "type": "PROJECTILE",
+   "school": "mysticism",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 210,
+   "key": "spell_foci_light_peace",
+   "name": "Symbol of Peace",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 211,
+   "key": "spell_foci_light_justice",
+   "name": "Symbol of Justice",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "ice",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 212,
+   "key": "spell_foci_light_providence",
+   "name": "Symbol of Providence",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 213,
+   "key": "spell_foci_light_purity",
+   "name": "Symbol of Purity",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 214,
+   "key": "spell_foci_light_sanctuary",
+   "name": "Symbol of Sanctuary",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "DAMAGE"
+   ]
+  },
+  {
+   "id": 215,
+   "key": "spell_scepter_blast",
+   "name": "Scepter Blast",
+   "type": "PROJECTILE",
+   "school": "sorcery",
+   "picks": {
+    "verb": "burst",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "burn",
+   "damage": 30
+  },
+  {
+   "id": 216,
+   "key": "spell_magicians_armor",
+   "name": "SPELL_MAGICIANS_ARMOR",
+   "type": "SELF",
+   "school": "sorcery",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 40,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 217,
+   "key": "spell_project_spirit",
+   "name": "SPELL_PROJECT_SPIRIT",
+   "type": "SELF",
+   "school": "mysticism",
+   "picks": {
+    "verb": "ward",
+    "shape": "point",
+    "element": "shadow",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 219,
+   "key": "spell_breathe_fire",
+   "name": "SPELL_BREATHE_FIRE",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "cone",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "proj",
+   "difficulty": 20,
+   "tags": [
+    "DAMAGE"
+   ],
+   "on_hit": "burn",
+   "damage": 3
+  },
+  {
+   "id": 220,
+   "key": "spell_heal_minor",
+   "name": "SPELL_HEAL_MINOR",
+   "type": "SELF",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "mend",
+    "shape": "point",
+    "element": "life",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 0,
+   "tags": [
+    "HEALING"
+   ]
+  },
+  {
+   "id": 221,
+   "key": "spell_holy_fire",
+   "name": "SPELL_HOLY_FIRE",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "bolt",
+    "shape": "point",
+    "element": "fire",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 222,
+   "key": "spell_sigil",
+   "name": "SPELL_SIGIL",
+   "type": "TOUCH_FLOOR",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "ring",
+    "element": "shadow",
+    "modifier": "anchored"
+   },
+   "deliver": "legacy",
+   "difficulty": 20,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 223,
+   "key": "spell_sanctuary",
+   "name": "SPELL_SANCTUARY",
+   "type": "TOUCH_FLOOR",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "ward",
+    "shape": "ring",
+    "element": "light",
+    "modifier": "anchored"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "UTILITY"
+   ]
+  },
+  {
+   "id": 224,
+   "key": "spell_holy_beam",
+   "name": "SPELL_HOLY_BEAM",
+   "type": "PROJECTILE",
+   "school": "thaumaturgy",
+   "picks": {
+    "verb": "beam",
+    "shape": "line",
+    "element": "light",
+    "modifier": "none"
+   },
+   "deliver": "legacy",
+   "difficulty": 80,
+   "tags": [
+    "DAMAGE",
+    "HEALING"
+   ]
+  }
+ ]
+}
