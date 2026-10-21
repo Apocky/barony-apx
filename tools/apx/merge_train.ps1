@@ -16,8 +16,8 @@ foreach ($b in $Branches) {
     "merged $b -> $(git log --oneline -1)"
 }
 $t0 = Get-Date
-$build = pwsh -NoProfile -File tools\apx\build.ps1 -Cache ccache 2>&1
-$exe = 'build\ninja-ccache\barony.exe'
+$build = pwsh -NoProfile -File tools\apx\build.ps1 -Cache vs 2>&1
+$exe = 'build\vs2022\Release\barony.exe'  # 2026-10-20: ccache no longer installed; VS build is what lanes use
 $fresh = (Test-Path $exe) -and ((Get-Item $exe).LastWriteTime -ge $t0.AddSeconds(-5)) -or ($build -match 'no work to do')
 $buildErr = $build | Select-String -Pattern ': (fatal )?error [A-Z]+[0-9]+|^FAILED:|ninja: build stopped' | Select-Object -First 3
 "build: fresh=$fresh $(if ($buildErr) { 'ERRORS: ' + ($buildErr -join ' | ') })"
