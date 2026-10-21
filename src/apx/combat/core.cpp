@@ -32,6 +32,8 @@
 #include "../in/in.hpp"
 #include "../move/move.hpp"
 #include "../hostility.hpp"
+#include "../../scores.hpp"
+#include "../../ui/MainMenu.hpp"
 #include <unordered_map>
 
 #include <algorithm>
@@ -378,13 +380,15 @@ namespace combat
 			const int charge = (mv && mv->charged) ? maxCharge : 0;
 			// weapon skill and the damage-table class
 			int weaponskill = ms->weapon ? getWeaponSkill(ms->weapon) : PRO_UNARMED;
-			if ( weaponskill < 0 ) { weaponskill = PRO_UNARMED; }
+			if ( weaponskill < 0 || (me->behavior == &actMonster && (h.pose == MONSTER_POSE_BUGBEAR_SHIELD || h.pose == MONSTER_POSE_GOLEM_SMASH)) ) { weaponskill = PRO_UNARMED; }
 			DamageTableType dmgType = DAMAGE_TABLE_UNARMED;
 			if ( weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM ) { dmgType = (DamageTableType)(weaponskill - PRO_SWORD); }
-			c.target = target; c.pose = 1; c.charge = charge; c.weaponskill = weaponskill; c.dmgType = (int)dmgType; c.extraTarget = (h.flags & HF_EXTRA_TARGET) != 0;
+			c.target = target; c.pose = h.pose; c.charge = charge; c.weaponskill = weaponskill; c.dmgType = (int)dmgType; c.extraTarget = (h.flags & HF_EXTRA_TARGET) != 0;
 			c.previousMonsterState = target->monsterState;
 			Sec t5(5);
-			int myAttack = std::max(0, Entity::getAttack(me, ms, isPlayerAtk, charge) + me->getBonusAttackOnTarget(*ts));
+			const int preMult = ((ms->type == CRYSTALGOLEM && h.pose == MONSTER_POSE_GOLEM_SMASH) || (ms->type == LICH_FIRE && h.pose == 3)) ? 2 : 1; // as Entity::attack
+			int myAttack = std::max(0, Entity::getAttack(me, ms, isPlayerAtk, charge) * preMult + me->getBonusAttackOnTarget(*ts));
+			if ( ms->type == BUGBEAR && h.pose == MONSTER_POSE_BUGBEAR_SHIELD ) { myAttack += 2 + local_rng.rand() % 3; }
 			myAttack += apxPartsAttackOnTarget(me, ms, ts, myAttack);
 			t5.end();
 			Sec t7(7);
@@ -570,7 +574,34 @@ namespace combat
 			Sec t12(12);
 			updateEnemyBar(me, target, ts->name[0] ? ts->name : getMonsterLocalizedName(ts->type).c_str(), ts->HP, ts->MAXHP, false, gib);
 		}
-		if ( me->behavior == &actMonster && target->behavior == &actPlayer ) { cameravars[target->skill[2]].shakey += 8; cameravars[target->skill[2]].shakex += 0.1; }
+		if ( me->behavior == &actMonster && target->behavior == &actPlayer )
+		{
+			// what Entity::attack gave the player who was hit: camera shake by the blow, blood, the "hits you" line and the status lines
+			const int tp = target->skill[2];
+			const double sc = ms->type == MOTH_SMALL ? 0.4 : 1.0;
+			if ( tp == 0 || (splitscreen && tp > 0) )
+			{
+				if ( h.pose == MONSTER_POSE_GOLEM_SMASH ) { cameravars[tp].shakex += .2 * sc; cameravars[tp].shakey += 20 * sc; }
+				else if ( damage > 0 ) { cameravars[tp].shakex += .1 * sc; cameravars[tp].shakey += 10 * sc; }
+				else { cameravars[tp].shakex += .05 * sc; cameravars[tp].shakey += 5 * sc; }
+			}
+			Uint32 red = makeColorRGB(255, 0, 0);
+			if ( damage > 0 )
+			{
+				Entity* gib = spawnGib(target);
+				serverSpawnGibForClient(gib);
+				messagePlayerMonsterEvent(tp, red, *ms, Language::get(698), Language::get(699), MSG_ATTACKS);
+				updateAchievementBaitAndSwitch(tp, false);
+				if ( mctx.paralyzeStatusInflicted ) { messagePlayerMonsterEvent(tp, red, *ms, Language::get(3208), Language::get(3207), MSG_COMBAT); }
+				else if ( mctx.slowStatusInflicted ) { messagePlayerMonsterEvent(tp, red, *ms, Language::get(395), Language::get(395), MSG_COMBAT); }
+				else if ( mctx.swordExtraDamageInflicted ) { messagePlayerMonsterEvent(tp, red, *ms, Language::get(3213), Language::get(3212), MSG_COMBAT); }
+				else if ( mctx.knockbackInflicted ) { messagePlayerMonsterEvent(tp, red, *ms, Language::get(3216), Language::get(3216), MSG_COMBAT); }
+			}
+			else
+			{
+				messagePlayerMonsterEvent(tp, 0xFFFFFFFF, *ms, Language::get(2457), Language::get(2458), MSG_COMBAT_BASIC); // the blow bounces off
+			}
+		}
 		{ Sec t13(13); playSoundEntity(target, 28, 64); } // hit
 		if ( r.killed )
 		{
@@ -1068,11 +1099,13 @@ namespace combat
 		std::vector<PendingStrike> gPending;
 		Uint32 gFoeUid = 0;
 
-		bool creatureOwned(Entity* e)
+		bool creatureOwned(Entity* e, int pose)
 		{
 			if ( !gEnabled || !e || e->behavior != &actMonster ) { return false; }
 			Stat* s = e->getStats();
-			if ( !s || e->isBossMonster() || s->type == MIMIC || s->type == MINIMIMIC || s->type == SHOPKEEPER ) { return false; }
+			if ( !s || s->type == MIMIC || s->type == MINIMIMIC ) { return false; }
+			if ( pose == MONSTER_POSE_GOLEM_SMASH ) { return s->type == CRYSTALGOLEM; }
+			if ( pose == MONSTER_POSE_BUGBEAR_SHIELD ) { return s->type == BUGBEAR; }
 			return e->monsterAttack >= MONSTER_POSE_MELEE_WINDUP1 && e->monsterAttack <= MONSTER_POSE_MELEE_WINDUP3;
 		}
 
@@ -1115,10 +1148,21 @@ namespace combat
 				return;
 			}
 			Hit h;
-			h.attacker = e; h.target = target;
+			h.attacker = e; h.target = target; h.pose = ps.pose;
 			const int hpBefore = target->getStats()->HP;
 			const HitResult res = applyHit(h);
 			++gCount.creatureStrikes;
+			if ( ps.pose == MONSTER_POSE_GOLEM_SMASH ) // the smash hits every foe around the primary target at half force (Entity::attack's secondary targets)
+			{
+				for ( node_t* node = map.creatures ? map.creatures->first : nullptr; node; node = node->next )
+				{
+					Entity* o = (Entity*)node->element;
+					if ( !o || o == e || o == target || !isCreature(o) || !o->getStats() || o->getStats()->HP <= 0 ) { continue; }
+					if ( std::hypot(o->x - target->x, o->y - target->y) > STRIKERANGE || !apx::hostility::hostile(e, o, nullptr) ) { continue; }
+					Hit h2; h2.attacker = e; h2.target = o; h2.pose = ps.pose; h2.dmgMult = 0.5f; h2.flags = HF_EXTRA_TARGET;
+					applyHit(h2);
+				}
+			}
 			row("{\"ev\":\"creature_strike\",\"tick\":%u,\"attacker\":%u,\"type\":%d,\"target\":%u,\"target_is_player\":%d,\"telegraph_ms\":%d,\"dmg\":%d,\"blocked\":%d,\"hp_before\":%d,\"hp_after\":%d,\"zone\":%d,\"why\":\"%s\"}",
 				(unsigned)ticks, e->getUID(), (int)e->getStats()->type, target->getUID(), target->behavior == &actPlayer ? 1 : 0, delayMs, res.damage, res.blocked ? 1 : 0, hpBefore, res.hpAfter, res.zone, why.cls);
 		}
@@ -1128,7 +1172,7 @@ namespace combat
 	{
 		if ( !gEnabled || !e || e->behavior != &actMonster || pose < MONSTER_POSE_MELEE_WINDUP1 || pose > MONSTER_POSE_MELEE_WINDUP3 ) { return; }
 		Stat* s = e->getStats();
-		if ( !s || e->isBossMonster() ) { return; }
+		if ( !s || s->type == MIMIC || s->type == MINIMIMIC ) { return; }
 		gWind[e->getUID()] = { (Uint32)ticks, pose };
 		playSoundEntity(e, 23 + local_rng.rand() % 5, 140); // the telegraph sound: the whoosh of the raised weapon, loud enough to react to
 		row("{\"ev\":\"telegraph\",\"tick\":%u,\"attacker\":%u,\"type\":%d,\"pose\":%d}", (unsigned)ticks, e->getUID(), (int)s->type, pose);
@@ -1136,7 +1180,7 @@ namespace combat
 
 	bool creatureStrike(Entity* e, int pose, int charge)
 	{
-		if ( !creatureOwned(e) ) { return false; }
+		if ( !creatureOwned(e, pose) ) { return false; }
 		for ( const PendingStrike& q : gPending ) { if ( q.uid == e->getUID() ) { return true; } } // the animation calls again every tick until it is advanced
 		Uint32 windup = (Uint32)ticks, due = (Uint32)ticks;
 		auto it = gWind.find(e->getUID());
@@ -1150,7 +1194,7 @@ namespace combat
 		if ( gFoeUid && ticks % 50 == 0 && players[0] && players[0]->entity )
 		{
 			Entity* f = uidToEntity(gFoeUid);
-			if ( f ) { row("{\"ev\":\"foe_state\",\"tick\":%u,\"state\":%d,\"target\":%u,\"dist\":%.1f,\"hp\":%d,\"attack\":%d,\"mobile\":%d}", (unsigned)ticks, (int)f->monsterState, f->monsterTarget, std::hypot(f->x - players[0]->entity->x, f->y - players[0]->entity->y), f->getStats() ? f->getStats()->HP : -1, (int)f->monsterAttack, (int)f->isMobile()); }
+			if ( f ) { row("{\"ev\":\"foe_state\",\"tick\":%u,\"state\":%d,\"target\":%u,\"dist\":%.1f,\"hp\":%d,\"attack\":%d,\"mobile\":%d,\"cutscene\":%d,\"special\":%d,\"par\":%d,\"asleep\":%d,\"stasis\":%d,\"stun\":%d,\"inert\":%d}", (unsigned)ticks, (int)f->monsterState, f->monsterTarget, std::hypot(f->x - players[0]->entity->x, f->y - players[0]->entity->y), f->getStats() ? f->getStats()->HP : -1, (int)f->monsterAttack, (int)f->isMobile(), (int)MainMenu::isCutsceneActive(), (int)f->monsterSpecialState, f->getStats() ? (int)f->getStats()->getEffectActive(EFF_PARALYZED) : -1, f->getStats() ? (int)f->getStats()->getEffectActive(EFF_ASLEEP) : -1, f->getStats() ? (int)f->getStats()->getEffectActive(EFF_STASIS) : -1, f->getStats() ? (int)f->getStats()->getEffectActive(EFF_STUNNED) : -1, (int)f->isInertMimic()); }
 		}
 		if ( gPending.empty() ) { return; }
 		for ( size_t i = 0; i < gPending.size(); )
@@ -1177,8 +1221,15 @@ namespace combat
 		row("{\"ev\":\"foe_effects\",\"par\":%d,\"asleep\":%d,\"stasis\":%d,\"stun\":%d,\"mobile\":%d}", (int)m->getStats()->getEffectActive(EFF_PARALYZED), (int)m->getStats()->getEffectActive(EFF_ASLEEP), (int)m->getStats()->getEffectActive(EFF_STASIS), (int)m->getStats()->getEffectActive(EFF_STUNNED), (int)m->isMobile());
 		m->setEffect(EFF_ASLEEP, false, 0, false); m->setEffect(EFF_PARALYZED, false, 0, false); m->setEffect(EFF_STUNNED, false, 0, false);
 		m->getStats()->HP = m->getStats()->MAXHP = 9999;
-		m->monsterAcquireAttackTarget(*me, MONSTER_STATE_PATH, false);
+		m->monsterAcquireAttackTarget(*me, MONSTER_STATE_ATTACK, false);
 		row("{\"ev\":\"foe\",\"made\":1,\"type\":%d,\"uid\":%u}", (int)t, m->getUID());
+	});
+	static ConsoleCommand ccmd_apxcombat_pull("/apxcombat_pull", "apx: bring the test creature back to arm's length in front of the player and re-aim it (the C3 gate fixture: the AI may orbit or wander off)", [](int, const char**) {
+		Entity* f = gFoeUid ? uidToEntity(gFoeUid) : nullptr;
+		if ( !f || !players[0] || !players[0]->entity ) { return; }
+		Entity* me = players[0]->entity;
+		f->x = me->x + cos(me->yaw) * 24.0; f->y = me->y + sin(me->yaw) * 24.0; f->vel_x = f->vel_y = 0;
+		f->monsterAcquireAttackTarget(*me, MONSTER_STATE_ATTACK, false);
 	});
 	static ConsoleCommand ccmd_apxcombat_probe("/apxcombat_probe", "apx: <ticks> -- on the next block press a creature hit lands that many ticks later; logs whether it was free (the timed-block gate)", [](int argc, const char** argv) {
 		if ( argc > 1 ) { gF[0].probeAt = std::max(0, std::atoi(argv[1])); gF[0].probeFire = -1; gF[0].probeMode = (argc > 2 && !strcmp(argv[2], "dodge")) ? 1 : 0; }

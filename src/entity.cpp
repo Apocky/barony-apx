@@ -10168,7 +10168,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 
 	// apx D93 C3: a creature's melee strike is the combat core's now (queued behind its 300 ms telegraph, resolved through applyHit against
 	// what apx::hostility calls a foe); the windup call below only announces the telegraph. APX_COMBAT_OLD=1 = the old code.
-	if ( player < 0 && behavior == &actMonster && target == nullptr && (pose == 1 || pose == 2 || pose == 3) && !apx::combat::objectPass()
+	if ( player < 0 && behavior == &actMonster && target == nullptr && (pose == 1 || pose == 2 || pose == 3 || pose == MONSTER_POSE_GOLEM_SMASH || pose == MONSTER_POSE_BUGBEAR_SHIELD) && !apx::combat::objectPass()
 		&& apx::combat::creatureStrike(this, pose, charge) )
 	{
 		return;
@@ -17019,7 +17019,31 @@ Returns armor class value from a Stat instance
 
 -------------------------------------------------------------------------------*/
 
+static int apxAcCompute(Stat* stat);
+
+// apx D93: AC() is called for every blow against the same defender (a crowd on one player: dozens a tick). The value is kept for up to
+// 3 ticks and recomputed at once when the defender's gear, guard or stats change (the signature below); APX_AC_CACHE=0 = off.
 int AC(Stat* stat)
+{
+	static const bool on = !(std::getenv("APX_AC_CACHE") && std::getenv("APX_AC_CACHE")[0] == '0');
+	if ( !stat || !on ) { return apxAcCompute(stat); }
+	struct Entry { Stat* s = nullptr; Uint32 tick = 0; Uint64 sig = 0; int value = 0; };
+	static Entry cache[128];
+	Uint64 sig = 1469598103934665603ull;
+	auto mix = [&sig](Uint64 v) { sig = (sig ^ v) * 1099511628211ull; };
+	const Item* slots[9] = { stat->helmet, stat->breastplate, stat->gloves, stat->shoes, stat->shield, stat->cloak, stat->ring, stat->mask, stat->weapon };
+	for ( const Item* it : slots ) { mix((Uint64)(uintptr_t)it); if ( it ) { mix(((Uint64)it->status << 16) ^ ((Uint64)(Uint32)it->beatitude << 8) ^ it->type ^ ((Uint64)it->count << 32)); } }
+	mix(((Uint64)stat->defending << 1) | (Uint64)(stat->parrying != 0)); mix((Uint64)(Uint32)stat->CON); mix((Uint64)stat->type); mix((Uint64)(Uint32)stat->LVL);
+	for ( int i = 0; i < MAXPLAYERS; ++i ) { mix(apx::get(i).swingWhileBlock ? 3 : 1); }
+	for ( int e = 0; e < NUMEFFECTS; ++e ) { if ( stat->getEffectActive(e) ) { mix((Uint64)e * 31 + stat->getEffectActive(e)); } }
+	Entry& en = cache[((uintptr_t)stat >> 4) & 127];
+	if ( en.s == stat && en.sig == sig && (Uint32)ticks - en.tick < 3 ) { return en.value; }
+	const int v = apxAcCompute(stat);
+	en.s = stat; en.sig = sig; en.tick = (Uint32)ticks; en.value = v;
+	return v;
+}
+
+static int apxAcCompute(Stat* stat)
 {
 	if ( !stat )
 	{

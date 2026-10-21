@@ -90,6 +90,7 @@ namespace combat
 		int extraIndex = 0;         // HF_EXTRA_TARGET: 0 = first extra target
 		int path = PATH_MELEE;
 		int dir = DIR_THRUST;
+		int pose = 1;               // creature strike pose (1..3, MONSTER_POSE_GOLEM_SMASH, MONSTER_POSE_BUGBEAR_SHIELD)
 		float dmgMult = 1.f;        // riposte and chamber swings
 	};
 	struct HitResult
