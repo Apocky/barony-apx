@@ -206,6 +206,8 @@ extern bool autoLimbReload;
 #define PI 3.14159265358979323846
 
 void printlog(const char* str, ...);
+void printlogFlush(bool crashing); // apx: write the queued log lines now (exit, crash, before a test reads log.txt)
+void printlogStats(unsigned long long& lines, unsigned long long& batches, unsigned long long& maxQueued, bool& queued, double* usPerCall = nullptr);
 const char* gl_error_string(GLenum err);
 #ifdef _MSC_VER
 #define GL_CHECK_ERR(expression) expression;\

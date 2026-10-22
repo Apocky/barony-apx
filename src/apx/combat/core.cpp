@@ -103,13 +103,14 @@ namespace combat
 		// where the time goes (ms, calls), dumped in the perf row (sec_ms / sec_n):
 		//  0 damage calc   5 getAttack  6 AC  7 damage table  8 AC effectiveness   (inside 0)
 		//  1 rule stages (tier D74, zones F4c, poise D75; 9 = the tier part)
+		//  16 hostility::onHit  17 applyHit (zones, poise)  18 apxMeleeAftermath (Barony rule code)  19 zoneOf
 		//  2 modHP   3 consequences (10 effects and armour wear, 11 messages, 12 enemy bar, 13 sound, 14 alert)   4 sweep scan   15 object pass
-		double gSecMs[16] = {};
-		long long gSecN[16] = {};
+		double gSecMs[24] = {};
+		long long gSecN[24] = {};
 		struct Sec
 		{
 			int i; std::chrono::steady_clock::time_point t0;
-			explicit Sec(int idx) : i(idx), t0(std::chrono::steady_clock::now()) {}
+			explicit Sec(int idx) : i(idx >= 0 && idx < 24 ? idx : -1), t0(std::chrono::steady_clock::now()) {}
 			void end() { if ( i >= 0 ) { gSecMs[i] += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(); ++gSecN[i]; i = -1; } }
 			~Sec() { end(); }
 		};
@@ -134,7 +135,8 @@ namespace combat
 		{
 			std::vector<float> all, active;
 			std::vector<float> legacy, creak; // aligned with all: applyHit at the Barony hit sites since the last tick | creatureTick wall
-			Perf() { all.reserve(1 << 16); active.reserve(1 << 14); legacy.reserve(1 << 15); creak.reserve(1 << 13); }
+			std::vector<float> pre, ctrl;     // aligned with all: input take + stamina + defenseTick | qaOnce + controlTick (each minus its own telemetry)
+			Perf() { all.reserve(1 << 16); active.reserve(1 << 14); legacy.reserve(1 << 15); creak.reserve(1 << 13); pre.reserve(1 << 13); ctrl.reserve(1 << 13); }
 		} gPerf;
 		double pct(std::vector<float> v, double q)
 		{
@@ -235,8 +237,8 @@ namespace combat
 	void perfDump()
 	{
 		if ( gPerf.all.empty() ) { return; }
-		char secMsBuf[400] = "", secNBuf[300] = "";
-		for ( int i = 0; i < 16; ++i ) { char t[32]; snprintf(t, sizeof t, "%s%.4f", i ? "," : "", gSecMs[i]); strcat(secMsBuf, t); snprintf(t, sizeof t, "%s%lld", i ? "," : "", gSecN[i]); strcat(secNBuf, t); }
+		char secMsBuf[640] = "", secNBuf[480] = "";
+		for ( int i = 0; i < 24; ++i ) { char t[32]; snprintf(t, sizeof t, "%s%.4f", i ? "," : "", gSecMs[i]); strcat(secMsBuf, t); snprintf(t, sizeof t, "%s%lld", i ? "," : "", gSecN[i]); strcat(secNBuf, t); }
 		row("{\"ev\":\"perf\",\"ticks\":%zu,\"p50_ms\":%.4f,\"p99_ms\":%.4f,\"max_ms\":%.4f,\"swing_ticks\":%zu,\"swing_p50_ms\":%.4f,\"swing_p99_ms\":%.4f,\"swing_max_ms\":%.4f,\"creatures\":%d,\"stamina\":%.2f,\"stamina_max\":%.2f,\"last_spend\":%u,\"now\":%u,\"defending\":%d,\"stamina_ticks\":%llu,\"sec_ms\":[%s],\"sec_n\":[%s],\"arena\":%zu,\"arena_alive\":%d,\"swimming\":%d,\"inwater\":%d,\"z\":%.2f}",
 			gPerf.all.size(), pct(gPerf.all, 0.5), pct(gPerf.all, 0.99), pct(gPerf.all, 1.0),
 			gPerf.active.size(), pct(gPerf.active, 0.5), pct(gPerf.active, 0.99), pct(gPerf.active, 1.0),
@@ -246,18 +248,20 @@ namespace combat
 			gDummies.size(), arenaAlive(),
 			(players[0] && players[0]->entity) ? (int)players[0]->movement.isPlayerSwimming() : -1, (players[0] && players[0]->entity) ? (int)players[0]->entity->skill[13] : -1,
 			(players[0] && players[0]->entity) ? (double)players[0]->entity->z : 0.0);
+		{ unsigned long long ll = 0, lb = 0, lq = 0; bool lqd = false; double lus = 0; printlogStats(ll, lb, lq, lqd, &lus); row("{\"ev\":\"log_writer\",\"queued\":%d,\"lines\":%llu,\"batches\":%llu,\"max_queued_bytes\":%llu,\"us_per_call\":%.2f}", (int)lqd, ll, lb, lq, lus); }
 		const size_t n = gPerf.all.size();
 		if ( gPerf.legacy.size() == n && gPerf.creak.size() == n ) // composition of the ticks over the 0.3 ms gate: which stage drives a burst tick (total = legacy + creak + other)
 		{
-			struct T { float total, legacy, creak; };
+			struct T { float total, legacy, creak, pre, ctrl; };
+			const bool st = gPerf.pre.size() == n && gPerf.ctrl.size() == n;
 			std::vector<T> over;
-			for ( size_t i = 0; i < n; ++i ) { if ( gPerf.all[i] > 0.3f ) { over.push_back({ gPerf.all[i], gPerf.legacy[i], gPerf.creak[i] }); } }
+			for ( size_t i = 0; i < n; ++i ) { if ( gPerf.all[i] > 0.3f ) { over.push_back({ gPerf.all[i], gPerf.legacy[i], gPerf.creak[i], st ? gPerf.pre[i] : -1.f, st ? gPerf.ctrl[i] : -1.f }); } }
 			std::sort(over.begin(), over.end(), [](const T& a, const T& b) { return a.total > b.total; });
 			if ( over.size() > 5 ) { over.resize(5); }
 			if ( !over.empty() )
 			{
-				char comp[300] = "";
-				for ( size_t i = 0; i < over.size(); ++i ) { char t[48]; snprintf(t, sizeof t, "%s[%.4f,%.4f,%.4f]", i ? "," : "", over[i].total, over[i].legacy, over[i].creak); strcat(comp, t); }
+				char comp[500] = ""; // each: [total, legacy, creak, pre, ctrl]
+				for ( size_t i = 0; i < over.size(); ++i ) { char t[96]; snprintf(t, sizeof t, "%s[%.4f,%.4f,%.4f,%.4f,%.4f]", i ? "," : "", over[i].total, over[i].legacy, over[i].creak, over[i].pre, over[i].ctrl); strcat(comp, t); }
 				row("{\"ev\":\"perf_comp\",\"gate_ms\":0.3,\"over_n\":%zu,\"worst\":[%s],\"legacy_p99_ms\":%.4f,\"legacy_max_ms\":%.4f,\"creak_p99_ms\":%.4f,\"creak_max_ms\":%.4f}",
 					over.size(), comp, pct(gPerf.legacy, 0.99), pct(gPerf.legacy, 1.0), pct(gPerf.creak, 0.99), pct(gPerf.creak, 1.0));
 			}
@@ -266,6 +270,8 @@ namespace combat
 		gPerf.active.clear();
 		gPerf.legacy.clear();
 		gPerf.creak.clear();
+		gPerf.pre.clear();
+		gPerf.ctrl.clear();
 	}
 
 	bool ownsMelee(int p)
@@ -531,11 +537,14 @@ namespace combat
 		t9.end();
 		if ( me && h.path == PATH_MELEE && (h.flags & HF_PRECOMPUTED) ) { damage = apx::vglue::scaleDamage(me, damage); } // BV1: a variant creature's damage multiple
 		// rule stage: F4c zones and D75 poise (armour and stance are read inside), staggered x1.5
-		if ( me ) { apx::hostility::onHit(me, target, damage); } // provocation and the hostility gate's counters (was inside onMeleeHit, which the core bypasses)
+		if ( me ) { Sec t16(16); apx::hostility::onHit(me, target, damage); } // provocation and the hostility gate's counters (was inside onMeleeHit, which the core bypasses)
+		Sec t19(19);
 		const combat::Zone zone = zoneOf(h, mv);
+		t19.end();
 		if ( !(h.flags & HF_NO_ZONES) )
 		{
 			const int poise = h.poise >= 0 ? h.poise : (mv ? mv->poise : -1);
+			Sec t17(17);
 			damage = combat_glue::applyHit(me, ms, target, ts, damage, zone, wclassOf(mv, ms), poise);
 		}
 		r.zone = (int)zone;
@@ -561,7 +570,7 @@ namespace combat
 			// Barony's own rule code for the rest of the blow, kept verbatim (procs.cpp): skill gain, armour and shield wear, weapon wear,
 			// obituary, compendium, and the weapon's procs (poison, paralyze, slow, knockback, bleed, artifact effects)
 			mctx.damage = damage; mctx.oldHP = oldHP; mctx.backstab = sneak && unaware;
-			me->apxMeleeAftermath(mctx);
+			{ Sec t18(18); me->apxMeleeAftermath(mctx); }
 		} }
 		if ( me->behavior == &actPlayer )
 		{
@@ -1277,6 +1286,8 @@ namespace combat
 			creatureTick();
 			creakMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - c0).count() - (gLogMs - clog0); // wall minus its own telemetry: comparable with total
 		}
+		const auto p0 = std::chrono::steady_clock::now();
+		const double plog0 = gLogMs;
 		const in::TickRecord& rec = in::take(p); // always take: nothing accumulates while the core is idle
 		Fighter& f = gF[p];
 		apx::Stamina_t& sta = apx::get(p);
@@ -1312,15 +1323,22 @@ namespace combat
 			sta.prevChop = false;
 			return;
 		}
+		const auto k0 = std::chrono::steady_clock::now();
+		const double klog0 = gLogMs;
+		const double preMs = std::chrono::duration<double, std::milli>(k0 - p0).count() - (klog0 - plog0);
 		qaOnce(p);
 		controlTick(p, f, rec);
 		sta.prevChop = swinging(p);
-		const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() - (gLogMs - log0) + gLegacyMs;
+		const auto k1 = std::chrono::steady_clock::now();
+		const double ctrlMs = std::chrono::duration<double, std::milli>(k1 - k0).count() - (gLogMs - klog0);
+		const double ms = std::chrono::duration<double, std::milli>(k1 - t0).count() - (gLogMs - log0) + gLegacyMs;
 		const double legacyMs = gLegacyMs;
 		gLegacyMs = 0.0;
 		gPerf.all.push_back((float)ms);
 		gPerf.legacy.push_back((float)legacyMs);
 		gPerf.creak.push_back((float)creakMs);
+		gPerf.pre.push_back((float)preMs);
+		gPerf.ctrl.push_back((float)ctrlMs);
 		if ( f.st == State::Active ) { gPerf.active.push_back((float)ms); }
 		if ( gPerf.all.size() >= 2000 ) { perfDump(); }
 	}

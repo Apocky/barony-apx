@@ -100,17 +100,21 @@ namespace apxdiag
 		}
 
 		// error / warning classifier. returns 0 none, 1 warning, 2 error
+		// every printlog line passes here: a stack buffer and ASCII lowering (was a heap string built by locale tolower,
+		// ~4 us a line inside combat ticks; 2026-10-22). Same verdicts: the phrases are ASCII.
 		int classify(const char* line)
 		{
-			std::string l;
-			for ( const char* p = line; *p && l.size() < 400; ++p ) { l += (char)tolower((unsigned char)*p); }
-			if ( l.find("no error") != std::string::npos ) { return 0; }
-			if ( l.compare(0, 5, "[apx]") == 0 && l.find("fail") == std::string::npos && l.find("error") == std::string::npos ) { return 0; }
+			char l[401];
+			size_t n = 0;
+			for ( const char* p = line; *p && n < 400; ++p ) { const char c = *p; l[n++] = (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c; }
+			l[n] = 0;
+			if ( strstr(l, "no error") ) { return 0; }
+			if ( !strncmp(l, "[apx]", 5) && !strstr(l, "fail") && !strstr(l, "error") ) { return 0; }
 			static const char* errs[] = { "error", "could not", "couldn't", "unable to", "failed", "critical", "assert", "exception", "cannot",
 				"not found", "invalid", "fatal", "corrupt" };
-			for ( const char* e : errs ) { if ( l.find(e) != std::string::npos ) { return 2; } }
+			for ( const char* e : errs ) { if ( strstr(l, e) ) { return 2; } }
 			static const char* warns[] = { "warning", "warn:", "deprecated", "missing", "skipping", "ignoring" };
-			for ( const char* w : warns ) { if ( l.find(w) != std::string::npos ) { return 1; } }
+			for ( const char* w : warns ) { if ( strstr(l, w) ) { return 1; } }
 			return 0;
 		}
 
@@ -574,6 +578,7 @@ namespace apxdiag
 		if ( sl != std::string::npos ) { exeDir.resize(sl); }
 		SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
 		SymInitialize(GetCurrentProcess(), exeDir.c_str(), TRUE);
+		printlogFlush(true); // the queued log lines first: log.txt must hold everything up to the crash
 		text += "stack:\n";
 		if ( e && e->ContextRecord )
 		{

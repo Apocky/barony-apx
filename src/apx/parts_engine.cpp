@@ -694,7 +694,8 @@ int apxPartsSockets(const Item* item) { return apxPartsSane(item) && item->apx.n
 
 // ---------------------------------------------------------------- C9 makers in play (05b C9; ports ASSUMED, makers.json _mapping)
 namespace {
-bool makersOff() { const char* v = getenv("APX_MAKERS"); return v && *v == '0'; } // control: makers do nothing (gates must fail)
+// control: makers do nothing (gates must fail). Read once: the gate sets it at launch, and getenv on every item check cost ~2 us a call (AC() ran 15 us of it per blow; the 2026-10-22 burst ticks)
+bool makersOff() { static const bool off = [] { const char* v = getenv("APX_MAKERS"); return v && *v == '0'; }(); return off; }
 apxparts::MakerMods modsOf(const Item* it, bool weapon)
 {
 	if ( makersOff() || !apxPartsSane(it) || !apxPartsEnabled() || it->apx.nParts == 0 || apxparts::isComponent(it->apx) ) { return apxparts::MakerMods{}; }

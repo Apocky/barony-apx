@@ -609,8 +609,89 @@ int numdigits_sint16(Sint16 x)
 
 -------------------------------------------------------------------------------*/
 
+// apx D93 (2026-10-22): printlog used to fprintf + fflush stderr AND stdout on the game thread: two disk writes per line, ~0.02 ms
+// each, landing inside combat ticks (the perf150fight burst ticks). Lines now go to an in-memory queue that one writer thread
+// drains; the order is kept (one write lock), a crash or exit flushes the queue first (printlogFlush). APX_LOG_SYNC=1 = the old
+// synchronous writes (the control trial). Counters: printlogStats().
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <atomic>
+#include <chrono>
+namespace
+{
+	std::mutex gLogMx;      // guards gLogBuf
+	std::mutex gLogWriteMx; // one writer at a time: keeps the line order between the thread and a flush
+	std::condition_variable gLogCv;
+	std::string gLogBuf;
+	std::atomic<unsigned long long> gLogLines{ 0 }, gLogBatches{ 0 }, gLogMaxQueued{ 0 };
+	std::atomic<unsigned long long> gLogNs{ 0 }, gLogCalls{ 0 }; // printlog's own time on the calling thread
+	int gLogMode = -1; // -1 unknown, 0 synchronous, 1 queued
+
+	void logWrite(const std::string& b)
+	{
+		if ( b.empty() ) { return; }
+#ifndef NINTENDO
+		fwrite(b.data(), 1, b.size(), stderr);
+		fflush(stderr);
+#endif
+		fwrite(b.data(), 1, b.size(), stdout);
+		fflush(stdout);
+	}
+	void logThread()
+	{
+		std::string batch;
+		for ( ;; )
+		{
+			{
+				std::unique_lock<std::mutex> lk(gLogMx);
+				gLogCv.wait(lk, [] { return !gLogBuf.empty(); });
+				std::lock_guard<std::mutex> wl(gLogWriteMx); // taken before the buffer is released: a flush cannot overtake this batch
+				batch.swap(gLogBuf);
+				lk.unlock();
+				logWrite(batch);
+				++gLogBatches;
+			}
+			batch.clear();
+		}
+	}
+	bool logQueued()
+	{
+		if ( gLogMode < 0 )
+		{
+			const char* v = getenv("APX_LOG_SYNC");
+			gLogMode = (v && v[0] == '1') ? 0 : 1;
+			if ( gLogMode == 1 ) { std::thread(logThread).detach(); atexit([] { printlogFlush(false); }); }
+		}
+		return gLogMode == 1;
+	}
+}
+
+void printlogFlush(bool crashing)
+{
+	if ( gLogMode != 1 ) { return; }
+	if ( crashing )
+	{
+		// the crashing thread may hold a lock: never wait on it; a torn tail is better than a hang
+		if ( gLogMx.try_lock() ) { std::string b; b.swap(gLogBuf); gLogMx.unlock(); logWrite(b); }
+		return;
+	}
+	std::lock_guard<std::mutex> wl(gLogWriteMx);
+	std::string b;
+	{ std::lock_guard<std::mutex> lk(gLogMx); b.swap(gLogBuf); }
+	logWrite(b);
+}
+
+void printlogStats(unsigned long long& lines, unsigned long long& batches, unsigned long long& maxQueued, bool& queued, double* usPerCall)
+{
+	if ( usPerCall ) { *usPerCall = gLogCalls ? (double)gLogNs / 1000.0 / (double)gLogCalls : 0.0; }
+	lines = gLogLines; batches = gLogBatches; maxQueued = gLogMaxQueued; queued = gLogMode == 1;
+}
+
 void printlog(const char* str, ...)
 {
+	const auto apxPl0 = std::chrono::steady_clock::now(); // the call's own cost: printlogStats
+	struct PlTime { std::chrono::steady_clock::time_point t0; ~PlTime() { gLogNs += (unsigned long long)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count(); ++gLogCalls; } } apxPlT{ apxPl0 };
 	char newstr[1024] = { 0 };
 	va_list argptr;
 
@@ -621,22 +702,40 @@ void printlog(const char* str, ...)
 
 	apxdiag::logLine(newstr); // D90: classify/count errors and warnings, keep the last lines for a crash report
 	// timestamp the message
-	char buffer[32];
-    getTimeFormatted(getTime(), buffer, sizeof(buffer));
+	// the timestamp only changes once a second: localtime + strftime per line cost ~2 us (2026-10-22)
+	thread_local time_t tsLast = (time_t)-1;
+	thread_local char buffer[32];
+	const time_t tsNow = getTime();
+	if ( tsNow != tsLast ) { tsLast = tsNow; getTimeFormatted(tsNow, buffer, sizeof(buffer)); }
 
 	// print to the log
-	if ( newstr[strlen(newstr) - 1] != '\n' )
+	if ( newstr[0] == 0 || newstr[strlen(newstr) - 1] != '\n' )
 	{
 		int c = (int)strlen(newstr);
 		newstr[c] = '\n';
 		newstr[c + 1] = 0;
 	}
+	if ( logQueued() )
+	{
+		char line[1100];
+		const int n = snprintf(line, sizeof line, "[%s] %s", buffer, newstr);
+		bool wake;
+		size_t q;
+		{
+			std::lock_guard<std::mutex> lk(gLogMx);
+			wake = gLogBuf.empty();
+			gLogBuf.append(line, (size_t)std::max(0, std::min(n, (int)sizeof line - 1)));
+			q = gLogBuf.size();
+		}
+		++gLogLines;
+		if ( q > gLogMaxQueued ) { gLogMaxQueued = q; }
+		if ( wake ) { gLogCv.notify_one(); }
+		return;
+	}
 #ifndef NINTENDO
-	//fprintf( stderr, "%s", newstr );
 	fprintf( stderr, "[%s] %s", buffer, newstr );
 	fflush( stderr );
 #endif
-	//fprintf( stdout, "%s", newstr );
 	fprintf( stdout, "[%s] %s", buffer, newstr );
 	fflush( stdout );
 }
