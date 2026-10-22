@@ -133,7 +133,8 @@ namespace combat
 		struct Perf
 		{
 			std::vector<float> all, active;
-			Perf() { all.reserve(1 << 16); active.reserve(1 << 14); }
+			std::vector<float> legacy, creak; // aligned with all: applyHit at the Barony hit sites since the last tick | creatureTick wall
+			Perf() { all.reserve(1 << 16); active.reserve(1 << 14); legacy.reserve(1 << 15); creak.reserve(1 << 13); }
 		} gPerf;
 		double pct(std::vector<float> v, double q)
 		{
@@ -245,8 +246,26 @@ namespace combat
 			gDummies.size(), arenaAlive(),
 			(players[0] && players[0]->entity) ? (int)players[0]->movement.isPlayerSwimming() : -1, (players[0] && players[0]->entity) ? (int)players[0]->entity->skill[13] : -1,
 			(players[0] && players[0]->entity) ? (double)players[0]->entity->z : 0.0);
+		const size_t n = gPerf.all.size();
+		if ( gPerf.legacy.size() == n && gPerf.creak.size() == n ) // composition of the ticks over the 0.3 ms gate: which stage drives a burst tick (total = legacy + creak + other)
+		{
+			struct T { float total, legacy, creak; };
+			std::vector<T> over;
+			for ( size_t i = 0; i < n; ++i ) { if ( gPerf.all[i] > 0.3f ) { over.push_back({ gPerf.all[i], gPerf.legacy[i], gPerf.creak[i] }); } }
+			std::sort(over.begin(), over.end(), [](const T& a, const T& b) { return a.total > b.total; });
+			if ( over.size() > 5 ) { over.resize(5); }
+			if ( !over.empty() )
+			{
+				char comp[300] = "";
+				for ( size_t i = 0; i < over.size(); ++i ) { char t[48]; snprintf(t, sizeof t, "%s[%.4f,%.4f,%.4f]", i ? "," : "", over[i].total, over[i].legacy, over[i].creak); strcat(comp, t); }
+				row("{\"ev\":\"perf_comp\",\"gate_ms\":0.3,\"over_n\":%zu,\"worst\":[%s],\"legacy_p99_ms\":%.4f,\"legacy_max_ms\":%.4f,\"creak_p99_ms\":%.4f,\"creak_max_ms\":%.4f}",
+					over.size(), comp, pct(gPerf.legacy, 0.99), pct(gPerf.legacy, 1.0), pct(gPerf.creak, 0.99), pct(gPerf.creak, 1.0));
+			}
+		}
 		gPerf.all.clear();
 		gPerf.active.clear();
+		gPerf.legacy.clear();
+		gPerf.creak.clear();
 	}
 
 	bool ownsMelee(int p)
@@ -1248,8 +1267,16 @@ namespace combat
 		if ( p < 0 || p >= MAXPLAYERS || !players[p] ) { return; }
 		const auto t0 = std::chrono::steady_clock::now();
 		const double log0 = gLogMs;
+		double creakMs = 0.0; // wall time of creatureTick() this tick minus its own telemetry (ms); total = legacy + creak + other
 		gTickT0 = t0; gTickLogBase = gLogMs;
-		if ( gCreatureTick != (Uint32)ticks ) { gCreatureTick = (Uint32)ticks; creatureTick(); }
+		if ( gCreatureTick != (Uint32)ticks )
+		{
+			gCreatureTick = (Uint32)ticks;
+			const auto c0 = std::chrono::steady_clock::now();
+			const double clog0 = gLogMs;
+			creatureTick();
+			creakMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - c0).count() - (gLogMs - clog0); // wall minus its own telemetry: comparable with total
+		}
 		const in::TickRecord& rec = in::take(p); // always take: nothing accumulates while the core is idle
 		Fighter& f = gF[p];
 		apx::Stamina_t& sta = apx::get(p);
@@ -1289,8 +1316,11 @@ namespace combat
 		controlTick(p, f, rec);
 		sta.prevChop = swinging(p);
 		const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() - (gLogMs - log0) + gLegacyMs;
+		const double legacyMs = gLegacyMs;
 		gLegacyMs = 0.0;
 		gPerf.all.push_back((float)ms);
+		gPerf.legacy.push_back((float)legacyMs);
+		gPerf.creak.push_back((float)creakMs);
 		if ( f.st == State::Active ) { gPerf.active.push_back((float)ms); }
 		if ( gPerf.all.size() >= 2000 ) { perfDump(); }
 	}
