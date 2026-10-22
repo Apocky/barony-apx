@@ -7,6 +7,7 @@
 #include "../player.hpp"
 #include "../items.hpp"
 #include "hostility.hpp"
+#include "datadir.hpp" // the one data-folder rule
 #include "rapidjson/document.h"
 #include <algorithm>
 #include <cmath>
@@ -57,10 +58,7 @@ namespace
 		d.loaded = true;
 		std::vector<std::string> cands;
 		if ( const char* e = std::getenv("APX_PARTS_DATA") ) cands.push_back(std::string(e) + "/combat/hostility.json");
-#ifdef APX_PARTS_DATA_DIR
-		cands.push_back(std::string(APX_PARTS_DATA_DIR) + "/combat/hostility.json");
-#endif
-		cands.push_back("data/apx/combat/hostility.json");
+		cands.push_back(apx::dataDir() + "/combat/hostility.json"); // exe folder first, then the dev source (datadir.hpp)
 		std::string text, used;
 		for ( auto& c : cands ) { text = readFile(c); if ( !text.empty() ) { used = c; break; } }
 		rapidjson::Document doc;

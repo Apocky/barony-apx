@@ -1,5 +1,6 @@
 // F6 parts-based gear, Barony side (card BF6-2/3/4/6). See parts_engine.hpp.
 #include "../main.hpp"
+#include "datadir.hpp" // the one data-folder rule
 #include "../game.hpp"
 #include "../entity.hpp"
 #include "../items.hpp"
@@ -54,14 +55,7 @@ apxparts::DB& db()
 		loaded = true;
 		const char* envDir = getenv("APX_PARTS_DATA");
 		std::string chosen = envDir && *envDir ? std::string(envDir) : std::string();
-		if ( chosen.empty() ) // release layout first: <exe dir>/data/apx; then the source copy (developer builds)
-		{
-			char* bp = SDL_GetBasePath();
-			const std::string rel = (bp ? std::string(bp) : std::string("./")) + "data/apx";
-			if ( bp ) { SDL_free(bp); }
-			FILE* f = fopen((rel + "/SCHEMA.md").c_str(), "rb");
-			if ( f ) { fclose(f); chosen = rel; } else { chosen = APX_PARTS_DATA_DIR; }
-		}
+		if ( chosen.empty() ) { chosen = apx::dataDir(); } // the one data-folder rule (datadir.hpp)
 		const char* dir = chosen.c_str();
 		const std::string e = apxparts::loadDB(dir, d);
 		if ( !e.empty() ) { printlog("apxparts: FAILED data load: %s (parts off)\n", e.c_str()); d.families.clear(); }

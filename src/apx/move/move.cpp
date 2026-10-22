@@ -15,6 +15,7 @@
 #include "../../apx_combat.hpp"
 #include "../in/in.hpp"
 #include "move.hpp"
+#include "../datadir.hpp" // the one data-folder rule
 #ifdef APX_IN_STUB
 #define APX_IN_STUB_FLAG 1
 #else
@@ -98,10 +99,7 @@ namespace
 		g_old = old && old[0] == '1';
 		std::vector<std::string> cands;
 		if ( const char* e = std::getenv("APX_MOVE_DATA") ) { cands.push_back(std::string(e) + "/move/move.json"); }
-#ifdef APX_PARTS_DATA_DIR
-		cands.push_back(std::string(APX_PARTS_DATA_DIR) + "/move/move.json");
-#endif
-		cands.push_back("data/apx/move/move.json");
+		cands.push_back(apx::dataDir() + "/move/move.json"); // exe folder first, then the dev source (datadir.hpp)
 		std::string text, used;
 		for ( auto& c : cands ) { text = readFile(c); if ( !text.empty() ) { used = c; break; } }
 		rapidjson::Document doc;

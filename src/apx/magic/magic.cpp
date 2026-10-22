@@ -19,6 +19,7 @@
 #include "../move/move.hpp"
 #include "../qadriver.hpp"
 #include "magic.hpp"
+#include "../datadir.hpp" // the one data-folder rule
 #include "rapidjson/document.h"
 #include <algorithm>
 #include <chrono>
@@ -94,10 +95,7 @@ namespace
 	{
 		std::vector<std::string> c;
 		if ( const char* e = std::getenv("APX_MAGIC_DATA") ) { c.push_back(std::string(e) + "/magic/" + file); }
-#ifdef APX_PARTS_DATA_DIR
-		c.push_back(std::string(APX_PARTS_DATA_DIR) + "/magic/" + file);
-#endif
-		c.push_back(std::string("data/apx/magic/") + file);
+		c.push_back(apx::dataDir() + "/magic/" + file); // exe folder first, then the dev source (datadir.hpp)
 		return c;
 	}
 	std::string readData(const char* file, std::string* used)

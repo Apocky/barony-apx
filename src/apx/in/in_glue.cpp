@@ -1,5 +1,6 @@
 // apx/in/in_glue.cpp -- see in_glue.hpp.
 #include "in_glue.hpp"
+#include "../datadir.hpp" // the one data-folder rule
 #include "in.hpp"
 #include "../ui/ui.hpp"
 #include "../diag.hpp"
@@ -100,12 +101,7 @@ namespace in
 			std::string dataDir()
 			{
 				if ( const char* e = getenv("APX_INPUT_DIR") ) { if ( *e ) { return e; } }
-				char* bp = SDL_GetBasePath();
-				const std::string rel = (bp ? std::string(bp) : std::string("./")) + "data/apx/input";
-				if ( bp ) { SDL_free(bp); }
-				FILE* f = fopen((rel + "/actions.json").c_str(), "rb");
-				if ( f ) { fclose(f); return rel; }
-				return std::string(APX_PARTS_DATA_DIR) + "/input";
+				return apx::dataDir() + "/input"; // the one data-folder rule (datadir.hpp)
 			}
 		}
 
