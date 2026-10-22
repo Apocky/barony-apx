@@ -24,6 +24,7 @@
 #include "../prng.hpp"
 #include "../mod_tools.hpp"
 #include "../collision.hpp"
+#include "../apx/magic/magic.hpp" // apx S1
 
 //The spellcasting animation stages:
 #define ANIM_SPELL_CIRCLE 0 //One circle
@@ -1511,6 +1512,11 @@ void actLeftHandMagic(Entity* my)
 		my->focalz = -1.5;
 	}
 
+	if ( apx::magic::poseHand(my, true, HANDMAGIC_PLAYERNUM) ) // apx S1: the cast hands from apx::magic's cast state
+	{
+		return;
+	}
+
 	if ( !cast_animation[HANDMAGIC_PLAYERNUM].active )
 	{
 		my->flags[INVISIBLE] = true;
@@ -2303,6 +2309,11 @@ void actRightHandMagic(Entity* my)
 		{
 			my->sprite = 636;
 		}*/
+	}
+
+	if ( apx::magic::poseHand(my, false, HANDMAGIC_PLAYERNUM) ) // apx S1: the cast hands from apx::magic's cast state
+	{
+		return;
 	}
 
 	if ( !(cast_animation[HANDMAGIC_PLAYERNUM].active || cast_animation[HANDMAGIC_PLAYERNUM].active_spellbook) )
